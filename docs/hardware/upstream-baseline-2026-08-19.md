@@ -18,6 +18,15 @@ Resolve it by rebuilding Sunshine's pinned FFmpeg dependency bundle on a
 Rocky-compatible baseline or by producing the host package in a compatible
 RHEL/Rocky build environment. Do not replace workstation glibc.
 
-Moonlight-Qt `v6.1.0` and all pinned nested dependencies were initialized.
-A native client build awaits a Qt/FFmpeg development environment on the
-dedicated Ubuntu NUC; no client packages were installed during this run.
+Moonlight-Qt `v6.1.0` and all pinned nested dependencies were initialized on
+the dedicated Ubuntu 26.04 NUC. The release target built successfully against
+Qt 6.10.2, FFmpeg 8.0.1, VA-API 1.23, DRM, EGL, and libplacebo 7.360.0. A
+five-second launch in the real Wayland session selected the Intel iHD driver,
+Moonlight's VA-API accelerated renderer, and mailbox Vulkan presentation. Its
+built-in HEVC Main10 test selected FFmpeg's `vaapi` path and a P010 surface.
+
+The upstream client baseline therefore works without a custom renderer. The
+remaining color-path delta is specific: for a matrix-coefficient-0 HEVC Rext
+4:4:4 stream, FFmpeg currently reports `gbrp10le` and misses this hardware
+path. StationConnect must preserve hardware selection using the driver's
+Y410/XV30 surface and apply the identity channel interpretation at presentation.
