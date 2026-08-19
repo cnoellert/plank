@@ -142,6 +142,15 @@ established. The client retained the 10-bit identity-GBR Y410/XR30 zero-copy
 path while the host reported about 79 Mbps. The earlier scopes-display run is
 not a content qualification.
 
+A matched priority A/B raised only the test shell's inherited `RLIMIT_NICE`
+from 0 to 40, allowing Moonlight's render and audio priority requests to
+succeed. The full-loop result still had 0.03% pacer drops and rendered 59.99
+fps; decode, queueing, and render averages were 0.35, 0.85, and 4.81 ms. This is
+not a material improvement over the two unprivileged controls. The limit was
+restored to 0 and the binary retained no file capabilities. Do not grant
+Moonlight extra scheduling privilege for this result; instrument pacer-drop
+timestamps against Wayland presentation feedback instead.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
