@@ -51,7 +51,10 @@ find_program(WAYLAND_SCANNER wayland-scanner)
 pkg_get_variable(WAYLAND_PROTOCOLS_DATA wayland-protocols pkgdatadir)
 set(XDG_SHELL_XML
   "${WAYLAND_PROTOCOLS_DATA}/stable/xdg-shell/xdg-shell.xml")
-if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND EXISTS "${XDG_SHELL_XML}")
+set(PRESENTATION_TIME_XML
+  "${WAYLAND_PROTOCOLS_DATA}/stable/presentation-time/presentation-time.xml")
+if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
+   EXISTS "${XDG_SHELL_XML}")
   set(XDG_SHELL_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol.h")
   set(XDG_SHELL_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.c")
   add_custom_command(
@@ -69,6 +72,32 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND EXISTS "${XDG_SHELL_XM
     "${CMAKE_CURRENT_BINARY_DIR}")
   target_link_libraries(connect-probe-wayland-xr30 PRIVATE
     PkgConfig::WAYLAND PkgConfig::EGL PkgConfig::GLESV2 PkgConfig::LIBDRM)
+
+  if(GSTREAMER_FOUND AND EXISTS "${PRESENTATION_TIME_XML}")
+    set(PRESENTATION_TIME_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/presentation-time-client-protocol.h")
+    set(PRESENTATION_TIME_CODE
+      "${CMAKE_CURRENT_BINARY_DIR}/presentation-time-protocol.c")
+    add_custom_command(
+      OUTPUT "${PRESENTATION_TIME_HEADER}" "${PRESENTATION_TIME_CODE}"
+      COMMAND "${WAYLAND_SCANNER}" client-header "${PRESENTATION_TIME_XML}"
+        "${PRESENTATION_TIME_HEADER}"
+      COMMAND "${WAYLAND_SCANNER}" private-code "${PRESENTATION_TIME_XML}"
+        "${PRESENTATION_TIME_CODE}"
+      DEPENDS "${PRESENTATION_TIME_XML}")
+    add_executable(connect-probe-client-pipeline
+      probes/video/connect-probe-client-pipeline.cpp
+      "${XDG_SHELL_CODE}" "${XDG_SHELL_HEADER}"
+      "${PRESENTATION_TIME_CODE}" "${PRESENTATION_TIME_HEADER}")
+    target_compile_features(connect-probe-client-pipeline PRIVATE cxx_std_17)
+    target_compile_options(connect-probe-client-pipeline PRIVATE
+      -Wall -Wextra -Wpedantic -Werror)
+    target_include_directories(connect-probe-client-pipeline PRIVATE
+      "${CMAKE_CURRENT_BINARY_DIR}")
+    target_link_libraries(connect-probe-client-pipeline PRIVATE
+      PkgConfig::GSTREAMER PkgConfig::WAYLAND PkgConfig::EGL
+      PkgConfig::GLESV2 PkgConfig::LIBDRM)
+  endif()
 endif()
 
 add_executable(connect-probe-nvenc probes/nvenc/connect-probe-nvenc.cpp)

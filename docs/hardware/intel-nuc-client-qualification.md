@@ -29,6 +29,11 @@ Copy both the Ada driver-auto and SFE-disabled HEVC test streams from
 
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
   ./scripts/probe-intel-wayland-xr30.sh 9000
+
+XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
+  ./scripts/probe-intel-client-pipeline.sh \
+  artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc \
+  9000
 ```
 
 The script fails unless VA-API exposes `VAProfileHEVCMain444_10` with the VLD
@@ -41,6 +46,8 @@ may silently fall back to software. For the current long-loop vectors:
 ```text
 auto_sha256=21c2007a97c7fc777b98dd24e5aba9fc1b62f2f2b3453f8bc9d72f1d62118fe1
 disabled_sha256=261157e974092e704b6ec4b799a1dabddfd3efbfc86ca6286b6e7a0282dfcad1
+fullscreen_auto_sha256=7a60394a6d3ee2bd1de948ef673bb2204d9d8c465d25ae1b9def663fa3593156
+fullscreen_disabled_sha256=cf0ce9cb7035c62e49d872f3a6b718f9cd441f3860753525364d9a93d0aba185
 frames=9000
 resolution=3840x2160
 codec=HEVC Rext 10-bit 4:4:4
@@ -69,7 +76,7 @@ on `/dev/dri/renderD128`. Both complete real-content artifacts pass:
 
 These are accelerated-throughput results, not per-frame latency percentiles.
 They average 4.45 and 4.22 ms per frame respectively, leaving ample throughput
-capacity for 60 Hz, but decode-to-presentation p95 remains unmeasured.
+capacity for 60 Hz.
 
 FFmpeg 8.0.1 identifies the correctly signaled stream as `gbrp10le` and silently
 falls back to software even when VA hardware frames are requested. Earlier
@@ -86,6 +93,10 @@ frame through EGL with the advertised modifier. Both 9,000-frame vectors passed:
 | --- | ---: | --- |
 | Ada driver-auto SFE | 225.29 fps | Y410, modifier `0x0100000000000002` |
 | SFE disabled | 237.50 fps | Y410, modifier `0x0100000000000002` |
+
+The preferred fullscreen-footage stress pair also passed. Driver-auto decoded
+at 248.83 fps and disabled at 251.09 fps. The auto stream's higher 78.43 Mbps
+rate therefore does not threaten the NUC's decode throughput.
 
 The surface is one 3840x2160 plane with a 15,360-byte stride. Mesa does not
 expose `GL_EXT_YUV_target` on this GPU, so the client uses the RGB-identity
@@ -105,8 +116,25 @@ completed a 9,000-frame, 150-second soak. Swap submission p50/p95 was
 0.023/0.034 ms. Wayland frame-callback p50/p95 was 16.662/16.755 ms, which
 represents 60 Hz compositor cadence rather than GPU processing time.
 
-These results independently prove accelerated decode, exact identity-channel
-reconstruction, and 10-bit compositor presentation on this NUC. They do not
-yet provide network-to-photon or decode-submit-to-presentation p95; measure
-that in the integrated client with shared per-frame timestamps and presentation
-feedback rather than adding independent averages.
+The integrated probe timestamps each access unit immediately before
+`vah265dec`, decoded DMA-BUF availability, EGL swap submission, and the
+`wp_presentation` hardware event. It waits for presentation before submitting
+the next frame, keeping the maximum queue depth at one. Both fullscreen vectors
+presented all 9,000 frames with hardware-clock, hardware-completion, and vsync
+feedback:
+
+| Stream | DMA-BUF fps | Surface-to-swap p95 | Submit-to-present p95 | Zero-copy frames |
+| --- | ---: | ---: | ---: | ---: |
+| Driver-auto SFE | 248.83 | 0.192 ms | 17.038 ms | 8,995 / 9,000 |
+| SFE disabled | 251.09 | not recorded | 17.028 ms | 8,997 / 9,000 |
+
+The auto run's decoder-submit-to-surface p95 was 0.201 ms and swap-call p95 was
+0.135 ms. Surface availability is not proof that Intel's asynchronous decode
+engine has completed; the hardware presentation timestamp is the authoritative
+end boundary. The actual p95 is one 60 Hz refresh because this strictly serial
+probe begins the next decode only after the prior frame is presented. It passes
+60 Hz pacing but fails if the 8 ms client target is defined as submit-to-photon.
+The next client prototype should use separate decode and presentation threads,
+retain at most one ready frame, and timestamp the same four boundaries. Network
+to-photon remains unmeasured because this file-backed probe starts at decoder
+submission rather than packet arrival.

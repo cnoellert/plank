@@ -40,7 +40,9 @@ The Intel client probes use GStreamer `vah265dec` because FFmpeg 8.0.1 silently
 falls back to software for the full-range GBR identity stream. The DMA-BUF probe
 validates Y410 export, XR30 RGB-identity sampling, and exact pixel values without
 mapping decoded pixels to the CPU. The Wayland probe separately validates a
-fullscreen 10-bit EGL surface and compositor pacing.
+fullscreen 10-bit EGL surface and compositor pacing. The integrated client probe
+uses `wp_presentation` hardware timestamps to measure each real decoded frame
+through fullscreen scanout with a bounded queue.
 
 The generic modesetting and direct-KMS scripts below are historical diagnostic
 controls, not production capture candidates. They interrupt the graphical

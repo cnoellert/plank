@@ -22,6 +22,7 @@
 | Synthetic animated 2160p60 pipeline | Pass, marginal | The enforced rerun sustained 60.05 fps with zero submission misses and 15.959 ms p95, but its 16.862 ms p99 failed the stricter robustness gate. P95 headroom was only 0.708 ms. |
 | Full looping production workload | Pass | The instrumented 150-second loop encoded 9,000 frames at 60.01 fps with 8,999 new captures, zero misses, 14.645 ms p95, 15.041 ms p99, and 2.022 ms p95 headroom. |
 | Real-workload SFE A/B | Auto required on Ada | Matched 9,000-frame runs measured 14.512 ms p95 and 14.939 ms p99 with driver-auto, versus 17.419 ms p95 and 17.752 ms p99 with SFE disabled. Both decoded without error; only auto met the 16.67 ms budget. |
+| Fullscreen-footage SFE A/B | Auto required on Ada | With footage filling the 3840x2160 capture output, auto measured 14.290 ms p95 and 2.377 ms headroom. Disabled measured 17.321 ms p95 and failed the budget by 0.654 ms. Both sustained 60.00 fps with no deadline misses. |
 | NVENC Ultra-Low-Latency tuning | No material gain | A matched 150-second ULL run sustained 60.00 fps with zero misses and measured 14.644 ms p95 and 15.013 ms p99. The 1 us p95 difference from LL is noise, so LL remains the default. |
 | NVENC 8 ms component target | Fail, non-blocking | NVENC completion p95 was 14.328 ms on the full loop. Its blocking bitstream-lock wait was 14.249 ms p95, while mapping, submission, and output-worker dispatch totaled under 0.1 ms at p95. The tail is inside NVIDIA's encode/completion path. |
 | HEVC 10-bit 4:2:2 encode | Unsupported | Live capability query returns `caps_yuv422_encode=0`; NVIDIA added HEVC 4:2:2 encode after the Turing/Ampere/Ada fleet. |
@@ -95,6 +96,13 @@ cleanly. Auto emitted 65.01 Mbps versus 52.99 Mbps for disabled at the same
 80 Mbps configuration, so a frame-aligned rate-distortion test is still needed
 before claiming equivalent compression efficiency.
 
+The later fullscreen-footage pair is the preferred stress vector. Driver-auto
+reduced capture-to-bitstream p95 from 17.321 to 14.290 ms and bitstream-lock p95
+from 16.954 to 13.767 ms. The auto stream averaged 78.43 Mbps versus 53.20 Mbps
+disabled. SFE therefore restores host frame-budget headroom on this Ada workload
+but incurs a large compression-efficiency cost that must remain visible in
+telemetry and network qualification.
+
 The probe accepts `--tuning low-latency|ultra-low-latency`. A controlled full-loop
 A/B test found no material ULL benefit, matching the 4K HEVC observation in the
 [2025 SFE evaluation](https://arxiv.org/html/2511.18687v1). Keep Low-Latency as
@@ -112,10 +120,10 @@ conversion, NVENC, transport, client decode, or presentation.
 
 ## Remaining Video Work
 
-1. Repeat the animated integrated gate on each Turing and Ampere host SKU.
-2. Qualify Intel VA-API HEVC Rext 10-bit 4:4:4 decode and presentation, including
-   both Ada split and Turing/Ampere unsplit streams.
-3. Implement the client identity-GBR shader and expose the explicit
+1. Repeat the fullscreen integrated gate on each Turing and Ampere host SKU.
+2. Integrate the qualified Intel decode, identity, and presentation path into
+   the client and measure network-to-photon latency with shared timestamps.
+3. Expose the explicit
    `8-bit-source/up-converted` label.
 4. Continue tuning toward the optional NVENC component p95 target of 8 ms.
 
@@ -129,16 +137,15 @@ labeled 8-bit source/up-converted; CUDA uses the identity mapping
 `Y=G,U=B,V=R`. The Linux output path is a blocking worker with two reusable
 slots and at most one queued frame.
 
-Tomorrow's first task is the Intel NUC Gen12+ VA-API decode and 10-bit
-presentation gate. Use the driver-auto Ada stream first, then the SFE-disabled
-control. Both artifacts are stored under the repository's ignored qualification
-artifact directory:
+The Intel NUC Gen13 VA-API decode, identity shader, and 10-bit presentation
+gates now pass. The preferred fullscreen artifacts are stored under the
+repository's ignored qualification artifact directory:
 
 ```text
-artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-auto-paired.hevc
-sha256=21c2007a97c7fc777b98dd24e5aba9fc1b62f2f2b3453f8bc9d72f1d62118fe1
-artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-disabled.hevc
-sha256=261157e974092e704b6ec4b799a1dabddfd3efbfc86ca6286b6e7a0282dfcad1
+artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc
+sha256=7a60394a6d3ee2bd1de948ef673bb2204d9d8c465d25ae1b9def663fa3593156
+artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-disabled.hevc
+sha256=cf0ce9cb7035c62e49d872f3a6b718f9cd441f3860753525364d9a93d0aba185
 ```
 
 Do not spend more time on ULL or intra-refresh latency tuning: both full-loop
