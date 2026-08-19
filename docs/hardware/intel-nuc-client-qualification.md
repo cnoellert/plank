@@ -5,6 +5,8 @@ kernel, `intel-media-va-driver` (`iHD`), libva, FFmpeg, GStreamer's `vah265dec`,
 compositor, and display. On Ubuntu, install `gstreamer1.0-plugins-bad` for the
 VA decoder. The DMA-BUF probe additionally needs `build-essential`, `pkgconf`,
 `libgstreamer1.0-dev`, `libgstreamer-plugins-base1.0-dev`, and `libdrm-dev`.
+The Wayland presentation probe needs `wayland-protocols` and the Wayland/EGL
+development libraries.
 Copy both the Ada driver-auto and SFE-disabled HEVC test streams from
 `artifacts/qualification/video/` to the NUC.
 
@@ -20,6 +22,13 @@ Copy both the Ada driver-auto and SFE-disabled HEVC test streams from
 ./scripts/probe-intel-vaapi-dmabuf.sh \
   artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-disabled.hevc \
   9000
+
+./scripts/validate-intel-identity-pixel.sh \
+  artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-disabled.hevc \
+  600
+
+XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
+  ./scripts/probe-intel-wayland-xr30.sh 9000
 ```
 
 The script fails unless VA-API exposes `VAProfileHEVCMain444_10` with the VLD
@@ -78,7 +87,26 @@ frame through EGL with the advertised modifier. Both 9,000-frame vectors passed:
 | Ada driver-auto SFE | 225.29 fps | Y410, modifier `0x0100000000000002` |
 | SFE disabled | 237.50 fps | Y410, modifier `0x0100000000000002` |
 
-The surface is one 3840x2160 plane with a 15,360-byte stride. The next gate is
-raw packed-channel sampling, the identity `B,G,R` swizzle, pixel comparison, and
-XR30 presentation. EGL-image creation alone does not prove channel order or
-10-bit presentation.
+The surface is one 3840x2160 plane with a 15,360-byte stride. Mesa does not
+expose `GL_EXT_YUV_target` on this GPU, so the client uses the RGB-identity
+method instead of a YUV sampler. Y410 packs `A:V:Y:U`; importing the same
+DMA-BUF storage as XR30 interprets those fields as `X:R:G:B`. Sampling it as an
+external RGB EGL image therefore reconstructs `R=V,G=Y,B=U` without a matrix,
+copy, or loss of precision.
+
+Frame 600 of the real SFE-disabled loop passed an independent center-pixel
+comparison. Software decoding produced `R=183,G=177,B=168`; the VA-API Y410
+DMA-BUF, XR30 alias, and GLES shader produced the same three 10-bit values. The
+decoded surface was never CPU-mapped; readback was limited to the two-pixel
+test output.
+
+The fullscreen Wayland probe selected AR30 (`10:10:10:2`) at 3840x2160 and
+completed a 9,000-frame, 150-second soak. Swap submission p50/p95 was
+0.023/0.034 ms. Wayland frame-callback p50/p95 was 16.662/16.755 ms, which
+represents 60 Hz compositor cadence rather than GPU processing time.
+
+These results independently prove accelerated decode, exact identity-channel
+reconstruction, and 10-bit compositor presentation on this NUC. They do not
+yet provide network-to-photon or decode-submit-to-presentation p95; measure
+that in the integrated client with shared per-frame timestamps and presentation
+feedback rather than adding independent averages.

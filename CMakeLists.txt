@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(stationconnect_qualification VERSION 0.1.0 LANGUAGES CXX)
+project(stationconnect_qualification VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)
 find_package(PkgConfig REQUIRED)
@@ -8,6 +8,8 @@ find_package(Threads REQUIRED)
 pkg_check_modules(LIBDRM REQUIRED IMPORTED_TARGET libdrm)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl)
 pkg_check_modules(GBM QUIET IMPORTED_TARGET gbm)
+pkg_check_modules(GLESV2 QUIET IMPORTED_TARGET glesv2)
+pkg_check_modules(WAYLAND QUIET IMPORTED_TARGET wayland-client wayland-egl)
 pkg_check_modules(GSTREAMER QUIET IMPORTED_TARGET
   gstreamer-1.0
   gstreamer-app-1.0
@@ -34,14 +36,39 @@ target_compile_features(connect-probe-kms-xb30 PRIVATE cxx_std_17)
 target_compile_options(connect-probe-kms-xb30 PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_link_libraries(connect-probe-kms-xb30 PRIVATE PkgConfig::LIBDRM PkgConfig::EGL)
 
-if(GSTREAMER_FOUND AND GBM_FOUND)
+if(GSTREAMER_FOUND AND GBM_FOUND AND GLESV2_FOUND)
   add_executable(connect-probe-vaapi-dmabuf
     probes/video/connect-probe-vaapi-dmabuf.cpp)
   target_compile_features(connect-probe-vaapi-dmabuf PRIVATE cxx_std_17)
   target_compile_options(connect-probe-vaapi-dmabuf PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_link_libraries(connect-probe-vaapi-dmabuf PRIVATE
-    PkgConfig::GSTREAMER PkgConfig::EGL PkgConfig::GBM PkgConfig::LIBDRM)
+    PkgConfig::GSTREAMER PkgConfig::EGL PkgConfig::GBM PkgConfig::GLESV2
+    PkgConfig::LIBDRM)
+endif()
+
+find_program(WAYLAND_SCANNER wayland-scanner)
+pkg_get_variable(WAYLAND_PROTOCOLS_DATA wayland-protocols pkgdatadir)
+set(XDG_SHELL_XML
+  "${WAYLAND_PROTOCOLS_DATA}/stable/xdg-shell/xdg-shell.xml")
+if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND EXISTS "${XDG_SHELL_XML}")
+  set(XDG_SHELL_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol.h")
+  set(XDG_SHELL_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.c")
+  add_custom_command(
+    OUTPUT "${XDG_SHELL_HEADER}" "${XDG_SHELL_CODE}"
+    COMMAND "${WAYLAND_SCANNER}" client-header "${XDG_SHELL_XML}" "${XDG_SHELL_HEADER}"
+    COMMAND "${WAYLAND_SCANNER}" private-code "${XDG_SHELL_XML}" "${XDG_SHELL_CODE}"
+    DEPENDS "${XDG_SHELL_XML}")
+  add_executable(connect-probe-wayland-xr30
+    probes/video/connect-probe-wayland-xr30.cpp
+    "${XDG_SHELL_CODE}" "${XDG_SHELL_HEADER}")
+  target_compile_features(connect-probe-wayland-xr30 PRIVATE cxx_std_17)
+  target_compile_options(connect-probe-wayland-xr30 PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(connect-probe-wayland-xr30 PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}")
+  target_link_libraries(connect-probe-wayland-xr30 PRIVATE
+    PkgConfig::WAYLAND PkgConfig::EGL PkgConfig::GLESV2 PkgConfig::LIBDRM)
 endif()
 
 add_executable(connect-probe-nvenc probes/nvenc/connect-probe-nvenc.cpp)

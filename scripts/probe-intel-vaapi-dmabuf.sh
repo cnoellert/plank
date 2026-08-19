@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-if (($# < 1 || $# > 3)); then
-  echo "usage: $0 BITSTREAM [FRAME_COUNT] [RENDER_NODE]" >&2
+if (($# < 1 || $# > 4)); then
+  echo "usage: $0 BITSTREAM [FRAME_COUNT] [SAMPLE_FRAME] [RENDER_NODE]" >&2
   exit 2
 fi
 
@@ -15,7 +15,7 @@ mkdir -p "${build_dir}"
 c++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
   "${repo_dir}/probes/video/connect-probe-vaapi-dmabuf.cpp" \
   $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-app-1.0 \
-    gstreamer-video-1.0 gstreamer-allocators-1.0 egl gbm libdrm) \
+    gstreamer-video-1.0 gstreamer-allocators-1.0 egl gbm glesv2 libdrm) \
   -o "${binary}"
 
 "${binary}" "$@"
