@@ -27,6 +27,7 @@
 | NVENC 8 ms component target | Fail, non-blocking | NVENC completion p95 was 14.328 ms on the full loop. Its blocking bitstream-lock wait was 14.249 ms p95, while mapping, submission, and output-worker dispatch totaled under 0.1 ms at p95. The tail is inside NVIDIA's encode/completion path. |
 | HEVC 10-bit 4:2:2 encode | Unsupported | Live capability query returns `caps_yuv422_encode=0`; NVIDIA added HEVC 4:2:2 encode after the Turing/Ampere/Ada fleet. |
 | Intra-refresh latency matrix | Pass; retain 60/30 single-slice | Seven full-loop profiles covered refresh disabled and counts 30/45/59 with single- and multi-slice refresh. Pipeline p95 ranged only from 14.404 to 14.620 ms; disabling refresh gained just 0.108 ms over baseline. Every stream decoded all 9,000 frames. |
+| Controlled-loss recovery continuity | Pass; pixel/FEC gate pending | Separate 600-frame real-content runs dropped access unit 180. Reference invalidation accepted timestamp 180 two frames later; the emergency path forced an IDR with VPS/SPS/PPS at frame 182. Both wrote exactly 599 pictures, retained the host robustness gate, and decoded all 599 pictures through Intel VA-API. |
 | DRM KMS API enablement | Pass | After reboot, `nvidia_drm.modeset=Y`; atomic modesetting and universal planes are exposed. |
 | Active KMS scanout enumeration | Fail | All four DRM CRTCs and twelve planes report framebuffer ID 0 while NVIDIA Xorg drives two displays. |
 | XR30/AR30 framebuffer and DMA-BUF export | Blocked | The NVIDIA Xorg session exposes no active scanout framebuffer through DRM KMS. |
@@ -126,6 +127,8 @@ conversion, NVENC, transport, client decode, or presentation.
 3. Expose the explicit
    `8-bit-source/up-converted` label.
 4. Continue tuning toward the optional NVENC component p95 target of 8 ms.
+5. Add transport FEC and compare post-recovery pixels with a synchronized
+   no-loss reference before closing the packet-loss gate.
 
 ## End-of-Day Handoff
 

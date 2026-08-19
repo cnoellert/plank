@@ -439,7 +439,8 @@ void initialize_nvenc(Resources& resources, std::uint32_t width,
                       NV_ENC_TUNING_INFO tuning,
                       std::uint32_t intra_refresh_period,
                       bool single_slice_intra_refresh,
-                      std::uint32_t intra_refresh_count) {
+                      std::uint32_t intra_refresh_count,
+                      std::uint32_t reference_frames) {
   if (nvenc_load_functions(&resources.nvenc_loader, nullptr) != 0) {
     throw std::runtime_error("NVENC loader initialization failed");
   }
@@ -491,6 +492,7 @@ void initialize_nvenc(Resources& resources, std::uint32_t width,
   hevc.intraRefreshCnt = intra_refresh_count;
   hevc.singleSliceIntraRefresh =
       intra_refresh_count > 0 && single_slice_intra_refresh ? 1U : 0U;
+  hevc.maxNumRefFramesInDPB = reference_frames;
   hevc.repeatSPSPPS = 1;
   hevc.hevcVUIParameters.videoSignalTypePresentFlag = 1;
   hevc.hevcVUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_COMPONENT;
@@ -572,6 +574,11 @@ int main(int argc, char** argv) {
   unsigned int frame_count = 600;
   unsigned int frame_rate = 60;
   unsigned int queue_depth = 1;
+  unsigned int simulate_loss_frame = 0;
+  unsigned int invalidate_delay_frames = 2;
+  unsigned int force_idr_frame = 0;
+  unsigned int reference_frames = 0;
+  bool reference_invalidation_enabled = true;
   int intra_refresh_period = -1;
   int intra_refresh_count = -1;
   bool single_slice_intra_refresh = true;
@@ -594,6 +601,10 @@ int main(int argc, char** argv) {
     }
     if (argument == "--require-robustness") {
       require_robustness = true;
+      continue;
+    }
+    if (argument == "--no-reference-invalidation") {
+      reference_invalidation_enabled = false;
       continue;
     }
     if (argument == "--queue-depth" && index + 1 < argc) {
@@ -640,7 +651,11 @@ int main(int argc, char** argv) {
       single_slice_intra_refresh = value == "1";
       continue;
     }
-    if ((argument == "--frames" || argument == "--fps") &&
+    if ((argument == "--frames" || argument == "--fps" ||
+         argument == "--simulate-loss-frame" ||
+         argument == "--invalidate-delay-frames" ||
+         argument == "--force-idr-frame" ||
+         argument == "--reference-frames") &&
         index + 1 < argc) {
       unsigned long value = 0;
       try {
@@ -649,14 +664,23 @@ int main(int argc, char** argv) {
         std::cerr << "invalid numeric argument\n";
         return 2;
       }
-      if (value == 0 || value > 36000) {
+      const bool zero_allowed = argument == "--reference-frames";
+      if ((!zero_allowed && value == 0) || value > 36000) {
         std::cerr << "numeric argument is outside the supported range\n";
         return 2;
       }
       if (argument == "--frames") {
         frame_count = static_cast<unsigned int>(value);
-      } else {
+      } else if (argument == "--fps") {
         frame_rate = static_cast<unsigned int>(value);
+      } else if (argument == "--simulate-loss-frame") {
+        simulate_loss_frame = static_cast<unsigned int>(value);
+      } else if (argument == "--invalidate-delay-frames") {
+        invalidate_delay_frames = static_cast<unsigned int>(value);
+      } else if (argument == "--force-idr-frame") {
+        force_idr_frame = static_cast<unsigned int>(value);
+      } else {
+        reference_frames = static_cast<unsigned int>(value);
       }
       continue;
     }
@@ -701,6 +725,10 @@ int main(int argc, char** argv) {
                  " [--queue-depth 0|1] [--intra-refresh-count COUNT]"
                  " [--intra-refresh-period PERIOD]"
                  " [--single-slice-intra-refresh 0|1]"
+                 " [--simulate-loss-frame FRAME]"
+                 " [--invalidate-delay-frames COUNT]"
+                 " [--force-idr-frame FRAME] [--reference-frames COUNT]"
+                 " [--no-reference-invalidation]"
                  " [--tuning low-latency|ultra-low-latency]"
                  " [--require-robustness] [--self-test]\n";
     return 2;
@@ -720,6 +748,26 @@ int main(int argc, char** argv) {
     std::cerr << "intra-refresh count must be smaller than the period\n";
     return 2;
   }
+  if (simulate_loss_frame > frame_count || force_idr_frame > frame_count ||
+      (simulate_loss_frame != 0 && reference_invalidation_enabled &&
+       simulate_loss_frame + invalidate_delay_frames > frame_count)) {
+    std::cerr << "recovery frame is outside the encoded frame range\n";
+    return 2;
+  }
+  if (reference_frames > 8) {
+    std::cerr << "reference frame count must not exceed 8\n";
+    return 2;
+  }
+  if (simulate_loss_frame != 0 && reference_invalidation_enabled &&
+      reference_frames == 0) {
+    reference_frames = 4;
+  }
+  if (simulate_loss_frame != 0 && reference_invalidation_enabled &&
+      queue_depth == 1 &&
+      invalidate_delay_frames < 2) {
+    std::cerr << "threaded recovery requires at least two feedback frames\n";
+    return 2;
+  }
 
   try {
     Resources resources;
@@ -732,7 +780,8 @@ int main(int argc, char** argv) {
     initialize_nvenc(resources, width, height, frame_rate, split_mode, tuning,
                      static_cast<std::uint32_t>(intra_refresh_period),
                      single_slice_intra_refresh,
-                     static_cast<std::uint32_t>(intra_refresh_count));
+                     static_cast<std::uint32_t>(intra_refresh_count),
+                     reference_frames);
 
     std::ofstream bitstream_file(bitstream_path,
                                  std::ios::binary | std::ios::trunc);
@@ -774,6 +823,10 @@ int main(int argc, char** argv) {
     slot_lifetime_us.reserve(frame_count);
     unsigned int new_frames = 0;
     unsigned int deadline_misses = 0;
+    unsigned int bitstream_frames_written = 0;
+    unsigned int bitstream_frames_dropped = 0;
+    bool reference_invalidation_called = false;
+    bool forced_idr_submitted = false;
     std::uint64_t encoded_bytes = 0;
 
     const auto drain_slot = [&](unsigned int slot_index) {
@@ -786,14 +839,20 @@ int main(int argc, char** argv) {
                     "nvEncLockBitstream");
       slot.bitstream_locked = true;
       const auto encoded = Clock::now();
-      bitstream_file.write(
-          static_cast<const char*>(lock.bitstreamBufferPtr),
-          static_cast<std::streamsize>(lock.bitstreamSizeInBytes));
-      if (!bitstream_file) {
-        throw std::runtime_error("bitstream write failed");
+      if (simulate_loss_frame != 0 &&
+          lock.outputTimeStamp == simulate_loss_frame) {
+        ++bitstream_frames_dropped;
+      } else {
+        bitstream_file.write(
+            static_cast<const char*>(lock.bitstreamBufferPtr),
+            static_cast<std::streamsize>(lock.bitstreamSizeInBytes));
+        if (!bitstream_file) {
+          throw std::runtime_error("bitstream write failed");
+        }
+        ++bitstream_frames_written;
+        encoded_bytes += lock.bitstreamSizeInBytes;
       }
       const auto written = Clock::now();
-      encoded_bytes += lock.bitstreamSizeInBytes;
       require_nvenc(resources.nvenc.nvEncUnlockBitstream(resources.encoder,
                                                          slot.bitstream),
                     "nvEncUnlockBitstream");
@@ -877,6 +936,7 @@ int main(int argc, char** argv) {
       for (unsigned int frame = 0; frame < frame_count; ++frame) {
         std::this_thread::sleep_until(run_started + frame_period * frame);
         const auto pipeline_started = Clock::now();
+        const unsigned int frame_id = frame + 1;
         const unsigned int slot_index = frame % resources.encode_slots.size();
         if (queue_depth == 1) {
           std::unique_lock<std::mutex> lock(queue_mutex);
@@ -886,6 +946,13 @@ int main(int argc, char** argv) {
           if (worker_error != nullptr) {
             std::rethrow_exception(worker_error);
           }
+        }
+        if (simulate_loss_frame != 0 && reference_invalidation_enabled &&
+            frame_id == simulate_loss_frame + invalidate_delay_frames) {
+          require_nvenc(resources.nvenc.nvEncInvalidateRefFrames(
+                            resources.encoder, simulate_loss_frame),
+                        "nvEncInvalidateRefFrames");
+          reference_invalidation_called = true;
         }
         Resources::EncodeSlot& slot = resources.encode_slots[slot_index];
         void* captured_buffer = nullptr;
@@ -936,8 +1003,13 @@ int main(int argc, char** argv) {
         picture.inputHeight = height;
         picture.outputBitstream = slot.bitstream;
         picture.pictureStruct = NV_ENC_PIC_STRUCT_FRAME;
-        picture.inputTimeStamp = frame;
+        picture.inputTimeStamp = frame_id;
         picture.inputDuration = 1;
+        if (frame_id == force_idr_frame) {
+          picture.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR |
+                                   NV_ENC_PIC_FLAG_OUTPUT_SPSPPS;
+          forced_idr_submitted = true;
+        }
         const auto submit_started = Clock::now();
         const NVENCSTATUS encode_status =
             resources.nvenc.nvEncEncodePicture(resources.encoder, &picture);
@@ -1046,6 +1118,14 @@ int main(int argc, char** argv) {
         deadline_misses == 0;
     const bool component_targets_passed =
         capture_conversion_target && nvenc_target && local_pipeline_target;
+    const bool bitstream_loss_passed =
+        simulate_loss_frame == 0 || bitstream_frames_dropped == 1;
+    const bool reference_invalidation_requested =
+        simulate_loss_frame != 0 && reference_invalidation_enabled;
+    const bool reference_invalidation_passed =
+        !reference_invalidation_requested || reference_invalidation_called;
+    const bool forced_idr_passed =
+        force_idr_frame == 0 || forced_idr_submitted;
 
     std::cout << "capture_output=" << output.name << '\n'
               << "geometry=" << width << 'x' << height << '\n'
@@ -1061,11 +1141,21 @@ int main(int argc, char** argv) {
               << "intra_refresh_count=" << intra_refresh_count << '\n'
               << "single_slice_intra_refresh="
               << (single_slice_intra_refresh ? "yes" : "no") << '\n'
+              << "reference_frames=" << reference_frames << '\n'
+              << "simulated_loss_frame=" << simulate_loss_frame << '\n'
+              << "reference_invalidation_requested="
+              << (reference_invalidation_requested ? "yes" : "no") << '\n'
+              << "invalidate_delay_frames=" << invalidate_delay_frames << '\n'
+              << "force_idr_frame=" << force_idr_frame << '\n'
               << "frames_requested=" << frame_count << '\n'
               << "new_frames_observed=" << new_frames << '\n'
               << "changing_source_required="
               << (require_changing_source ? "yes" : "no") << '\n'
               << "encoded_frames=" << frame_count << '\n'
+              << "bitstream_frames_written=" << bitstream_frames_written
+              << '\n'
+              << "bitstream_frames_dropped=" << bitstream_frames_dropped
+              << '\n'
               << "encoded_bytes=" << encoded_bytes << '\n'
               << "configured_bitrate_mbps=" << kBitrate / 1'000'000U << '\n'
               << "observed_bitrate_mbps=" << observed_bitrate_mbps << '\n'
@@ -1109,6 +1199,18 @@ int main(int argc, char** argv) {
               << "integrated_2160p60_robustness_gate="
               << (realtime_robustness_passed ? "pass" : "fail")
               << '\n'
+              << "bitstream_loss_injection_gate="
+              << (bitstream_loss_passed ? "pass" : "fail") << '\n'
+              << "reference_invalidation_gate="
+              << (!reference_invalidation_requested
+                      ? "not-requested"
+                      : (reference_invalidation_passed ? "pass" : "fail"))
+              << '\n'
+              << "forced_idr_submission_gate="
+              << (force_idr_frame == 0
+                      ? "not-requested"
+                      : (forced_idr_passed ? "pass" : "fail"))
+              << '\n'
               << "robustness_required="
               << (require_robustness ? "yes" : "no")
               << '\n';
@@ -1135,7 +1237,11 @@ int main(int argc, char** argv) {
     print_distribution("bitstream_write", bitstream_write_us);
     print_distribution("resource_release", resource_release_us);
     print_distribution("slot_lifetime", slot_lifetime_us);
-    return (require_robustness ? realtime_robustness_passed : realtime_passed)
+    const bool requested_gates_passed =
+        bitstream_loss_passed && reference_invalidation_passed &&
+        forced_idr_passed;
+    return ((require_robustness ? realtime_robustness_passed : realtime_passed) &&
+            requested_gates_passed)
                ? 0
                : 1;
   } catch (const std::exception& error) {

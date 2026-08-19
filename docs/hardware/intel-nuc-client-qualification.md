@@ -214,3 +214,26 @@ current fixed-refresh HDMI chain needs approximately one refresh of lead. It
 passes the direct-KMS 60 Hz gate at 16 ms and fails the separate 8 ms latency
 gate. Meeting 8 ms tear-free requires a presentation path with VRR or another
 mechanism that can latch completed frames between fixed vblanks.
+
+## Controlled-Loss Decode Continuity
+
+Two 600-frame real-content host runs omitted complete access unit 180. The
+reference-invalidation stream called `NvEncInvalidateRefFrames()` for timestamp
+180 two frames later and contained no recovery IDR. The emergency stream skipped
+reference invalidation and forced an IDR with VPS/SPS/PPS at source frame 182;
+after the omitted picture, it appears as output packet 181. Both host runs kept
+zero deadline misses and passed the capture-to-bitstream p99 robustness gate.
+
+The NUC decoded all 599 remaining pictures through `vah265dec` to Y410 VA
+surfaces. Reference invalidation reached 244.99 fps and forced IDR reached
+245.79 fps. This proves exact loss injection, recovery action, bitstream
+structure, and Intel hardware-decoder continuity. It does not yet prove the
+first clean pixel after invalidation: close that gate with a synchronized
+no-loss reference and decoded-pixel comparison when transport/FEC is available.
+
+```bash
+./scripts/probe-intel-recovery-decode.sh \
+  stationconnect-recovery-ref-invalidate.hevc \
+  stationconnect-recovery-forced-idr.hevc \
+  599 181
+```

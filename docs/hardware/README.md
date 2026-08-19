@@ -46,6 +46,19 @@ through fullscreen scanout with a bounded queue. The guarded direct-KMS probe
 separates fixed-refresh scanout timing from compositor behavior; it interrupts
 the graphical session and must be run remotely.
 
+With real changing content already fullscreen on the host, generate the two
+controlled-loss recovery vectors with:
+
+```bash
+./scripts/run-video-recovery-qualification.sh
+```
+
+This omits one complete access unit, then tests reference invalidation and a
+bounded forced IDR in separate streams. Copy both streams to the NUC and run
+`probe-intel-recovery-decode.sh` there. These probes establish encoder action
+and decoder continuity; transport FEC and clean-pixel recovery remain separate
+gates.
+
 The generic modesetting and direct-KMS scripts below are historical diagnostic
 controls, not production capture candidates. They interrupt the graphical
 session and are unnecessary for routine qualification:
