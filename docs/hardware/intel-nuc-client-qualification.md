@@ -54,6 +54,8 @@ auto_sha256=21c2007a97c7fc777b98dd24e5aba9fc1b62f2f2b3453f8bc9d72f1d62118fe1
 disabled_sha256=261157e974092e704b6ec4b799a1dabddfd3efbfc86ca6286b6e7a0282dfcad1
 fullscreen_auto_sha256=7a60394a6d3ee2bd1de948ef673bb2204d9d8c465d25ae1b9def663fa3593156
 fullscreen_disabled_sha256=cf0ce9cb7035c62e49d872f3a6b718f9cd441f3860753525364d9a93d0aba185
+final_auto_sha256=a483c4301590ae40b5621ee734db31a056860822a8874fd0223ce333bb07a0b1
+final_disabled_sha256=dfb18707b03739540541beb3b369369ce4bceb8811658b259f9281dd6feff94f
 frames=9000
 resolution=3840x2160
 codec=HEVC Rext 10-bit 4:4:4
@@ -126,19 +128,30 @@ and measured 0.36 ms average decode, 0.03 ms queueing, and 4.61 ms rendering
 including vsync. The host simultaneously reported the source as
 `8-bit-source/up-converted` and approximately 79 Mbps of video payload.
 
+A subsequent 155-second live run covered the full 3,583-frame fullscreen Flame
+sequence. Sunshine was explicitly pinned to NvFBC `output_name = 1`, the
+3840x2160 `DP-2` output; the default output `0` is the narrow scopes display and
+must not be used for this workstation. The NUC received, decoded, and rendered
+59.99 fps with 0.00% network and jitter loss. Average network latency was 1 ms,
+decode 0.35 ms, frame queue 0.81 ms, and rendering including V-sync 4.91 ms.
+The client retained the 10-bit identity-GBR Y410/XR30 zero-copy path throughout,
+while the host reported about 79 Mbps. This is the production-content live
+reference; the earlier scopes-display run is not a content qualification.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
 falls back to software. Keep this patch explicit until it is replaced by an
 upstream-compatible capability path; do not change the bitstream metadata.
 
-The final committed-build Flame recapture also passed the file-backed NUC
-gates. Intel VA-API decoded all 9,000 frames to Y410 at 248.10 fps. The
-DMA-BUF/EGL path processed all frames at 248.90 fps using modifier
-`0x0100000000000002`, without mapping a decoded surface to the CPU. At frame
-600, the software reference and Y410-as-XR30 identity path both produced
-`R=82,G=96,B=94`. Its SHA-256 is
-`bae9b1a55ac6a058e1235d00d1bc231822bff14e1d954c7ff9762a9287244ebb`.
+The final matched recaptures also passed every file-backed NUC gate. Intel
+VA-API decoded all 9,000 driver-auto frames at 248.04 fps and all disabled
+frames at 250.41 fps. The DMA-BUF/EGL path processed them at 248.71 and 250.98
+fps respectively using modifier `0x0100000000000002`, without mapping a decoded
+surface to the CPU. At frame 600, software reference and Y410-as-XR30 produced
+`R=82,G=67,B=63` for auto and `R=86,G=94,B=98` for disabled. Their SHA-256
+values are `a483c4301590ae40b5621ee734db31a056860822a8874fd0223ce333bb07a0b1`
+and `dfb18707b03739540541beb3b369369ce4bceb8811658b259f9281dd6feff94f`.
 
 The strict serial Wayland presentation soak presented all 9,000 frames with
 hardware clock/completion feedback, one-frame depth, and 9,000 zero-copy

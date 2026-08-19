@@ -53,7 +53,11 @@ KMS scanout. Debugfs independently confirms every DRM CRTC is inactive.
 Production capture uses the NVIDIA-supported NvFBC X11 backend and leaves the
 qualified Xorg/DDX/GLX stack untouched. The initial live test selected the X11
 backend, enumerated `DP-1` and `DP-2`, and successfully created a CUDA capture
-session. Rerun the qualification report with:
+session. NvFBC enumerates the narrow `DP-1` scopes monitor as output `0` even
+though Xorg marks `DP-2` primary. Production Sunshine must therefore set
+`output_name = 1` on this workstation and verify the resulting 3840x2160,
+offset-0 capture; its default selected the scopes monitor. Rerun the
+qualification report with:
 
 ```bash
 ./scripts/run-host-qualification.sh
@@ -128,6 +132,20 @@ p95/p99 was 14.377/14.794 ms, leaving 2.290 ms of p95 headroom. One isolated
 the stricter zero-miss robustness gate did not. The bitstream SHA-256 is
 `bae9b1a55ac6a058e1235d00d1bc231822bff14e1d954c7ff9762a9287244ebb`.
 
+A clean repeat of that final workload is the production reference. Driver-auto
+observed 8,980 new generations, encoded all 9,000 frames at 59.99 fps with no
+drops or deadline misses, and passed the strict robustness gate. Capture,
+conversion, and NVENC p95 were 0.167, 1.373, and 14.073 ms; end-to-end p95/p99
+was 14.540/15.019 ms, leaving 2.127 ms of p95 headroom. Its average bitrate was
+78.50 Mbps and SHA-256 is
+`a483c4301590ae40b5621ee734db31a056860822a8874fd0223ce333bb07a0b1`.
+The matched SFE-disabled run encoded all 9,000 frames at 60.00 fps with no
+deadline misses, but its 17.587 ms p95 exceeded the frame budget by 0.920 ms
+and failed the robustness gate. It averaged 53.13 Mbps; SHA-256 is
+`dfb18707b03739540541beb3b369369ce4bceb8811658b259f9281dd6feff94f`.
+Auto therefore improves p95 by 3.047 ms on the final sequence, at the previously
+observed bitrate cost.
+
 The probe accepts `--tuning low-latency|ultra-low-latency`. A controlled full-loop
 A/B test found no material ULL benefit, matching the 4K HEVC observation in the
 [2025 SFE evaluation](https://arxiv.org/html/2511.18687v1). Keep Low-Latency as
@@ -169,10 +187,10 @@ gates now pass. The preferred fullscreen artifacts are stored under the
 repository's ignored qualification artifact directory:
 
 ```text
-artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc
-sha256=7a60394a6d3ee2bd1de948ef673bb2204d9d8c465d25ae1b9def663fa3593156
-artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-disabled.hevc
-sha256=cf0ce9cb7035c62e49d872f3a6b718f9cd441f3860753525364d9a93d0aba185
+artifacts/qualification/video/stationconnect-flame-fullscreen-3583f24-final-sfe-auto-repeat2.hevc
+sha256=a483c4301590ae40b5621ee734db31a056860822a8874fd0223ce333bb07a0b1
+artifacts/qualification/video/stationconnect-flame-fullscreen-3583f24-final-sfe-disabled2.hevc
+sha256=dfb18707b03739540541beb3b369369ce4bceb8811658b259f9281dd6feff94f
 ```
 
 Do not spend more time on ULL or intra-refresh latency tuning: both full-loop
