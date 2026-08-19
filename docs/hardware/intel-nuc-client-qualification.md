@@ -161,3 +161,26 @@ Keep the production queue bounded and investigate asynchronous feedback or a
 direct-display path before adopting it. Network-to-photon remains unmeasured
 because this file-backed probe starts at decoder submission rather than packet
 arrival.
+
+The asynchronous-feedback follow-up confirmed why the blocking design was
+stable. Without FIFO, Mutter used mailbox replacement and discarded pending
+presentation feedback. FIFO preserved every commit but allowed four frames in
+flight, reaching 122.505 ms p95. Explicitly limiting compositor in-flight work
+to one frame removed that unbounded queue, but a missed refresh permanently
+ratcheted later frames from about 39 ms to 56 ms unless stale content was
+dropped.
+
+The live-stream recovery policy now drops a decoded surface when capacity
+becomes available more than 1 ms after its hardware-derived target. In a
+300-frame fullscreen-content run it dropped 2 frames, then presented the
+remaining 298 at exactly 60.00 Hz with 22.615 ms submit-to-present p95. Surfaces
+were ready 5.700 ms before target at p50, swaps completed 0.403 ms before target,
+and hardware presentation occurred 16.668 ms after target. This is the best
+bounded Wayland result, but it still fails the no-drop qualification gate and
+cannot meet 8 ms.
+
+The active HDMI display exposes neither VRR nor tearing control. Mutter
+advertises a DRM lease device but no leaseable connector; the active HDMI output
+remains compositor-owned. A controlled direct-KMS page-flip test is therefore
+the next step for determining whether the decoded DMA-BUF can reach the next
+vblank inside the 8 ms target.

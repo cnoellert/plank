@@ -55,6 +55,7 @@ set(PRESENTATION_TIME_XML
   "${WAYLAND_PROTOCOLS_DATA}/stable/presentation-time/presentation-time.xml")
 set(COMMIT_TIMING_XML
   "${WAYLAND_PROTOCOLS_DATA}/staging/commit-timing/commit-timing-v1.xml")
+set(FIFO_XML "${WAYLAND_PROTOCOLS_DATA}/staging/fifo/fifo-v1.xml")
 if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
    EXISTS "${XDG_SHELL_XML}")
   set(XDG_SHELL_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol.h")
@@ -107,6 +108,21 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
         "${COMMIT_TIMING_CODE}" "${COMMIT_TIMING_HEADER}")
       target_compile_definitions(connect-probe-client-pipeline PRIVATE
         CONNECT_HAVE_COMMIT_TIMING=1)
+    endif()
+    if(EXISTS "${FIFO_XML}")
+      set(FIFO_HEADER "${CMAKE_CURRENT_BINARY_DIR}/fifo-v1-client-protocol.h")
+      set(FIFO_CODE "${CMAKE_CURRENT_BINARY_DIR}/fifo-v1-protocol.c")
+      add_custom_command(
+        OUTPUT "${FIFO_HEADER}" "${FIFO_CODE}"
+        COMMAND "${WAYLAND_SCANNER}" client-header "${FIFO_XML}"
+          "${FIFO_HEADER}"
+        COMMAND "${WAYLAND_SCANNER}" private-code "${FIFO_XML}"
+          "${FIFO_CODE}"
+        DEPENDS "${FIFO_XML}")
+      target_sources(connect-probe-client-pipeline PRIVATE
+        "${FIFO_CODE}" "${FIFO_HEADER}")
+      target_compile_definitions(connect-probe-client-pipeline PRIVATE
+        CONNECT_HAVE_FIFO=1)
     endif()
     target_compile_features(connect-probe-client-pipeline PRIVATE cxx_std_17)
     target_compile_options(connect-probe-client-pipeline PRIVATE
