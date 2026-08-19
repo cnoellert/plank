@@ -44,6 +44,9 @@ check_submodule_url() {
 check_baseline host/sunshine-fork 7bf3d2510d49748d191d7bc4c6b5bba38b9a0046
 check_baseline client/moonlight-qt-fork 71cf78468e0a956129e06ff8b127e89d0cd4b54a
 check_baseline \
+  host/sunshine-fork/third-party/moonlight-common-c \
+  d4e10b2f6ce197845101d0ac5089b0f5e77ccb72
+check_baseline \
   client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c \
   a375aecb1dda17324ed58aee0d274d0c8e072c03
 
