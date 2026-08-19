@@ -1,0 +1,6 @@
+[submodule "host/sunshine-fork"]
+	path = host/sunshine-fork
+	url = https://github.com/instinctual/plank-host-linux.git
+[submodule "client/moonlight-qt-fork"]
+	path = client/moonlight-qt-fork
+	url = https://github.com/instinctual/plank-client.git
