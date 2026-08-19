@@ -47,6 +47,16 @@ if(GSTREAMER_FOUND AND GBM_FOUND AND GLESV2_FOUND)
     PkgConfig::LIBDRM)
 endif()
 
+if(GSTREAMER_FOUND)
+  add_executable(connect-probe-client-kms
+    probes/video/connect-probe-client-kms.cpp)
+  target_compile_features(connect-probe-client-kms PRIVATE cxx_std_17)
+  target_compile_options(connect-probe-client-kms PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(connect-probe-client-kms PRIVATE
+    PkgConfig::GSTREAMER PkgConfig::LIBDRM)
+endif()
+
 find_program(WAYLAND_SCANNER wayland-scanner)
 pkg_get_variable(WAYLAND_PROTOCOLS_DATA wayland-protocols pkgdatadir)
 set(XDG_SHELL_XML

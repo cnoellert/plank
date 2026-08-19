@@ -35,6 +35,11 @@ XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
   ./scripts/probe-intel-client-pipeline.sh \
   artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc \
   9000
+
+CONNECT_ALLOW_DISPLAY_STOP=yes \
+  ./scripts/run-intel-client-kms-qualification.sh \
+  artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc \
+  300 16000 /dev/dri/card1
 ```
 
 The script fails unless VA-API exposes `VAProfileHEVCMain444_10` with the VLD
@@ -181,6 +186,31 @@ cannot meet 8 ms.
 
 The active HDMI display exposes neither VRR nor tearing control. Mutter
 advertises a DRM lease device but no leaseable connector; the active HDMI output
-remains compositor-owned. A controlled direct-KMS page-flip test is therefore
-the next step for determining whether the decoded DMA-BUF can reach the next
-vblank inside the 8 ms target.
+remains compositor-owned.
+
+## Direct-KMS Result
+
+The controlled direct-KMS probe temporarily stops the display manager, acquires
+DRM master, and restores the graphical session on exit. Run it only over a
+remote shell. It decodes the real fullscreen stream to Y410 DMA-BUFs, aliases
+their identical packed layout as XR30, and queues legacy page flips against
+kernel vblank timestamps. It never maps decoded pixels to the CPU. Synthetic
+60 Hz access-unit timestamps make input, decoded output, and target vblank
+matching explicit; a cache reuses framebuffers for the decoder's nine surfaces.
+
+| Submit lead | Displayed | Stale drops | Effective fps | Submit-to-present p95 |
+| ---: | ---: | ---: | ---: | ---: |
+| 8 ms | 151 / 300 | 149 | 30.00 | 24.505 ms |
+| 12 ms | 286 / 300 | 14 | 57.18 | 11.954 ms |
+| 14 ms | 294 / 300 | 6 | 58.79 | 13.945 ms |
+| 16 ms | 300 / 300 | 0 | 60.00 | 15.947 ms |
+
+At 16 ms lead, all 300 frames presented at exactly 60.00 Hz with no missed
+refresh intervals. Decode p95 was 0.304 ms, but the decoded-surface callback
+did not mean the Intel implicit fence was ready for scanout. With less lead,
+i915 deferred some tear-free flips by one refresh. This direct path removes
+Mutter from the measurement yet establishes the same practical boundary: the
+current fixed-refresh HDMI chain needs approximately one refresh of lead. It
+passes the direct-KMS 60 Hz gate at 16 ms and fails the separate 8 ms latency
+gate. Meeting 8 ms tear-free requires a presentation path with VRR or another
+mechanism that can latch completed frames between fixed vblanks.
