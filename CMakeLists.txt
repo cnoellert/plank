@@ -7,6 +7,12 @@ find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 pkg_check_modules(LIBDRM REQUIRED IMPORTED_TARGET libdrm)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl)
+pkg_check_modules(GBM QUIET IMPORTED_TARGET gbm)
+pkg_check_modules(GSTREAMER QUIET IMPORTED_TARGET
+  gstreamer-1.0
+  gstreamer-app-1.0
+  gstreamer-video-1.0
+  gstreamer-allocators-1.0)
 find_path(FFNVCODEC_INCLUDE_DIR ffnvcodec/nvEncodeAPI.h REQUIRED)
 set(NVFBC_SDK_ROOT "" CACHE PATH "Path to the NVIDIA Capture SDK root")
 find_path(NVFBC_INCLUDE_DIR NvFBC.h
@@ -27,6 +33,16 @@ add_executable(connect-probe-kms-xb30 probes/kms/connect-probe-kms-xb30.cpp)
 target_compile_features(connect-probe-kms-xb30 PRIVATE cxx_std_17)
 target_compile_options(connect-probe-kms-xb30 PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_link_libraries(connect-probe-kms-xb30 PRIVATE PkgConfig::LIBDRM PkgConfig::EGL)
+
+if(GSTREAMER_FOUND AND GBM_FOUND)
+  add_executable(connect-probe-vaapi-dmabuf
+    probes/video/connect-probe-vaapi-dmabuf.cpp)
+  target_compile_features(connect-probe-vaapi-dmabuf PRIVATE cxx_std_17)
+  target_compile_options(connect-probe-vaapi-dmabuf PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(connect-probe-vaapi-dmabuf PRIVATE
+    PkgConfig::GSTREAMER PkgConfig::EGL PkgConfig::GBM PkgConfig::LIBDRM)
+endif()
 
 add_executable(connect-probe-nvenc probes/nvenc/connect-probe-nvenc.cpp)
 target_compile_features(connect-probe-nvenc PRIVATE cxx_std_17)

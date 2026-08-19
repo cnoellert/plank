@@ -4,6 +4,10 @@ Phase 0 starts with probes that prove target hardware behavior before either
 upstream application is forked. Run the host inventory on the Rocky 9.7
 workstation from the repository root:
 
+- [Ada `hardware-test-host` qualification](rocky-hardware-test-host-2026-08-19.md)
+- [Ampere/Turing capability matrix](nvidia-host-matrix-2026-08-19.md)
+- [Intel NUC client qualification](intel-nuc-client-qualification.md)
+
 ```bash
 ./scripts/run-host-qualification.sh
 ```
@@ -31,6 +35,11 @@ The FFmpeg encode proves the requested profile, pixel format, and basic intra
 refresh initialization. A later direct NVENC SDK probe must still query exact
 capability flags, test reference-picture invalidation, measure refresh-wave
 bitrate, and exercise recovery after injected loss.
+
+The Intel client probes use GStreamer `vah265dec` because FFmpeg 8.0.1 silently
+falls back to software for the full-range GBR identity stream. The DMA-BUF probe
+requires the GStreamer base development package plus EGL, GBM, and libdrm headers;
+it validates Y410 export and EGL import without mapping decoded pixels to the CPU.
 
 The generic modesetting and direct-KMS scripts below are historical diagnostic
 controls, not production capture candidates. They interrupt the graphical
