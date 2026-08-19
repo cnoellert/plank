@@ -117,6 +117,21 @@ DMA-BUF, XR30 alias, and GLES shader produced the same three 10-bit values. The
 decoded surface was never CPU-mapped; readback was limited to the two-pixel
 test output.
 
+The integrated Moonlight client also passed a live Sunshine session. It
+negotiated HEVC Rext 10-bit 4:4:4 plus the StationConnect identity feature,
+decoded `gbrp10le` through Intel VA-API to Y410, and presented the Y410/XR30
+alias through EGL. Over a 30-second sample it received and decoded 60.05 fps,
+rendered 59.89 fps, reported 0.00% network loss and 0.26% jitter-buffer drops,
+and measured 0.36 ms average decode, 0.03 ms queueing, and 4.61 ms rendering
+including vsync. The host simultaneously reported the source as
+`8-bit-source/up-converted` and approximately 79 Mbps of video payload.
+
+This live pass used a StationConnect FFmpeg 8.0.1 build with
+`AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
+rejects hardware negotiation for the correctly signaled matrix-0 stream and
+falls back to software. Keep this patch explicit until it is replaced by an
+upstream-compatible capability path; do not change the bitstream metadata.
+
 The fullscreen Wayland probe selected AR30 (`10:10:10:2`) at 3840x2160 and
 completed a 9,000-frame, 150-second soak. Swap submission p50/p95 was
 0.023/0.034 ms. Wayland frame-callback p50/p95 was 16.662/16.755 ms, which

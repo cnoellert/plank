@@ -19,6 +19,8 @@
 | NvFBC 60 fps animated capture | Pass | With looping content visible, all 600 calls returned new frames at 60.00 fps; p95 was 49 us, maximum 2.497 ms, and no 16.67 ms deadlines were missed. NvFBC reported 23 intervening generations because its 16 ms producer timer runs at 62.5 Hz. |
 | Native 10-bit NvFBC source | Unsupported, non-blocking | NvFBC 1.9 exposes only 8-bit RGB/YUV output formats, including native `BGRA8888`; the approved baseline is labeled 8-bit-source/up-converted. |
 | HEVC Rext 10-bit 4:4:4 encode | Pass | The integrated 600-frame stream decodes without error; `ffprobe` reports `Rext`, `gbrp10le`, full-range GBR identity signaling, sRGB transfer, and BT.709 primaries. |
+| Live Sunshine/Moonlight identity session | Pass | The host advertised the identity feature only with its CUDA HEVC Rext10 4:4:4 path. The NUC negotiated format `0x800`, hardware-decoded to Y410, imported the Y410/XR30 alias through EGL, and sustained approximately 60 fps. |
+| NVIDIA driver/build-deps compatibility | Fixed in fork | Driver 580 exposes NVENC API 13.0. The StationConnect build-deps fork pins `nv-codec-headers` to API 13.0 and prevents GCC from introducing a glibc vector-math ABI into x265 that Rocky 9 does not provide. |
 | Synthetic animated 2160p60 pipeline | Pass, marginal | The enforced rerun sustained 60.05 fps with zero submission misses and 15.959 ms p95, but its 16.862 ms p99 failed the stricter robustness gate. P95 headroom was only 0.708 ms. |
 | Full looping production workload | Pass | The instrumented 150-second loop encoded 9,000 frames at 60.01 fps with 8,999 new captures, zero misses, 14.645 ms p95, 15.041 ms p99, and 2.022 ms p95 headroom. |
 | Real-workload SFE A/B | Auto required on Ada | Matched 9,000-frame runs measured 14.512 ms p95 and 14.939 ms p99 with driver-auto, versus 17.419 ms p95 and 17.752 ms p99 with SFE disabled. Both decoded without error; only auto met the 16.67 ms budget. |
@@ -76,6 +78,20 @@ surface with `Y=G`, `U=B`, and `V=R`; it must not use NV12 or introduce chroma
 subsampling. The encoder signals full range, matrix coefficient 0 (GBR), sRGB
 transfer, and BT.709 primaries. Protocol and UI telemetry report source precision
 and codec precision separately.
+
+Sunshine must consume prepared FFmpeg artifacts from
+`instinctual/build-deps`, branch `stationconnect/main`. Do not roll the entire
+bundle back to the older API-13.0 release: its x265 archive references vector
+math symbols unavailable on Rocky 9. The StationConnect fork pins the NV codec
+headers and disables only GCC tree vectorization for x265; x265's hand-written
+architecture-specific SIMD remains enabled.
+
+The validated artifact is
+`v2026.724.203728-stationconnect.4` (`4a54a631f8c217318c15c070141e3690a938d3e6`).
+Its Linux x86_64 archive SHA-256 is
+`c0ab243756a24506f536bf7a0a1c9bd7638bb6bcda14fa4ece820fa07e2bf5de`.
+A clean configure downloaded that release by tag; Sunshine linked on Rocky 9,
+initialized NvFBC, opened HEVC NVENC, and reported no API-version mismatch.
 
 Linux uses a blocking NVENC output worker and two reusable input/output slots.
 This decouples capture submission from an occasional slow encode while bounding

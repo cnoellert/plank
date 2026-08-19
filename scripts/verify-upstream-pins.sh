@@ -53,6 +53,7 @@ check_baseline \
 check_submodule_url "$repo_root" host/sunshine-fork https://github.com/instinctual/plank-host-linux.git
 check_submodule_url "$repo_root" client/moonlight-qt-fork https://github.com/instinctual/plank-client.git
 check_submodule_url "$repo_root/host/sunshine-fork" third-party/moonlight-common-c https://github.com/instinctual/plank-common-c.git
+check_submodule_url "$repo_root/host/sunshine-fork" third-party/build-deps https://github.com/instinctual/plank-build-deps.git
 check_submodule_url "$repo_root/client/moonlight-qt-fork" moonlight-common-c/moonlight-common-c https://github.com/instinctual/plank-common-c.git
 
 if git -C "$repo_root" submodule status --recursive | grep -q '^[+-]'; then

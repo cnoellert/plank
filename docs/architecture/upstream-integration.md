@@ -10,6 +10,7 @@ standalone probes as hardware acceptance tests:
 | Sunshine | `v2026.817.185037` | `f0ea53694420d48303c6cfe95b12136c65ed5af5` |
 | Moonlight-Qt | `v6.1.0` | `f786e94c7b2f943e24e65d7d74deb539b827fc84` |
 | moonlight-common-c | Moonlight-pinned | `8599b6042a4ba27749b0f94134dd614b4328a9bc` |
+| Build dependencies | `v2026.724.203728-stationconnect.4` | `4a54a631f8c217318c15c070141e3690a938d3e6` |
 
 The pinned releases are the qualified ancestors of the StationConnect branches
 tracked in `host/sunshine-fork/` and `client/moonlight-qt-fork/`. Initialize and
@@ -26,6 +27,10 @@ Writable `origin` repositories live in the `instinctual` GitHub organization:
 - `instinctual/moonlight-qt`, branch `stationconnect/main`
 - `instinctual/moonlight-common-c`, with branches based on the distinct
   Sunshine and Moonlight-Qt pins
+- `instinctual/build-deps`, branch `stationconnect/main`, retaining the current
+  Sunshine dependency bundle while pinning NV codec headers to API 13.0 for the
+  qualified NVIDIA 580 driver and keeping its x265 archive compatible with
+  Rocky 9's glibc ABI
 
 Configure the corresponding official project as `upstream` in each checkout.
 Do not copy selected files out of context or squash away upstream history.
