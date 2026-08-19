@@ -120,6 +120,14 @@ disabled. SFE therefore restores host frame-budget headroom on this Ada workload
 but incurs a large compression-efficiency cost that must remain visible in
 telemetry and network qualification.
 
+A final committed-build recapture used a fullscreen 3,583-frame Flame sequence
+looping at 24 fps. The first 9,000-frame driver-auto run observed 8,989 new
+capture generations, sustained 60.00 fps, and averaged 78.56 Mbps. Pipeline
+p95/p99 was 14.377/14.794 ms, leaving 2.290 ms of p95 headroom. One isolated
+38.012 ms outlier caused one deadline miss, so the integrated gate passed but
+the stricter zero-miss robustness gate did not. The bitstream SHA-256 is
+`bae9b1a55ac6a058e1235d00d1bc231822bff14e1d954c7ff9762a9287244ebb`.
+
 The probe accepts `--tuning low-latency|ultra-low-latency`. A controlled full-loop
 A/B test found no material ULL benefit, matching the 4K HEVC observation in the
 [2025 SFE evaluation](https://arxiv.org/html/2511.18687v1). Keep Low-Latency as

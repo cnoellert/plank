@@ -132,6 +132,14 @@ rejects hardware negotiation for the correctly signaled matrix-0 stream and
 falls back to software. Keep this patch explicit until it is replaced by an
 upstream-compatible capability path; do not change the bitstream metadata.
 
+The final committed-build Flame recapture also passed the file-backed NUC
+gates. Intel VA-API decoded all 9,000 frames to Y410 at 248.10 fps. The
+DMA-BUF/EGL path processed all frames at 248.90 fps using modifier
+`0x0100000000000002`, without mapping a decoded surface to the CPU. At frame
+600, the software reference and Y410-as-XR30 identity path both produced
+`R=82,G=96,B=94`. Its SHA-256 is
+`bae9b1a55ac6a058e1235d00d1bc231822bff14e1d954c7ff9762a9287244ebb`.
+
 The fullscreen Wayland probe selected AR30 (`10:10:10:2`) at 3840x2160 and
 completed a 9,000-frame, 150-second soak. Swap submission p50/p95 was
 0.023/0.034 ms. Wayland frame-callback p50/p95 was 16.662/16.755 ms, which
