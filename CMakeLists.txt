@@ -53,6 +53,8 @@ set(XDG_SHELL_XML
   "${WAYLAND_PROTOCOLS_DATA}/stable/xdg-shell/xdg-shell.xml")
 set(PRESENTATION_TIME_XML
   "${WAYLAND_PROTOCOLS_DATA}/stable/presentation-time/presentation-time.xml")
+set(COMMIT_TIMING_XML
+  "${WAYLAND_PROTOCOLS_DATA}/staging/commit-timing/commit-timing-v1.xml")
 if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
    EXISTS "${XDG_SHELL_XML}")
   set(XDG_SHELL_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol.h")
@@ -89,6 +91,23 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
       probes/video/connect-probe-client-pipeline.cpp
       "${XDG_SHELL_CODE}" "${XDG_SHELL_HEADER}"
       "${PRESENTATION_TIME_CODE}" "${PRESENTATION_TIME_HEADER}")
+    if(EXISTS "${COMMIT_TIMING_XML}")
+      set(COMMIT_TIMING_HEADER
+        "${CMAKE_CURRENT_BINARY_DIR}/commit-timing-v1-client-protocol.h")
+      set(COMMIT_TIMING_CODE
+        "${CMAKE_CURRENT_BINARY_DIR}/commit-timing-v1-protocol.c")
+      add_custom_command(
+        OUTPUT "${COMMIT_TIMING_HEADER}" "${COMMIT_TIMING_CODE}"
+        COMMAND "${WAYLAND_SCANNER}" client-header "${COMMIT_TIMING_XML}"
+          "${COMMIT_TIMING_HEADER}"
+        COMMAND "${WAYLAND_SCANNER}" private-code "${COMMIT_TIMING_XML}"
+          "${COMMIT_TIMING_CODE}"
+        DEPENDS "${COMMIT_TIMING_XML}")
+      target_sources(connect-probe-client-pipeline PRIVATE
+        "${COMMIT_TIMING_CODE}" "${COMMIT_TIMING_HEADER}")
+      target_compile_definitions(connect-probe-client-pipeline PRIVATE
+        CONNECT_HAVE_COMMIT_TIMING=1)
+    endif()
     target_compile_features(connect-probe-client-pipeline PRIVATE cxx_std_17)
     target_compile_options(connect-probe-client-pipeline PRIVATE
       -Wall -Wextra -Wpedantic -Werror)
@@ -96,7 +115,7 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
       "${CMAKE_CURRENT_BINARY_DIR}")
     target_link_libraries(connect-probe-client-pipeline PRIVATE
       PkgConfig::GSTREAMER PkgConfig::WAYLAND PkgConfig::EGL
-      PkgConfig::GLESV2 PkgConfig::LIBDRM)
+      PkgConfig::GLESV2 PkgConfig::LIBDRM Threads::Threads)
   endif()
 endif()
 

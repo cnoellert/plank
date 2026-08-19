@@ -6,7 +6,8 @@ compositor, and display. On Ubuntu, install `gstreamer1.0-plugins-bad` for the
 VA decoder. The DMA-BUF probe additionally needs `build-essential`, `pkgconf`,
 `libgstreamer1.0-dev`, `libgstreamer-plugins-base1.0-dev`, and `libdrm-dev`.
 The Wayland presentation probe needs `wayland-protocols` and the Wayland/EGL
-development libraries.
+development libraries. It uses the staging commit-timing protocol when the
+compositor advertises it.
 Copy both the Ada driver-auto and SFE-disabled HEVC test streams from
 `artifacts/qualification/video/` to the NUC.
 
@@ -132,9 +133,31 @@ The auto run's decoder-submit-to-surface p95 was 0.201 ms and swap-call p95 was
 0.135 ms. Surface availability is not proof that Intel's asynchronous decode
 engine has completed; the hardware presentation timestamp is the authoritative
 end boundary. The actual p95 is one 60 Hz refresh because this strictly serial
-probe begins the next decode only after the prior frame is presented. It passes
-60 Hz pacing but fails if the 8 ms client target is defined as submit-to-photon.
-The next client prototype should use separate decode and presentation threads,
-retain at most one ready frame, and timestamp the same four boundaries. Network
-to-photon remains unmeasured because this file-backed probe starts at decoder
-submission rather than packet arrival.
+probe begins the next decode only after the prior frame is presented. The newer
+cadence gate shows that this mode can miss refreshes even though every requested
+frame is eventually presented. It also fails if the 8 ms client target is
+defined as submit-to-photon.
+
+A controlled 300-frame phase test scheduled decoder input 6 ms before a
+hardware-derived target vblank. The controlled results were:
+
+| Mode | Lead | Effective fps | Submit-to-present p95 |
+| --- | ---: | ---: | ---: |
+| Serial | 6 ms | 29.85 | 22.614 ms |
+| Threaded | 0 ms | 60.00 | 50.318 ms |
+| Threaded | 1 ms | 59.60 | 34.178 ms |
+| Threaded | 6 ms | 60.00 | 39.257 ms |
+
+The 1 ms case missed refreshes and is not a valid 60 Hz result. All 300 frames
+in the 6 ms threaded control were hardware-clocked, vsynced, and zero-copy.
+However, a 60-frame repeat at the same setting missed two refresh intervals,
+averaged 58.03 fps, and reached 55.945 ms p95. The threaded result is therefore
+not repeatably qualified even at the higher-latency setting.
+Mutter accepted a `wp_commit_timing_v1` timestamp on every scheduled frame, but
+it did not eliminate the extra vblank; that protocol constrains presentation
+to occur no earlier than the requested time and does not guarantee same-vblank
+latching. Threading is therefore a throughput mechanism, not the latency fix.
+Keep the production queue bounded and investigate asynchronous feedback or a
+direct-display path before adopting it. Network-to-photon remains unmeasured
+because this file-backed probe starts at decoder submission rather than packet
+arrival.

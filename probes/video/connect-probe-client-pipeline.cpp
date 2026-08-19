@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cerrno>
+#include <condition_variable>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -10,6 +12,7 @@
 #include <mutex>
 #include <string>
 #include <time.h>
+#include <thread>
 #include <vector>
 
 #include <EGL/egl.h>
@@ -27,12 +30,16 @@
 
 #include "presentation-time-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
+#ifdef CONNECT_HAVE_COMMIT_TIMING
+#include "commit-timing-v1-client-protocol.h"
+#endif
 
 namespace {
 
 struct SubmitStamp {
   std::uint64_t frame = 0;
   std::uint64_t time_ns = 0;
+  std::uint64_t target_present_ns = 0;
 };
 
 struct Feedback {
@@ -46,20 +53,35 @@ struct Feedback {
 struct State {
   std::uint64_t expected_frames = 0;
   std::atomic<std::uint64_t> submitted{0};
+  std::atomic<std::uint64_t> queued{0};
   std::atomic<std::uint64_t> presented{0};
   std::atomic<bool> failed{false};
   std::mutex submit_mutex;
   std::deque<SubmitStamp> submit_queue;
   std::size_t max_submit_depth = 0;
+  bool threaded = false;
+  std::mutex ready_mutex;
+  std::condition_variable ready_available;
+  std::condition_variable ready_consumed;
+  GstSample* ready_sample = nullptr;
+  SubmitStamp ready_submit;
+  std::uint64_t ready_surface_ns = 0;
+  bool producer_done = false;
+  bool worker_stop = false;
+  std::size_t max_ready_depth = 0;
   std::vector<double> decode_ms;
   std::vector<double> surface_to_swap_ms;
   std::vector<double> swap_submit_ms;
   std::vector<double> surface_to_present_ms;
   std::vector<double> submit_to_present_ms;
+  std::vector<double> presentation_interval_ms;
+  std::vector<double> input_schedule_late_ms;
   std::uint64_t vsync_frames = 0;
   std::uint64_t hw_clock_frames = 0;
   std::uint64_t hw_completion_frames = 0;
   std::uint64_t zero_copy_frames = 0;
+  std::uint64_t first_presentation_ns = 0;
+  std::uint64_t last_presentation_ns = 0;
   std::string drm_format;
   guint width = 0;
   guint height = 0;
@@ -67,6 +89,12 @@ struct State {
   wl_compositor* compositor = nullptr;
   xdg_wm_base* wm_base = nullptr;
   wp_presentation* presentation = nullptr;
+#ifdef CONNECT_HAVE_COMMIT_TIMING
+  wp_commit_timing_manager_v1* commit_timing_manager = nullptr;
+  wp_commit_timer_v1* commit_timer = nullptr;
+#endif
+  std::uint64_t commit_timing_frames = 0;
+  bool commit_timing_available = false;
   wl_surface* wl_surface_handle = nullptr;
   xdg_surface* xdg_surface_handle = nullptr;
   xdg_toplevel* toplevel = nullptr;
@@ -76,6 +104,9 @@ struct State {
   int surface_height = 2160;
   clockid_t presentation_clock = CLOCK_MONOTONIC;
   bool clock_received = false;
+  std::uint64_t first_target_present_ns = 0;
+  std::uint64_t refresh_ns = 16666667;
+  std::uint64_t submit_lead_ns = 0;
   EGLDisplay egl_display = EGL_NO_DISPLAY;
   EGLSurface egl_surface = EGL_NO_SURFACE;
   EGLContext egl_context = EGL_NO_CONTEXT;
@@ -123,6 +154,14 @@ void on_registry_global(void* data, wl_registry* registry, std::uint32_t name,
   } else if (std::strcmp(interface, wp_presentation_interface.name) == 0) {
     state->presentation = static_cast<wp_presentation*>(wl_registry_bind(
         registry, name, &wp_presentation_interface, std::min(version, 2U)));
+#ifdef CONNECT_HAVE_COMMIT_TIMING
+  } else if (std::strcmp(interface,
+                         wp_commit_timing_manager_v1_interface.name) == 0) {
+    state->commit_timing_available = true;
+    state->commit_timing_manager =
+        static_cast<wp_commit_timing_manager_v1*>(wl_registry_bind(
+            registry, name, &wp_commit_timing_manager_v1_interface, 1));
+#endif
   }
 }
 
@@ -206,6 +245,32 @@ GLuint compile_shader(GLenum type, const char* source) {
   return shader;
 }
 
+bool establish_presentation_phase(State* state) {
+  Feedback feedback;
+  for (unsigned int frame = 0; frame < 8; ++frame) {
+    feedback = {};
+    const float value = static_cast<float>(frame) / 7.0F;
+    glViewport(0, 0, state->surface_width, state->surface_height);
+    glClearColor(value, 0.0F, 1.0F - value, 1.0F);
+    glClear(GL_COLOR_BUFFER_BIT);
+    struct wp_presentation_feedback* feedback_handle =
+        wp_presentation_feedback(state->presentation,
+                                 state->wl_surface_handle);
+    wp_presentation_feedback_add_listener(feedback_handle, &kFeedbackListener,
+                                          &feedback);
+    if (eglSwapBuffers(state->egl_display, state->egl_surface) != EGL_TRUE) {
+      return false;
+    }
+    while (!feedback.done &&
+           wl_display_dispatch(state->wl_display_handle) >= 0) {}
+    if (!feedback.presented || feedback.refresh_ns == 0) return false;
+  }
+  state->refresh_ns = feedback.refresh_ns;
+  state->first_target_present_ns =
+      feedback.time_ns + 120ULL * state->refresh_ns;
+  return true;
+}
+
 bool initialize_graphics(State* state) {
   state->wl_display_handle = wl_display_connect(nullptr);
   if (state->wl_display_handle == nullptr) return false;
@@ -228,6 +293,12 @@ bool initialize_graphics(State* state) {
   }
 
   state->wl_surface_handle = wl_compositor_create_surface(state->compositor);
+#ifdef CONNECT_HAVE_COMMIT_TIMING
+  if (state->commit_timing_manager != nullptr) {
+    state->commit_timer = wp_commit_timing_manager_v1_get_timer(
+        state->commit_timing_manager, state->wl_surface_handle);
+  }
+#endif
   state->xdg_surface_handle =
       xdg_wm_base_get_xdg_surface(state->wm_base, state->wl_surface_handle);
   xdg_surface_add_listener(state->xdg_surface_handle, &kSurfaceListener, state);
@@ -354,6 +425,7 @@ void main() {
   if (linked != GL_TRUE) return false;
   glGenVertexArrays(1, &state->vertex_array);
   eglSwapInterval(state->egl_display, 0);
+  if (!establish_presentation_phase(state)) return false;
   return eglMakeCurrent(state->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                         EGL_NO_CONTEXT) == EGL_TRUE;
 }
@@ -376,10 +448,18 @@ void shutdown_graphics(State* state) {
   if (state->toplevel != nullptr) xdg_toplevel_destroy(state->toplevel);
   if (state->xdg_surface_handle != nullptr)
     xdg_surface_destroy(state->xdg_surface_handle);
+#ifdef CONNECT_HAVE_COMMIT_TIMING
+  if (state->commit_timer != nullptr)
+    wp_commit_timer_v1_destroy(state->commit_timer);
+#endif
   if (state->wl_surface_handle != nullptr)
     wl_surface_destroy(state->wl_surface_handle);
   if (state->presentation != nullptr)
     wp_presentation_destroy(state->presentation);
+#ifdef CONNECT_HAVE_COMMIT_TIMING
+  if (state->commit_timing_manager != nullptr)
+    wp_commit_timing_manager_v1_destroy(state->commit_timing_manager);
+#endif
   if (state->wm_base != nullptr) xdg_wm_base_destroy(state->wm_base);
   if (state->compositor != nullptr) wl_compositor_destroy(state->compositor);
   if (state->wl_display_handle != nullptr)
@@ -433,6 +513,16 @@ bool import_and_present(State* state, int fd, const GstVideoMeta* meta,
   if (glGetError() != GL_NO_ERROR) return false;
 
   Feedback feedback;
+#ifdef CONNECT_HAVE_COMMIT_TIMING
+  if (submit.target_present_ns != 0 && state->commit_timer != nullptr) {
+    const std::uint64_t seconds = submit.target_present_ns / 1000000000ULL;
+    wp_commit_timer_v1_set_timestamp(
+        state->commit_timer, static_cast<std::uint32_t>(seconds >> 32U),
+        static_cast<std::uint32_t>(seconds),
+        static_cast<std::uint32_t>(submit.target_present_ns % 1000000000ULL));
+    ++state->commit_timing_frames;
+  }
+#endif
   struct wp_presentation_feedback* feedback_handle =
       wp_presentation_feedback(state->presentation, state->wl_surface_handle);
   wp_presentation_feedback_add_listener(feedback_handle, &kFeedbackListener,
@@ -463,6 +553,14 @@ bool import_and_present(State* state, int fd, const GstVideoMeta* meta,
       static_cast<double>(feedback.time_ns - surface_ready_ns) / 1000000.0);
   state->submit_to_present_ms.push_back(
       static_cast<double>(feedback.time_ns - submit.time_ns) / 1000000.0);
+  if (state->last_presentation_ns != 0) {
+    state->presentation_interval_ms.push_back(
+        static_cast<double>(feedback.time_ns - state->last_presentation_ns) /
+        1000000.0);
+  } else {
+    state->first_presentation_ns = feedback.time_ns;
+  }
+  state->last_presentation_ns = feedback.time_ns;
   state->vsync_frames +=
       (feedback.flags & WP_PRESENTATION_FEEDBACK_KIND_VSYNC) != 0U;
   state->hw_clock_frames +=
@@ -481,7 +579,38 @@ GstPadProbeReturn on_decoder_input(GstPad*, GstPadProbeInfo* info,
     return GST_PAD_PROBE_OK;
   }
   const std::uint64_t frame = ++state->submitted;
-  const SubmitStamp stamp{frame, clock_ns(state->presentation_clock)};
+  std::uint64_t target_present_ns = 0;
+  if (state->submit_lead_ns != 0) {
+    std::uint64_t target =
+        state->first_target_present_ns + (frame - 1) * state->refresh_ns -
+        state->submit_lead_ns;
+    const std::uint64_t now = clock_ns(state->presentation_clock);
+    if (target <= now) {
+      const std::uint64_t periods = (now - target) / state->refresh_ns + 1;
+      state->first_target_present_ns += periods * state->refresh_ns;
+      target += periods * state->refresh_ns;
+    }
+    target_present_ns = target + state->submit_lead_ns;
+    timespec wake_time{};
+    wake_time.tv_sec = static_cast<time_t>(target / 1000000000ULL);
+    wake_time.tv_nsec = static_cast<long>(target % 1000000000ULL);
+    int sleep_status = 0;
+    do {
+      sleep_status = clock_nanosleep(state->presentation_clock, TIMER_ABSTIME,
+                                     &wake_time, nullptr);
+    } while (sleep_status == EINTR);
+    if (sleep_status != 0) {
+      state->failed = true;
+      return GST_PAD_PROBE_DROP;
+    }
+    const std::uint64_t actual = clock_ns(state->presentation_clock);
+    state->input_schedule_late_ms.push_back(
+        actual > target
+            ? static_cast<double>(actual - target) / 1000000.0
+            : 0.0);
+  }
+  const SubmitStamp stamp{frame, clock_ns(state->presentation_clock),
+                          target_present_ns};
   std::lock_guard<std::mutex> lock(state->submit_mutex);
   state->submit_queue.push_back(stamp);
   state->max_submit_depth =
@@ -493,6 +622,9 @@ gboolean on_propose_allocation(GstAppSink*, GstQuery* query, gpointer) {
   gst_query_add_allocation_meta(query, GST_VIDEO_META_API_TYPE, nullptr);
   return TRUE;
 }
+
+bool process_sample(State* state, GstSample* sample, const SubmitStamp& submit,
+                    std::uint64_t surface_ready_ns);
 
 GstFlowReturn on_new_sample(GstAppSink* sink, gpointer user_data) {
   auto* state = static_cast<State*>(user_data);
@@ -510,6 +642,39 @@ GstFlowReturn on_new_sample(GstAppSink* sink, gpointer user_data) {
     submit = state->submit_queue.front();
     state->submit_queue.pop_front();
   }
+
+  if (state->threaded) {
+    std::unique_lock<std::mutex> lock(state->ready_mutex);
+    state->ready_consumed.wait(
+        lock, [state] { return state->ready_sample == nullptr ||
+                              state->worker_stop; });
+    if (state->worker_stop) {
+      gst_sample_unref(sample);
+      return GST_FLOW_ERROR;
+    }
+    state->ready_sample = sample;
+    state->ready_submit = submit;
+    state->ready_surface_ns = surface_ready_ns;
+    state->max_ready_depth = 1;
+    const std::uint64_t frames = ++state->queued;
+    lock.unlock();
+    state->ready_available.notify_one();
+    return frames >= state->expected_frames ? GST_FLOW_EOS : GST_FLOW_OK;
+  }
+
+  ++state->queued;
+  const bool valid = process_sample(state, sample, submit, surface_ready_ns);
+  gst_sample_unref(sample);
+  if (!valid) {
+    state->failed = true;
+    return GST_FLOW_ERROR;
+  }
+  const std::uint64_t frames = ++state->presented;
+  return frames >= state->expected_frames ? GST_FLOW_EOS : GST_FLOW_OK;
+}
+
+bool process_sample(State* state, GstSample* sample, const SubmitStamp& submit,
+                    std::uint64_t surface_ready_ns) {
 
   GstBuffer* buffer = gst_sample_get_buffer(sample);
   GstCaps* caps = gst_sample_get_caps(sample);
@@ -537,13 +702,50 @@ GstFlowReturn on_new_sample(GstAppSink* sink, gpointer user_data) {
     valid = import_and_present(state, fd, meta, drm_format, submit,
                                surface_ready_ns);
   }
-  gst_sample_unref(sample);
-  if (!valid) {
-    state->failed = true;
-    return GST_FLOW_ERROR;
+  return valid;
+}
+
+void presentation_worker(State* state) {
+  while (true) {
+    GstSample* sample = nullptr;
+    SubmitStamp submit;
+    std::uint64_t surface_ready_ns = 0;
+    {
+      std::unique_lock<std::mutex> lock(state->ready_mutex);
+      state->ready_available.wait(lock, [state] {
+        return state->ready_sample != nullptr || state->producer_done ||
+               state->worker_stop;
+      });
+      if (state->worker_stop) {
+        sample = state->ready_sample;
+        state->ready_sample = nullptr;
+        lock.unlock();
+        state->ready_consumed.notify_all();
+        if (sample != nullptr) gst_sample_unref(sample);
+        return;
+      }
+      if (state->ready_sample == nullptr && state->producer_done) return;
+      sample = state->ready_sample;
+      submit = state->ready_submit;
+      surface_ready_ns = state->ready_surface_ns;
+      state->ready_sample = nullptr;
+    }
+    state->ready_consumed.notify_one();
+
+    const bool valid = process_sample(state, sample, submit, surface_ready_ns);
+    gst_sample_unref(sample);
+    if (!valid) {
+      state->failed = true;
+      {
+        std::lock_guard<std::mutex> lock(state->ready_mutex);
+        state->worker_stop = true;
+      }
+      state->ready_available.notify_all();
+      state->ready_consumed.notify_all();
+      return;
+    }
+    ++state->presented;
   }
-  const std::uint64_t frames = ++state->presented;
-  return frames >= state->expected_frames ? GST_FLOW_EOS : GST_FLOW_OK;
 }
 
 double percentile(std::vector<double> values, double fraction) {
@@ -568,16 +770,43 @@ bool parse_positive(const char* text, std::uint64_t* value) {
   return true;
 }
 
+bool parse_nonnegative(const char* text, std::uint64_t* value) {
+  char* end = nullptr;
+  const unsigned long long parsed = std::strtoull(text, &end, 10);
+  if (end == text || *end != '\0') return false;
+  *value = parsed;
+  return true;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc < 2 || argc > 3) {
-    std::cerr << "usage: " << argv[0] << " BITSTREAM [FRAME_COUNT]\n";
+  if (argc < 2 || argc > 5) {
+    std::cerr << "usage: " << argv[0]
+              << " BITSTREAM [FRAME_COUNT] [SUBMIT_LEAD_US] "
+                 "[serial|threaded]\n";
     return 2;
   }
   State state;
   state.expected_frames = 600;
-  if (argc == 3 && !parse_positive(argv[2], &state.expected_frames)) return 2;
+  if (argc >= 3 && !parse_positive(argv[2], &state.expected_frames)) return 2;
+  if (argc >= 4) {
+    std::uint64_t submit_lead_us = 0;
+    if (!parse_nonnegative(argv[3], &submit_lead_us) ||
+        submit_lead_us >= 16667) {
+      std::cerr << "submit lead must be between 0 and 16666 us\n";
+      return 2;
+    }
+    state.submit_lead_ns = submit_lead_us * 1000ULL;
+  }
+  if (argc == 5) {
+    const std::string mode = argv[4];
+    if (mode != "serial" && mode != "threaded") {
+      std::cerr << "pipeline mode must be serial or threaded\n";
+      return 2;
+    }
+    state.threaded = mode == "threaded";
+  }
   if (!initialize_graphics(&state)) {
     std::cerr << "graphics initialization failed\n";
     shutdown_graphics(&state);
@@ -620,6 +849,8 @@ int main(int argc, char** argv) {
   gst_object_unref(parser);
   gst_object_unref(parser_src);
 
+  std::thread worker;
+  if (state.threaded) worker = std::thread(presentation_worker, &state);
   bool reached_eos =
       gst_element_set_state(pipeline, GST_STATE_PLAYING) !=
       GST_STATE_CHANGE_FAILURE;
@@ -640,6 +871,16 @@ int main(int argc, char** argv) {
     }
   }
   if (message != nullptr) gst_message_unref(message);
+  if (state.threaded) {
+    {
+      std::lock_guard<std::mutex> lock(state.ready_mutex);
+      state.producer_done = true;
+      if (!reached_eos) state.worker_stop = true;
+    }
+    state.ready_available.notify_all();
+    state.ready_consumed.notify_all();
+    worker.join();
+  }
   gst_element_set_state(pipeline, GST_STATE_NULL);
   gst_object_unref(bus);
   gst_object_unref(sink);
@@ -647,13 +888,35 @@ int main(int argc, char** argv) {
   shutdown_graphics(&state);
 
   const std::uint64_t frames = state.presented.load();
+  const double effective_fps =
+      frames > 1 && state.last_presentation_ns > state.first_presentation_ns
+          ? static_cast<double>(frames - 1) * 1000000000.0 /
+                static_cast<double>(state.last_presentation_ns -
+                                    state.first_presentation_ns)
+          : 0.0;
+  const std::uint64_t missed_refresh_intervals = static_cast<std::uint64_t>(
+      std::count_if(state.presentation_interval_ms.begin(),
+                    state.presentation_interval_ms.end(), [&state](double ms) {
+                      return ms * 1000000.0 >
+                             static_cast<double>(state.refresh_ns) * 1.5;
+                    }));
+  const bool frame_pacing_passed =
+      effective_fps >= 59.9 && missed_refresh_intervals == 0 &&
+      percentile(state.presentation_interval_ms, 0.95) <= 16.8;
   const bool passed = reached_eos && !state.failed.load() &&
                       frames == state.expected_frames &&
-                      state.submit_to_present_ms.size() == frames;
+                      state.submit_to_present_ms.size() == frames &&
+                      frame_pacing_passed;
   std::cout << std::fixed << std::setprecision(3)
             << "frames_submitted=" << state.submitted.load() << '\n'
+            << "frames_queued=" << state.queued.load() << '\n'
             << "frames_presented=" << frames << '\n'
             << "max_submit_depth=" << state.max_submit_depth << '\n'
+            << "max_ready_depth=" << state.max_ready_depth << '\n'
+            << "pipeline_mode=" << (state.threaded ? "threaded" : "serial")
+            << '\n'
+            << "submit_lead_us=" << state.submit_lead_ns / 1000ULL << '\n'
+            << "refresh_ns=" << state.refresh_ns << '\n'
             << "decoded_drm_format=" << state.drm_format << '\n'
             << "decoded_width=" << state.width << '\n'
             << "decoded_height=" << state.height << '\n'
@@ -665,11 +928,21 @@ int main(int argc, char** argv) {
   print_stats("swap_submit", state.swap_submit_ms);
   print_stats("surface_to_present", state.surface_to_present_ms);
   print_stats("submit_to_present", state.submit_to_present_ms);
+  print_stats("presentation_interval", state.presentation_interval_ms);
+  if (!state.input_schedule_late_ms.empty())
+    print_stats("input_schedule_late", state.input_schedule_late_ms);
   std::cout << "vsync_frames=" << state.vsync_frames << '\n'
             << "hardware_clock_frames=" << state.hw_clock_frames << '\n'
             << "hardware_completion_frames=" << state.hw_completion_frames
             << '\n'
             << "zero_copy_frames=" << state.zero_copy_frames << '\n'
+            << "commit_timing_available="
+            << (state.commit_timing_available ? "yes" : "no") << '\n'
+            << "commit_timing_frames=" << state.commit_timing_frames << '\n'
+            << "effective_presentation_fps=" << effective_fps << '\n'
+            << "missed_refresh_intervals=" << missed_refresh_intervals << '\n'
+            << "frame_pacing_gate="
+            << (frame_pacing_passed ? "pass" : "fail") << '\n'
             << "decoded_surface_cpu_map=no\n"
             << "integrated_client_pipeline_gate="
             << (passed ? "pass" : "fail") << '\n';
