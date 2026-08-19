@@ -140,6 +140,14 @@ DMA-BUF/EGL path processed all frames at 248.90 fps using modifier
 `R=82,G=96,B=94`. Its SHA-256 is
 `bae9b1a55ac6a058e1235d00d1bc231822bff14e1d954c7ff9762a9287244ebb`.
 
+The strict serial Wayland presentation soak presented all 9,000 frames with
+hardware clock/completion feedback, one-frame depth, and 9,000 zero-copy
+imports. Decode and surface-to-swap p95 were both 0.202 ms, while
+submit-to-present p95 was 17.046 ms. It averaged 59.801 fps and reported 25
+missed refresh intervals, so the frame-pacing gate failed. This reconfirms that
+the remaining file-backed limitation is Mutter/fixed-vblank presentation, not
+Intel decode or DMA-BUF/EGL throughput.
+
 The fullscreen Wayland probe selected AR30 (`10:10:10:2`) at 3840x2160 and
 completed a 9,000-frame, 150-second soak. Swap submission p50/p95 was
 0.023/0.034 ms. Wayland frame-callback p50/p95 was 16.662/16.755 ms, which
