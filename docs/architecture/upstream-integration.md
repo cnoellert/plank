@@ -11,19 +11,24 @@ standalone probes as hardware acceptance tests:
 | Moonlight-Qt | `v6.1.0` | `f786e94c7b2f943e24e65d7d74deb539b827fc84` |
 | moonlight-common-c | Moonlight-pinned | `8599b6042a4ba27749b0f94134dd614b4328a9bc` |
 
-The pinned releases are tracked as Git submodules in `host/sunshine-fork/`
-and `client/moonlight-qt-fork/`. Initialize and validate them with:
+The pinned releases are the qualified ancestors of the StationConnect branches
+tracked in `host/sunshine-fork/` and `client/moonlight-qt-fork/`. Initialize and
+validate them with:
 
 ```bash
 git submodule update --init --recursive
 ./scripts/verify-upstream-pins.sh
 ```
 
-The initial URLs point to the official projects. Before committing product
-changes inside either submodule, repoint its `origin` and the corresponding
-`.gitmodules` URL to a writable StationConnect fork, then add the official
-project as `upstream`. Do not copy selected files out of context or squash
-away upstream history.
+Writable `origin` repositories live in the `instinctual` GitHub organization:
+
+- `instinctual/Sunshine`, branch `stationconnect/main`
+- `instinctual/moonlight-qt`, branch `stationconnect/main`
+- `instinctual/moonlight-common-c`, with branches based on the distinct
+  Sunshine and Moonlight-Qt pins
+
+Configure the corresponding official project as `upstream` in each checkout.
+Do not copy selected files out of context or squash away upstream history.
 
 ## Existing Upstream Foundation
 
