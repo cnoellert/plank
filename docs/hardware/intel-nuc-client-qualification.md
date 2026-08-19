@@ -128,15 +128,19 @@ and measured 0.36 ms average decode, 0.03 ms queueing, and 4.61 ms rendering
 including vsync. The host simultaneously reported the source as
 `8-bit-source/up-converted` and approximately 79 Mbps of video payload.
 
-A subsequent 155-second live run covered the full 3,583-frame fullscreen Flame
-sequence. Sunshine was explicitly pinned to NvFBC `output_name = 1`, the
-3840x2160 `DP-2` output; the default output `0` is the narrow scopes display and
-must not be used for this workstation. The NUC received, decoded, and rendered
-59.99 fps with 0.00% network and jitter loss. Average network latency was 1 ms,
-decode 0.35 ms, frame queue 0.81 ms, and rendering including V-sync 4.91 ms.
-The client retained the 10-bit identity-GBR Y410/XR30 zero-copy path throughout,
-while the host reported about 79 Mbps. This is the production-content live
-reference; the earlier scopes-display run is not a content qualification.
+Two subsequent 170-second client runs each provided more than 160 seconds of
+active streaming, covering a complete 3,583-frame fullscreen Flame loop.
+Sunshine was explicitly pinned to NvFBC `output_name = 1`, the 3840x2160
+`DP-2` output; default output `0` is the narrow scopes display and must not be
+used for this workstation. The runs received/decoded 60.00/60.00 and
+60.01/60.01 fps, rendered 59.98 fps, and had 0.00% network loss. Both reported
+0.04% client pacer drops, so drop-free long-session pacing remains open. Decode
+averaged 0.33 ms, frame queueing 0.77-0.80 ms, rendering including V-sync
+4.78-4.79 ms, and network latency 1 ms. Moonlight also warned that it could not
+raise its render and audio thread priorities; causality has not been
+established. The client retained the 10-bit identity-GBR Y410/XR30 zero-copy
+path while the host reported about 79 Mbps. The earlier scopes-display run is
+not a content qualification.
 
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
