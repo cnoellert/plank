@@ -5,15 +5,74 @@
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <linux/uhid.h>
+#include <map>
 #include <poll.h>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unistd.h>
 #include <vector>
 
 namespace {
+
+struct FeatureReplyKey {
+  std::size_t interface = 0;
+  std::uint8_t report = 0;
+
+  bool operator<(const FeatureReplyKey& other) const {
+    return std::tie(interface, report) <
+           std::tie(other.interface, other.report);
+  }
+};
+
+bool parse_feature_reply(
+    std::string_view value,
+    std::map<FeatureReplyKey, std::vector<std::uint8_t>>& replies) {
+  const std::size_t first_colon = value.find(':');
+  const std::size_t second_colon = value.find(':', first_colon + 1);
+  if (first_colon == std::string_view::npos ||
+      second_colon == std::string_view::npos) {
+    return false;
+  }
+
+  const std::string interface_text{value.substr(0, first_colon)};
+  const std::string report_text{
+      value.substr(first_colon + 1, second_colon - first_colon - 1)};
+  const std::string_view data_text = value.substr(second_colon + 1);
+  char* end = nullptr;
+  const unsigned long interface =
+      std::strtoul(interface_text.c_str(), &end, 10);
+  if (end == interface_text.c_str() || *end != '\0') {
+    return false;
+  }
+  end = nullptr;
+  const unsigned long report = std::strtoul(report_text.c_str(), &end, 16);
+  if (end == report_text.c_str() || *end != '\0' || report > 0xff ||
+      data_text.empty() || (data_text.size() % 2) != 0 ||
+      data_text.size() / 2 > UHID_DATA_MAX) {
+    return false;
+  }
+
+  std::vector<std::uint8_t> data;
+  data.reserve(data_text.size() / 2);
+  for (std::size_t offset = 0; offset < data_text.size(); offset += 2) {
+    const std::string byte_text{data_text.substr(offset, 2)};
+    end = nullptr;
+    const unsigned long byte = std::strtoul(byte_text.c_str(), &end, 16);
+    if (end == byte_text.c_str() || *end != '\0' || byte > 0xff) {
+      return false;
+    }
+    data.push_back(static_cast<std::uint8_t>(byte));
+  }
+  if (data.front() != report) {
+    return false;
+  }
+  replies[{interface, static_cast<std::uint8_t>(report)}] = std::move(data);
+  return true;
+}
 
 bool write_event(int fd, const uhid_event& event) {
   const ssize_t written = write(fd, &event, sizeof(event));
@@ -28,12 +87,21 @@ bool write_event(int fd, const uhid_event& event) {
 
 int main(int argc, char** argv) {
   bool generic_descriptor = false;
+  bool accept_set_report = false;
   std::vector<const char*> descriptor_paths;
+  std::map<FeatureReplyKey, std::vector<std::uint8_t>> feature_replies;
   std::uint32_t requested_product = 0x0317;
   for (int index = 1; index < argc; ++index) {
     const std::string_view argument = argv[index];
     if (argument == "--generic") {
       generic_descriptor = true;
+    } else if (argument == "--accept-set-report") {
+      accept_set_report = true;
+    } else if (argument == "--feature" && index + 1 < argc) {
+      if (!parse_feature_reply(argv[++index], feature_replies)) {
+        std::cerr << "invalid feature reply; expected INDEX:HEX_ID:HEX_DATA\n";
+        return 2;
+      }
     } else if (argument == "--product" && index + 1 < argc) {
       char* end = nullptr;
       const unsigned long value = std::strtoul(argv[++index], &end, 16);
@@ -54,7 +122,8 @@ int main(int argc, char** argv) {
       (std::string_view(descriptor_paths.front()) == "--self-test-mouse" &&
        descriptor_paths.size() != 1)) {
     std::cerr << "usage: " << argv[0]
-              << " [--generic] [--product HEX] "
+              << " [--generic] [--product HEX] [--accept-set-report] "
+                 "[--feature INDEX:HEX_ID:HEX_DATA]... "
                  "REPORT_DESCRIPTOR...|--self-test-mouse\n";
     return 2;
   }
@@ -160,18 +229,39 @@ int main(int argc, char** argv) {
           break;
         case UHID_OUTPUT:
           std::cout << "uhid_output=received interface=" << index
-                    << " size=" << event.u.output.size << '\n';
+                    << " report_type="
+                    << static_cast<unsigned int>(event.u.output.rtype)
+                    << " size=" << event.u.output.size << " data=";
+          for (std::uint16_t byte = 0; byte < event.u.output.size; ++byte) {
+            std::cout << std::hex << std::setw(2) << std::setfill('0')
+                      << static_cast<unsigned int>(event.u.output.data[byte]);
+          }
+          std::cout << std::dec << '\n';
           break;
         case UHID_GET_REPORT: {
           ++report_requests;
           uhid_event reply{};
           reply.type = UHID_GET_REPORT_REPLY;
           reply.u.get_report_reply.id = event.u.get_report.id;
-          reply.u.get_report_reply.err = EIO;
+          const auto response = feature_replies.find(
+              {index, event.u.get_report.rnum});
+          const bool found = response != feature_replies.end() &&
+                             event.u.get_report.rtype == UHID_FEATURE_REPORT;
+          reply.u.get_report_reply.err = found ? 0 : EIO;
+          if (found) {
+            reply.u.get_report_reply.size =
+                static_cast<std::uint16_t>(response->second.size());
+            std::memcpy(reply.u.get_report_reply.data,
+                        response->second.data(), response->second.size());
+          }
           write_event(devices[index], reply);
-          std::cout << "uhid_get_report=declined interface=" << index
+          std::cout << "uhid_get_report="
+                    << (found ? "answered" : "declined")
+                    << " interface=" << index
                     << " report="
                     << static_cast<unsigned int>(event.u.get_report.rnum)
+                    << " report_type="
+                    << static_cast<unsigned int>(event.u.get_report.rtype)
                     << '\n';
           break;
         }
@@ -180,11 +270,21 @@ int main(int argc, char** argv) {
           uhid_event reply{};
           reply.type = UHID_SET_REPORT_REPLY;
           reply.u.set_report_reply.id = event.u.set_report.id;
-          reply.u.set_report_reply.err = EIO;
+          reply.u.set_report_reply.err = accept_set_report ? 0 : EIO;
           write_event(devices[index], reply);
-          std::cout << "uhid_set_report=declined interface=" << index
+          std::cout << "uhid_set_report="
+                    << (accept_set_report ? "accepted" : "declined")
+                    << " interface=" << index
                     << " report="
                     << static_cast<unsigned int>(event.u.set_report.rnum)
+                    << " report_type="
+                    << static_cast<unsigned int>(event.u.set_report.rtype)
+                    << " size=" << event.u.set_report.size << " data=";
+          for (std::uint16_t byte = 0; byte < event.u.set_report.size; ++byte) {
+            std::cout << std::hex << std::setw(2) << std::setfill('0')
+                      << static_cast<unsigned int>(event.u.set_report.data[byte]);
+          }
+          std::cout << std::dec
                     << '\n';
           break;
         }

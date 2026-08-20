@@ -6,3 +6,5 @@
 /artifacts/qualification/video/*.metrics.txt
 /artifacts/qualification/video/**/*.metrics.txt
 /artifacts/qualification/video/**/*.log
+/artifacts/qualification/wacom/raw/
+/test_sunshine.log*
