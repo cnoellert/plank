@@ -218,6 +218,12 @@ add_executable(connect-probe-uhid probes/wacom/connect-probe-uhid.cpp)
 target_compile_features(connect-probe-uhid PRIVATE cxx_std_17)
 target_compile_options(connect-probe-uhid PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
+add_executable(connect-wacom-raw-bridge
+  probes/wacom/connect-wacom-raw-bridge.cpp)
+target_compile_features(connect-wacom-raw-bridge PRIVATE cxx_std_17)
+target_compile_options(connect-wacom-raw-bridge PRIVATE
+  -Wall -Wextra -Wpedantic -Werror)
+
 if(BUILD_TESTING)
   add_executable(extended-fec-block-indices-test
     tests/protocol/extended-fec-block-indices.c)

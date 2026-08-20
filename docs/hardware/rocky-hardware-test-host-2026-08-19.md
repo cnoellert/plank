@@ -41,32 +41,29 @@
 | Linux direct NVENC integration | Pass, opt-in | The CUDA-backed `nvenc-direct` path produced live 2160p60 HEVC Rext 10-bit 4:4:4, retained identity GBR signaling, and completed FEC/RFI loss recovery with the Intel client. Automatic selection still prefers the established FFmpeg-backed `nvenc` path pending the remaining GPU matrix. |
 | Physical Wacom discovery | Pass | USB `056a:0317` Intuos Pro L exposes pen, pad, touch, and two raw HID interfaces. |
 | Generic UHID transport | Pass | A temporary generic mouse receives `UHID_START` and binds through the host kernel. |
-| Wacom UHID binding | Blocked by target kernel | Both PTH-851 (`0317`) and PTH-660 (`0357`) descriptors fail before `UHID_START` on Rocky 9.7. The same descriptors bind through UHID on the NUC's 7.0 kernel, so descriptor generation and feature replies are not the first blocker. |
+| Wacom UHID binding | Pass | The exact grouped PTH-660 (`0357`) descriptors and physical feature-report replies produced `UHID_START` for both interfaces and native Pen, Pad, and Finger nodes on Rocky 9.7. |
 | Normalized uinput tablet | Pass for core pen | Sunshine's existing libvirtualhid backend is recognized by Rocky libinput as `tablet`; its consumer test passes with event-node access. Pressure, distance, tilt, eraser, and three stylus buttons are represented. Pad controls, tool serials, barrel rotation, tangential pressure, and multitouch are not yet represented. |
-| Live NUC-to-host core pen | Pass | A physical PTH-660 attached to the NUC traversed Moonlight's ordered pen channel and appeared on Rocky as `libvirtualhid Pen Tablet`. A live sample delivered 1,845 libinput events, including proximity, absolute position, distance, pressure tip transitions, and two-axis tilt. |
+| Live NUC-to-host raw Wacom | Pass | The NUC forwarded both physical PTH-660 HID interfaces bidirectionally. Flame received the real model geometry, pressure, tilt, pad, and touch capabilities; edge gestures and Flame-controlled Tablet Margins worked without a watcher or coordinate pre-scaling. |
 | PAM/SSSD account policy | Pass | Root and `gdm` are rejected; authorized SSSD accounts `operator` and `testartist` pass account management. |
 | PAM password/session conversation | Pending | Requires secure interactive tests for valid and invalid credentials. |
 
-## Wacom UHID Kernel Discriminator
+## Wacom UHID Qualification
 
 Two physical generations were inventoried on the host. The PTH-851 exposes
 234-byte pen/pad and 23-byte touch descriptors plus a boot-mouse interface.
 The PTH-660 exposes 949-byte pen/pad and 549-byte touch descriptors, with a
-shared serial number. Replaying each real descriptor with its Wacom vendor and
-product ID on Rocky 9.7 (kernel `5.14.0-611.55.1.el9_7`) accepted
-`UHID_CREATE2` but produced no `UHID_START` or report requests. Substituting a
-generic vendor ID immediately produced `UHID_START`, proving `/dev/uhid` and
-the descriptors are functional, but generic HID did not expose usable Wacom
-pen semantics.
+shared serial number. Early incomplete replays accepted `UHID_CREATE2` without
+reaching `UHID_START`, which was incorrectly classified as a Rocky kernel
+limitation. Repeating the test with both exact descriptors grouped under one
+physical identity and answering the physical feature reports succeeded on
+Rocky 9.7 (kernel `5.14.0-611.55.1.el9_7`). Both interfaces reached
+`UHID_START`; the stock driver requested feature reports `0x0c` and `0x23` and
+sent feature report `0x32`.
 
-The same Wacom-identified replays on the NUC's 7.0 kernel produced
-`UHID_START`. A grouped PTH-660 replay with a common physical identity created
-Wacom Pen, Pad, and Finger input nodes; the driver issued six `GET_REPORT` and
-one `SET_REPORT` requests. This isolates the failure to the target Rocky Wacom
-driver's assumption that a Wacom-matched HID always has a real USB-interface
-parent. Do not patch Xorg for this issue. Evaluate a stock-kernel absolute
-`uinput` tablet and whole-device USB/IP before considering any host kernel
-driver backport.
+The resulting nodes match the physical PTH-660: pen range `44800x29600`, 8191
+pressure levels, distance 63, two-axis tilt, wheel/rotation, pad ring, and
+finger range `8960x5920`. No Xorg or kernel change is required. USB/IP remains
+only a fallback if a future model cannot bind through exact raw HID/UHID.
 
 ## Wacom Transport Direction
 
@@ -77,8 +74,8 @@ to the Ubuntu desktop at disconnect. The workstation creates the virtual
 tablet consumed by XInput2, libinput, and Flame. Host-connected tablets in this
 report are qualification fixtures only.
 
-Rocky's UHID limitation makes Sunshine's existing normalized pen transport and
-libvirtualhid uinput backend the core-pen baseline. The upstream
+Sunshine's existing normalized pen transport and libvirtualhid uinput backend
+remain a clearly labeled core-pen fallback. The upstream
 `LinuxConsumerTest.LibinputSeesUinputPenTabletTool` passed on this workstation
 when run with permission to read the generated event node. A non-root run
 could create the device through world-writable `/dev/uinput` but could not read
@@ -95,11 +92,21 @@ The run also uncovered a shifted aggregate initializer that left Sunshine's
 `native_pen_touch` default false. The initializer and a default-value
 regression test now keep native pen negotiation enabled.
 
-This normalized path is not yet equivalent to the plan's full raw-HID Wacom
-gate. Retain USB/IP as a compatibility experiment and raw HID/UHID for hosts
-with compatible kernels. Add explicit protocol and virtual-device coverage for
-ExpressKeys, rings, strips, multitouch, unique tool serials, barrel rotation,
-and tangential pressure before declaring full Wacom support.
+The subsequent raw-HID bridge granted the active NUC session access to both
+`hidraw` interfaces and all three event nodes, grabbed pen/pad/touch as one
+device group, and relayed input and control reports in both directions. Rocky
+exposed the real `Wacom Intuos Pro M` stylus, eraser, pad, and finger devices.
+XInput captured native pressure, distance, tilt, tip transitions, and absolute
+motion from the raw stylus source. The user confirmed full-screen reach, the
+Ctrl plus bottom-edge Flame gesture, and Flame's 5% and 20% Tablet Margins.
+Only the normal `3840x2160+0+0` output mapping was applied; Flame controlled
+its own margins.
+
+The standalone TCP bridge is qualification-only and is not an approved
+production transport. Move the same attach/input/GET_REPORT/SET_REPORT/output
+state machine into the authenticated encrypted Sunshine/Moonlight control
+channel, then add automated ExpressKey, ring, multitouch, hot-unplug, and
+network-loss coverage before closing the full Wacom product gate.
 
 ## Production Capture Decision
 

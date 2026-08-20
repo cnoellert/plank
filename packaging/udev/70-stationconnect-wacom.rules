@@ -1,6 +1,6 @@
-# Permit the active local session to read and grab only Wacom pen-tool nodes.
-# Pad and touch interfaces require separate protocol support before redirection.
-ACTION!="remove", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_VENDOR_ID}=="056a", ENV{ID_INPUT_TABLET}=="1", ENV{ID_INPUT_TABLET_PAD}!="1", ENV{ID_INPUT_TOUCHPAD}!="1", TAG+="uaccess"
+# Permit the active local session to exclusively grab every Wacom input
+# function while its complete USB group is redirected.
+ACTION!="remove", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_VENDOR_ID}=="056a", TAG+="uaccess"
 
 # Raw-HID redirection discovers every interface and must answer feature/output
 # reports as well as read input reports. Access remains scoped to the active

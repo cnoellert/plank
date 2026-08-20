@@ -57,3 +57,13 @@ pad controls, and touch geometry. Exercise feature/output reports, pen and
 eraser proximity, ExpressKeys, ring, multitouch, hot-unplug, reconnect, and
 abrupt network loss. Flame Tablet Margins and edge gestures must work without
 pre-scaling coordinates, preference watchers, or Xorg changes.
+
+## Qualification Bridge
+
+`connect-wacom-raw-bridge` implements this lifecycle as a one-client hardware
+probe. Its TCP transport is intentionally rejected as a production boundary:
+it is plaintext, has no session authentication, and must run only on an
+isolated qualification network. The PTH-660 live test passed descriptor,
+input, feature, output, exclusive-grab, and disconnect behavior through this
+bridge. Production code must reuse the behavior, limits, and cleanup rules
+above inside Sunshine/Moonlight's authenticated encrypted control stream.

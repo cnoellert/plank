@@ -102,6 +102,25 @@ uinput tablet. Disconnect released the client device. This passes the core-pen
 transport gate; ExpressKeys, ring, multitouch, tool serials, barrel rotation,
 and tangential pressure remain outside this baseline.
 
+### Exact raw-HID Wacom result — 2026-08-20
+
+Both PTH-660 HID interfaces were then redirected without translating their
+reports. The client forwarded the original 949-byte pen/pad and 549-byte touch
+descriptors, all input reports, feature-report reads/writes, and output reports.
+Rocky's stock `hid-wacom` driver created native Pen, Pad, and Finger devices
+with `44800x29600` pen geometry, 8191 pressure levels, distance, tilt,
+wheel/rotation, and `8960x5920` touch geometry. XInput confirmed raw stylus
+motion, pressure transitions, and tilt from the redirected device.
+
+The live 4K session exclusively grabbed the client's pen, pad, and touch nodes
+and suppressed the normalized fallback. The user confirmed full DP-2 reach,
+the Ctrl plus bottom-edge Flame gesture, and working Flame Tablet Margins at
+both 5% and 20%. The bridge applied only standard output geometry mapping; it
+did not read Flame preferences or pre-scale tablet coordinates. This passes the
+raw-HID behavior prototype. The standalone plaintext bridge remains a test
+fixture; production must carry the same messages inside the authenticated,
+encrypted StationConnect session.
+
 FFmpeg 8.0.1 identifies the correctly signaled stream as `gbrp10le` and silently
 falls back to software even when VA hardware frames are requested. Earlier
 FFmpeg measurements of 95.78 and 109.52 fps are therefore invalidated. Do not
