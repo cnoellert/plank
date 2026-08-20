@@ -185,7 +185,11 @@ with zero network loss and exact pacer totals of `0/0/0`; queue delay remained
 between 0.52 and 0.72 ms. A subsequent full-loop run received, decoded, and
 rendered 60.00 fps with `0/0/0` drops, 0.33 ms decode, 0.63 ms queueing, and
 4.65 ms rendering. The bounded startup grace therefore removes the reproduced
-discard without adding persistent queue depth.
+discard without adding persistent queue depth. A final 10:20 confirmation soak
+covered more than four complete footage loops and sustained 60.00 fps received,
+decoded, and rendered with zero network loss and exact pacer totals of `0/0/0`.
+Decode averaged 0.32 ms, queueing 0.61 ms, and rendering including V-sync
+4.75 ms. This closes the startup-pacing gate for the tested NUC and build.
 
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
