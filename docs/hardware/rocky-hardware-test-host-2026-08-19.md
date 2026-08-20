@@ -183,8 +183,9 @@ refresh interval does not imply a 60 Hz throughput miss.
 2. Integrate the qualified Intel decode, identity, and presentation path into
    the client and measure network-to-photon latency with shared timestamps.
 3. Continue tuning toward the optional NVENC component p95 target of 8 ms.
-4. Add transport FEC and compare post-recovery pixels with a synchronized
-   no-loss reference before closing the packet-loss gate.
+4. Compare post-recovery pixels with a synchronized no-loss reference. Live
+   transport FEC now passes 5% random loss with 20% FEC and 10% random loss
+   with the 30% high-loss profile.
 
 ## End-of-Day Handoff
 

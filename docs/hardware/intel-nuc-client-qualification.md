@@ -361,3 +361,35 @@ no-loss reference and decoded-pixel comparison when transport/FEC is available.
   stationconnect-recovery-forced-idr.hevc \
   599 181
 ```
+
+## Live Transport FEC
+
+The fullscreen Flame loop was streamed at 3840x2160x60, 100 Mbps requested,
+HEVC Rext 10-bit 4:4:4 identity GBR. Moonlight now reports cumulative recovered
+FEC blocks, recovered data shards, failed blocks, and wholly missing frames.
+Sunshine's qualification-only
+`SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1` switch selects its existing
+`sendmmsg()` fallback so the `netdev` egress hook sees individual datagrams.
+The switch is never a production default.
+
+| Loss profile | Host FEC | Dropped datagrams | Recovered blocks/shards | Failed blocks/frames | Client result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 5% random, 50 s | 20% | 16,252 | 2,343 / 13,462 | 0 / 0 | 60.02 fps, no drops |
+| 10% random, 50 s | 20% | 33,807 | 2,398 / 27,880 | 16 / 16 | 59.42 fps, 1.47% loss; bounded IDR recovery |
+| 10% random, 50 s | 30% | 26,823 | 1,987 / 20,577 | 0 / 0 | 60.01 fps, no drops |
+| Three 20 ms outages | 20% | time-bounded | 0 / 0 | 0 / 15 | 59.63 fps, 0.77% loss; bounded IDR recovery |
+
+All runs had zero jitter and exact pacer totals `0/0/0`. The 30% profile
+closes the 10% random-loss tail but reduces encoder payload from about 79 to
+69 Mbps to retain the requested media-plus-FEC ceiling. Keep 20% for clean or
+moderate-loss links; select 30% for sustained high loss. Run a random profile
+concurrently with the client using:
+
+```bash
+SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1 sunshine ...
+./scripts/inject-live-video-loss.sh 192.0.2.250 10 50 enp1s0
+```
+
+The remaining packet-loss gate is synchronized decoded-pixel comparison after
+FEC or reference invalidation; frame continuity alone cannot prove clean
+post-recovery pixels.
