@@ -460,3 +460,11 @@ shards, and had only five unrecoverable frames. All five healed through
 reference invalidation; decode sustained 59.94 fps, render sustained 59.87 fps,
 and the client issued no emergency IDR after startup. The loss rule was removed
 automatically after each run.
+
+After restoring the production-default FFmpeg-backed `nvenc` encoder, a final
+170-second no-loss regression covered the complete 3,583-frame source loop. The
+client sustained exactly 60.00 fps at input, decode, and render with zero
+network, jitter, FEC, or pacer drops. Decode averaged 0.34 ms, frame-queue delay
+0.70 ms, render including V-sync 4.73 ms, and host-processing p95 was 29.2 ms.
+The client reported `8-bit-source/up-converted`, `10-bit HEVC 4:4:4`, and
+`10-bit RGB identity` for the three precision stages.
