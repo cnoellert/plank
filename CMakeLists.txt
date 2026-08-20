@@ -25,6 +25,13 @@ find_path(NVFBC_INCLUDE_DIR NvFBC.h
   PATH_SUFFIXES NvFBC/inc inc)
 find_path(PAM_INCLUDE_DIR security/pam_appl.h REQUIRED)
 find_library(PAM_LIBRARY pam REQUIRED)
+set(X264_ROOT "" CACHE PATH "Path to an x264 installation")
+find_path(X264_INCLUDE_DIR x264.h
+  HINTS "${X264_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/build/third-party/prefix"
+  PATH_SUFFIXES include)
+find_library(X264_LIBRARY x264
+  HINTS "${X264_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/build/third-party/prefix"
+  PATH_SUFFIXES lib lib64)
 
 add_executable(connect-probe-kms probes/kms/connect-probe-kms.cpp)
 target_compile_features(connect-probe-kms PRIVATE cxx_std_17)
@@ -151,6 +158,19 @@ target_compile_options(connect-probe-nvenc PRIVATE -Wall -Wextra -Wpedantic -Wer
 target_include_directories(connect-probe-nvenc PRIVATE ${FFNVCODEC_INCLUDE_DIR})
 target_link_libraries(connect-probe-nvenc PRIVATE ${CMAKE_DL_LIBS})
 
+if(X264_INCLUDE_DIR AND X264_LIBRARY)
+  add_executable(connect-benchmark-x264
+    probes/video/connect-benchmark-x264.cpp)
+  target_compile_features(connect-benchmark-x264 PRIVATE cxx_std_17)
+  target_compile_options(connect-benchmark-x264 PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(connect-benchmark-x264 PRIVATE ${X264_INCLUDE_DIR})
+  target_link_libraries(connect-benchmark-x264 PRIVATE
+    ${X264_LIBRARY} Threads::Threads ${CMAKE_DL_LIBS} m)
+else()
+  message(STATUS "x264 not found; connect-benchmark-x264 will not be built")
+endif()
+
 if(NVFBC_INCLUDE_DIR)
   add_executable(connect-probe-nvfbc probes/nvfbc/connect-probe-nvfbc.cpp)
   target_compile_features(connect-probe-nvfbc PRIVATE cxx_std_17)
@@ -159,6 +179,16 @@ if(NVFBC_INCLUDE_DIR)
     ${NVFBC_INCLUDE_DIR}
     ${FFNVCODEC_INCLUDE_DIR})
   target_link_libraries(connect-probe-nvfbc PRIVATE ${CMAKE_DL_LIBS})
+
+  add_executable(connect-capture-nvfbc-raw
+    probes/nvfbc/connect-capture-nvfbc-raw.cpp)
+  target_compile_features(connect-capture-nvfbc-raw PRIVATE cxx_std_17)
+  target_compile_options(connect-capture-nvfbc-raw PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(connect-capture-nvfbc-raw PRIVATE
+    ${NVFBC_INCLUDE_DIR}
+    ${FFNVCODEC_INCLUDE_DIR})
+  target_link_libraries(connect-capture-nvfbc-raw PRIVATE ${CMAKE_DL_LIBS})
 
   add_executable(connect-probe-video-pipeline
     probes/video/connect-probe-video-pipeline.cpp)

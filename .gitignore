@@ -1,4 +1,6 @@
 /build/
 /qualification-report.md
 /artifacts/qualification/video/*.hevc
+/artifacts/qualification/video/*.h264
+/artifacts/qualification/video/*.raw
 /artifacts/qualification/video/*.metrics.txt

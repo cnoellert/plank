@@ -33,12 +33,58 @@
 
 namespace {
 
-constexpr std::uint32_t kBitrate = 80'000'000;
+constexpr std::uint32_t kDefaultBitrate = 100'000'000;
+constexpr std::uint32_t kDefaultVbvBits = 2'000'000;
+
+enum class Codec { kHevc10, kH264EightBit };
 
 constexpr char kIdentityKernelPtx[] = R"ptx(
 .version 6.4
 .target sm_50
 .address_size 64
+
+.visible .entry bgra8_to_gbr8(
+    .param .u64 source_ptr,
+    .param .u64 destination_ptr,
+    .param .u32 width,
+    .param .u32 height,
+    .param .u64 destination_pitch)
+{
+    .reg .pred %p<2>;
+    .reg .b32 %r<12>;
+    .reg .b64 %rd<14>;
+
+    ld.param.u64 %rd1, [source_ptr];
+    ld.param.u64 %rd2, [destination_ptr];
+    ld.param.u32 %r1, [width];
+    ld.param.u32 %r2, [height];
+    ld.param.u64 %rd3, [destination_pitch];
+    mov.u32 %r3, %ctaid.x;
+    mov.u32 %r4, %ntid.x;
+    mov.u32 %r5, %tid.x;
+    mad.lo.u32 %r6, %r3, %r4, %r5;
+    mul.lo.u32 %r7, %r1, %r2;
+    setp.ge.u32 %p1, %r6, %r7;
+    @%p1 bra done8;
+
+    mul.wide.u32 %rd4, %r6, 4;
+    add.u64 %rd5, %rd1, %rd4;
+    ld.global.u8 %r8, [%rd5];
+    ld.global.u8 %r9, [%rd5+1];
+    ld.global.u8 %r10, [%rd5+2];
+    cvt.u64.u32 %rd6, %r6;
+    cvt.u64.u32 %rd7, %r2;
+    mul.lo.u64 %rd8, %rd3, %rd7;
+    add.u64 %rd9, %rd2, %rd6;
+    st.global.u8 [%rd9], %r9;
+    add.u64 %rd10, %rd9, %rd8;
+    st.global.u8 [%rd10], %r8;
+    add.u64 %rd11, %rd10, %rd8;
+    st.global.u8 [%rd11], %r10;
+
+done8:
+    ret;
+}
 
 .visible .entry bgra8_to_gbr10(
     .param .u64 source_ptr,
@@ -192,6 +238,7 @@ struct Resources {
   CUstream conversion_stream = nullptr;
   CUmodule cuda_module = nullptr;
   CUfunction conversion_kernel = nullptr;
+  CUfunction conversion_kernel8 = nullptr;
   std::array<EncodeSlot, 2> encode_slots{};
 
   void* nvfbc_library = nullptr;
@@ -291,12 +338,18 @@ void initialize_cuda(Resources& resources) {
                                                    resources.cuda_module,
                                                    "bgra8_to_gbr10"),
                "cuModuleGetFunction");
+  require_cuda(resources.cuda,
+               resources.cuda->cuModuleGetFunction(
+                   &resources.conversion_kernel8, resources.cuda_module,
+                   "bgra8_to_gbr8"),
+               "cuModuleGetFunction(8-bit)");
   std::cout << "cuda_device=" << device_name << '\n';
 }
 
 void launch_conversion(Resources& resources, CUdeviceptr source,
                        CUdeviceptr destination, std::uint32_t width,
-                       std::uint32_t height, std::uint64_t pitch) {
+                       std::uint32_t height, std::uint64_t pitch,
+                       bool ten_bit = true) {
   void* parameters[] = {&source, &destination, &width, &height, &pitch};
   const std::uint64_t pixels =
       static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(height);
@@ -305,7 +358,9 @@ void launch_conversion(Resources& resources, CUdeviceptr source,
       static_cast<unsigned int>((pixels + threads - 1U) / threads);
   require_cuda(resources.cuda,
                resources.cuda->cuLaunchKernel(
-                   resources.conversion_kernel, blocks, 1, 1, threads, 1, 1, 0,
+                   ten_bit ? resources.conversion_kernel
+                           : resources.conversion_kernel8,
+                   blocks, 1, 1, threads, 1, 1, 0,
                    resources.conversion_stream, parameters, nullptr),
                "cuLaunchKernel");
   require_cuda(resources.cuda,
@@ -361,6 +416,44 @@ void self_test_conversion(Resources& resources) {
   resources.cuda->cuMemFree(device_destination);
   resources.cuda->cuMemFree(device_source);
   std::cout << "identity_gbr_pixel_self_test=pass\n";
+
+  constexpr std::uint64_t pitch8 = width;
+  require_cuda(resources.cuda,
+               resources.cuda->cuMemAlloc(&device_source, sizeof(source)),
+               "cuMemAlloc(test source 8-bit)");
+  require_cuda(resources.cuda,
+               resources.cuda->cuMemAlloc(&device_destination,
+                                          pitch8 * height * 3U),
+               "cuMemAlloc(test destination 8-bit)");
+  try {
+    require_cuda(resources.cuda,
+                 resources.cuda->cuMemcpyHtoD(device_source, source,
+                                              sizeof(source)),
+                 "cuMemcpyHtoD(test 8-bit)");
+    launch_conversion(resources, device_source, device_destination, width,
+                      height, pitch8, false);
+    std::uint8_t result[width * 3U]{};
+    require_cuda(resources.cuda,
+                 resources.cuda->cuMemcpyDtoH(result, device_destination,
+                                              sizeof(result)),
+                 "cuMemcpyDtoH(test 8-bit)");
+    const std::uint8_t expected[] = {
+        0, 255, 0, 128,
+        0, 255, 255, 0,
+        0, 255, 0, 255,
+    };
+    if (!std::equal(std::begin(result), std::end(result),
+                    std::begin(expected))) {
+      throw std::runtime_error("8-bit identity GBR CUDA pixel self-test failed");
+    }
+  } catch (...) {
+    resources.cuda->cuMemFree(device_destination);
+    resources.cuda->cuMemFree(device_source);
+    throw;
+  }
+  resources.cuda->cuMemFree(device_destination);
+  resources.cuda->cuMemFree(device_source);
+  std::cout << "identity_gbr8_pixel_self_test=pass\n";
 }
 
 NVFBC_RANDR_OUTPUT_INFO initialize_nvfbc(Resources& resources,
@@ -440,7 +533,8 @@ void initialize_nvenc(Resources& resources, std::uint32_t width,
                       std::uint32_t intra_refresh_period,
                       bool single_slice_intra_refresh,
                       std::uint32_t intra_refresh_count,
-                      std::uint32_t reference_frames) {
+                      std::uint32_t reference_frames, Codec codec,
+                      std::uint32_t bitrate, std::uint32_t vbv_bits) {
   if (nvenc_load_functions(&resources.nvenc_loader, nullptr) != 0) {
     throw std::runtime_error("NVENC loader initialization failed");
   }
@@ -462,50 +556,80 @@ void initialize_nvenc(Resources& resources, std::uint32_t width,
   NV_ENC_PRESET_CONFIG preset{};
   preset.version = NV_ENC_PRESET_CONFIG_VER;
   preset.presetCfg.version = NV_ENC_CONFIG_VER;
+  const GUID codec_guid = codec == Codec::kHevc10 ? NV_ENC_CODEC_HEVC_GUID
+                                                   : NV_ENC_CODEC_H264_GUID;
+  const NV_ENC_BUFFER_FORMAT buffer_format =
+      codec == Codec::kHevc10 ? NV_ENC_BUFFER_FORMAT_YUV444_10BIT
+                              : NV_ENC_BUFFER_FORMAT_YUV444;
   require_nvenc(resources.nvenc.nvEncGetEncodePresetConfigEx(
-                     resources.encoder, NV_ENC_CODEC_HEVC_GUID,
+                     resources.encoder, codec_guid,
                      NV_ENC_PRESET_P1_GUID, tuning,
                      &preset),
                  "nvEncGetEncodePresetConfigEx");
 
   NV_ENC_CONFIG config = preset.presetCfg;
   config.version = NV_ENC_CONFIG_VER;
-  config.profileGUID = NV_ENC_HEVC_PROFILE_FREXT_GUID;
+  config.profileGUID = codec == Codec::kHevc10
+                           ? NV_ENC_HEVC_PROFILE_FREXT_GUID
+                           : NV_ENC_H264_PROFILE_HIGH_444_GUID;
   config.gopLength = NVENC_INFINITE_GOPLENGTH;
   config.frameIntervalP = 1;
   config.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR;
-  config.rcParams.averageBitRate = kBitrate;
-  config.rcParams.maxBitRate = kBitrate;
-  config.rcParams.vbvBufferSize = kBitrate / frame_rate;
+  config.rcParams.averageBitRate = bitrate;
+  config.rcParams.maxBitRate = bitrate;
+  config.rcParams.vbvBufferSize = vbv_bits;
   config.rcParams.vbvInitialDelay = config.rcParams.vbvBufferSize;
   config.rcParams.enableLookahead = 0;
   config.rcParams.zeroReorderDelay = 1;
   config.rcParams.multiPass = NV_ENC_MULTI_PASS_DISABLED;
 
-  NV_ENC_CONFIG_HEVC& hevc = config.encodeCodecConfig.hevcConfig;
-  hevc.chromaFormatIDC = 3;
-  hevc.inputBitDepth = NV_ENC_BIT_DEPTH_10;
-  hevc.outputBitDepth = NV_ENC_BIT_DEPTH_10;
-  hevc.idrPeriod = NVENC_INFINITE_GOPLENGTH;
-  hevc.enableIntraRefresh = intra_refresh_count > 0 ? 1U : 0U;
-  hevc.intraRefreshPeriod = intra_refresh_period;
-  hevc.intraRefreshCnt = intra_refresh_count;
-  hevc.singleSliceIntraRefresh =
-      intra_refresh_count > 0 && single_slice_intra_refresh ? 1U : 0U;
-  hevc.maxNumRefFramesInDPB = reference_frames;
-  hevc.repeatSPSPPS = 1;
-  hevc.hevcVUIParameters.videoSignalTypePresentFlag = 1;
-  hevc.hevcVUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_COMPONENT;
-  hevc.hevcVUIParameters.videoFullRangeFlag = 1;
-  hevc.hevcVUIParameters.colourDescriptionPresentFlag = 1;
-  hevc.hevcVUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
-  hevc.hevcVUIParameters.transferCharacteristics =
-      NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
-  hevc.hevcVUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_RGB;
+  if (codec == Codec::kHevc10) {
+    NV_ENC_CONFIG_HEVC& hevc = config.encodeCodecConfig.hevcConfig;
+    hevc.chromaFormatIDC = 3;
+    hevc.inputBitDepth = NV_ENC_BIT_DEPTH_10;
+    hevc.outputBitDepth = NV_ENC_BIT_DEPTH_10;
+    hevc.idrPeriod = NVENC_INFINITE_GOPLENGTH;
+    hevc.enableIntraRefresh = intra_refresh_count > 0 ? 1U : 0U;
+    hevc.intraRefreshPeriod = intra_refresh_period;
+    hevc.intraRefreshCnt = intra_refresh_count;
+    hevc.singleSliceIntraRefresh =
+        intra_refresh_count > 0 && single_slice_intra_refresh ? 1U : 0U;
+    hevc.maxNumRefFramesInDPB = reference_frames;
+    hevc.repeatSPSPPS = 1;
+    hevc.hevcVUIParameters.videoSignalTypePresentFlag = 1;
+    hevc.hevcVUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_COMPONENT;
+    hevc.hevcVUIParameters.videoFullRangeFlag = 1;
+    hevc.hevcVUIParameters.colourDescriptionPresentFlag = 1;
+    hevc.hevcVUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
+    hevc.hevcVUIParameters.transferCharacteristics =
+        NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
+    hevc.hevcVUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_RGB;
+  } else {
+    NV_ENC_CONFIG_H264& h264 = config.encodeCodecConfig.h264Config;
+    h264.chromaFormatIDC = 3;
+    h264.inputBitDepth = NV_ENC_BIT_DEPTH_8;
+    h264.outputBitDepth = NV_ENC_BIT_DEPTH_8;
+    h264.idrPeriod = NVENC_INFINITE_GOPLENGTH;
+    h264.enableIntraRefresh = intra_refresh_count > 0 ? 1U : 0U;
+    h264.intraRefreshPeriod = intra_refresh_period;
+    h264.intraRefreshCnt = intra_refresh_count;
+    h264.singleSliceIntraRefresh =
+        intra_refresh_count > 0 && single_slice_intra_refresh ? 1U : 0U;
+    h264.maxNumRefFrames = reference_frames;
+    h264.repeatSPSPPS = 1;
+    h264.h264VUIParameters.videoSignalTypePresentFlag = 1;
+    h264.h264VUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_COMPONENT;
+    h264.h264VUIParameters.videoFullRangeFlag = 1;
+    h264.h264VUIParameters.colourDescriptionPresentFlag = 1;
+    h264.h264VUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
+    h264.h264VUIParameters.transferCharacteristics =
+        NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
+    h264.h264VUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_RGB;
+  }
 
   NV_ENC_INITIALIZE_PARAMS initialize{};
   initialize.version = NV_ENC_INITIALIZE_PARAMS_VER;
-  initialize.encodeGUID = NV_ENC_CODEC_HEVC_GUID;
+  initialize.encodeGUID = codec_guid;
   initialize.presetGUID = NV_ENC_PRESET_P1_GUID;
   initialize.encodeWidth = width;
   initialize.encodeHeight = height;
@@ -527,7 +651,9 @@ void initialize_nvenc(Resources& resources, std::uint32_t width,
     require_cuda(resources.cuda,
                  resources.cuda->cuMemAllocPitch(
                      &slot.surface, &slot.pitch,
-                     static_cast<std::size_t>(width) * sizeof(std::uint16_t),
+                     static_cast<std::size_t>(width) *
+                         (codec == Codec::kHevc10 ? sizeof(std::uint16_t)
+                                                  : sizeof(std::uint8_t)),
                      static_cast<std::size_t>(height) * 3U, 16),
                  "cuMemAllocPitch(encoder surface)");
 
@@ -539,7 +665,7 @@ void initialize_nvenc(Resources& resources, std::uint32_t width,
     registration.width = width;
     registration.height = height;
     registration.pitch = static_cast<std::uint32_t>(slot.pitch);
-    registration.bufferFormat = NV_ENC_BUFFER_FORMAT_YUV444_10BIT;
+    registration.bufferFormat = buffer_format;
     registration.bufferUsage = NV_ENC_INPUT_IMAGE;
     require_nvenc(resources.nvenc.nvEncRegisterResource(resources.encoder,
                                                          &registration),
@@ -584,6 +710,11 @@ int main(int argc, char** argv) {
   bool single_slice_intra_refresh = true;
   bool require_changing_source = false;
   bool require_robustness = false;
+  bool unpaced = false;
+  Codec codec = Codec::kHevc10;
+  std::string codec_name = "hevc-10bit-444";
+  std::uint32_t bitrate = kDefaultBitrate;
+  std::uint32_t vbv_bits = kDefaultVbvBits;
   std::string output_name = "DP-2";
   std::string bitstream_path = "stationconnect-identity-gbr.hevc";
   std::string reference_bitstream_path;
@@ -602,6 +733,44 @@ int main(int argc, char** argv) {
     }
     if (argument == "--require-robustness") {
       require_robustness = true;
+      continue;
+    }
+    if (argument == "--unpaced") {
+      unpaced = true;
+      continue;
+    }
+    if (argument == "--codec" && index + 1 < argc) {
+      codec_name = argv[++index];
+      if (codec_name == "hevc-10bit-444") {
+        codec = Codec::kHevc10;
+      } else if (codec_name == "h264-8bit-444") {
+        codec = Codec::kH264EightBit;
+      } else {
+        std::cerr << "codec must be hevc-10bit-444 or h264-8bit-444\n";
+        return 2;
+      }
+      continue;
+    }
+    if ((argument == "--bitrate-mbps" || argument == "--vbv-kbits") &&
+        index + 1 < argc) {
+      unsigned long value = 0;
+      try {
+        value = std::stoul(argv[++index]);
+      } catch (const std::exception&) {
+        std::cerr << "invalid rate-control argument\n";
+        return 2;
+      }
+      const unsigned long maximum =
+          argument == "--bitrate-mbps" ? 4000UL : 1'000'000UL;
+      if (value == 0 || value > maximum) {
+        std::cerr << "rate-control argument is outside the supported range\n";
+        return 2;
+      }
+      if (argument == "--bitrate-mbps") {
+        bitrate = static_cast<std::uint32_t>(value * 1'000'000UL);
+      } else {
+        vbv_bits = static_cast<std::uint32_t>(value * 1000UL);
+      }
       continue;
     }
     if (argument == "--no-reference-invalidation") {
@@ -735,6 +904,8 @@ int main(int argc, char** argv) {
                  " [--force-idr-frame FRAME] [--reference-frames COUNT]"
                  " [--no-reference-invalidation]"
                  " [--tuning low-latency|ultra-low-latency]"
+                 " [--codec hevc-10bit-444|h264-8bit-444]"
+                 " [--bitrate-mbps RATE] [--vbv-kbits SIZE] [--unpaced]"
                  " [--require-robustness] [--self-test]\n";
     return 2;
   }
@@ -791,7 +962,7 @@ int main(int argc, char** argv) {
                      static_cast<std::uint32_t>(intra_refresh_period),
                      single_slice_intra_refresh,
                      static_cast<std::uint32_t>(intra_refresh_count),
-                     reference_frames);
+                     reference_frames, codec, bitrate, vbv_bits);
 
     std::ofstream bitstream_file(bitstream_path,
                                  std::ios::binary | std::ios::trunc);
@@ -961,7 +1132,9 @@ int main(int argc, char** argv) {
 
     try {
       for (unsigned int frame = 0; frame < frame_count; ++frame) {
-        std::this_thread::sleep_until(run_started + frame_period * frame);
+        if (!unpaced) {
+          std::this_thread::sleep_until(run_started + frame_period * frame);
+        }
         const auto pipeline_started = Clock::now();
         const unsigned int frame_id = frame + 1;
         const unsigned int slot_index = frame % resources.encode_slots.size();
@@ -1007,7 +1180,8 @@ int main(int argc, char** argv) {
             static_cast<CUdeviceptr>(
                 reinterpret_cast<std::uintptr_t>(captured_buffer)),
             slot.surface, width, height,
-            static_cast<std::uint64_t>(slot.pitch));
+            static_cast<std::uint64_t>(slot.pitch),
+            codec == Codec::kHevc10);
         const auto converted = Clock::now();
         pipeline_started_at[slot_index] = pipeline_started;
         converted_at[slot_index] = converted;
@@ -1025,7 +1199,9 @@ int main(int argc, char** argv) {
         NV_ENC_PIC_PARAMS picture{};
         picture.version = NV_ENC_PIC_PARAMS_VER;
         picture.inputBuffer = slot.mapped;
-        picture.bufferFmt = NV_ENC_BUFFER_FORMAT_YUV444_10BIT;
+        picture.bufferFmt = codec == Codec::kHevc10
+                                ? NV_ENC_BUFFER_FORMAT_YUV444_10BIT
+                                : NV_ENC_BUFFER_FORMAT_YUV444;
         picture.inputWidth = width;
         picture.inputHeight = height;
         picture.outputBitstream = slot.bitstream;
@@ -1127,6 +1303,20 @@ int main(int argc, char** argv) {
                                                 pipeline_us.end());
     const double frame_budget_us = 1'000'000.0 / frame_rate;
     const double frame_budget_headroom_us = frame_budget_us - pipeline_p95;
+    const unsigned int nvenc_completion_budget_misses =
+        static_cast<unsigned int>(std::count_if(
+            encode_us.begin(), encode_us.end(),
+            [frame_budget_us](std::int64_t value) {
+              return static_cast<double>(value) > frame_budget_us;
+            }));
+    const unsigned int capture_to_bitstream_budget_misses =
+        static_cast<unsigned int>(std::count_if(
+            pipeline_us.begin(), pipeline_us.end(),
+            [frame_budget_us](std::int64_t value) {
+              return static_cast<double>(value) > frame_budget_us;
+            }));
+    const double blocking_completion_capacity_fps =
+        1'000'000.0 / average(encode_us);
     const unsigned int allowed_deadline_misses =
         std::max(1U, frame_count / 100U);
     const bool source_activity_passed =
@@ -1161,8 +1351,10 @@ int main(int argc, char** argv) {
               << "source_precision=8\n"
               << "conversion=identity-gbr\n"
               << "identity_plane_mapping=Y:G,U:B,V:R\n"
-              << "encoder_format=YUV444_10BIT\n"
-              << "codec=hevc-frext-10bit-444\n"
+              << "encoder_format="
+              << (codec == Codec::kHevc10 ? "YUV444_10BIT" : "YUV444")
+              << '\n'
+              << "codec=" << codec_name << '\n'
               << "nvenc_tuning=" << tuning_name << '\n'
               << "split_encode_mode=" << split_mode_name << '\n'
               << "intra_refresh_period=" << intra_refresh_period << '\n'
@@ -1185,7 +1377,8 @@ int main(int argc, char** argv) {
               << "bitstream_frames_dropped=" << bitstream_frames_dropped
               << '\n'
               << "encoded_bytes=" << encoded_bytes << '\n'
-              << "configured_bitrate_mbps=" << kBitrate / 1'000'000U << '\n'
+              << "configured_bitrate_mbps=" << bitrate / 1'000'000U << '\n'
+              << "configured_vbv_kbits=" << vbv_bits / 1000U << '\n'
               << "observed_bitrate_mbps=" << observed_bitrate_mbps << '\n'
               << "queue_depth=" << queue_depth << '\n'
               << "nvenc_latency_scope="
@@ -1193,6 +1386,8 @@ int main(int argc, char** argv) {
               << '\n'
               << std::fixed << std::setprecision(2)
               << "target_fps=" << frame_rate << '\n'
+              << "input_pacing=" << (unpaced ? "unpaced" : "realtime")
+              << '\n'
               << "achieved_fps=" << achieved_fps << '\n'
               << "frame_budget_us=" << frame_budget_us << '\n'
               << "capture_us_average=" << average(capture_us) << '\n'
@@ -1207,6 +1402,19 @@ int main(int argc, char** argv) {
               << "pipeline_us_max=" << pipeline_max << '\n'
               << "frame_budget_headroom_us=" << frame_budget_headroom_us
               << '\n'
+              << "nvenc_completion_budget_misses="
+              << nvenc_completion_budget_misses << '\n'
+              << "nvenc_completion_budget_miss_percent="
+              << 100.0 * nvenc_completion_budget_misses / frame_count << '\n'
+              << "capture_to_bitstream_budget_misses="
+              << capture_to_bitstream_budget_misses << '\n'
+              << "capture_to_bitstream_budget_miss_percent="
+              << 100.0 * capture_to_bitstream_budget_misses / frame_count
+              << '\n'
+              << "blocking_completion_capacity_fps="
+              << blocking_completion_capacity_fps << '\n'
+              << "unpaced_pipeline_capacity_fps="
+              << (unpaced ? achieved_fps : 0.0) << '\n'
               << "deadline_misses=" << deadline_misses << '\n'
               << "bitstream=" << bitstream_path << '\n'
               << "reference_bitstream="

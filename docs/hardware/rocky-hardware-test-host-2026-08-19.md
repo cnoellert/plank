@@ -170,6 +170,65 @@ The animated test measures NvFBC capture-call latency. Its p95 value means 95%
 of calls completed in that time or less; it does not include CUDA color
 conversion, NVENC, transport, client decode, or presentation.
 
+## Software Encoder Qualification
+
+A current isolated toolchain was built under the ignored `build/third-party/`
+tree: FFmpeg 9.0.1, x264 `0480cb05fa18`, and x265 4.2
+`e444744c0397`. Tests used the fullscreen 3,583-frame Flame sequence at
+3840x2160x60, the `ultrafast` preset, no B-frames or lookahead, GOP 60, and a
+100 Mbps CBR/2 Mbit VBV. Ten-bit results remain 8-bit NvFBC source
+up-converted. X11grab is not usable because FFmpeg 9.0.1 does not implement the
+active depth-30 X11 root format.
+
+| Software path | Result |
+|---|---|
+| x264rgb native 8-bit RGB 4:4:4 | 9,000 moving frames supplied at 60.00 fps; 150.195 s encoder wall time; 100.017 Mbps. |
+| x264 8-bit 4:4:4, CUDA GBR identity | 9,000 moving frames supplied at 60.00 fps; 150.252 s encoder wall time; 100.015 Mbps. |
+| x264 10-bit 4:4:4, CUDA GBR8 identity plus CPU depth expansion | 9,000 moving frames supplied at 60.00 fps; 150.241 s encoder wall time; 100.011 Mbps. |
+| x264 10-bit 4:4:4, CUDA GBR10 identity and direct planar readback | Failed at 45.75 fps because the 16-bit planar carrier is 49.77 MB/frame. |
+| x265 8-bit 4:4:4 | Failed at 37.32 fps. |
+| x265 10-bit 4:2:2 | Failed at 33.78 fps. |
+| x265 10-bit 4:4:4 | Failed at 31.16 fps. |
+
+The x264 identity streams were independently parsed as High 4:4:4 Predictive
+`gbrp`/`gbrp10le`, full range, GBR matrix, with the requested 8/10-bit depth.
+The native `libx264rgb` stream was likewise parsed as High 4:4:4 Predictive
+8-bit `gbrp`, full range, GBR matrix. This encoder accepts only 8-bit
+`bgr0`/`bgr24`/`rgb24`; it has no native 10-bit RGB input mode.
+CUDA identity conversion reduced the 8-bit host transfer from 33.18 to 24.88
+MB/frame and cut FFmpeg user CPU time by about 27% in the controlled 10-second
+comparison. Across the long run, native x264rgb used 540.2 user CPU-seconds
+versus 471.8 for CUDA identity, about 14% more, while wall-clock throughput was
+equivalent. Native RGB is simpler, but CUDA identity transfers less data and
+uses less CPU. Two, four, and eight x265 frame threads did not reach 60 fps;
+the best observed result was 56.89 fps and added multiple frames of latency.
+
+Direct blocking `x264_encoder_encode()` instrumentation corrected the earlier
+throughput-only conclusion:
+
+| Direct path | Completion latency and capacity |
+|---|---|
+| x264rgb native 8-bit RGB | 140.36 fps on a preloaded moving sample; 8.60 ms p95, 9.33 ms p99, 11.59 ms maximum; 0/600 calls over 16.67 ms. |
+| x264 8-bit GBR identity | 178.16 fps; 6.86 ms p95, 7.44 ms p99, 10.92 ms maximum; 0/600 calls over budget. |
+| x264 10-bit GBR identity | 107.44 fps including startup; after a 60-frame warmup, 10.57 ms p95, 11.40 ms p99, 14.21 ms maximum; 0/540 steady-state calls over budget. The first call was a repeatable allocation outlier, so production must warm the encoder before publishing the stream. |
+| NVENC H.264 8-bit GBR identity, blocking | 104.66 fps in an unpaced pipeline sample. The accepted 9,000-frame loop measured 17.47 ms completion p95 and 17.82 ms p99. A separate 600-frame run put 96/600 completions and 116/600 capture-to-bitstream intervals over budget. |
+| NVENC H.264, bounded one-frame async | Did not reduce availability latency: paced completion p95 was 17.47 ms and capture-to-bitstream p95 was 17.87 ms. |
+
+The H.264 NVENC result is a tail-latency failure despite low reported encoder
+utilization: average capacity exceeds 60 fps, but blocking completion is
+bimodal near 7 and 17 ms. Native x264rgb is the strongest 8-bit RGB result on
+this workstation, but it cannot produce the required 10-bit stream. The
+10-bit x264 identity path is now the leading CPU candidate after warmup,
+subject to a full-loop integrated implementation test.
+
+Sunshine's software backend currently selects `libx264`, converts captured
+`BGR0` through swscale, and supplies `YUV444P`; it does not select
+`libx264rgb` or pass native RGB directly. A native-RGB mode therefore requires
+an explicit encoder selection and conversion-bypass change rather than a
+configuration switch. NVENC HEVC remains the qualified hardware baseline: its
+moving-content full-loop run had zero deadline misses, 14.645 ms p95, 15.041
+ms p99, and measured frame-budget headroom.
+
 The timestamp-qualified NvFBC probe measured display-render-to-capture-return
 age at 8.033 ms average, 15.432 ms p95, and 16.676 ms maximum over 600 frames.
 Sunshine now preserves that timestamp through CUDA conversion and NVENC for new
