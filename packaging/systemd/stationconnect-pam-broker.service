@@ -13,6 +13,8 @@ RuntimeDirectoryMode=0750
 UMask=0077
 Restart=on-failure
 RestartSec=1s
+KillMode=control-group
+TasksMax=40
 
 NoNewPrivileges=yes
 PrivateDevices=yes

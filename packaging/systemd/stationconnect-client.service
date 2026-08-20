@@ -1,0 +1,14 @@
+[Unit]
+Description=StationConnect client
+After=graphical-session.target network-online.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/.config/stationconnect/client.env
+ExecStart=/usr/bin/stationconnect-client
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=graphical-session.target
