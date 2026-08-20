@@ -173,6 +173,20 @@ startup rather than sustained network, decode, or content load. The next client
 experiment should adjust or explicitly gate startup priming; scheduling
 privilege is not justified.
 
+Moonlight commit `c71591a0` implements the resulting startup fix by seeding the
+render-queue history with its known empty initial state. This gives the first
+500 ms the same bounded grace period used after a queue drains, instead of
+selecting an immediate target depth of zero. The commit built successfully on
+the dedicated NUC. Its first validation attempt was invalidated when the client
+network fell to 2.82 fps with 96.60% packet loss; that run was discarded. After
+the NUC was moved to its 1 Gb/s USB Ethernet path, 20 pings to the host had zero
+loss and 1.576 ms average RTT. All five fresh 35-second connections then passed
+with zero network loss and exact pacer totals of `0/0/0`; queue delay remained
+between 0.52 and 0.72 ms. A subsequent full-loop run received, decoded, and
+rendered 60.00 fps with `0/0/0` drops, 0.33 ms decode, 0.63 ms queueing, and
+4.65 ms rendering. The bounded startup grace therefore removes the reproduced
+discard without adding persistent queue depth.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
