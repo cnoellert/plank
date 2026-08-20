@@ -151,6 +151,17 @@ restored to 0 and the binary retained no file capabilities. Do not grant
 Moonlight extra scheduling privilege for this result; instrument pacer-drop
 timestamps against Wayland presentation feedback instead.
 
+Moonlight commit `46869740` adds that instrumentation and exact counters for
+pacing catch-up, render catch-up, and queue overflow. It also closes an
+observability gap where overflow frames were freed without being included in
+the aggregate. The rebuilt, unprivileged client then completed two consecutive
+full-loop runs at 60.00 fps received, decoded, and rendered, with 0.00% network
+loss and exact pacer totals of `0/0/0`. Decode averaged 0.34-0.35 ms, queueing
+0.73-0.76 ms, and rendering 4.71-4.78 ms. No drop event occurred to classify,
+so retain the earlier repeatable 0.04% results and keep the long-session pacing
+gate open until the instrumented client captures a recurrence or a broader soak
+establishes the new result as stable.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
