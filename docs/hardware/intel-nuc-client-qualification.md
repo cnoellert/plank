@@ -222,6 +222,20 @@ fps for input, decode, and render, with 0.00% network and jitter drops, pacer
 totals of `0/0/0`, and 29.1 ms host-processing p95. This closes the explicit
 source-precision labeling gate for the identity GBR baseline.
 
+The integrated H.264 identity implementation was matched on 2026-08-20 with
+the fullscreen Flame loop and software decoding on this NUC. The 10-bit
+`gbrp10le` stream reported `8-bit-source/up-converted -> 10-bit H.264 4:4:4 ->
+10-bit RGB identity presentation`; it received/decoded 59.97 fps, rendered
+59.96 fps, averaged 6.29 ms decode, and recorded 0.03% jitter loss plus pacer
+totals `0/3/0`. Native 8-bit x264rgb reported the corresponding native source
+stages, the same frame rates, 4.93 ms decode, 0.02% jitter loss, and pacer totals
+`0/2/0`. The 59.97 fps input rate exactly matches the host DP-2 physical mode
+(59.973 Hz), while this NUC output is 60.000 Hz. Encoder/transport throughput
+therefore reaches full source cadence, but the catch-up drops leave the strict
+zero-drop gate open. H.264 High 4:4:4 10-bit and native RGB decoding currently
+use FFmpeg software decode; the Intel Vulkan hardware negotiation attempt falls
+back to `gbrp10le` or `gbrp` as expected.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and

@@ -218,8 +218,34 @@ The H.264 NVENC result is a tail-latency failure despite low reported encoder
 utilization: average capacity exceeds 60 fps, but blocking completion is
 bimodal near 7 and 17 ms. Native x264rgb is the strongest 8-bit RGB result on
 this workstation, but it cannot produce the required 10-bit stream. The
-10-bit x264 identity path is now the leading CPU candidate after warmup,
-subject to a full-loop integrated implementation test.
+10-bit x264 identity path is now the leading CPU candidate after warmup.
+
+### Integrated x264 identity comparison
+
+The Sunshine/Moonlight implementation was exercised on 2026-08-20 for 190
+seconds per mode against the fullscreen Flame loop. Sunshine used NvFBC,
+`software-cuda`, `ultrafast`/`zerolatency`, 33 x264 threads, and a 100 Mbps
+client request. The process and all existing worker threads had to be expanded
+from the desktop session's inherited eight-CPU affinity to CPUs 0-127; results
+without that correction are invalid for capacity qualification.
+
+| Integrated path | Client result |
+|---|---|
+| x264 10-bit GBR identity, eight-worker exact depth expansion | 59.97 fps received/decoded and 59.96 rendered; 36.2 ms host-processing p95; 6.29 ms decode; 0.00% network loss, 0.03% jitter loss, pacer `0/3/0`. |
+| x264rgb native 8-bit RGB | 59.97 fps received/decoded and 59.96 rendered; 31.9 ms host-processing p95; 4.93 ms decode; 0.00% network loss, 0.02% jitter loss, pacer `0/2/0`. |
+
+The eight-worker exact 8-to-10-bit expansion improved the earlier integrated
+10-bit result from 59.66/59.61 fps received/rendered and 42.2 ms
+host-processing p95. DP-2's active physical timing is 59.973 Hz (533.250 MHz,
+4000-by-2223 totals), so 59.97 fps received and decoded is full source-monitor
+cadence and closes the encoder-throughput portion of the 60 fps gate. The NUC
+output is 60.000 Hz. Rendering was 59.96 fps because both modes recorded client
+catch-up drops, so the strict zero-drop portion remains open. Host processing
+starts at the NvFBC display-render timestamp and ends at packetization; it is
+not x264 encode-completion latency. The direct per-call completion and
+maximum-capacity figures remain the values in the table above. Raw client logs
+are retained under the ignored
+`artifacts/qualification/video/software-x264-2026-08-20/` directory.
 
 Sunshine's software backend currently selects `libx264`, converts captured
 `BGR0` through swscale, and supplies `YUV444P`; it does not select

@@ -4,3 +4,4 @@
 /artifacts/qualification/video/*.h264
 /artifacts/qualification/video/*.raw
 /artifacts/qualification/video/*.metrics.txt
+/artifacts/qualification/video/**/*.metrics.txt
