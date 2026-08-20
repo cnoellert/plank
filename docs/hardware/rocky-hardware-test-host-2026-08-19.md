@@ -43,6 +43,7 @@
 | Generic UHID transport | Pass | A temporary generic mouse receives `UHID_START` and binds through the host kernel. |
 | Wacom UHID binding | Blocked by target kernel | Both PTH-851 (`0317`) and PTH-660 (`0357`) descriptors fail before `UHID_START` on Rocky 9.7. The same descriptors bind through UHID on the NUC's 7.0 kernel, so descriptor generation and feature replies are not the first blocker. |
 | Normalized uinput tablet | Pass for core pen | Sunshine's existing libvirtualhid backend is recognized by Rocky libinput as `tablet`; its consumer test passes with event-node access. Pressure, distance, tilt, eraser, and three stylus buttons are represented. Pad controls, tool serials, barrel rotation, tangential pressure, and multitouch are not yet represented. |
+| Live NUC-to-host core pen | Pass | A physical PTH-660 attached to the NUC traversed Moonlight's ordered pen channel and appeared on Rocky as `libvirtualhid Pen Tablet`. A live sample delivered 1,845 libinput events, including proximity, absolute position, distance, pressure tip transitions, and two-axis tilt. |
 | PAM/SSSD account policy | Pass | Root and `gdm` are rejected; authorized SSSD accounts `operator` and `testartist` pass account management. |
 | PAM password/session conversation | Pending | Requires secure interactive tests for valid and invalid credentials. |
 
@@ -83,6 +84,16 @@ when run with permission to read the generated event node. A non-root run
 could create the device through world-writable `/dev/uinput` but could not read
 the root:`input` event node; production packaging must grant only the required
 helper access rather than broad input-device access.
+
+The first physical end-to-end run on 2026-08-20 used a PTH-660 attached to the
+NUC. The client udev rule granted the active session access to only the pen
+node (`event15`); pad and touch remained inaccessible. Moonlight grabbed that
+node while focused and Sunshine exposed `libvirtualhid Pen Tablet` as a Rocky
+libinput tablet. A 10.3-second active sample produced 1,845 events with
+proximity in/out, absolute motion, distance, pressure tip up/down, and tilt.
+The run also uncovered a shifted aggregate initializer that left Sunshine's
+`native_pen_touch` default false. The initializer and a default-value
+regression test now keep native pen negotiation enabled.
 
 This normalized path is not yet equivalent to the plan's full raw-HID Wacom
 gate. Retain USB/IP as a compatibility experiment and raw HID/UHID for hosts

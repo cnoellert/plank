@@ -90,6 +90,18 @@ These are accelerated-throughput results, not per-frame latency percentiles.
 They average 4.45 and 4.22 ms per frame respectively, leaving ample throughput
 capacity for 60 Hz.
 
+### Physical Wacom core-pen result — 2026-08-20
+
+A USB PTH-660 (`056a:0357`) exposed separate pen, pad, and touch nodes. The
+StationConnect udev rule granted the active desktop session access only to the
+pen node. During a focused stream, the Moonlight client opened and exclusively
+grabbed that node, normalized libinput tablet-tool events, and sent them over
+the existing ordered pen protocol. The Rocky host received proximity,
+position, distance, pressure tip transitions, and two-axis tilt through its
+uinput tablet. Disconnect released the client device. This passes the core-pen
+transport gate; ExpressKeys, ring, multitouch, tool serials, barrel rotation,
+and tangential pressure remain outside this baseline.
+
 FFmpeg 8.0.1 identifies the correctly signaled stream as `gbrp10le` and silently
 falls back to software even when VA hardware frames are requested. Earlier
 FFmpeg measurements of 95.78 and 109.52 fps are therefore invalidated. Do not
