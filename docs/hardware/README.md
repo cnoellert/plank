@@ -121,3 +121,12 @@ sudo ./build/qualification/connect-probe-uhid --product 0357 \
   /sys/class/hidraw/hidraw4/device/report_descriptor \
   /sys/class/hidraw/hidraw6/device/report_descriptor
 ```
+
+For the normalized Rocky fallback, install
+`packaging/udev/70-stationconnect-wacom.rules` on the Ubuntu client and reload
+udev before attaching the tablet. The rule grants the active local session
+access only to Wacom pen-tool event nodes; it deliberately excludes tablet-pad
+and touch interfaces until their protocol support exists. Moonlight grabs the
+pen node while its stream window has focus, sends pressure, distance, tilt,
+eraser, and stylus-button events through the existing ordered pen channel, and
+releases the node on focus loss or disconnect.
