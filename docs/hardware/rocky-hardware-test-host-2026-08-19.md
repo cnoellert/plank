@@ -30,7 +30,7 @@
 | NVENC 8 ms component target | Fail, non-blocking | NVENC completion p95 was 14.328 ms on the full loop. Its blocking bitstream-lock wait was 14.249 ms p95, while mapping, submission, and output-worker dispatch totaled under 0.1 ms at p95. The tail is inside NVIDIA's encode/completion path. |
 | HEVC 10-bit 4:2:2 encode | Unsupported | Live capability query returns `caps_yuv422_encode=0`; NVIDIA added HEVC 4:2:2 encode after the Turing/Ampere/Ada fleet. |
 | Intra-refresh latency matrix | Pass; retain 60/30 single-slice | Seven full-loop profiles covered refresh disabled and counts 30/45/59 with single- and multi-slice refresh. Pipeline p95 ranged only from 14.404 to 14.620 ms; disabling refresh gained just 0.108 ms over baseline. Every stream decoded all 9,000 frames. |
-| Controlled-loss recovery continuity | Pass; pixel/FEC gate pending | Separate 600-frame real-content runs dropped access unit 180. Reference invalidation accepted timestamp 180 two frames later; the emergency path forced an IDR with VPS/SPS/PPS at frame 182. Both wrote exactly 599 pictures, retained the host robustness gate, and decoded all 599 pictures through Intel VA-API. |
+| Controlled-loss recovery continuity | Pass | Separate 600-frame real-content runs dropped access unit 180. Reference invalidation accepted timestamp 180 two frames later; the emergency path forced an IDR with VPS/SPS/PPS at frame 182. Both wrote exactly 599 pictures, retained the host robustness gate, and decoded all 599 pictures through Intel VA-API. Against a synchronized no-loss stream, Intel-decoded Y410 pixels matched before the loss, differed only at source frame 181, and regained permanent identity at frame 182. Live transport FEC separately recovered 5% random loss with 20% FEC and 10% random loss with 30% FEC. |
 | DRM KMS API enablement | Pass | After reboot, `nvidia_drm.modeset=Y`; atomic modesetting and universal planes are exposed. |
 | Active KMS scanout enumeration | Fail | All four DRM CRTCs and twelve planes report framebuffer ID 0 while NVIDIA Xorg drives two displays. |
 | XR30/AR30 framebuffer and DMA-BUF export | Blocked | The NVIDIA Xorg session exposes no active scanout framebuffer through DRM KMS. |
@@ -183,10 +183,10 @@ refresh interval does not imply a 60 Hz throughput miss.
 2. Integrate the qualified Intel decode, identity, and presentation path into
    the client and measure network-to-photon latency with shared timestamps.
 3. Continue tuning toward the optional NVENC component p95 target of 8 ms.
-4. Compare reference-invalidation healing with a synchronized no-loss pixel
-   reference. Live transport FEC passes 5% random loss with 20% FEC and 10%
-   random loss with the 30% high-loss profile; debug validation also proved
-   9,992 reconstructed real-content shards byte-identical to their originals.
+
+Reference-invalidation pixel healing and live transport FEC now pass. Debug
+validation also proved 9,992 reconstructed real-content shards byte-identical
+to their originals.
 
 ## End-of-Day Handoff
 

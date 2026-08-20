@@ -40,6 +40,10 @@ CONNECT_ALLOW_DISPLAY_STOP=yes \
   ./scripts/run-intel-client-kms-qualification.sh \
   artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc \
   300 16000 /dev/dri/card1
+
+./scripts/probe-intel-recovery-pixels.sh \
+  stationconnect-recovery-ref-invalidate-reference.hevc \
+  stationconnect-recovery-ref-invalidate.hevc 180 600 120
 ```
 
 The script fails unless VA-API exposes `VAProfileHEVCMain444_10` with the VLD
@@ -351,15 +355,31 @@ zero deadline misses and passed the capture-to-bitstream p99 robustness gate.
 The NUC decoded all 599 remaining pictures through `vah265dec` to Y410 VA
 surfaces. Reference invalidation reached 244.99 fps and forced IDR reached
 245.79 fps. This proves exact loss injection, recovery action, bitstream
-structure, and Intel hardware-decoder continuity. It does not yet prove the
-first clean pixel after invalidation: close that gate with a synchronized
-no-loss reference and decoded-pixel comparison when transport/FEC is available.
+structure, and Intel hardware-decoder continuity.
+
+The invalidation vector was then compared against its synchronized 600-frame
+no-loss vector after Intel hardware decode and Y410 download. All 179 frames
+before the omission were SHA-256 identical. Only source frame 181 differed
+after access unit 180 was omitted; exact decoded-pixel identity resumed
+permanently at source frame 182. The measured two-frame healing interval passes
+the 120-frame bound and proves that invalidation removes persistent decoder
+corruption, not merely that decoding continues.
+
+```text
+reference_sha256=5685110f93444b94a6e9b853e20551ef3434a56595665a78e331fbfae823d019
+invalidation_sha256=1532bf8b3e53b6793f55ef13218feb11ddbd1a7bc173056db7d1cb648545e4d9
+forced_idr_sha256=3c5adf5295c08b0bbe33b4b23f47bcf1111b3a00bf71e6b8be7afb1e8a5a4026
+```
 
 ```bash
 ./scripts/probe-intel-recovery-decode.sh \
   stationconnect-recovery-ref-invalidate.hevc \
   stationconnect-recovery-forced-idr.hevc \
   599 181
+
+./scripts/probe-intel-recovery-pixels.sh \
+  stationconnect-recovery-ref-invalidate-reference.hevc \
+  stationconnect-recovery-ref-invalidate.hevc 180 600 120
 ```
 
 ## Live Transport FEC

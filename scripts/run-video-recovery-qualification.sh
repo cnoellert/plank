@@ -66,11 +66,13 @@ common=(
 )
 
 invalidate_stream="${output_dir}/stationconnect-recovery-ref-invalidate.hevc"
+invalidate_reference_stream="${output_dir}/stationconnect-recovery-ref-invalidate-reference.hevc"
 invalidate_log="${scratch_dir}/invalidate.log"
 sudo -n -u "${x11_user}" env DISPLAY="${x11_display}" \
   XAUTHORITY="${x11_authority}" XDG_RUNTIME_DIR="/run/user/${x11_uid}" \
   "${build_dir}/connect-probe-video-pipeline" "${common[@]}" \
   --invalidate-delay-frames 2 --reference-frames 4 \
+  --reference-bitstream "${invalidate_reference_stream}" \
   --bitstream "${invalidate_stream}" | tee "${invalidate_log}"
 rg -q '^bitstream_loss_injection_gate=pass$' "${invalidate_log}"
 rg -q '^reference_invalidation_gate=pass$' "${invalidate_log}"
@@ -98,7 +100,16 @@ for stream in "${invalidate_stream}" "${idr_stream}"; do
   sha256sum "${stream}"
 done
 
+reference_packets=$(ffprobe -v error -count_packets -select_streams v:0 \
+  -show_entries stream=nb_read_packets -of csv=p=0 \
+  "${invalidate_reference_stream}")
+if [[ ${reference_packets} != "${frame_count}" ]]; then
+  echo "reference bitstream packet count mismatch: expected ${frame_count}, got ${reference_packets}" >&2
+  exit 1
+fi
+sha256sum "${invalidate_reference_stream}"
+
 echo "recovery_stream_frames=${expected_packets}"
 echo "reference_invalidation_host_gate=pass"
 echo "forced_idr_host_gate=pass"
-echo "run the Intel VA-API decode gate on both streams before qualification"
+echo "run the Intel VA-API decode and reference-pixel gates before qualification"

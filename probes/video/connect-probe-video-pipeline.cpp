@@ -586,6 +586,7 @@ int main(int argc, char** argv) {
   bool require_robustness = false;
   std::string output_name = "DP-2";
   std::string bitstream_path = "stationconnect-identity-gbr.hevc";
+  std::string reference_bitstream_path;
   NV_ENC_SPLIT_ENCODE_MODE split_mode = NV_ENC_SPLIT_AUTO_MODE;
   std::string split_mode_name = "auto";
   NV_ENC_TUNING_INFO tuning = NV_ENC_TUNING_INFO_LOW_LATENCY;
@@ -684,12 +685,15 @@ int main(int argc, char** argv) {
       }
       continue;
     }
-    if ((argument == "--output" || argument == "--bitstream") &&
+    if ((argument == "--output" || argument == "--bitstream" ||
+         argument == "--reference-bitstream") &&
         index + 1 < argc) {
       if (argument == "--output") {
         output_name = argv[++index];
-      } else {
+      } else if (argument == "--bitstream") {
         bitstream_path = argv[++index];
+      } else {
+        reference_bitstream_path = argv[++index];
       }
       continue;
     }
@@ -721,7 +725,8 @@ int main(int argc, char** argv) {
     }
     std::cerr << "usage: " << argv[0]
               << " [--output NAME] [--frames COUNT] [--fps RATE]"
-                 " [--bitstream PATH] [--split MODE] [--require-changing]"
+                 " [--bitstream PATH] [--reference-bitstream PATH]"
+                 " [--split MODE] [--require-changing]"
                  " [--queue-depth 0|1] [--intra-refresh-count COUNT]"
                  " [--intra-refresh-period PERIOD]"
                  " [--single-slice-intra-refresh 0|1]"
@@ -768,6 +773,11 @@ int main(int argc, char** argv) {
     std::cerr << "threaded recovery requires at least two feedback frames\n";
     return 2;
   }
+  if (!reference_bitstream_path.empty() &&
+      reference_bitstream_path == bitstream_path) {
+    std::cerr << "reference and loss bitstream paths must differ\n";
+    return 2;
+  }
 
   try {
     Resources resources;
@@ -788,6 +798,15 @@ int main(int argc, char** argv) {
     if (!bitstream_file) {
       throw std::runtime_error("unable to open bitstream output: " +
                                bitstream_path);
+    }
+    std::ofstream reference_bitstream_file;
+    if (!reference_bitstream_path.empty()) {
+      reference_bitstream_file.open(reference_bitstream_path,
+                                    std::ios::binary | std::ios::trunc);
+      if (!reference_bitstream_file) {
+        throw std::runtime_error("unable to open reference bitstream output: " +
+                                 reference_bitstream_path);
+      }
     }
 
     using Clock = std::chrono::steady_clock;
@@ -839,6 +858,14 @@ int main(int argc, char** argv) {
                     "nvEncLockBitstream");
       slot.bitstream_locked = true;
       const auto encoded = Clock::now();
+      if (reference_bitstream_file.is_open()) {
+        reference_bitstream_file.write(
+            static_cast<const char*>(lock.bitstreamBufferPtr),
+            static_cast<std::streamsize>(lock.bitstreamSizeInBytes));
+        if (!reference_bitstream_file) {
+          throw std::runtime_error("reference bitstream write failed");
+        }
+      }
       if (simulate_loss_frame != 0 &&
           lock.outputTimeStamp == simulate_loss_frame) {
         ++bitstream_frames_dropped;
@@ -1084,6 +1111,7 @@ int main(int argc, char** argv) {
     require_nvenc(resources.nvenc.nvEncEncodePicture(resources.encoder, &eos),
                    "nvEncEncodePicture(EOS)");
     bitstream_file.close();
+    reference_bitstream_file.close();
 
     const double elapsed_seconds =
         std::chrono::duration<double>(Clock::now() - run_started).count();
@@ -1181,6 +1209,11 @@ int main(int argc, char** argv) {
               << '\n'
               << "deadline_misses=" << deadline_misses << '\n'
               << "bitstream=" << bitstream_path << '\n'
+              << "reference_bitstream="
+              << (reference_bitstream_path.empty()
+                      ? "not-requested"
+                      : reference_bitstream_path)
+              << '\n'
               << "source_activity_gate="
               << (source_activity_passed ? "pass" : "fail") << '\n'
               << "capture_conversion_3ms_target="

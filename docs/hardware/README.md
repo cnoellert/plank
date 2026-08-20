@@ -54,10 +54,18 @@ controlled-loss recovery vectors with:
 ```
 
 This omits one complete access unit, then tests reference invalidation and a
-bounded forced IDR in separate streams. Copy both streams to the NUC and run
-`probe-intel-recovery-decode.sh` there. These probes establish encoder action
-and decoder continuity; transport FEC and clean-pixel recovery remain separate
-gates.
+bounded forced IDR in separate streams. The invalidation run also writes a
+synchronized no-loss reference. Copy the streams to the NUC, run
+`probe-intel-recovery-decode.sh` for continuity, then compare every aligned
+decoded Y410 frame with:
+
+```bash
+./scripts/probe-intel-recovery-pixels.sh \
+  stationconnect-recovery-ref-invalidate-reference.hevc \
+  stationconnect-recovery-ref-invalidate.hevc 180 600 120
+```
+
+Transport FEC remains a separate live-session gate.
 
 The generic modesetting and direct-KMS scripts below are historical diagnostic
 controls, not production capture candidates. They interrupt the graphical
