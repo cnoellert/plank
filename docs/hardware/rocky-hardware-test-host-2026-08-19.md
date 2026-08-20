@@ -20,7 +20,7 @@
 | NvFBC host-latency timestamp | Pass | All 600 display-render timestamps shared the host monotonic clock domain, with no zero, future, or nonmonotonic values. A live NUC session received Sunshine's host-processing telemetry. |
 | Native 10-bit NvFBC source | Unsupported, non-blocking | NvFBC 1.9 exposes only 8-bit RGB/YUV output formats, including native `BGRA8888`; the approved baseline is labeled 8-bit-source/up-converted. |
 | HEVC Rext 10-bit 4:4:4 encode | Pass | The integrated 600-frame stream decodes without error; `ffprobe` reports `Rext`, `gbrp10le`, full-range GBR identity signaling, sRGB transfer, and BT.709 primaries. |
-| Live Sunshine/Moonlight identity session | Pass | The NUC negotiated format `0x800`, hardware-decoded to Y410, and imported the Y410/XR30 alias through EGL. After fixing startup queue priming, five fresh connections, one full loop, and a 10:20 soak all had exact pacer totals of `0/0/0`. |
+| Live Sunshine/Moonlight identity session | Pass | The NUC negotiated format `0x800`, hardware-decoded to Y410, and imported the Y410/XR30 alias through EGL. After fixing startup queue priming, five fresh connections, one full loop, and a 10:20 soak all had exact pacer totals of `0/0/0`. Client diagnostics explicitly label the 8-bit source, 10-bit 4:4:4 codec, and 10-bit identity presentation stages. |
 | NVIDIA driver/build-deps compatibility | Fixed in fork | Driver 580 exposes NVENC API 13.0. The StationConnect build-deps fork pins `nv-codec-headers` to API 13.0 and prevents GCC from introducing a glibc vector-math ABI into x265 that Rocky 9 does not provide. |
 | Synthetic animated 2160p60 pipeline | Pass, marginal | The enforced rerun sustained 60.05 fps with zero submission misses and 15.959 ms p95, but its 16.862 ms p99 failed the stricter robustness gate. P95 headroom was only 0.708 ms. |
 | Full looping production workload | Pass | The instrumented 150-second loop encoded 9,000 frames at 60.01 fps with 8,999 new captures, zero misses, 14.645 ms p95, 15.041 ms p99, and 2.022 ms p95 headroom. |
@@ -182,10 +182,8 @@ refresh interval does not imply a 60 Hz throughput miss.
 1. Repeat the fullscreen integrated gate on each Turing and Ampere host SKU.
 2. Integrate the qualified Intel decode, identity, and presentation path into
    the client and measure network-to-photon latency with shared timestamps.
-3. Expose the explicit
-   `8-bit-source/up-converted` label.
-4. Continue tuning toward the optional NVENC component p95 target of 8 ms.
-5. Add transport FEC and compare post-recovery pixels with a synchronized
+3. Continue tuning toward the optional NVENC component p95 target of 8 ms.
+4. Add transport FEC and compare post-recovery pixels with a synchronized
    no-loss reference before closing the packet-loss gate.
 
 ## End-of-Day Handoff

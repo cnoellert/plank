@@ -210,6 +210,14 @@ The 29.2 ms interval includes Xorg's render-to-capture phase and an overlapping
 encode pipeline, so it is a latency measurement rather than a serial 60 Hz
 throughput budget.
 
+Moonlight commit `3c9ef2b2` exposes the negotiated precision stages in both
+startup diagnostics and the performance overlay. A full-loop validation
+reported `8-bit-source/up-converted`, `10-bit HEVC 4:4:4`, and `10-bit RGB
+identity` for source, codec, and presentation respectively. It sustained 60.01
+fps for input, decode, and render, with 0.00% network and jitter drops, pacer
+totals of `0/0/0`, and 29.1 ms host-processing p95. This closes the explicit
+source-precision labeling gate for the identity GBR baseline.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
