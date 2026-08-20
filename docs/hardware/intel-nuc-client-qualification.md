@@ -393,3 +393,28 @@ SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1 sunshine ...
 The remaining packet-loss gate is synchronized decoded-pixel comparison after
 FEC or reference invalidation; frame continuity alone cannot prove clean
 post-recovery pixels.
+
+### FEC payload identity
+
+A release client with `LC_DEBUG` enabled for moonlight-common-c exercised its
+built-in FEC validation mode for one complete 170-second fullscreen loop. For
+every protected block, the client retained one original data shard, removed it
+from the Reed–Solomon input, reconstructed it, and compared every recovered
+byte with the retained source before submitting that packet to the normal
+depacketizer and Intel VA-API decoder.
+
+The run validated 9,992 blocks and 9,992 reconstructed data shards with no
+assertion or byte mismatch. Input, decode, and render all sustained 59.99 fps;
+network, jitter, and pacer drops remained zero, decode averaged 0.34 ms, and
+host-processing p95 was 27.6 ms. This closes FEC compressed-payload identity
+on the real sequence: the decoder consumed the byte-identical recovered stream
+throughout. Direct decoded-pixel comparison remains required for healing after
+reference invalidation, where the post-loss stream intentionally differs from
+the no-loss reference.
+
+Build the validation client without enabling Qt's unrelated GUI assertions:
+
+```bash
+qmake6 .. CONFIG+=release DEFINES+=LC_DEBUG
+make -j"$(nproc)"
+```
