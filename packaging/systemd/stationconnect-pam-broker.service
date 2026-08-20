@@ -1,0 +1,36 @@
+[Unit]
+Description=StationConnect PAM authentication broker
+After=systemd-user-sessions.service
+Before=sunshine.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/auth.sock --group stationconnect-auth
+User=root
+Group=root
+RuntimeDirectory=stationconnect
+RuntimeDirectoryMode=0750
+UMask=0077
+Restart=on-failure
+RestartSec=1s
+
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=read-only
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=full
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@mount @reboot @swap
+
+[Install]
+WantedBy=multi-user.target

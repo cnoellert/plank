@@ -7,4 +7,7 @@
 /artifacts/qualification/video/**/*.metrics.txt
 /artifacts/qualification/video/**/*.log
 /artifacts/qualification/wacom/raw/
+/artifacts/development/
 /test_sunshine.log*
+/sunshine_state.json
+/write_file_test_*.txt
