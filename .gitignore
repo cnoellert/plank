@@ -5,3 +5,4 @@
 /artifacts/qualification/video/*.raw
 /artifacts/qualification/video/*.metrics.txt
 /artifacts/qualification/video/**/*.metrics.txt
+/artifacts/qualification/video/**/*.log

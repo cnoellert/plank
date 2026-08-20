@@ -247,13 +247,46 @@ maximum-capacity figures remain the values in the table above. Raw client logs
 are retained under the ignored
 `artifacts/qualification/video/software-x264-2026-08-20/` directory.
 
-Sunshine's software backend currently selects `libx264`, converts captured
-`BGR0` through swscale, and supplies `YUV444P`; it does not select
-`libx264rgb` or pass native RGB directly. A native-RGB mode therefore requires
-an explicit encoder selection and conversion-bypass change rather than a
-configuration switch. NVENC HEVC remains the qualified hardware baseline: its
-moving-content full-loop run had zero deadline misses, 14.645 ms p95, 15.041
-ms p99, and measured frame-budget headroom.
+### Final instrumented software baseline
+
+The final run separated display age, CUDA readback/conversion, x264 completion,
+packet readiness, client decode, pacing, and renderer-call time. The 10-bit run
+covered 10,710 encoded frames of the fullscreen Flame loop at 78.99 Mbps; the
+8-bit native-RGB control covered 4,384 frames. Both used 33 x264 threads,
+`ultrafast`, `zerolatency`, four slices, and the physical 59.973 Hz DP-2 source.
+
+| Host boundary (p95) | x264 10-bit identity GBR | x264rgb native 8-bit |
+|---|---:|---:|
+| Display timestamp to conversion start | 19.47 ms | 16.17 ms |
+| CUDA conversion/readback | 14.48 ms | 12.76 ms |
+| GPU readback synchronization alone | 11.38 ms | 12.74 ms |
+| CPU 8-to-10-bit expansion | 3.88 ms | not applicable |
+| x264 completion | 11.24 ms | 12.07 ms |
+| Display timestamp to packet ready | 36.13 ms | 32.72 ms |
+| Packet-ready interval | 23.74 ms | 24.20 ms |
+
+The mean packet-ready intervals were 16.678 ms and 16.666 ms respectively,
+which explains how throughput reaches the physical refresh rate while the
+per-frame latency p95 exceeds one refresh. Only 2 of 10,710 10-bit x264 calls
+exceeded 16.67 ms. The principal latency tails are capture scheduling and GPU
+readback; 10-bit expansion adds a smaller, bounded cost.
+
+On the NUC, the 10-bit client measured decode p95/p99/max of 11/12/29 ms,
+pacer-queue 13/19/48 ms, and renderer-call 8/9/87 ms. It received 59.97 fps
+with zero network loss but recorded 11 render catch-up drops (0.10% jitter).
+The native 8-bit control measured 8/9/15 ms decode, 12/14/38 ms queue, and
+4/5/80 ms renderer-call latency, with one render catch-up drop. These calls do
+not provide hardware presentation timestamps; network-to-photon remains a
+separate presentation task. Raw logs are in the ignored
+`artifacts/qualification/video/software-x264-2026-08-20/final-instrumented/`
+directory.
+
+Sunshine's StationConnect software backend now selects `libx264rgb` for native
+8-bit RGB or `libx264` with identity GBR planes for the 10-bit path. The latter
+is explicitly labeled `8-bit-source/up-converted`. NVENC HEVC remains a
+qualified comparison—the moving-content full-loop run had zero deadline
+misses, 14.645 ms p95, and 15.041 ms p99—but is on hold while the product is
+built around the software paths.
 
 The timestamp-qualified NvFBC probe measured display-render-to-capture-return
 age at 8.033 ms average, 15.432 ms p95, and 16.676 ms maximum over 600 frames.
@@ -270,12 +303,13 @@ stage, and retained zero network, jitter, and pacer drops. This p95 includes
 display-render phase plus the overlapping encode pipeline, so exceeding one
 refresh interval does not imply a 60 Hz throughput miss.
 
-## Remaining Video Work
+## Deferred Video Follow-up
 
 1. Repeat the fullscreen integrated gate on each Turing and Ampere host SKU.
 2. Integrate the qualified Intel decode, identity, and presentation path into
    the client and measure network-to-photon latency with shared timestamps.
-3. Continue tuning toward the optional NVENC component p95 target of 8 ms.
+3. Revisit codec tuning only if a release gate fails; NVENC remains on hold and
+   the x264 paths are the current software baseline.
 
 Reference-invalidation pixel healing and live transport FEC now pass. Debug
 validation proved 9,992 clean-link and 9,737 loss-injected reconstructed
