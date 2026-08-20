@@ -189,6 +189,15 @@ target_compile_features(connect-probe-uhid PRIVATE cxx_std_17)
 target_compile_options(connect-probe-uhid PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 if(BUILD_TESTING)
+  add_executable(extended-fec-block-indices-test
+    tests/protocol/extended-fec-block-indices.c)
+  target_compile_options(extended-fec-block-indices-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(extended-fec-block-indices-test PRIVATE
+    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+  add_test(NAME extended-fec-block-indices
+    COMMAND extended-fec-block-indices-test)
+
   add_test(NAME kms-probe-self-test COMMAND connect-probe-kms --self-test)
   if(TARGET connect-probe-nvfbc)
     add_test(NAME nvfbc-probe-self-test COMMAND connect-probe-nvfbc --self-test)

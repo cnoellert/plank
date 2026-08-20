@@ -31,12 +31,14 @@
 | HEVC 10-bit 4:2:2 encode | Unsupported | Live capability query returns `caps_yuv422_encode=0`; NVIDIA added HEVC 4:2:2 encode after the Turing/Ampere/Ada fleet. |
 | Intra-refresh latency matrix | Pass; retain 60/30 single-slice | Seven full-loop profiles covered refresh disabled and counts 30/45/59 with single- and multi-slice refresh. Pipeline p95 ranged only from 14.404 to 14.620 ms; disabling refresh gained just 0.108 ms over baseline. Every stream decoded all 9,000 frames. |
 | Controlled-loss recovery continuity | Pass | Separate 600-frame real-content runs dropped access unit 180. Reference invalidation accepted timestamp 180 two frames later; the emergency path forced an IDR with VPS/SPS/PPS at frame 182. Both wrote exactly 599 pictures, retained the host robustness gate, and decoded all 599 pictures through Intel VA-API. Against a synchronized no-loss stream, Intel-decoded Y410 pixels matched before the loss, differed only at source frame 181, and regained permanent identity at frame 182. Live transport FEC separately recovered 5% random loss with 20% FEC and 10% random loss with 30% FEC. |
+| Sustained extended-FEC recovery | Pass | A 180-second release run at 30% FEC and 10% random datagram loss dropped 127,982 datagrams. Moonlight recovered 9,130 blocks/97,906 shards; five unrecoverable frames healed through RFI with no decoder error or decoder-driven IDR. Decode/render sustained 59.94/59.87 fps. A validation build separately byte-checked 9,737 reconstructed blocks under the same profile. |
 | DRM KMS API enablement | Pass | After reboot, `nvidia_drm.modeset=Y`; atomic modesetting and universal planes are exposed. |
 | Active KMS scanout enumeration | Fail | All four DRM CRTCs and twelve planes report framebuffer ID 0 while NVIDIA Xorg drives two displays. |
 | XR30/AR30 framebuffer and DMA-BUF export | Blocked | The NVIDIA Xorg session exposes no active scanout framebuffer through DRM KMS. |
 | Direct native 10-bit KMS scanout | Pass | A standalone DRM master scanned out `XB30` at 3840x2160/60. |
 | Native 10-bit DMA-BUF export/import | Pass | The `XB30` buffer exported successfully and imported into NVIDIA EGL 1.5 without CPU readback. |
 | Direct NVENC required capabilities | Pass | API 13.0 exposes FRExt, 10-bit 4:4:4 input, intra refresh, reference invalidation, and single-slice intra refresh. |
+| Linux direct NVENC integration | Pass, opt-in | The CUDA-backed `nvenc-direct` path produced live 2160p60 HEVC Rext 10-bit 4:4:4, retained identity GBR signaling, and completed FEC/RFI loss recovery with the Intel client. Automatic selection still prefers the established FFmpeg-backed `nvenc` path pending the remaining GPU matrix. |
 | Physical Wacom discovery | Pass | USB `056a:0317` Intuos Pro L exposes pen, pad, touch, and two raw HID interfaces. |
 | Generic UHID transport | Pass | A temporary generic mouse receives `UHID_START` and binds through the host kernel. |
 | Wacom UHID binding | Blocked | The physical interface descriptor alone does not reach `UHID_START`; multi-interface identity and feature-report forwarding must be implemented. |
@@ -103,6 +105,12 @@ This decouples capture submission from an occasional slow encode while bounding
 the waiting queue to one frame. Latency is measured from capture start until the
 bitstream becomes available; the 25 ms local-pipeline target is not substituted
 for the 16.67 ms 60 Hz budget.
+
+The fork now exposes the same SDK 13 direct encoder machinery on Linux through
+an opt-in CUDA adapter named `nvenc-direct`. It supports NV12, P010, planar
+4:4:4, and planar 10-bit 4:4:4 input, but it is deliberately listed after the
+FFmpeg-backed `nvenc` encoder. Do not make it the automatic default until the
+Turing and Ampere qualification matrix passes.
 
 On this Ada GPU, the final driver-auto split stress run produced a 15.959 ms
 pipeline p95; disabling it increased p95 to 18.015 ms. Keep driver-auto on Ada,
@@ -185,8 +193,11 @@ refresh interval does not imply a 60 Hz throughput miss.
 3. Continue tuning toward the optional NVENC component p95 target of 8 ms.
 
 Reference-invalidation pixel healing and live transport FEC now pass. Debug
-validation also proved 9,992 reconstructed real-content shards byte-identical
-to their originals.
+validation proved 9,992 clean-link and 9,737 loss-injected reconstructed
+real-content shards byte-identical to their originals. The sustained-loss run
+also found and corrected stale extended-block metadata in recovered packets;
+the release repeat used RFI for all five residual frame losses without an
+emergency IDR.
 
 ## End-of-Day Handoff
 

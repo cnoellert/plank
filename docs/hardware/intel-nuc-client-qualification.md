@@ -397,13 +397,15 @@ The switch is never a production default.
 | 5% random, 50 s | 20% | 16,252 | 2,343 / 13,462 | 0 / 0 | 60.02 fps, no drops |
 | 10% random, 50 s | 20% | 33,807 | 2,398 / 27,880 | 16 / 16 | 59.42 fps, 1.47% loss; bounded IDR recovery |
 | 10% random, 50 s | 30% | 26,823 | 1,987 / 20,577 | 0 / 0 | 60.01 fps, no drops |
+| 10% random, 155 s | 30% | 127,982 | 9,130 / 97,906 | 5 / 5 | 59.94 fps decode; five RFI recoveries, no decoder-driven IDR |
 | Three 20 ms outages | 20% | time-bounded | 0 / 0 | 0 / 15 | 59.63 fps, 0.77% loss; bounded IDR recovery |
 
-All runs had zero jitter and exact pacer totals `0/0/0`. The 30% profile
-closes the 10% random-loss tail but reduces encoder payload from about 79 to
-69 Mbps to retain the requested media-plus-FEC ceiling. Keep 20% for clean or
-moderate-loss links; select 30% for sustained high loss. Run a random profile
-concurrently with the client using:
+The shorter runs had zero jitter and exact pacer totals `0/0/0`. The sustained
+run recorded 0.11% jitter loss and pacer totals `0/9/3`; it remained close to
+60 fps after recovery. The 30% profile substantially reduces the 10% random-loss
+tail but reduces encoder payload from about 79 to 69 Mbps to retain the requested
+media-plus-FEC ceiling. Keep 20% for clean or moderate-loss links; select 30%
+for sustained high loss. Run a random profile concurrently with the client using:
 
 ```bash
 SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1 sunshine ...
@@ -438,3 +440,23 @@ Build the validation client without enabling Qt's unrelated GUI assertions:
 qmake6 .. CONFIG+=release DEFINES+=LC_DEBUG
 make -j"$(nproc)"
 ```
+
+### Extended-block recovery correction
+
+A second validation combined the real fullscreen loop, negotiated 16-block FEC,
+30% parity, and 10% random datagram loss. It exposed an inherited reconstruction
+TODO: Sunshine generated parity before fully normalizing `multiFecBlocks`, while
+Moonlight restored only the legacy two-bit field. A recovered shard could
+therefore carry stale block metadata and make a later block look like block 0.
+Sunshine now initializes the complete field before Reed–Solomon generation, and
+Moonlight deterministically restores both extended block fields after recovery.
+
+The corrected validation client survived 129,146 dropped datagrams, byte-checked
+9,737 reconstructed blocks, and reported no mismatch, decoder error, or
+decoder-driven IDR. Its deliberate extra one-shard loss produced 51 failed
+blocks and 48 post-invalidation frames while sustaining 59.40 fps. The normal
+release repeat dropped 127,982 datagrams, recovered 9,130 blocks and 97,906 data
+shards, and had only five unrecoverable frames. All five healed through
+reference invalidation; decode sustained 59.94 fps, render sustained 59.87 fps,
+and the client issued no emergency IDR after startup. The loss rule was removed
+automatically after each run.
