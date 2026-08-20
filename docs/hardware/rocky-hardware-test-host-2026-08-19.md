@@ -17,6 +17,7 @@
 | NvFBC X11 availability | Pass | API 1.9 sees the 5120x2160 screen and both RandR outputs. |
 | NvFBC CUDA capture | Pass | Live 5120x2160 `BGRA8888` frames remain in CUDA device memory with no CPU readback. |
 | NvFBC 60 fps animated capture | Pass | With looping content visible, all 600 calls returned new frames at 60.00 fps; p95 was 49 us, maximum 2.497 ms, and no 16.67 ms deadlines were missed. NvFBC reported 23 intervening generations because its 16 ms producer timer runs at 62.5 Hz. |
+| NvFBC host-latency timestamp | Pass | All 600 display-render timestamps shared the host monotonic clock domain, with no zero, future, or nonmonotonic values. A live NUC session received Sunshine's host-processing telemetry. |
 | Native 10-bit NvFBC source | Unsupported, non-blocking | NvFBC 1.9 exposes only 8-bit RGB/YUV output formats, including native `BGRA8888`; the approved baseline is labeled 8-bit-source/up-converted. |
 | HEVC Rext 10-bit 4:4:4 encode | Pass | The integrated 600-frame stream decodes without error; `ffprobe` reports `Rext`, `gbrp10le`, full-range GBR identity signaling, sRGB transfer, and BT.709 primaries. |
 | Live Sunshine/Moonlight identity session | Pass | The NUC negotiated format `0x800`, hardware-decoded to Y410, and imported the Y410/XR30 alias through EGL. After fixing startup queue priming, five fresh connections, one full loop, and a 10:20 soak all had exact pacer totals of `0/0/0`. |
@@ -160,6 +161,16 @@ it provides faster and simpler recovery without a meaningful latency penalty.
 The animated test measures NvFBC capture-call latency. Its p95 value means 95%
 of calls completed in that time or less; it does not include CUDA color
 conversion, NVENC, transport, client decode, or presentation.
+
+The timestamp-qualified NvFBC probe measured display-render-to-capture-return
+age at 8.033 ms average, 15.432 ms p95, and 16.676 ms maximum over 600 frames.
+Sunshine now preserves that timestamp through CUDA conversion and NVENC for new
+frames, allowing the existing protocol field to report display-render start to
+packetization. A 60-second live NUC run reported 4.2/34.1/17.1 ms
+min/max/average host processing, sustained 59.99 fps at every client stage,
+lost no packets, and recorded exact pacer totals of `0/0/0`. This metric starts
+earlier than the qualification probe's capture-to-bitstream timer, so those
+values must not be compared as equivalent measures.
 
 ## Remaining Video Work
 

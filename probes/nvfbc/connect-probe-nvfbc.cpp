@@ -125,6 +125,7 @@ int main(int argc, char** argv) {
   NVFBC_API_FUNCTION_LIST api{};
   bool capture_created = false;
   std::vector<std::int64_t> capture_times_us;
+  std::vector<std::int64_t> frame_ages_us;
 
   if (cuda_load_functions(&cuda, nullptr) != 0 ||
       cuda->cuInit(0) != CUDA_SUCCESS) {
@@ -261,8 +262,13 @@ int main(int argc, char** argv) {
     unsigned int deadline_misses = 0;
     std::uint64_t driver_missed_frames = 0;
     unsigned int new_frames = 0;
+    unsigned int zero_timestamps = 0;
+    unsigned int future_timestamps = 0;
+    unsigned int nonmonotonic_timestamps = 0;
+    std::uint64_t previous_timestamp_us = 0;
     NVFBC_FRAME_GRAB_INFO last_info{};
     capture_times_us.reserve(frame_count);
+    frame_ages_us.reserve(frame_count);
 
     for (unsigned int frame = 0; frame < frame_count; ++frame) {
       void* cuda_buffer = nullptr;
@@ -291,6 +297,27 @@ int main(int argc, char** argv) {
       capture_times_us.push_back(elapsed.count());
       new_frames += info.bIsNewFrame ? 1U : 0U;
       driver_missed_frames += info.dwMissedFrames;
+      if (info.bIsNewFrame) {
+        if (info.ulTimestampUs == 0) {
+          ++zero_timestamps;
+        } else {
+          const auto capture_finished_us =
+              std::chrono::duration_cast<std::chrono::microseconds>(
+                  capture_finished.time_since_epoch())
+                  .count();
+          const auto frame_age_us =
+              capture_finished_us - static_cast<std::int64_t>(info.ulTimestampUs);
+          if (frame_age_us < 0) {
+            ++future_timestamps;
+          }
+          frame_ages_us.push_back(frame_age_us);
+          if (previous_timestamp_us != 0 &&
+              info.ulTimestampUs < previous_timestamp_us) {
+            ++nonmonotonic_timestamps;
+          }
+          previous_timestamp_us = info.ulTimestampUs;
+        }
+      }
       last_info = info;
 
       const auto deadline = run_started + frame_period * (frame + 1);
@@ -314,12 +341,27 @@ int main(int argc, char** argv) {
     const std::int64_t frame_budget_us = 1'000'000LL / target_fps;
     const double average_capture_us =
         static_cast<double>(total_capture_us) / capture_times_us.size();
+    std::sort(frame_ages_us.begin(), frame_ages_us.end());
+    std::int64_t total_frame_age_us = 0;
+    for (const std::int64_t value : frame_ages_us) {
+      total_frame_age_us += value;
+    }
+    const std::size_t frame_age_p95_index = frame_ages_us.empty()
+                                                ? 0
+                                                : ((frame_ages_us.size() * 95U +
+                                                    99U) /
+                                                       100U) -
+                                                      1U;
     const unsigned int allowed_deadline_misses =
         std::max(1U, frame_count / 100U);
     const bool performance_pass =
         achieved_fps >= static_cast<double>(target_fps) * 0.99 &&
         capture_times_us[p95_index] <= frame_budget_us &&
         deadline_misses <= allowed_deadline_misses;
+    const bool timestamp_pass =
+        !frame_ages_us.empty() && frame_ages_us.size() == new_frames &&
+        frame_ages_us.front() >= 0 && frame_ages_us.back() <= 1'000'000 &&
+        future_timestamps == 0 && nonmonotonic_timestamps == 0;
 
     std::cout << "frame_geometry=" << last_info.dwWidth << 'x'
               << last_info.dwHeight << '\n'
@@ -332,6 +374,22 @@ int main(int argc, char** argv) {
               << "cadence_scope=forced-refresh-capture-calls\n"
               << "content_rate=desktop-damage-dependent\n"
               << "driver_missed_frames=" << driver_missed_frames << '\n'
+              << "frame_timestamp_samples=" << frame_ages_us.size() << '\n'
+              << "frame_timestamp_zero=" << zero_timestamps << '\n'
+              << "frame_timestamp_future=" << future_timestamps << '\n'
+              << "frame_timestamp_nonmonotonic="
+              << nonmonotonic_timestamps << '\n';
+    if (!frame_ages_us.empty()) {
+      std::cout << "frame_age_us_average="
+                << static_cast<double>(total_frame_age_us) /
+                       frame_ages_us.size()
+                << '\n'
+                << "frame_age_us_p95=" << frame_ages_us[frame_age_p95_index]
+                << '\n'
+                << "frame_age_us_max=" << frame_ages_us.back() << '\n';
+    }
+    std::cout << "nvfbc_timestamp_gate="
+              << (timestamp_pass ? "pass" : "fail") << '\n'
               << "target_fps=" << target_fps << '\n'
               << std::fixed << std::setprecision(2)
               << "achieved_fps=" << achieved_fps << '\n'
@@ -344,6 +402,10 @@ int main(int argc, char** argv) {
               << (performance_pass ? "pass" : "fail") << '\n';
     if (!performance_pass) {
       result = 15;
+      goto cleanup;
+    }
+    if (!timestamp_pass) {
+      result = 16;
       goto cleanup;
     }
   }

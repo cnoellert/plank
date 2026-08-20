@@ -191,6 +191,15 @@ decoded, and rendered with zero network loss and exact pacer totals of `0/0/0`.
 Decode averaged 0.32 ms, queueing 0.61 ms, and rendering including V-sync
 4.75 ms. This closes the startup-pacing gate for the tested NUC and build.
 
+Sunshine's NvFBC backend now forwards the driver's display-render timestamp on
+new frames. In a 60-second live validation, Moonlight reported host processing
+latency of 4.2/34.1/17.1 ms min/max/average while receiving, decoding, and
+rendering 59.99 fps. Network loss and jitter drops remained 0.00%, pacer totals
+remained `0/0/0`, and decode, queue, and render averages were 0.35, 0.66, and
+4.82 ms. Host processing spans display-render start through packetization; it
+is not an NVENC-only measurement. Network-to-photon still requires a shared
+host/client clock or a physical capture measurement.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
