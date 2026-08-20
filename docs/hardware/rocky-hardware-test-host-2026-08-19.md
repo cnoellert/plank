@@ -41,9 +41,54 @@
 | Linux direct NVENC integration | Pass, opt-in | The CUDA-backed `nvenc-direct` path produced live 2160p60 HEVC Rext 10-bit 4:4:4, retained identity GBR signaling, and completed FEC/RFI loss recovery with the Intel client. Automatic selection still prefers the established FFmpeg-backed `nvenc` path pending the remaining GPU matrix. |
 | Physical Wacom discovery | Pass | USB `056a:0317` Intuos Pro L exposes pen, pad, touch, and two raw HID interfaces. |
 | Generic UHID transport | Pass | A temporary generic mouse receives `UHID_START` and binds through the host kernel. |
-| Wacom UHID binding | Blocked | The physical interface descriptor alone does not reach `UHID_START`; multi-interface identity and feature-report forwarding must be implemented. |
+| Wacom UHID binding | Blocked by target kernel | Both PTH-851 (`0317`) and PTH-660 (`0357`) descriptors fail before `UHID_START` on Rocky 9.7. The same descriptors bind through UHID on the NUC's 7.0 kernel, so descriptor generation and feature replies are not the first blocker. |
+| Normalized uinput tablet | Pass for core pen | Sunshine's existing libvirtualhid backend is recognized by Rocky libinput as `tablet`; its consumer test passes with event-node access. Pressure, distance, tilt, eraser, and three stylus buttons are represented. Pad controls, tool serials, barrel rotation, tangential pressure, and multitouch are not yet represented. |
 | PAM/SSSD account policy | Pass | Root and `gdm` are rejected; authorized SSSD accounts `operator` and `testartist` pass account management. |
 | PAM password/session conversation | Pending | Requires secure interactive tests for valid and invalid credentials. |
+
+## Wacom UHID Kernel Discriminator
+
+Two physical generations were inventoried on the host. The PTH-851 exposes
+234-byte pen/pad and 23-byte touch descriptors plus a boot-mouse interface.
+The PTH-660 exposes 949-byte pen/pad and 549-byte touch descriptors, with a
+shared serial number. Replaying each real descriptor with its Wacom vendor and
+product ID on Rocky 9.7 (kernel `5.14.0-611.55.1.el9_7`) accepted
+`UHID_CREATE2` but produced no `UHID_START` or report requests. Substituting a
+generic vendor ID immediately produced `UHID_START`, proving `/dev/uhid` and
+the descriptors are functional, but generic HID did not expose usable Wacom
+pen semantics.
+
+The same Wacom-identified replays on the NUC's 7.0 kernel produced
+`UHID_START`. A grouped PTH-660 replay with a common physical identity created
+Wacom Pen, Pad, and Finger input nodes; the driver issued six `GET_REPORT` and
+one `SET_REPORT` requests. This isolates the failure to the target Rocky Wacom
+driver's assumption that a Wacom-matched HID always has a real USB-interface
+parent. Do not patch Xorg for this issue. Evaluate a stock-kernel absolute
+`uinput` tablet and whole-device USB/IP before considering any host kernel
+driver backport.
+
+## Wacom Transport Direction
+
+The production device is physically connected to the Ubuntu NUC, not the
+workstation. The client owns and reads the tablet while a stream is active,
+sends ordered tablet events to the workstation, and releases the device back
+to the Ubuntu desktop at disconnect. The workstation creates the virtual
+tablet consumed by XInput2, libinput, and Flame. Host-connected tablets in this
+report are qualification fixtures only.
+
+Rocky's UHID limitation makes Sunshine's existing normalized pen transport and
+libvirtualhid uinput backend the core-pen baseline. The upstream
+`LinuxConsumerTest.LibinputSeesUinputPenTabletTool` passed on this workstation
+when run with permission to read the generated event node. A non-root run
+could create the device through world-writable `/dev/uinput` but could not read
+the root:`input` event node; production packaging must grant only the required
+helper access rather than broad input-device access.
+
+This normalized path is not yet equivalent to the plan's full raw-HID Wacom
+gate. Retain USB/IP as a compatibility experiment and raw HID/UHID for hosts
+with compatible kernels. Add explicit protocol and virtual-device coverage for
+ExpressKeys, rings, strips, multitouch, unique tool serials, barrel rotation,
+and tangential pressure before declaring full Wacom support.
 
 ## Production Capture Decision
 
@@ -344,8 +389,8 @@ matrices showed only measurement-level differences. The next optional host
 headroom experiments are a temporary NVENC/video-clock A/B and an explicitly
 measured three-strip SFE test. Neither is approved as a persistent production
 setting; both require bitrate and quality checks. Ampere and Turing unsplit
-qualification, packet-loss recovery, PAM conversations, and Wacom
-multi-interface UHID binding remain Phase 0 work.
+qualification, packet-loss recovery, PAM conversations, and full Wacom
+feature coverage remain Phase 0 work.
 
 ### Generic modesetting DDX experiment
 

@@ -101,3 +101,23 @@ eight-second virtual copy from the physical Wacom interface descriptor and
 check whether `hid-wacom` exposes input devices. The Wacom probe deliberately
 declines feature/output reports; bidirectional report forwarding is a later
 test and may be required before the device binds.
+
+Use `--generic` to substitute a community USB vendor/product ID while retaining
+the supplied report descriptor. This is a control for UHID and generic HID
+parsing only; it does not qualify the Wacom driver or preserve production
+device identity:
+
+```bash
+sudo ./build/qualification/connect-probe-uhid --generic \
+  /sys/class/hidraw/hidraw2/device/report_descriptor
+```
+
+For a non-`0317` Wacom descriptor, pass its hexadecimal product ID so the
+kernel probes the correct model table. Supply all HID-interface descriptors in
+one invocation so they share physical identity, for example:
+
+```bash
+sudo ./build/qualification/connect-probe-uhid --product 0357 \
+  /sys/class/hidraw/hidraw4/device/report_descriptor \
+  /sys/class/hidraw/hidraw6/device/report_descriptor
+```
