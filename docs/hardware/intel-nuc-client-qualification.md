@@ -122,6 +122,19 @@ and host event capabilities, cleaned up on disconnect, recreated the group on
 reconnect, and reproduced the Flame gesture and Tablet Margins behavior. The
 standalone plaintext bridge remains a test fixture only.
 
+### Authenticated automatic Desktop launch — 2026-08-20
+
+The client completed a fresh interactive workstation login through the PAM
+broker and automatically started `Desktop`; it did not display the upstream
+application chooser or expose Steam. The active session requested
+3840x2160x60 at 100 Mbps and reported
+`8-bit-source/up-converted -> 10-bit H.264 4:4:4 -> 10-bit RGB identity
+presentation`. Because Intel Gen12 does not accelerate H.264 High 4:4:4
+Predictive 10-bit, the StationConnect profile selected FFmpeg software decode
+to `gbrp10le` and retained Vulkan presentation. The route was explicitly
+approved as `enx207bd2039662`; discovery remained available independently of
+that credential-bearing route check.
+
 FFmpeg 8.0.1 identifies the correctly signaled stream as `gbrp10le` and silently
 falls back to software even when VA hardware frames are requested. Earlier
 FFmpeg measurements of 95.78 and 109.52 fps are therefore invalidated. Do not

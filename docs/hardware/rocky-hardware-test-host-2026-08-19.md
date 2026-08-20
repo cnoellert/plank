@@ -45,7 +45,7 @@
 | Normalized uinput tablet | Pass for core pen | Sunshine's existing libvirtualhid backend is recognized by Rocky libinput as `tablet`; its consumer test passes with event-node access. Pressure, distance, tilt, eraser, and three stylus buttons are represented. Pad controls, tool serials, barrel rotation, tangential pressure, and multitouch are not yet represented. |
 | Live NUC-to-host raw Wacom | Pass | The NUC forwarded both physical PTH-660 HID interfaces bidirectionally. Flame received the real model geometry, pressure, tilt, pad, and touch capabilities; edge gestures and Flame-controlled Tablet Margins worked without a watcher or coordinate pre-scaling. |
 | PAM/SSSD account policy | Pass | Root and `gdm` are rejected; authorized SSSD accounts `operator` and `testartist` pass account management. |
-| PAM password/session conversation | Pending | Requires secure interactive tests for valid and invalid credentials. |
+| PAM password/session conversation | Pass | The NUC completed an interactive PAM password conversation for `operator`, opened a broker-owned session, received a one-use bearer token, and obtained no application or stream data before authentication. |
 
 ## Wacom UHID Qualification
 
@@ -111,6 +111,20 @@ gesture and Flame-controlled Tablet Margins on this production path. The
 standalone TCP bridge remains qualification-only. Automated ExpressKey, ring,
 multitouch, hot-unplug, and abrupt network-loss coverage remains before the
 full Wacom product gate can close.
+
+## Authenticated Desktop Launch
+
+The dedicated NUC completed the StationConnect login flow against the PAM
+broker on 2026-08-20. After successful authentication, Moonlight launched the
+only advertised application, `Desktop`, without presenting the upstream
+Desktop/Steam chooser. Sunshine now filters `/applist` and rejects launch or
+resume requests for every non-Desktop application while StationConnect
+authentication is active. The session negotiated the qualified 3840x2160 at
+60 Hz H.264 High 4:4:4 Predictive 10-bit identity path at a 100 Mbps client
+request. The NUC selected FFmpeg software decode to `gbrp10le` and Vulkan
+presentation. The physical Wacom remained attached through the encrypted
+session, and host libinput recorded native proximity, axes, pressure, tilt,
+and tip-down/tip-up transitions.
 
 ## Production Capture Decision
 
@@ -347,6 +361,15 @@ not provide hardware presentation timestamps; network-to-photon remains a
 separate presentation task. Raw logs are in the ignored
 `artifacts/qualification/video/software-x264-2026-08-20/final-instrumented/`
 directory.
+
+A subsequent 8.8-minute authenticated real-footage run encoded 31,583 frames.
+Direct x264 completion measured 9.00 ms mean, 11.65 ms p95, 14.82 ms p99, and
+27.98 ms maximum; 104 calls exceeded 16.67 ms. CUDA conversion/readback was
+14.58 ms p95, while display timestamp to packet readiness was 37.99 ms p95.
+The software backend now expands the encoder thread's affinity after NvFBC
+setup and immediately before opening x264. Live inspection confirmed all 58
+x264 video workers inherited CPUs 0-127, while unrelated Sunshine threads
+retained the desktop session's narrower mask.
 
 Sunshine's StationConnect software backend now selects `libx264rgb` for native
 8-bit RGB or `libx264` with identity GBR planes for the 10-bit path. The latter
