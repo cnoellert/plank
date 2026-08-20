@@ -200,6 +200,16 @@ remained `0/0/0`, and decode, queue, and render averages were 0.35, 0.66, and
 is not an NVENC-only measurement. Network-to-photon still requires a shared
 host/client clock or a physical capture measurement.
 
+Moonlight commit `4628bd82` adds an exact fixed-memory histogram for the host
+field so frame-budget analysis is not limited to averages. A complete
+170-second process covering the fullscreen footage loop reported 29.2 ms p95
+and 4.3/34.2/17.1 ms min/max/average host processing. It sustained 60.00 fps
+for input, decode, and render, with 0.00% loss and jitter drops and pacer totals
+of `0/0/0`; decode, queue, and render averages were 0.34, 0.72, and 4.80 ms.
+The 29.2 ms interval includes Xorg's render-to-capture phase and an overlapping
+encode pipeline, so it is a latency measurement rather than a serial 60 Hz
+throughput budget.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and

@@ -170,7 +170,12 @@ packetization. A 60-second live NUC run reported 4.2/34.1/17.1 ms
 min/max/average host processing, sustained 59.99 fps at every client stage,
 lost no packets, and recorded exact pacer totals of `0/0/0`. This metric starts
 earlier than the qualification probe's capture-to-bitstream timer, so those
-values must not be compared as equivalent measures.
+values must not be compared as equivalent measures. Moonlight commit
+`4628bd82` added an exact fixed-memory histogram; a complete 170-second client
+run measured host-processing p95 at 29.2 ms, sustained 60.00 fps at every
+stage, and retained zero network, jitter, and pacer drops. This p95 includes
+display-render phase plus the overlapping encode pipeline, so exceeding one
+refresh interval does not imply a 60 Hz throughput miss.
 
 ## Remaining Video Work
 
