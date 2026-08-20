@@ -162,6 +162,17 @@ so retain the earlier repeatable 0.04% results and keep the long-session pacing
 gate open until the instrumented client captures a recurrence or a broader soak
 establishes the new result as stable.
 
+A later instrumented soak was stopped at 7:27 to release the workstation. It
+received, decoded, and rendered 60.00 fps with no network loss. The only two
+drops occurred at 9 and 10 seconds after launch: both were render-queue catch-up
+events with queue depth 1, target depth 0, and frame ages of 9 and 5 ms. No
+pacing-queue or overflow drop occurred, and there were no further drops during
+more than two complete content loops. The aggregate rounded to 0.01%. This
+localizes the reproduced issue to client render-queue priming near stream
+startup rather than sustained network, decode, or content load. The next client
+experiment should adjust or explicitly gate startup priming; scheduling
+privilege is not justified.
+
 This live pass used a StationConnect FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
