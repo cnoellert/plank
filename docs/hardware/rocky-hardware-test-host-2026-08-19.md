@@ -102,11 +102,15 @@ Ctrl plus bottom-edge Flame gesture, and Flame's 5% and 20% Tablet Margins.
 Only the normal `3840x2160+0+0` output mapping was applied; Flame controlled
 its own margins.
 
-The standalone TCP bridge is qualification-only and is not an approved
-production transport. Move the same attach/input/GET_REPORT/SET_REPORT/output
-state machine into the authenticated encrypted Sunshine/Moonlight control
-channel, then add automated ExpressKey, ring, multitouch, hot-unplug, and
-network-loss coverage before closing the full Wacom product gate.
+The same attach/input/GET_REPORT/SET_REPORT/output state machine now runs in
+the authenticated, encrypted Sunshine/Moonlight control channel. The
+integrated session reproduced the client's two descriptors, USB identity, and
+event capability bitmaps; disconnect removed all host nodes and reconnect
+created them again. The user reconfirmed the Ctrl plus bottom-edge Flame
+gesture and Flame-controlled Tablet Margins on this production path. The
+standalone TCP bridge remains qualification-only. Automated ExpressKey, ring,
+multitouch, hot-unplug, and abrupt network-loss coverage remains before the
+full Wacom product gate can close.
 
 ## Production Capture Decision
 

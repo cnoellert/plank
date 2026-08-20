@@ -23,6 +23,18 @@ the group only when all descriptors validate and every UHID endpoint reaches
 `UHID_START`; otherwise it destroys the entire group and selects the normalized
 core-pen fallback.
 
+## Wire Framing
+
+Production messages use protocol version 1 and begin with the packed 20-byte
+`SC_RAW_HID_WIRE_HEADER` from `StationConnect.h`. All integer fields are
+little-endian. The header carries magic `SCWH`, message type, interface index,
+device generation, transaction ID, and payload length. The client sends the
+variable frame through Moonlight's reliable generic input channel with magic
+`0x55000008`; Sunshine replies with reliable control type `0x5504`. Both paths
+require the authenticated encrypted control stream. Descriptors and reports
+are capped at 4096 bytes, a group at 16 interfaces, and stale generations are
+rejected.
+
 ## Ordered Messages
 
 All lifecycle and control messages are reliable and ordered:

@@ -115,11 +115,12 @@ motion, pressure transitions, and tilt from the redirected device.
 The live 4K session exclusively grabbed the client's pen, pad, and touch nodes
 and suppressed the normalized fallback. The user confirmed full DP-2 reach,
 the Ctrl plus bottom-edge Flame gesture, and working Flame Tablet Margins at
-both 5% and 20%. The bridge applied only standard output geometry mapping; it
-did not read Flame preferences or pre-scale tablet coordinates. This passes the
-raw-HID behavior prototype. The standalone plaintext bridge remains a test
-fixture; production must carry the same messages inside the authenticated,
-encrypted StationConnect session.
+both 5% and 20%. The path applied only standard output geometry mapping; it did
+not read Flame preferences or pre-scale tablet coordinates. The encrypted
+StationConnect integration then matched both report descriptors, USB identity,
+and host event capabilities, cleaned up on disconnect, recreated the group on
+reconnect, and reproduced the Flame gesture and Tablet Margins behavior. The
+standalone plaintext bridge remains a test fixture only.
 
 FFmpeg 8.0.1 identifies the correctly signaled stream as `gbrp10le` and silently
 falls back to software even when VA hardware frames are requested. Earlier
