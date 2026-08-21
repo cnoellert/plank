@@ -13,4 +13,10 @@ if [[ -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
   exit 1
 fi
 
+client_dir=$(dirname -- "${client_binary}")
+client_libdir=${STATIONCONNECT_CLIENT_LIBDIR:-${client_dir}/lib}
+if [[ -d "${client_libdir}" ]]; then
+  export LD_LIBRARY_PATH="${client_libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+fi
+
 exec "${client_binary}" "$@"

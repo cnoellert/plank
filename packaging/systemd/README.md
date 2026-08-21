@@ -31,6 +31,19 @@ and `/usr/bin/stationconnect-client`. Production packages place their Sunshine
 and Moonlight binaries under `/usr/libexec/stationconnect/`; a development
 environment can override each binary path in its environment file.
 
+Build and bundle the pinned FFmpeg 9 client runtime next to Moonlight before
+packaging it:
+
+```bash
+./scripts/build-client-ffmpeg.sh /usr/libexec/stationconnect
+PKG_CONFIG_PATH=build/client-ffmpeg-9.0.1/install/lib/pkgconfig qmake6 ...
+```
+
+The script verifies the FFmpeg 9.0.1 source checksum and installs the required
+shared libraries and LGPL license files under `lib/`. The client launcher
+prepends that private directory to `LD_LIBRARY_PATH`, preventing an older
+distribution FFmpeg from being selected at runtime.
+
 Install `stationconnect-host.service` and `stationconnect-client.service` in
 the system user-unit directory. They start inside the graphical session so the
 host inherits the active Xorg authorization and the client inherits its

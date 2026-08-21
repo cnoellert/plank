@@ -34,3 +34,12 @@ expect_status 1 env -u DISPLAY -u WAYLAND_DISPLAY \
   STATIONCONNECT_CLIENT_BINARY=/bin/true "${client_launcher}"
 expect_status 0 env STATIONCONNECT_CLIENT_BINARY=/bin/true \
   DISPLAY=:99 "${client_launcher}" forwarded-argument
+
+client_environment=$(env STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
+  STATIONCONNECT_CLIENT_LIBDIR="${repo_dir}/packaging" \
+  LD_LIBRARY_PATH=/system/lib DISPLAY=:99 "${client_launcher}")
+if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
+  <<<"${client_environment}"; then
+  echo 'Client launcher did not prefer the private library directory' >&2
+  exit 1
+fi
