@@ -123,6 +123,18 @@ operation. Treat this as a possible startup/reconnect registration race until
 an automated attach, disconnect, and reconnect test either reproduces it or
 establishes repeated clean recovery.
 
+The lifecycle audit found two concrete reconnect hazards and fixed both. A
+retained host input object now assigns each stream binding a connection lease,
+so a late reset from an older stream cannot destroy a tablet attached by its
+replacement. The regression test attaches generation 7, resumes with
+generation 8, proves the stale reset preserves generation 8, and proves the
+current reset removes it. On the client, focus loss now synchronously releases
+and detaches the physical tablet, raw-HID generations remain unique across
+capture objects, and a failed discovery or attach retries once per second.
+This also covers a tablet or its udev ACL becoming ready shortly after client
+startup. Both fork builds passed; repeat live disconnect/reconnect validation
+remains after the required fresh PAM login.
+
 ## Authenticated Desktop Launch
 
 The dedicated NUC completed the StationConnect login flow against the PAM
