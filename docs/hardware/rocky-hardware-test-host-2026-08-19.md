@@ -159,6 +159,33 @@ stream shutdown removed both the child and session within two seconds. The
 client cleared its one-use token after launch, so a restarted client returned
 to operating-system login rather than resuming the Desktop.
 
+## Software H.264 Scene-Change Quality
+
+The 2026-08-21 full-screen Flame test used the 3,583-frame, 24 fps production
+loop and the established 3840x2160x60, 10-bit H.264 4:4:4 identity stream. The
+client request remained 100 Mbps. Quality candidates allowed a bounded 2x
+short-term peak, used a four-frame VBV, and enabled x264 scene-cut detection at
+threshold 40; they did not raise sustained bandwidth.
+
+| Preset / slices | Network FPS | x264 p95 | Over 16.67 ms | Host p95 | P QP | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `ultrafast` / 33, old CBR baseline | 59.85 | not captured | not captured | 29.4 ms | 37.28 | Throughput baseline |
+| `superfast` / 16 | 44.27 | 23.62 ms | 6,396 / 11,062 | 51.0 ms | 36.33 | Reject |
+| `superfast` / 33 | 48.92 | 20.46 ms | 1,665 / 4,432 | 48.4 ms | 38.70 | Reject |
+| `ultrafast` / 33 | 59.94 | 10.81 ms | 6 / 9,613 | 29.3 ms | 39.30 | Pass |
+| `ultrafast` / 24 | 59.97 | 11.18 ms | 0 / 10,599 | 29.6 ms | 38.93 | Pass |
+| `ultrafast` / 20 | 59.94 | 11.57 ms | 3 / 10,636 | 29.9 ms | 38.83 | Pass |
+| `ultrafast` / 16 | 59.94 | 12.45 ms | 2 / 9,906 | 30.6 ms | 38.48 | Selected |
+| `ultrafast` / 12 | 59.94 | 13.64 ms | 1 / 10,716 | 31.9 ms | 38.97 | Pass, less margin |
+
+The selected 16-slice run rendered 59.92 fps, lost no network frames, had no
+real-stream VBV underflow, and inserted 185 scene-cut I-frames. Reducing to 12
+slices increased host tail latency and did not improve measured P-frame QP on
+the same production loop. `superfast` is unsuitable even though aggregate CPU
+use is low: sliced-thread completion is the frame-critical path. Keep
+`ultrafast`, 16 slices, `zerolatency`, the bounded-VBR controls, and scene-cut
+threshold 40 as the current software H.264 profile.
+
 ## Managed Desktop Services
 
 The development host and NUC now run through graphical-session systemd user
