@@ -7,8 +7,10 @@ PartOf=graphical-session.target
 Type=simple
 EnvironmentFile=-%h/.config/stationconnect/client.env
 ExecStart=/usr/bin/stationconnect-client
-Restart=on-failure
+Restart=always
 RestartSec=2s
+TimeoutStopSec=10s
+UMask=0077
 
 [Install]
 WantedBy=graphical-session.target

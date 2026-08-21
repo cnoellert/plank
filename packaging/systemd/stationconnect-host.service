@@ -6,9 +6,11 @@ PartOf=graphical-session.target
 [Service]
 Type=simple
 EnvironmentFile=-%h/.config/stationconnect/host.env
-ExecStart=/usr/bin/stationconnect-host $STATIONCONNECT_HOST_OPTIONS
-Restart=on-failure
+ExecStart=/usr/bin/stationconnect-host
+Restart=always
 RestartSec=2s
+TimeoutStopSec=10s
+UMask=0077
 
 [Install]
 WantedBy=graphical-session.target

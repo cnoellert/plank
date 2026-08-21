@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
+host_launcher=${repo_dir}/packaging/bin/stationconnect-host
+client_launcher=${repo_dir}/packaging/bin/stationconnect-client
+
+expect_status() {
+  local expected=$1
+  shift
+  local actual
+  set +e
+  "$@" >/dev/null 2>&1
+  actual=$?
+  set -e
+  if [[ ${actual} -ne ${expected} ]]; then
+    echo "Expected status ${expected}, received ${actual}: $*" >&2
+    return 1
+  fi
+}
+
+expect_status 127 env STATIONCONNECT_HOST_BINARY=/does/not/exist \
+  "${host_launcher}"
+expect_status 1 env -u DISPLAY -u XAUTHORITY \
+  STATIONCONNECT_HOST_BINARY=/bin/true "${host_launcher}"
+expect_status 1 env DISPLAY=:99 XAUTHORITY=/does/not/exist \
+  STATIONCONNECT_HOST_BINARY=/bin/true \
+  STATIONCONNECT_AUTH_SOCKET=/does/not/exist "${host_launcher}"
+
+expect_status 127 env STATIONCONNECT_CLIENT_BINARY=/does/not/exist \
+  DISPLAY=:99 "${client_launcher}"
+expect_status 1 env -u DISPLAY -u WAYLAND_DISPLAY \
+  STATIONCONNECT_CLIENT_BINARY=/bin/true "${client_launcher}"
+expect_status 0 env STATIONCONNECT_CLIENT_BINARY=/bin/true \
+  DISPLAY=:99 "${client_launcher}" forwarded-argument

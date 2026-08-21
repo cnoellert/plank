@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+client_binary=${STATIONCONNECT_CLIENT_BINARY:-/usr/libexec/stationconnect/moonlight}
+
+if [[ ! -x "${client_binary}" ]]; then
+  echo "StationConnect client binary is not executable: ${client_binary}" >&2
+  exit 127
+fi
+if [[ -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
+  echo 'StationConnect client requires a graphical session' >&2
+  exit 1
+fi
+
+exec "${client_binary}" "$@"

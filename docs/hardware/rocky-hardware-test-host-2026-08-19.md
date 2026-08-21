@@ -126,6 +126,30 @@ presentation. The physical Wacom remained attached through the encrypted
 session, and host libinput recorded native proximity, axes, pressure, tilt,
 and tip-down/tip-up transitions.
 
+The follow-up lifecycle run placed each PAM conversation in a short-lived
+broker child. Logind reported the child as the leader of remote session `c5`;
+stream shutdown removed both the child and session within two seconds. The
+client cleared its one-use token after launch, so a restarted client returned
+to operating-system login rather than resuming the Desktop.
+
+## Managed Desktop Services
+
+The development host and NUC now run through graphical-session systemd user
+units and checked launchers instead of persistent terminal commands. Each
+launcher requires its packaged binary and graphical environment; the host also
+requires access to the PAM broker socket. Both units use `Restart=always` for
+dedicated-appliance recovery. Forced `SIGKILL` tests replaced Moonlight PID
+26564 with 26668 and Sunshine PID 1457464 with 1462658. The host restored all
+dual-stack wildcard listeners and the qualified NvFBC/software-x264 backend;
+the client marked hardware-test-host offline during recovery and rediscovered it ten seconds
+later without intervention.
+
+operator's current graphical login predates membership in
+`stationconnect-auth`, so the development host unit temporarily enters that
+group through `sg`. This override is ignored by Git and is not part of the
+production units. A clean login or boot must provide the supplementary group
+directly before the automatic-login transition gate can close.
+
 ## Production Capture Decision
 
 `nvidia_drm.modeset=1` was added to every installed Rocky boot entry with

@@ -225,6 +225,9 @@ target_compile_options(connect-wacom-raw-bridge PRIVATE
   -Wall -Wextra -Wpedantic -Werror)
 
 if(BUILD_TESTING)
+  add_test(NAME packaging-launchers
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-launchers.sh)
+
   add_executable(extended-fec-block-indices-test
     tests/protocol/extended-fec-block-indices.c)
   target_compile_options(extended-fec-block-indices-test PRIVATE

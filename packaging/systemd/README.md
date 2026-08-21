@@ -26,10 +26,17 @@ socket; the service limits itself to 40 total tasks.
 
 ## Desktop Services
 
+Install the launchers from `packaging/bin/` as `/usr/bin/stationconnect-host`
+and `/usr/bin/stationconnect-client`. Production packages place their Sunshine
+and Moonlight binaries under `/usr/libexec/stationconnect/`; a development
+environment can override each binary path in its environment file.
+
 Install `stationconnect-host.service` and `stationconnect-client.service` in
-the system user-unit directory. They start inside the graphical session so
-the host inherits the active Xorg authorization and the client inherits its
-Wayland display. Enable the applicable unit for the desktop account:
+the system user-unit directory. They start inside the graphical session so the
+host inherits the active Xorg authorization and the client inherits its
+Wayland display. A launcher refuses to run without that graphical environment;
+the host also refuses to run without access to the PAM broker socket. Enable
+the applicable unit for the desktop account:
 
 ```bash
 systemctl --user enable --now stationconnect-host.service
@@ -41,7 +48,8 @@ Install the matching example environment file as
 provisioning. The current host profile must select its qualified physical
 output; `output_name=1` is specific to hardware-test-host and is not a universal default.
 The 33-thread software profile is likewise qualified only for hardware-test-host's 128
-logical CPUs.
+logical CPUs. Launcher options are whitespace-delimited; do not use paths with
+spaces in `STATIONCONNECT_HOST_OPTIONS`.
 
 Leave Sunshine's `bind_address` empty so discovery and media listen on all
 available IPv4 and IPv6 interfaces. On the client, the approved-interface

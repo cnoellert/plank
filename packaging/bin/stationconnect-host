@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+host_binary=${STATIONCONNECT_HOST_BINARY:-/usr/libexec/stationconnect/sunshine}
+auth_socket=${STATIONCONNECT_AUTH_SOCKET:-/run/stationconnect/auth.sock}
+
+if [[ ! -x "${host_binary}" ]]; then
+  echo "StationConnect host binary is not executable: ${host_binary}" >&2
+  exit 127
+fi
+if [[ -z "${DISPLAY:-}" || -z "${XAUTHORITY:-}" ]]; then
+  echo 'StationConnect host requires DISPLAY and XAUTHORITY from a graphical session' >&2
+  exit 1
+fi
+if [[ ! -r "${auth_socket}" || ! -w "${auth_socket}" ]]; then
+  echo "StationConnect PAM broker socket is unavailable: ${auth_socket}" >&2
+  exit 1
+fi
+
+host_options=()
+if [[ -n "${STATIONCONNECT_HOST_OPTIONS:-}" ]]; then
+  read -r -a host_options <<<"${STATIONCONNECT_HOST_OPTIONS}"
+fi
+
+exec "${host_binary}" "${host_options[@]}" "$@"

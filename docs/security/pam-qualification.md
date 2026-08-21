@@ -32,13 +32,21 @@ failure test for one local account and one SSSD/FreeIPA account.
 
 On 2026-08-20, the PAM broker ran as the sandboxed system service on hardware-test-host with
 an exposure score of 3.9 (`OK`). Its socket was `root:stationconnect-auth` mode
-`0660`; Sunshine ran unprivileged and bound all product listeners to the
-explicit development address. TLS 1.2, pairing, root authentication, and
+`0660`; Sunshine ran unprivileged. TLS 1.2, pairing, root authentication, and
 unauthenticated application-list access were rejected. Restarting the broker
 during a live password challenge returned a protocol denial, completed PAM
 cleanup, and left Sunshine running. The focused authentication suite passed 10
 tests; the broader non-hardware host suite passed 391 with two expected skips.
 
-The remaining live gate is deliberately manual: enter a real account password
-in the NUC UI, launch Desktop, end the stream, and confirm that the PAM session
-and token disappear. Do not automate that credential.
+The live lifecycle gate passed on the dedicated NUC. A manual login created
+logind session `c5` with service `remote-desktop`; its leader was the broker's
+short-lived worker rather than the persistent broker. Moonlight consumed its
+one-use token immediately after the successful Desktop launch. Ending the
+stream removed the worker and `c5` within two seconds, and restarting Moonlight
+required a new login. An empty-password denial likewise left no worker or
+logind session. Real passwords remain manual-only and must not be automated.
+
+The development host now listens on wildcard IPv4/IPv6 addresses to survive
+interface changes. Firewalld is disabled on hardware-test-host, so this is permitted only
+on its isolated qualification network. Production packaging must expose those
+listeners only in the approved VPN interface's firewalld zone.
