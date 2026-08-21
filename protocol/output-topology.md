@@ -18,12 +18,15 @@ The host returns `schema_version: 1` and a numeric `feature_flags` field from
 - `0x2` — stable selected-output launch
 - `0x4` — unified absolute-input geometry
 - `0x8` — aspect-preserving scaled desktop span
+- `0x10` — topology-generation binding at launch and during streaming
 
 The client sends `scProtocolVersion=1`, `scFeatureFlags`, and `scDisplayMode` on
-`/launch`. `single-output` also requires `scOutputId`; `scaled-span` captures the
-desktop bounds and omits it. An output ID is opaque to the client. Linux/X11
-IDs use the current `x11:<connector>` form, for example `x11:DP-2`;
-enumeration indices are never sent as stable IDs.
+`/launch`. A client negotiating `0x10` also sends the exact
+`scTopologyGeneration` returned by the topology endpoint. `single-output` also
+requires `scOutputId`; `scaled-span` captures the desktop bounds and omits it.
+An output ID is opaque to the client. Linux/X11 IDs use the current
+`x11:<connector>` form, for example `x11:DP-2`; enumeration indices are never
+sent as stable IDs.
 
 ## Topology Document
 
@@ -37,6 +40,16 @@ The client persists the chosen output ID per host UUID. If it has no valid
 mapping, it selects the primary output, then the first output as a final
 fallback. It must re-fetch after hotplug or a rejected launch rather than
 falling back to an enumeration index.
+
+Generation fingerprints are independent of enumeration order and change when
+output identity, geometry, rotation, refresh, or primary state changes. The
+host rejects a stale launch with status 409 before consuming the PAM session;
+the client re-fetches the topology and retries once with the same authenticated
+token. During a bound stream the host polls for topology replacement at a
+one-second maximum interval. A change ends the stream and runs normal input
+cleanup so no pen contact, key, or virtual HID device survives against stale
+geometry. Reconnection requires fresh OS authentication; seamless in-stream
+topology acknowledgement is reserved for a later protocol feature.
 
 ## Launch and Input Rules
 

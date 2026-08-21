@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "feature_flags": 15,
-  "generation": "x11:1724265600000",
+  "feature_flags": 31,
+  "generation": "x11:270cd83187ffcad4",
   "desktop": { "x": 0, "y": 0, "width": 5120, "height": 2160 },
   "outputs": [
     {

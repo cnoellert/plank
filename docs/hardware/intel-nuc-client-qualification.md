@@ -576,3 +576,31 @@ redirected Intuos. Removing the still-running RGS sender left only the exact
 UHID Wacom interfaces; Flame then applied its 5% area directly to the Intuos,
 and live testing confirmed that adjustable margins work without a watcher or
 StationConnect-side margin emulation.
+
+The bilinear implementation then completed a 7-minute real-content run. It
+received and decoded 59.98 fps and rendered 59.93 fps with zero network loss.
+CUDA conversion p95 was 7.38 ms, x264 completion p95 was 12.31 ms, pinned GPU
+readback p95 was 4.03 ms, and depth expansion p95 was 3.69 ms. Eleven of 25,667
+x264 completions exceeded 16.67 ms. The client decode, queue, and render means
+were 7.44, 2.15, and 5.97 ms. Pacer totals were `0/16/2`, concentrated at
+startup with occasional later render catch-up; this preserves the 60 fps
+throughput result but leaves startup and presentation-tail work open.
+
+## Topology Generation and Disconnect Safety — 2026-08-21
+
+Protocol v1 feature flags now equal `0x1f`; bit `0x10` binds a launch and active
+capture to the topology generation returned by the authenticated endpoint. A
+live scaled-span launch sent that generation explicitly. Changing only the X11
+primary flag from `DP-2` to `DP-1` changed the generation, ended the stream
+within the one-second polling bound, and removed Pen, Eraser, Pad, and Finger
+from XInput. Restoring `DP-2` preserved the original 5120x2160 geometry.
+
+A deterministic launch race changed the primary flag after the client's
+topology fetch but before `/launch`. The host returned 409 without consuming
+the PAM session. Moonlight fetched the new generation, retried exactly once,
+started video successfully, and consumed the one-use token only after success.
+Restoring the original primary flag ended this second bound stream and again
+removed all four virtual Wacom devices. Graceful tablet disconnect and a
+separate forced Moonlight `SIGKILL` also left no raw client descriptors or host
+UHID/XInput devices. Seamless hot-plug remapping remains future work; the
+current behavior deliberately fails closed and requires fresh authentication.
