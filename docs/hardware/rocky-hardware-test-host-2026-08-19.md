@@ -112,6 +112,17 @@ standalone TCP bridge remains qualification-only. Automated ExpressKey, ring,
 multitouch, hot-unplug, and abrupt network-loss coverage remains before the
 full Wacom product gate can close.
 
+A later managed-service restart initially appeared to lose pen-tip clicks in
+Flame. Client ACLs and exclusive access to both physical HID interfaces were
+correct, and the physical pen event node produced normal tip and pressure
+events while disconnected. Recycling the authenticated stream removed and
+recreated every host UHID node without a code or configuration change. A
+line-buffered host libinput trace then recorded proximity, pressure, motion,
+and distinct tip-down/tip-up transitions, and the user confirmed normal Flame
+operation. Treat this as a possible startup/reconnect registration race until
+an automated attach, disconnect, and reconnect test either reproduces it or
+establishes repeated clean recovery.
+
 ## Authenticated Desktop Launch
 
 The dedicated NUC completed the StationConnect login flow against the PAM
