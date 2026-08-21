@@ -60,9 +60,10 @@ Install the matching example environment file as
 `~/.config/stationconnect/host.env` or `client.env` and adjust it during
 provisioning. The current host profile must select its qualified physical
 output; `output_name=1` is specific to hardware-test-host and is not a universal default.
-The 33-thread software profile is likewise qualified only for hardware-test-host's 128
-logical CPUs. Launcher options are whitespace-delimited; do not use paths with
-spaces in `STATIONCONNECT_HOST_OPTIONS`.
+The software profile expands x264 worker affinity to the qualified CPU set and
+uses 16 slices on hardware-test-host; neither the CPU count nor slice count is a universal
+default. Launcher options are whitespace-delimited; do not use paths with spaces
+in `STATIONCONNECT_HOST_OPTIONS`.
 
 Leave Sunshine's `bind_address` empty so discovery and media listen on all
 available IPv4 and IPv6 interfaces. On the client, the approved-interface
