@@ -650,3 +650,19 @@ rerun received/decoded 59.95 fps and rendered 59.91 fps. Capture-start p99/max
 fell from 106.4/118.8 ms to 16.9/20.4 ms, packet cadence max fell from 125.7 ms
 to 34.7 ms, and x264 completion was 12.36 ms p95 with no frame over 16.67 ms.
 The user confirmed that physical Flame playback no longer stuttered.
+
+## Per-Workstation Display Preference — 2026-08-21
+
+Scaled desktop span is the default whenever an authenticated host reports more
+than one output and supports spanning. The workstation tile context menu now
+provides **Display…**, which offers the scaled span followed by each physical
+monitor, with the primary monitor listed first. The selection is saved per host
+and applied to the next connection; changing it does not alter the active
+stream or the host's Xorg layout.
+
+Moonlight caches the last authenticated topology so the menu remains available
+after a client restart. A host without cached topology asks the user to connect
+once before choosing a display. The Qt topology tests cover serialization and
+confirm that an empty preference selects scaled span. On the NUC, a restart
+restored the 5120x2160 span and both DP-2/DP-1 choices, and a fresh launch sent
+`scDisplayMode=scaled-span` without a physical-output ID.
