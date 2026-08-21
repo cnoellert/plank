@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "feature_flags": 15,
+  "generation": "x11:1724265600000",
+  "desktop": { "x": 0, "y": 0, "width": 5120, "height": 2160 },
+  "outputs": [
+    {
+      "id": "x11:DP-1",
+      "name": "DP-1",
+      "x": 3840,
+      "y": 0,
+      "width": 1280,
+      "height": 2160,
+      "rotation": 0,
+      "refresh_millihz": 59930,
+      "primary": false
+    },
+    {
+      "id": "x11:DP-2",
+      "name": "DP-2",
+      "x": 0,
+      "y": 0,
+      "width": 3840,
+      "height": 2160,
+      "rotation": 0,
+      "refresh_millihz": 59970,
+      "primary": true
+    }
+  ]
+}

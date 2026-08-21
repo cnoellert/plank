@@ -135,12 +135,20 @@ to `gbrp10le` and retained Vulkan presentation. The route was explicitly
 approved as `enx207bd2039662`; discovery remained available independently of
 that credential-bearing route check.
 
-FFmpeg 8.0.1 identifies the correctly signaled stream as `gbrp10le` and silently
+The production client bundle now uses FFmpeg 9.0.1. It identifies the correctly
+signaled stream as `gbrp10le` and silently
 falls back to software even when VA hardware frames are requested. Earlier
 FFmpeg measurements of 95.78 and 109.52 fps are therefore invalidated. Do not
 change the stream's GBR matrix metadata to work around an FFmpeg negotiation
 issue. The client should use the proven Y410 VA surface and import it without a
 CPU copy.
+
+The client was built natively on the NUC against FFmpeg 9, then launched with
+private `libavcodec.so.63`, `libavutil.so.61`, `libswscale.so.10`, and
+`libswresample.so.7` libraries beside the executable. `/proc/<pid>/maps`
+confirmed that the running service loaded all four private libraries rather
+than Ubuntu's system FFmpeg. `scripts/build-client-ffmpeg.sh` pins the official
+9.0.1 archive by SHA-256 and reproduces this bundle.
 
 The dedicated DMA-BUF probe requests the required `GstVideoMeta` allocation,
 checks every output memory and FD without mapping it, and imports a representative
@@ -527,3 +535,31 @@ network, jitter, FEC, or pacer drops. Decode averaged 0.34 ms, frame-queue delay
 0.70 ms, render including V-sync 4.73 ms, and host-processing p95 was 29.2 ms.
 The client reported `8-bit-source/up-converted`, `10-bit HEVC 4:4:4`, and
 `10-bit RGB identity` for the three precision stages.
+
+## Scaled Dual-Monitor Span — 2026-08-21
+
+The authenticated topology endpoint reported the 5120x2160 X11 desktop as
+3840x2160 `DP-2` plus 1280x2160 `DP-1`. With one 3840x2160 NUC display, the
+client negotiated protocol version 1, feature flags `0xf`, and
+`scDisplayMode=scaled-span`; it sent no physical-output ID. NvFBC captured the
+complete 5120x2160 screen. CUDA scaled it to 3840x1620 at offset `+0+270` in a
+3840x2160 encoded frame, preserving aspect ratio and adding black bars without
+changing Xorg or the host monitor layout. This makes Flame and its scopes
+simultaneously visible. Raw Wacom reports remain unchanged, while normalized
+absolute input uses the same content rectangle.
+
+A 149-second real Flame-loop run delivered 8,936 10-bit H.264 4:4:4 frames.
+The FFmpeg 9 client received and decoded 59.96 fps, rendered 59.91 fps, and lost
+no frames to the network. Software decode averaged 7.00 ms; queueing averaged
+0.86 ms and rendering including V-sync averaged 5.64 ms. Six render catch-up
+drops and one queue-overflow drop occurred during startup, followed by one
+render catch-up event at 21 seconds; aggregate jitter loss was 0.08%.
+
+Host CUDA conversion averaged 5.43 ms with 7.66 ms p95. Direct x264 completion
+averaged 9.75 ms with 11.99 ms p95 and only one sample above 16.67 ms. The
+display-to-packet measurement was 23.65 ms average and 31.73 ms p95 because it
+also includes waiting for the next captured refresh. Scaled spanning therefore
+passes sustained 60 fps throughput, but it does not close the separate
+end-to-end latency or startup-drop gates. GPU scaling before readback is already
+active for this 10-bit path; further headroom work should concentrate on the
+software decode path and bounded capture/encode overlap.
