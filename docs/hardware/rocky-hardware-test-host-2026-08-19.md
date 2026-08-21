@@ -132,8 +132,12 @@ current reset removes it. On the client, focus loss now synchronously releases
 and detaches the physical tablet, raw-HID generations remain unique across
 capture objects, and a failed discovery or attach retries once per second.
 This also covers a tablet or its udev ACL becoming ready shortly after client
-startup. Both fork builds passed; repeat live disconnect/reconnect validation
-remains after the required fresh PAM login.
+startup. Both fork builds passed. A fresh PAM-authenticated stream then passed
+the live focus lifecycle gate: GNOME overview focus loss made Moonlight release
+both physical HID interfaces and removed every host Wacom node; focus gain
+reopened both interfaces and recreated new UHID instances `003C` and `003D`.
+Xorg again registered Pen, Eraser, Pad, and Finger, and the user confirmed
+normal Wacom operation in Flame.
 
 ## Authenticated Desktop Launch
 
