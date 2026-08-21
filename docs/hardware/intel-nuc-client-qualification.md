@@ -563,3 +563,16 @@ passes sustained 60 fps throughput, but it does not close the separate
 end-to-end latency or startup-drop gates. GPU scaling before readback is already
 active for this 10-bit path; further headroom work should concentrate on the
 software decode path and bounded capture/encode overlap.
+
+The initial span build used CUDA point sampling and produced visibly poor
+downscaling. The 10-bit software-CUDA path now selects linear texture sampling
+only when the capture and encoded dimensions differ, retaining point sampling
+for one-to-one capture. Live inspection confirmed substantially better span
+quality; a 20-second sample showed about 7% GPU SM utilization.
+
+Raw-HID tablet coordinates and pressure were correct across the span. Flame's
+Tablet Margins initially changed a stale RGS virtual tablet instead of the
+redirected Intuos. Removing the still-running RGS sender left only the exact
+UHID Wacom interfaces; Flame then applied its 5% area directly to the Intuos,
+and live testing confirmed that adjustable margins work without a watcher or
+StationConnect-side margin emulation.
