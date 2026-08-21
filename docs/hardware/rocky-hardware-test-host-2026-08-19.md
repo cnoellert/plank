@@ -147,8 +147,13 @@ later without intervention.
 operator's current graphical login predates membership in
 `stationconnect-auth`, so the development host unit temporarily enters that
 group through `sg`. This override is ignored by Git and is not part of the
-production units. A clean login or boot must provide the supplementary group
-directly before the automatic-login transition gate can close.
+production units. A subsequent logout/login activated
+`graphical-session.target` and `stationconnect-host.service` together at
+17:29:05 without a terminal process. Sunshine selected the 3840x2160 output,
+qualified software-x264, enabled PAM authentication, and restored its wildcard
+listeners; the NUC rediscovered hardware-test-host. Persistent SSH sessions kept the old
+user manager alive, so a clean boot must still verify direct supplementary
+group inheritance without the development override.
 
 ## Production Capture Decision
 
