@@ -8,6 +8,7 @@
 /artifacts/qualification/video/**/*.log
 /artifacts/qualification/wacom/raw/
 /artifacts/development/
+/artifacts/packages/
 /test_sunshine.log*
 /sunshine_state.json
 /write_file_test_*.txt

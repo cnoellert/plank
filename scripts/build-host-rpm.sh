@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if (($# > 2)); then
+  echo "usage: $0 [BUILD_DIR] [OUTPUT_DIR]" >&2
+  exit 2
+fi
+
+repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
+output_dir=$(realpath -m -- "${2:-${repo_dir}/artifacts/packages}")
+
+for command_name in cmake install rpmbuild tar; do
+  command -v "$command_name" >/dev/null || {
+    echo "required command is unavailable: ${command_name}" >&2
+    exit 1
+  }
+done
+
+"${repo_dir}/scripts/build-host-package-binaries.sh" "$build_dir"
+
+work_dir=$(mktemp -d --tmpdir stationconnect-host-rpm.XXXXXX)
+cleanup() {
+  rm -rf -- "$work_dir"
+}
+trap cleanup EXIT
+payload_dir="${work_dir}/payload"
+rpm_topdir="${work_dir}/rpmbuild"
+mkdir -p "$payload_dir" "$rpm_topdir/SOURCES" "$rpm_topdir/SPECS" \
+  "$rpm_topdir/BUILD" "$rpm_topdir/BUILDROOT" "$rpm_topdir/RPMS" "$rpm_topdir/SRPMS"
+
+install -D -m 0755 "$build_dir/sunshine" \
+  "$payload_dir/usr/libexec/stationconnect/sunshine"
+install -D -m 0755 "$build_dir/stationconnect-pam-broker" \
+  "$payload_dir/usr/bin/stationconnect-pam-broker"
+install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host" \
+  "$payload_dir/usr/bin/stationconnect-host"
+install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-host.service" \
+  "$payload_dir/usr/lib/systemd/user/stationconnect-host.service"
+install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-pam-broker.service" \
+  "$payload_dir/usr/lib/systemd/system/stationconnect-pam-broker.service"
+install -D -m 0644 "$repo_dir/packaging/pam/remote-desktop" \
+  "$payload_dir/etc/pam.d/remote-desktop"
+install -D -m 0644 "$repo_dir/packaging/sysusers.d/stationconnect.conf" \
+  "$payload_dir/usr/lib/sysusers.d/stationconnect.conf"
+install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-wacom.rules" \
+  "$payload_dir/usr/lib/udev/rules.d/70-stationconnect-wacom.rules"
+install -D -m 0644 "$repo_dir/packaging/firewalld/stationconnect.xml" \
+  "$payload_dir/usr/lib/firewalld/services/stationconnect.xml"
+install -D -m 0644 "$repo_dir/host/sunshine-fork/LICENSE" \
+  "$payload_dir/usr/share/licenses/stationconnect-host/LICENSE-Sunshine"
+install -D -m 0644 "$repo_dir/packaging/README.md" \
+  "$payload_dir/usr/share/doc/stationconnect-host/README.md"
+mkdir -p "$payload_dir/usr/share/stationconnect"
+cp -aL "$build_dir/assets/." "$payload_dir/usr/share/stationconnect/"
+
+source_epoch=$(git -C "$repo_dir" log -1 --format=%ct)
+tar --sort=name --mtime="@${source_epoch}" --owner=0 --group=0 \
+  --numeric-owner -C "$work_dir" -czf \
+  "$rpm_topdir/SOURCES/stationconnect-host-payload.tar.gz" payload
+install -m 0644 "$repo_dir/packaging/rpm/stationconnect-host.spec" \
+  "$rpm_topdir/SPECS/stationconnect-host.spec"
+rpmbuild -bb --define "_topdir ${rpm_topdir}" \
+  "$rpm_topdir/SPECS/stationconnect-host.spec"
+
+mkdir -p "$output_dir"
+find "$rpm_topdir/RPMS" -type f -name '*.rpm' -exec install -m 0644 -t "$output_dir" {} +
+rpm_file=$(find "$output_dir" -maxdepth 1 -type f -name 'stationconnect-host-*.rpm' | sort | tail -1)
+rpm -qpl "$rpm_file" >/dev/null
+rpm -qpR "$rpm_file" | rg -q 'libX11\.so\.6'
+echo "host_rpm=${rpm_file}"
+echo "host_rpm_manifest_gate=pass"
