@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if (($# < 2 || $# > 4)); then
+  echo "usage: $0 MOONLIGHT_BINARY FFMPEG_WORK_DIR [OUTPUT_DIR] [MOONLIGHT_SOURCE_DIR]" >&2
+  exit 2
+fi
+
+repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+moonlight_binary=$(realpath -- "$1")
+ffmpeg_work_dir=$(realpath -- "$2")
+output_dir=$(realpath -m -- "${3:-${repo_dir}/artifacts/packages}")
+moonlight_source_dir=$(realpath -- "${4:-${repo_dir}/client/moonlight-qt-fork}")
+ffmpeg_version=9.0.1
+ffmpeg_sha256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
+ffmpeg_lib_dir="${ffmpeg_work_dir}/install/lib"
+if [[ -f ${ffmpeg_work_dir}/COPYING.LGPLv2.1 ]]; then
+  ffmpeg_source_dir="$ffmpeg_work_dir"
+else
+  ffmpeg_source_dir="${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}"
+fi
+if [[ -f ${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}.tar.xz ]]; then
+  ffmpeg_archive="${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}.tar.xz"
+else
+  ffmpeg_archive="$(dirname -- "$ffmpeg_work_dir")/ffmpeg-${ffmpeg_version}.tar.xz"
+fi
+package_version=0.1.0-0.1
+
+for command_name in dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum; do
+  command -v "$command_name" >/dev/null || {
+    echo "required command is unavailable: ${command_name}" >&2
+    exit 1
+  }
+done
+
+[[ -x ${moonlight_binary} ]] || {
+  echo "Moonlight binary is not executable: ${moonlight_binary}" >&2
+  exit 1
+}
+[[ -f ${moonlight_source_dir}/LICENSE ]] || {
+  echo "Moonlight source tree is unavailable: ${moonlight_source_dir}" >&2
+  exit 1
+}
+if [[ -n $(git -C "$moonlight_source_dir" status --porcelain) ]]; then
+  echo "Moonlight source tree is dirty; refusing to create a release package" >&2
+  exit 1
+fi
+
+for library in \
+  libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
+  [[ -e ${ffmpeg_lib_dir}/${library} ]] || {
+    echo "required FFmpeg ${ffmpeg_version} library is unavailable: ${library}" >&2
+    exit 1
+  }
+done
+for license_file in COPYING.LGPLv2.1 COPYING.LGPLv3; do
+  [[ -f ${ffmpeg_source_dir}/${license_file} ]] || {
+    echo "FFmpeg license file is unavailable: ${ffmpeg_source_dir}/${license_file}" >&2
+    exit 1
+  }
+done
+printf '%s  %s\n' "$ffmpeg_sha256" "$ffmpeg_archive" | sha256sum --check --status
+
+moonlight_commit=$(git -C "$moonlight_source_dir" rev-parse HEAD)
+source_epoch=$(git -C "$moonlight_source_dir" log -1 --format=%ct)
+work_dir=$(mktemp -d --tmpdir stationconnect-client-deb.XXXXXX)
+cleanup() {
+  rm -rf -- "$work_dir"
+}
+trap cleanup EXIT
+stage_dir="${work_dir}/debian/stationconnect-client"
+private_lib_dir="${stage_dir}/usr/libexec/stationconnect/lib"
+mkdir -p "$stage_dir/DEBIAN" "$private_lib_dir" "$work_dir/debian"
+
+install -D -m 0755 "$moonlight_binary" \
+  "$stage_dir/usr/libexec/stationconnect/moonlight"
+install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-client" \
+  "$stage_dir/usr/bin/stationconnect-client"
+install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-client.service" \
+  "$stage_dir/usr/lib/systemd/user/stationconnect-client.service"
+install -D -m 0644 "$repo_dir/packaging/systemd/client.env.example" \
+  "$stage_dir/usr/share/doc/stationconnect-client/client.env.example"
+install -D -m 0644 "$repo_dir/packaging/desktop/stationconnect-client.desktop" \
+  "$stage_dir/usr/share/applications/stationconnect-client.desktop"
+install -D -m 0644 "$moonlight_source_dir/app/res/moonlight.svg" \
+  "$stage_dir/usr/share/icons/hicolor/scalable/apps/stationconnect-client.svg"
+install -D -m 0644 "$moonlight_source_dir/LICENSE" \
+  "$stage_dir/usr/share/doc/stationconnect-client/copyright"
+install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv2.1" \
+  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.FFmpeg.LGPLv2.1"
+install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv3" \
+  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.FFmpeg.LGPLv3"
+
+for library in libavcodec libavutil libswscale libswresample; do
+  cp -a "${ffmpeg_lib_dir}/${library}.so."* "$private_lib_dir/"
+done
+mkdir -p "$stage_dir/usr/lib/systemd/user/graphical-session.target.wants"
+ln -s ../stationconnect-client.service \
+  "$stage_dir/usr/lib/systemd/user/graphical-session.target.wants/stationconnect-client.service"
+
+cat >"$work_dir/debian/control" <<'EOF'
+Source: stationconnect-client
+Section: net
+Priority: optional
+Maintainer: StationConnect Engineering <engineering@stationconnect.invalid>
+Standards-Version: 4.7.0
+
+Package: stationconnect-client
+Architecture: amd64
+Description: StationConnect remote workstation client
+EOF
+cat >"$work_dir/shlibs.local" <<'EOF'
+libavcodec 63 stationconnect-client
+libavutil 61 stationconnect-client
+libswscale 10 stationconnect-client
+libswresample 7 stationconnect-client
+EOF
+
+(
+  cd "$work_dir"
+  mapfile -d '' packaged_elfs < <(
+    find debian/stationconnect-client/usr/libexec/stationconnect \
+      -type f -print0 | sort -z
+  )
+  dpkg-shlibdeps -O -Lshlibs.local -xstationconnect-client \
+    -l"$private_lib_dir" \
+    "${packaged_elfs[@]}"
+) >"$work_dir/shlibdeps"
+depends=$(sed -n 's/^shlibs:Depends=//p' "$work_dir/shlibdeps")
+[[ -n ${depends} ]] || {
+  echo "dpkg-shlibdeps did not produce client dependencies" >&2
+  exit 1
+}
+
+cat >"$stage_dir/usr/share/doc/stationconnect-client/BUILD-INFO" <<EOF
+Moonlight-Qt commit: ${moonlight_commit}
+FFmpeg version: ${ffmpeg_version}
+FFmpeg source SHA-256: ${ffmpeg_sha256}
+Moonlight binary SHA-256: $(sha256sum "$moonlight_binary" | awk '{print $1}')
+EOF
+installed_size=$(du -sk "$stage_dir/usr" | awk '{print $1}')
+sed -e "s/@VERSION@/${package_version}/" \
+  -e "s/@INSTALLED_SIZE@/${installed_size}/" \
+  -e "s/@DEPENDS@/${depends}/" \
+  "$repo_dir/packaging/deb/control.in" >"$stage_dir/DEBIAN/control"
+
+find "$stage_dir" -type d -exec chmod 0755 {} +
+chmod 0644 "$stage_dir/DEBIAN/control" \
+  "$stage_dir/usr/share/doc/stationconnect-client/BUILD-INFO"
+
+(
+  cd "$stage_dir"
+  find usr -type f -print0 | sort -z | xargs -0 md5sum >DEBIAN/md5sums
+)
+chmod 0644 "$stage_dir/DEBIAN/md5sums"
+find "$stage_dir" -exec touch -h -d "@${source_epoch}" {} +
+export SOURCE_DATE_EPOCH="$source_epoch"
+mkdir -p "$output_dir"
+deb_file="${output_dir}/stationconnect-client_${package_version}_amd64.deb"
+dpkg-deb --root-owner-group --uniform-compression -Zxz --build "$stage_dir" "$deb_file"
+
+dpkg-deb --info "$deb_file" >/dev/null
+dpkg-deb --contents "$deb_file" >/dev/null
+"${repo_dir}/scripts/audit-package-runtime.sh" \
+  "$stage_dir/usr/libexec/stationconnect/moonlight" "$private_lib_dir"
+dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'
+echo "client_deb=${deb_file}"
+echo "client_deb_manifest_gate=pass"

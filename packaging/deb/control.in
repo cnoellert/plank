@@ -1,0 +1,12 @@
+Package: stationconnect-client
+Version: @VERSION@
+Architecture: amd64
+Installed-Size: @INSTALLED_SIZE@
+Maintainer: StationConnect Engineering <engineering@stationconnect.invalid>
+Section: net
+Priority: optional
+Depends: bash, @DEPENDS@
+Description: StationConnect remote workstation client
+ Dedicated Moonlight-based client for authenticated StationConnect sessions.
+ The package carries its qualified FFmpeg runtime privately and leaves the
+ Ubuntu system FFmpeg installation unchanged.

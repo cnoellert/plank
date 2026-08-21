@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=StationConnect
+Comment=Connect to a StationConnect workstation
+Exec=stationconnect-client
+Icon=stationconnect-client
+Terminal=false
+Categories=Network;RemoteAccess;
+StartupNotify=true
