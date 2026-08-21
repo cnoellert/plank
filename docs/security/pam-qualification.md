@@ -44,7 +44,10 @@ short-lived worker rather than the persistent broker. Moonlight consumed its
 one-use token immediately after the successful Desktop launch. Ending the
 stream removed the worker and `c5` within two seconds, and restarting Moonlight
 required a new login. An empty-password denial likewise left no worker or
-logind session. Real passwords remain manual-only and must not be automated.
+logind session. The client now supports direct launch with a host and username
+in argv while reading the password from standard input with terminal echo
+disabled. Passwords remain forbidden in argv, environment variables, URLs,
+service definitions, persistent files, and logs.
 
 The development host now listens on wildcard IPv4/IPv6 addresses to survive
 interface changes. Firewalld is disabled on hardware-test-host, so this is permitted only

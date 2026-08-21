@@ -627,3 +627,26 @@ failure behavior. The full FFmpeg 9 client rebuilt successfully, started under
 the live user service, and was regenerated into a byte-reproducible DEB from a
 clean worktree. A fresh authenticated scaled-span session and Wacom check at a
 non-4K override remain the next live validation.
+
+The subsequent direct-connect build authenticated from password-on-stdin,
+selected the native 3840x2160 mode, launched Desktop without a chooser, and
+consumed the one-use token. Its process metadata contained only the host and
+username. Both generic unmapped-gamepad warning paths were removed because the
+raw Wacom pen and pad intentionally are not SDL game controllers. Diagnostic
+SDL logging remains available, but it no longer produces a user-facing modal.
+
+That live run initially exposed a regression. Scaled-span delivered only 56.50
+fps over 168 seconds, and a single-output A/B produced essentially the same
+56.31 fps. Both modes visibly stalled Flame on the physical host despite zero
+network loss, ruling out span scaling and client presentation.
+
+The cause was synchronous output-topology enumeration added to the capture
+callback once per second. NVIDIA/X11 enumeration blocked physical presentation
+and the NvFBC capture cadence. The topology generation is now checked once at
+launch, where a mismatch returns `409` and makes the client refresh and retry;
+the capture hot path does not poll stable monitor state. With scene-cut 40,
+16 slices, and all other codec settings unchanged, a 193-second single-output
+rerun received/decoded 59.95 fps and rendered 59.91 fps. Capture-start p99/max
+fell from 106.4/118.8 ms to 16.9/20.4 ms, packet cadence max fell from 125.7 ms
+to 34.7 ms, and x264 completion was 12.36 ms p95 with no frame over 16.67 ms.
+The user confirmed that physical Flame playback no longer stuttered.
