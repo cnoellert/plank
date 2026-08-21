@@ -1,19 +1,21 @@
 # Ubuntu NUC Development Package Qualification
 
 The first unsigned `stationconnect-client` DEB was assembled on the dedicated
-Ubuntu 26.04 NUC from clean Moonlight commit
-`d269c3b38a25d6fb8f41f4533135287b7f0ea49c`. The build explicitly exported
+Ubuntu 26.04 NUC and refreshed from clean Moonlight commit
+`d543d89be2026ba7376260a5159b727f65870d37`. The build explicitly exported
 the private FFmpeg pkg-config and loader paths; a gate rejected an earlier
 attempt that had accidentally linked Ubuntu's system FFmpeg 8.
 
 The final `0.1.0-0.1` amd64 package is 18 MiB and has SHA-256:
 
 ```text
-194a7f9b40901f0084ad2a2036d3875f1102181e153e335f855afadc1c27e431
+99f1d605c6a657f2171257eda4bc947d31e89aaefdf5db9f8d6d2b610fedbf8d
 ```
 
 It installs Moonlight under `/usr/libexec/stationconnect/`, the launcher and
 desktop entry, and globally enabled graphical-session user-unit integration.
+This build includes native client-display resolution selection and its saved
+explicit-override control.
 FFmpeg 9.0.1 SONAMEs `libavcodec.so.63`, `libavutil.so.61`,
 `libswscale.so.10`, and `libswresample.so.7` are isolated in the package's
 private `lib/` directory. Ubuntu's loader configuration and system FFmpeg are

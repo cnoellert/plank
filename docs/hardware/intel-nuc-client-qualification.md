@@ -604,3 +604,26 @@ removed all four virtual Wacom devices. Graceful tablet disconnect and a
 separate forced Moonlight `SIGKILL` also left no raw client descriptors or host
 UHID/XInput devices. Seamless hot-plug remapping remains future work; the
 current behavior deliberately fails closed and requires fresh authentication.
+
+## Client-Native Stream Resolution — 2026-08-21
+
+Moonlight commit `d543d89b` removes the StationConnect-only hardcoded
+3840x2160 assignment. After SDL video initialization, the client now matches
+the Qt UI to its physical display, requests that display's native safe-area
+resolution, and aspect-fits resolutions above the currently qualified
+3840x2160 software-decode ceiling. Both axes are kept even for consistent host
+scaling and presentation. If display detection fails, the qualified 4K mode is
+the fallback.
+
+Auto selection is enabled by default. A saved preference can disable it and
+use the existing width/height setting as an explicit override; an automatic
+session does not overwrite that saved resolution. The NUC currently reports
+3840x2160 at 59.98 Hz, so its selected stream remains 3840x2160 at the integer
+60 fps protocol rate.
+
+The pure selection tests passed all seven cases under Qt 5.15 on Rocky and Qt
+6.10 on Ubuntu, including native, explicit, over-4K, ultrawide, and detection
+failure behavior. The full FFmpeg 9 client rebuilt successfully, started under
+the live user service, and was regenerated into a byte-reproducible DEB from a
+clean worktree. A fresh authenticated scaled-span session and Wacom check at a
+non-4K override remain the next live validation.
