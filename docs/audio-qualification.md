@@ -33,13 +33,31 @@ host session sink -> Sunshine capture -> Opus/RTP -> Moonlight decode
 The NUC opened a 720-sample stereo output buffer at 48 kHz, corresponding to
 15 ms of audio per callback.
 
+## Clock-Drift Telemetry
+
+Set `STATIONCONNECT_AV_SYNC_TELEMETRY=1` in the client's
+`~/.config/stationconnect/client.env`, restart the client, and begin a new
+stream. Moonlight then logs audio media time with its SDL queue/device latency
+and video media time at the renderer call about once per second. Collect the
+user-service journal and analyze it from the repository root:
+
+```bash
+./scripts/analyze-av-sync-telemetry.py moonlight.log \
+  --warmup-seconds 10 --min-duration-seconds 7200
+```
+
+The analyzer reports p95 clock jitter, accumulated relative A/V drift, and a
+one-hour projection. It normalizes the streams' independent starting epochs,
+so it does not claim absolute lip-sync offset. A synchronized flash/tone source
+and client-side event detector remain necessary for that measurement.
+
 ## Remaining Phase 7 Gates
 
 This tone test proves routing and decoded sample delivery; it does not prove
 A/V synchronization. Before Phase 7 is complete:
 
-- bind capture to the PAM-authenticated desktop owner and reject cross-user
-  audio access;
+- live-qualify the Stage A PAM-account/desktop-owner launch gate and reject
+  cross-user audio access;
 - measure audio offset against the video presentation clock, including p95 and
   p99 jitter;
 - verify packet-loss recovery and bounded jitter-buffer behavior; and

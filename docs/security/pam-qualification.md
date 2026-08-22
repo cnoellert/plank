@@ -53,3 +53,12 @@ The development host now listens on wildcard IPv4/IPv6 addresses to survive
 interface changes. Firewalld is disabled on hardware-test-host, so this is permitted only
 on its isolated qualification network. Production packaging must expose those
 listeners only in the approved VPN interface's firewalld zone.
+
+Stage A stream admission now retains the authenticated account on its
+peer-bound token, resolves it through NSS/SSSD, and requires its UID to match
+the unprivileged Sunshine user before launch or resume can configure a display.
+A mismatch cancels the PAM session and fails closed. On hardware-test-host, both the running
+host and `operator` resolve to UID `540600009`. The focused authentication suite
+passes 5 tests, and the non-hardware host matrix passes 399 with two expected
+platform skips. This user-service check must be replaced by explicit selected
+logind-session ownership before the Phase 8 system-service design is enabled.

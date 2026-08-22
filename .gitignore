@@ -8,9 +8,11 @@
 /artifacts/qualification/video/**/*.log
 /artifacts/qualification/audio/*.wav
 /artifacts/qualification/audio/*.metrics.txt
+/artifacts/qualification/audio/*.log
 /artifacts/qualification/wacom/raw/
 /artifacts/development/
 /artifacts/packages/
+/scripts/__pycache__/
 /test_sunshine.log*
 /sunshine_state.json
 /write_file_test_*.txt
