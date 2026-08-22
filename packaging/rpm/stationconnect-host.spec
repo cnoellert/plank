@@ -20,6 +20,7 @@ Requires(pre):  systemd
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
+Obsoletes:      plome-pam-helper < 0.2.0
 
 %description
 StationConnect host services, authentication broker, media host, and
@@ -61,6 +62,7 @@ cp -a payload/. %{buildroot}/
 %changelog
 * Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.3
 - Bind authenticated streams to the matching desktop owner
+- Replace the legacy plome PAM helper package
 
 * Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.1
 - Initial development package
