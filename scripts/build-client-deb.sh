@@ -87,6 +87,10 @@ install -D -m 0644 "$repo_dir/packaging/systemd/client.env.example" \
   "$stage_dir/usr/share/doc/stationconnect-client/client.env.example"
 install -D -m 0644 "$repo_dir/packaging/desktop/stationconnect-client.desktop" \
   "$stage_dir/usr/share/applications/stationconnect-client.desktop"
+install -m 0755 "$repo_dir/packaging/deb/postinst" \
+  "$stage_dir/DEBIAN/postinst"
+install -m 0755 "$repo_dir/packaging/deb/postrm" \
+  "$stage_dir/DEBIAN/postrm"
 install -D -m 0644 "$moonlight_source_dir/app/res/moonlight.svg" \
   "$stage_dir/usr/share/icons/hicolor/scalable/apps/stationconnect-client.svg"
 install -D -m 0644 "$moonlight_source_dir/LICENSE" \
@@ -99,10 +103,6 @@ install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv3" \
 for library in libavcodec libavutil libswscale libswresample; do
   cp -a "${ffmpeg_lib_dir}/${library}.so."* "$private_lib_dir/"
 done
-mkdir -p "$stage_dir/usr/lib/systemd/user/graphical-session.target.wants"
-ln -s ../stationconnect-client.service \
-  "$stage_dir/usr/lib/systemd/user/graphical-session.target.wants/stationconnect-client.service"
-
 cat >"$work_dir/debian/control" <<'EOF'
 Source: stationconnect-client
 Section: net
@@ -166,6 +166,27 @@ dpkg-deb --root-owner-group --uniform-compression -Zxz --build "$stage_dir" "$de
 
 dpkg-deb --info "$deb_file" >/dev/null
 dpkg-deb --contents "$deb_file" >/dev/null
+for required_package in \
+  intel-media-va-driver \
+  qml6-module-qtquick \
+  qml6-module-qtquick-controls \
+  qml6-module-qtquick-layouts \
+  qml6-module-qtquick-window; do
+  dpkg-deb --field "$deb_file" Depends | grep -Fq "$required_package" || {
+    echo "client DEB is missing required dependency: ${required_package}" >&2
+    exit 1
+  }
+done
+control_audit_dir=$(mktemp -d --tmpdir stationconnect-client-control.XXXXXX)
+dpkg-deb --control "$deb_file" "$control_audit_dir"
+for maintainer_script in postinst postrm; do
+  [[ -x ${control_audit_dir}/${maintainer_script} ]] || {
+    echo "client DEB is missing executable ${maintainer_script}" >&2
+    exit 1
+  }
+  sh -n "${control_audit_dir}/${maintainer_script}"
+done
+rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
   "$stage_dir/usr/libexec/stationconnect/moonlight" "$private_lib_dir"
 dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'

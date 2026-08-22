@@ -130,15 +130,33 @@ gate; synchronized 0.7 packages still require the full two-hour repeat.
   Local `main` tracks `origin/main`, and `stationconnect/wacom-raw-hid` tracks
   the matching branch on the new repository.
 - Client phase commit `2404550e` and root phase commit `b39d621` are pushed.
-- The NUC and hardware-test-host still have synchronized 0.6 packages installed; 0.7 is the
-  next package revision and has not been built or deployed.
+- Synchronized 0.7 packages were built and installed on both targets:
+  `stationconnect-host-0.1.0-0.7.el9.x86_64` on hardware-test-host and
+  `stationconnect-client 0.1.0-0.7` on the NUC. The client package records
+  Moonlight commit `2404550e` and bundles the private FFmpeg 9.0.1 runtime.
+  Both package manifests passed. Artifact SHA-256 values are
+  `40d3b4e2281ca64015de00d51ce3a2ee056bf002d1de29151a585de44104876a`
+  for the RPM and
+  `4e77835058d5d84afeee6607c6d351634493f28f4cc9f3833c7ddd806db3f747`
+  for the DEB.
+- The 0.7 host and client services were restarted and active. Client startup
+  selected Intel VA-API decoding through FFmpeg 9.0.1 and decoded the HEVC Main
+  10 stream. The host user service initially lacked `DISPLAY` and `XAUTHORITY`
+  after reboot; importing `DISPLAY=:1` and
+  `XAUTHORITY=/run/user/540600009/gdm/Xauthority` restored it. The PAM broker
+  remained active.
+- hardware-test-host was left at GDM with no `operator` graphical session and no Flame process.
+  Consequently, authentication, scaled-span, Wacom, and real-footage smoke
+  checks were not repeated, and the soak was deliberately not started. No
+  screen inhibitor or temporary blanking override was installed.
 - The packaged 0.6 soak log is
   `~/stationconnect-avsync-soak-0.6.log` on the NUC. The
   phase-prototype log is `stationconnect-avsync-phase-test.log` in the same
   directory.
-- Build synchronized 0.7 DEB/RPM artifacts from the pushed commits, install and
-  restart both services, then repeat the 125-minute run with 180 seconds warmup
-  and the 7,200-second minimum-duration gate.
+- When an operator is on site, log into hardware-test-host, start the full-screen changing
+  Flame loop, and smoke-test authentication, scaled-span, Wacom pressure and
+  margins, video, and audio. Then run the 125-minute 0.7 soak with 180 seconds
+  warmup and the 7,200-second minimum-duration gate.
 - Pass criteria remain at most 20 ms endpoint drift, at most 20 ms/hour fitted
   drift, and zero skipped audio blocks. Afterward, restore normal screen-blanking
   policy and confirm both packaged services are active.

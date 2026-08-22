@@ -6,6 +6,7 @@ include(CTest)
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 pkg_check_modules(LIBDRM REQUIRED IMPORTED_TARGET libdrm)
+pkg_check_modules(SYSTEMD REQUIRED IMPORTED_TARGET libsystemd)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl)
 pkg_check_modules(GBM QUIET IMPORTED_TARGET gbm)
 pkg_check_modules(GLESV2 QUIET IMPORTED_TARGET glesv2)
@@ -37,6 +38,15 @@ add_executable(connect-probe-kms probes/kms/connect-probe-kms.cpp)
 target_compile_features(connect-probe-kms PRIVATE cxx_std_17)
 target_compile_options(connect-probe-kms PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_link_libraries(connect-probe-kms PRIVATE PkgConfig::LIBDRM)
+
+add_library(stationconnect-session-context STATIC
+  host/sunshine-fork/src/session/session_context.cpp)
+target_compile_features(stationconnect-session-context PRIVATE cxx_std_20)
+target_compile_options(stationconnect-session-context PRIVATE
+  -Wall -Wextra -Wpedantic -Werror)
+target_include_directories(stationconnect-session-context PUBLIC
+  host/sunshine-fork/src)
+target_link_libraries(stationconnect-session-context PUBLIC PkgConfig::SYSTEMD)
 
 add_executable(connect-probe-kms-xb30 probes/kms/connect-probe-kms-xb30.cpp)
 target_compile_features(connect-probe-kms-xb30 PRIVATE cxx_std_17)
@@ -227,9 +237,19 @@ target_compile_options(connect-wacom-raw-bridge PRIVATE
 if(BUILD_TESTING)
   add_test(NAME packaging-launchers
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-launchers.sh)
+  add_test(NAME host-supervisor-package
+    COMMAND bash
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-host-supervisor-package.sh)
   add_test(NAME av-sync-telemetry-analyzer
     COMMAND bash
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio/test-analyze-av-sync-telemetry.sh)
+
+  add_executable(session-policy-test tests/session/test-session-policy.cpp)
+  target_compile_features(session-policy-test PRIVATE cxx_std_20)
+  target_compile_options(session-policy-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(session-policy-test PRIVATE stationconnect-session-context)
+  add_test(NAME session-policy COMMAND session-policy-test)
 
   add_executable(extended-fec-block-indices-test
     tests/protocol/extended-fec-block-indices.c)

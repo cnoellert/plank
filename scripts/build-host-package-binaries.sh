@@ -53,7 +53,7 @@ cmake -S "$source_dir" -B "$build_dir" \
   -DSUNSHINE_ENABLE_WAYLAND=OFF \
   -DSUNSHINE_ENABLE_X11=ON \
   -DSUNSHINE_ENABLE_XDG_PORTAL=OFF
-cmake --build "$build_dir" --parallel --target sunshine stationconnect-pam-broker
+cmake --build "$build_dir" --parallel --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
 
 if rg -a -q '/usr/local/assets' "$build_dir/sunshine"; then
   echo "package binary contains the development asset path" >&2
@@ -64,4 +64,5 @@ rg -a -q '/usr/share/stationconnect' "$build_dir/sunshine"
 
 echo "host_binary=${build_dir}/sunshine"
 echo "pam_broker_binary=${build_dir}/stationconnect-pam-broker"
+echo "host_supervisor_binary=${build_dir}/stationconnect-host-supervisor"
 echo "host_package_binary_gate=pass"
