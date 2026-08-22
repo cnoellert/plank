@@ -1,5 +1,5 @@
 %{!?stationconnect_version:%global stationconnect_version 0.1.0}
-%{!?stationconnect_release:%global stationconnect_release 0.4}
+%{!?stationconnect_release:%global stationconnect_release 0.5}
 
 Name:           stationconnect-host
 Version:        %{stationconnect_version}
@@ -64,6 +64,9 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.5
+- Synchronize host release with adaptive client A/V correction
+
 * Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.4
 - Load UHID and apply tablet device access during package installation
 

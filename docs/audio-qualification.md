@@ -49,11 +49,13 @@ user-service journal and analyze it from the repository root:
 
 ```bash
 ./scripts/analyze-av-sync-telemetry.py moonlight.log \
-  --warmup-seconds 10 --min-duration-seconds 7200
+  --warmup-seconds 180 --min-duration-seconds 7200 \
+  --max-skipped-audio-blocks 0
 ```
 
-The analyzer reports p95 clock jitter, raw accumulated relative A/V drift, and
-a least-squares drift fit across the complete measurement window. Its one-hour
+The analyzer reports p95 clock jitter, corrected and raw audio clock rates,
+the applied correction range, skipped audio blocks, accumulated relative A/V
+drift, and a least-squares drift fit across the measurement window. Its one-hour
 projection uses the fitted slope; a separately labeled endpoint projection is
 retained to expose short-window noise. Optional
 `--max-relative-drift-ms` and
@@ -80,6 +82,17 @@ absolute acoustic-to-photonic offset. The unchanged two-hour run was stopped
 once it exceeded both 20 ms gates. Phase 7 now requires video-master audio
 correction before repeating the soak.
 
+### Adaptive-correction prototype
+
+A 6 minute 35 second live scaled-span run on 2026-08-21 qualified the first
+bounded video-master prototype. After a 180 second warmup, the 211.546 second
+measurement window projected `-6.310 ms/hour` fitted relative drift and ended
+at `5.751 ms` relative drift. The uncorrected audio clock still measured
+`-290.035 ms/hour`, while adaptive resampling settled between 84 and 87 ppm.
+No audio blocks were skipped and the SDL queue remained bounded. This passes
+the 20 ms and 20 ms/hour development gates, but it is not the required two-hour
+soak or synchronized flash/tone offset measurement.
+
 ## Remaining Phase 7 Gates
 
 This tone test proves routing and decoded sample delivery; it does not prove
@@ -90,7 +103,7 @@ A/V synchronization. Before Phase 7 is complete:
 - measure audio offset against the video presentation clock, including p95 and
   p99 jitter;
 - verify packet-loss recovery and bounded jitter-buffer behavior;
-- implement bounded video-master correction, then run a two-hour
-  changing-content test with no audible glitches or accumulating A/V drift;
+- run a two-hour changing-content test of bounded video-master correction with
+  no audible glitches, skipped audio blocks, or accumulating A/V drift;
 - measure a synchronized flash/tone source to establish absolute offset; and
 - repeat disconnect and session-switch cleanup after the corrected soak.

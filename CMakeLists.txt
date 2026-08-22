@@ -227,6 +227,9 @@ target_compile_options(connect-wacom-raw-bridge PRIVATE
 if(BUILD_TESTING)
   add_test(NAME packaging-launchers
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-launchers.sh)
+  add_test(NAME av-sync-telemetry-analyzer
+    COMMAND bash
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio/test-analyze-av-sync-telemetry.sh)
 
   add_executable(extended-fec-block-indices-test
     tests/protocol/extended-fec-block-indices.c)

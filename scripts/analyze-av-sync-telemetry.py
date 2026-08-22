@@ -14,6 +14,7 @@ from dataclasses import dataclass
 AUDIO_PATTERN = re.compile(
     r"StationConnect A/V audio clock: media=(\d+) submit=(\d+) "
     r"queue=(-?\d+) device=(-?\d+) pending=(-?\d+) frame=(\d+)"
+    r"(?: correction=(-?\d+) skipped=(\d+) raw=(\d+))?"
 )
 VIDEO_PATTERN = re.compile(
     r"StationConnect A/V video clock: media=(\d+) render=(\d+) "
@@ -117,17 +118,32 @@ def linear_slope(series: list[tuple[float, float]]) -> float:
     ) / denominator
 
 
-def parse_log(lines: list[str]) -> tuple[list[Point], list[Point]]:
+def parse_log(
+    lines: list[str],
+) -> tuple[list[Point], list[Point], list[Point], list[int], int | None]:
     """Parse audio and video samples from Moonlight log lines."""
 
-    audio_raw: list[tuple[int, int, int]] = []
+    audio_raw: list[tuple[int, int, int, int | None, int | None, int | None]] = []
     video_raw: list[tuple[int, int]] = []
     for line in lines:
         audio = AUDIO_PATTERN.search(line)
         if audio:
-            media, submit, queued, device, _pending, frame = map(int, audio.groups())
+            base = [int(value) for value in audio.groups()[:6]]
+            media, submit, queued, device, _pending, frame = base
+            correction = int(audio.group(7)) if audio.group(7) is not None else None
+            skipped = int(audio.group(8)) if audio.group(8) is not None else None
+            raw_media = int(audio.group(9)) if audio.group(9) is not None else None
             if queued >= 0 and device >= 0:
-                audio_raw.append((media, submit, max(queued - frame, 0) + device))
+                audio_raw.append(
+                    (
+                        media,
+                        submit,
+                        max(queued - frame, 0) + device,
+                        correction,
+                        skipped,
+                        raw_media,
+                    )
+                )
             continue
         video = VIDEO_PATTERN.search(line)
         if video:
@@ -136,6 +152,12 @@ def parse_log(lines: list[str]) -> tuple[list[Point], list[Point]]:
 
     if not audio_raw or not video_raw:
         raise ValueError("log does not contain both audio and video telemetry")
+
+    audio_session_start = 0
+    for index in range(1, len(audio_raw)):
+        if audio_raw[index][0] < audio_raw[index - 1][0]:
+            audio_session_start = index
+    audio_raw = audio_raw[audio_session_start:]
 
     audio_ticks = unwrap_ticks([sample[1] for sample in audio_raw])
     video_ticks = unwrap_ticks([sample[1] for sample in video_raw])
@@ -147,7 +169,21 @@ def parse_log(lines: list[str]) -> tuple[list[Point], list[Point]]:
         Point(sample[0], ticks)
         for sample, ticks in zip(video_raw, video_ticks)
     ]
-    return latest_segment(audio_points), latest_segment(video_points)
+    raw_audio_points = [
+        Point(sample[5], ticks)
+        for sample, ticks in zip(audio_raw, audio_ticks)
+        if sample[5] is not None
+    ]
+    corrections = [sample[3] for sample in audio_raw if sample[3] is not None]
+    skipped_values = [sample[4] for sample in audio_raw if sample[4] is not None]
+    skipped_blocks = max(skipped_values) if skipped_values else None
+    return (
+        audio_points,
+        latest_segment(video_points),
+        raw_audio_points,
+        corrections,
+        skipped_blocks,
+    )
 
 
 def main() -> int:
@@ -159,6 +195,7 @@ def main() -> int:
     parser.add_argument("--min-duration-seconds", type=float, default=0.0)
     parser.add_argument("--max-relative-drift-ms", type=float)
     parser.add_argument("--max-projected-relative-drift-ms-per-hour", type=float)
+    parser.add_argument("--max-skipped-audio-blocks", type=int)
     args = parser.parse_args()
 
     if args.warmup_seconds < 0 or args.min_duration_seconds < 0:
@@ -170,15 +207,28 @@ def main() -> int:
         and args.max_projected_relative_drift_ms_per_hour < 0
     ):
         parser.error("projected relative drift limit cannot be negative")
+    if args.max_skipped_audio_blocks is not None and args.max_skipped_audio_blocks < 0:
+        parser.error("skipped audio block limit cannot be negative")
     try:
         if args.log == "-":
             lines = sys.stdin.readlines()
         else:
             with open(args.log, encoding="utf-8", errors="replace") as log_file:
                 lines = log_file.readlines()
-        audio_points, video_points = parse_log(lines)
+        (
+            audio_points,
+            video_points,
+            raw_audio_points,
+            corrections,
+            skipped_audio_blocks,
+        ) = parse_log(lines)
         audio_clock = clock_series(audio_points, round(args.warmup_seconds * 1000))
         video_clock = clock_series(video_points, round(args.warmup_seconds * 1000))
+        raw_audio_clock = (
+            clock_series(raw_audio_points, round(args.warmup_seconds * 1000))
+            if raw_audio_points
+            else []
+        )
     except (OSError, ValueError) as error:
         print(f"telemetry analysis failed: {error}", file=sys.stderr)
         return 1
@@ -215,6 +265,26 @@ def main() -> int:
     print(f"fitted_relative_av_drift_ms={fitted_relative_drift_ms:.3f}")
     print(f"audio_clock_rate_error_ms_per_hour={audio_slope * 3_600_000:.3f}")
     print(f"video_clock_rate_error_ms_per_hour={video_slope * 3_600_000:.3f}")
+    if raw_audio_clock:
+        raw_audio_fit = [point for point in raw_audio_clock if point[0] <= duration_ms]
+        print(
+            "raw_audio_clock_rate_error_ms_per_hour="
+            f"{linear_slope(raw_audio_fit) * 3_600_000:.3f}"
+        )
+    else:
+        print("raw_audio_clock_rate_error_ms_per_hour=not_reported")
+    if corrections:
+        print(f"audio_correction_ppm_final={corrections[-1]}")
+        print(f"audio_correction_ppm_min={min(corrections)}")
+        print(f"audio_correction_ppm_max={max(corrections)}")
+    else:
+        print("audio_correction_ppm_final=not_reported")
+        print("audio_correction_ppm_min=not_reported")
+        print("audio_correction_ppm_max=not_reported")
+    print(
+        "audio_blocks_skipped="
+        f"{skipped_audio_blocks if skipped_audio_blocks is not None else 'not_reported'}"
+    )
     print(f"projected_relative_av_drift_ms_per_hour={projected_drift:.3f}")
     print(
         "endpoint_projected_relative_av_drift_ms_per_hour="
@@ -236,6 +306,15 @@ def main() -> int:
         and abs(projected_drift) > args.max_projected_relative_drift_ms_per_hour
     ):
         print("av_sync_gate=fail (projected relative drift)")
+        return 1
+    if (
+        args.max_skipped_audio_blocks is not None
+        and (
+            skipped_audio_blocks is None
+            or skipped_audio_blocks > args.max_skipped_audio_blocks
+        )
+    ):
+        print("av_sync_gate=fail (skipped audio blocks)")
         return 1
     print("av_sync_gate=pass")
     return 0

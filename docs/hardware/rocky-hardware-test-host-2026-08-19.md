@@ -139,6 +139,16 @@ reopened both interfaces and recreated new UHID instances `003C` and `003D`.
 Xorg again registered Pen, Eraser, Pad, and Finger, and the user confirmed
 normal Wacom operation in Flame.
 
+A packaged-session check on 2026-08-21 identified a separate application
+startup-order constraint. Flare was already running when the authenticated
+stream created the exact UHID Wacom. Pressure worked and Flame saved its 5%
+margin preference, but Xorg's `Wacom Tablet Area` remained at the full
+`0 0 44800 29600` extent. Restarting only Flare while StationConnect remained
+connected made Tablet Margins work immediately. StationConnect must therefore
+attach the tablet before Flame starts; connecting to an existing Flame process
+requires a save-and-restart until a reliable live tablet-rescan mechanism is
+available. No margin watcher or coordinate emulation was introduced.
+
 ## Authenticated Desktop Launch
 
 The dedicated NUC completed the StationConnect login flow against the PAM
@@ -540,3 +550,11 @@ With Xorg stopped, the standalone probe selected connector 131/CRTC 80 at
 DMA-BUF, and imported it into NVIDIA EGL 1.5. This proves the kernel-side
 10-bit/zero-copy primitives. This remains historical evidence for a possible
 future backend and is not part of the production Xorg capture path.
+
+## Synchronized 0.5 Package Smoke Test — 2026-08-21
+
+`stationconnect-host-0.1.0-0.5.el9.x86_64` was installed alongside the matching
+NUC client release and both services returned active. A fresh authenticated
+scaled-span session started the qualified 3840x2160p60 10-bit H.264 4:4:4
+identity stream with stereo audio. Host `libinput` enumerated the forwarded
+Intuos Pro M pen, pad, and finger interfaces with their native capabilities.

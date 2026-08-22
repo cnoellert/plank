@@ -122,6 +122,16 @@ and host event capabilities, cleaned up on disconnect, recreated the group on
 reconnect, and reproduced the Flame gesture and Tablet Margins behavior. The
 standalone plaintext bridge remains a test fixture only.
 
+A 2026-08-21 packaged-session retest started Flare before the remote raw-HID
+device existed. Native pressure continued to work and Flame persisted 5% on
+all four margin controls, but the host Wacom driver's tablet area remained
+`0 0 44800 29600`. Restarting Flare with StationConnect still connected
+restored adjustable Tablet Margins. This confirms an application
+initialization-order issue rather than a raw-HID or scaled-span mapping fault:
+attach the redirected tablet before starting Flame, or restart Flame after a
+late connection. StationConnect continues to forward the physical device
+unchanged and does not emulate Flame's margins.
+
 ### Authenticated automatic Desktop launch — 2026-08-20
 
 The client completed a fresh interactive workstation login through the PAM
@@ -666,3 +676,22 @@ once before choosing a display. The Qt topology tests cover serialization and
 confirm that an empty preference selects scaled span. On the NUC, a restart
 restored the 5120x2160 span and both DP-2/DP-1 choices, and a fresh launch sent
 `scDisplayMode=scaled-span` without a physical-output ID.
+
+## Adaptive A/V Correction Prototype — 2026-08-21
+
+The FFmpeg 9 client test build ran a 6 minute 35 second 3840x2160p60
+scaled-span session with video-master adaptive audio resampling. After the
+180-second acquisition/warmup interval, the final 211.546-second window passed
+the 20 ms drift and 20 ms/hour fitted-drift gates: endpoint relative drift was
+`5.751 ms`, fitted projection was `-6.310 ms/hour`, and the raw audio clock was
+`-290.035 ms/hour`. Correction settled at 84–87 ppm, with zero skipped audio
+blocks and a bounded SDL playback queue. The required two-hour soak remains.
+
+Synchronized `stationconnect-client 0.1.0-0.5` and
+`stationconnect-host 0.1.0-0.5.el9` packages were then installed. A fresh
+installed-client launch authenticated, selected scaled-span at 3840x2160p60,
+negotiated the 10-bit H.264 4:4:4 identity path, started adaptive audio
+correction, consumed its one-use token, and initialized input. Host `libinput`
+reported the forwarded Intuos Pro M pen, pad, and finger devices with tablet,
+tablet-pad, pointer, and gesture capabilities. The client user service was
+restored after the smoke test.

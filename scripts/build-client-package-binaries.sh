@@ -57,7 +57,7 @@ client_binary="${build_dir}/app/moonlight"
   exit 1
 }
 dynamic_section=$(readelf -d "$client_binary")
-for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10; do
+for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
   rg -q "Shared library: \[${soname//./\\.}\]" <<<"$dynamic_section" || {
     echo "Moonlight did not link the required FFmpeg 9 SONAME: ${soname}" >&2
     exit 1
