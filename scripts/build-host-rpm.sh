@@ -50,6 +50,8 @@ install -D -m 0755 "$build_dir/stationconnect-host-supervisor" \
   "$payload_dir/usr/bin/stationconnect-host-supervisor"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host" \
   "$payload_dir/usr/bin/stationconnect-host"
+install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host-certificate" \
+  "$payload_dir/usr/libexec/stationconnect/stationconnect-host-certificate"
 install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-host.service" \
   "$payload_dir/usr/lib/systemd/system/stationconnect-host.service"
 install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-pam-broker.service" \
@@ -99,6 +101,7 @@ rpm -qpl "$rpm_file" >/dev/null
 rpm -qpR "$rpm_file" | rg -q 'libX11\.so\.6'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/modules-load\.d/stationconnect\.conf$'
 rpm -qpl "$rpm_file" | rg -q '/usr/bin/stationconnect-host-supervisor$'
+rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-certificate$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
 if rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/user/stationconnect-host\.service$'; then
   echo "host RPM still contains the obsolete graphical-login user service" >&2

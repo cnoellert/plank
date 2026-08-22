@@ -21,6 +21,7 @@ rg -Fq '/usr/bin/stationconnect-host-supervisor' "$spec"
 rg -Fq '/usr/lib/systemd/system/stationconnect-host.service' "$spec"
 rg -Fq '/usr/lib/systemd/system-preset/90-stationconnect.preset' "$spec"
 rg -Fq '%sysusers_create stationconnect.conf' "$spec"
+rg -Fq 'stationconnect-host-certificate' "$spec"
 if rg -Fq '/usr/lib/systemd/user/stationconnect-host.service' "$spec"; then
   echo 'RPM manifest still contains the obsolete host user unit' >&2
   exit 1
@@ -28,3 +29,4 @@ fi
 
 rg -Fq 'refusing to package a dirty StationConnect source tree' "$builder"
 rg -Fq 'stationconnect-host-supervisor' "$builder"
+rg -Fq 'stationconnect-host-certificate' "$builder"

@@ -19,6 +19,7 @@ Requires:       xorg-x11-server-Xorg
 Requires(pre):  systemd
 Requires(post): systemd systemd-udev kmod
 Requires(post): openssl
+Requires(post): hostname
 Requires(preun): systemd
 Requires(postun): systemd
 Obsoletes:      plome-pam-helper < 0.2.0
@@ -41,12 +42,8 @@ cp -a payload/. %{buildroot}/
 %sysusers_create stationconnect.conf
 
 %post
-if [ ! -s /etc/stationconnect/tls/key.pem ] || [ ! -s /etc/stationconnect/tls/cert.pem ]; then
-  /usr/bin/openssl req -x509 -newkey rsa:3072 -sha256 -nodes -days 3650 \
-    -subj /CN=StationConnect \
-    -keyout /etc/stationconnect/tls/key.pem \
-    -out /etc/stationconnect/tls/cert.pem >/dev/null 2>&1 || exit 1
-fi
+/usr/libexec/stationconnect/stationconnect-host-certificate \
+  /etc/stationconnect/tls/cert.pem /etc/stationconnect/tls/key.pem || exit 1
 /usr/bin/chown root:stationconnect-auth \
   /etc/stationconnect/tls/key.pem /etc/stationconnect/tls/cert.pem || exit 1
 /usr/bin/chmod 0640 /etc/stationconnect/tls/key.pem || exit 1
@@ -75,6 +72,7 @@ fi
 /usr/bin/stationconnect-host-supervisor
 /usr/bin/stationconnect-pam-broker
 /usr/libexec/stationconnect/sunshine
+/usr/libexec/stationconnect/stationconnect-host-certificate
 /usr/lib/systemd/system/stationconnect-pam-broker.service
 /usr/lib/systemd/system/stationconnect-host.service
 /usr/lib/systemd/system-preset/90-stationconnect.preset
@@ -85,6 +83,10 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.11
+- Generate and validate the DNS SAN required by the client TLS profile.
+- Atomically repair invalid host certificates while preserving valid keys.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.10
 - Start a root supervisor at boot and run the host as the active seat0 user.
 - Support an authenticated GDM Stage A worker without hardcoded UIDs or displays.
