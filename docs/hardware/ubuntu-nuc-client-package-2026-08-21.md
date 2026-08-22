@@ -36,6 +36,10 @@ Qualification passed:
   Compiler file-prefix mapping removes source and build paths from the packaged
   executable.
 
-The package was not installed over the live qualification client. Clean
-install, upgrade, rollback, removal, signing, and a separate debug/source
-artifact remain Phase 9 release gates.
+The package was installed on the dedicated NUC and its user service restarted
+successfully. The running executable is
+`/usr/libexec/stationconnect/moonlight`; process mappings resolve all four
+bundled FFmpeg 9 libraries from `/usr/libexec/stationconnect/lib/`. The first
+packaged scaled-span session connected successfully and retained opt-in A/V
+telemetry. Clean-image install, upgrade, rollback, removal, signing, and a
+separate debug/source artifact remain Phase 9 release gates.
