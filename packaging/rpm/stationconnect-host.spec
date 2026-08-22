@@ -7,7 +7,7 @@ Release:        %{stationconnect_release}%{?dist}
 %global debug_package %{nil}
 Summary:        Authenticated StationConnect workstation host
 License:        GPL-3.0-only
-URL:            https://github.com/instinctual/stationconnectOS
+URL:            https://github.com/instinctual/stationconnect
 Source0:        stationconnect-host-payload.tar.gz
 
 Requires:       pam
