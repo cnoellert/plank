@@ -1,15 +1,15 @@
 # Rocky Host Development Package Qualification
 
 The unsigned `stationconnect-host` RPM was refreshed on the qualified Rocky 9
-workstation from root commit `5aeea7c`. Its packaged Sunshine binary reports
-`0.0.0-5aeea7c` without a dirty-tree marker and embeds
+workstation from root commit `30c4a5e`. Its packaged Sunshine binary reports
+`0.0.0-30c4a5e` without a dirty-tree marker and embeds
 `/usr/share/stationconnect` as its asset path.
 
-The `0.1.0-0.3.el9` x86-64 RPM is approximately 5.7 MiB compressed and has
+The `0.1.0-0.4.el9` x86-64 RPM is approximately 5.6 MiB compressed and has
 SHA-256:
 
 ```text
-d03648331951b549a5ef6acc595bef9b82e74b5b03c2507ae8837f68f1f239ed
+b572f12ca70d95b778a9c1fbe63642b567f472430bcbf1321c865db10ece4f2d
 ```
 
 The payload contains Sunshine, the PAM broker and launch wrapper, PAM policy,
@@ -24,5 +24,10 @@ closure all passed. Installation on hardware-test-host replaced the obsolete
 `plome-pam-helper` package in the same DNF transaction, preserving the
 identical PAM policy. The packaged PAM broker and Sunshine user service then
 restarted successfully; Sunshine runs from `/usr/libexec/stationconnect/`.
+The 0.4 upgrade also installs a modules-load entry, reloads the Wacom udev
+rules, loads `uhid`, and retriggers `/dev/uhid`. On hardware-test-host the node received the
+`uaccess` and `seat` tags plus an `operator:rw-` ACL. The host service now starts
+directly from the packaged user unit without its former `sg` development
+wrapper.
 Package signing and clean-image install, upgrade, rollback, removal, and a
 separate debug/source artifact remain Phase 9 release gates.

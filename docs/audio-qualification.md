@@ -63,6 +63,23 @@ epochs, so it does not claim absolute lip-sync offset. A synchronized
 flash/tone source and client-side event detector remain necessary for that
 measurement.
 
+### Packaged baseline result
+
+A changing-content scaled-span run with synchronized 0.3 packages failed the
+relative-clock gate after 1,307.501 seconds. Raw relative drift reached
+`-44.544 ms`; the least-squares fit projected `-95.947 ms/hour`. Audio and
+video jitter p95 were 10 ms and 14 ms. The client reported no audio packet
+loss, queue overflow, decrypt failure, or renderer reinitialization, and its
+packet and SDL playback queues remained bounded.
+
+The individual fits localized the mismatch to the audio delivery clock
+(`-100.809 ms/hour`) rather than video (`-4.862 ms/hour`). This telemetry uses
+decoded 5 ms audio-frame progress and renderer queue estimates; it proves the
+two client media clocks are not held together, but it does not measure
+absolute acoustic-to-photonic offset. The unchanged two-hour run was stopped
+once it exceeded both 20 ms gates. Phase 7 now requires video-master audio
+correction before repeating the soak.
+
 ## Remaining Phase 7 Gates
 
 This tone test proves routing and decoded sample delivery; it does not prove
@@ -72,6 +89,8 @@ A/V synchronization. Before Phase 7 is complete:
   cross-user audio access;
 - measure audio offset against the video presentation clock, including p95 and
   p99 jitter;
-- verify packet-loss recovery and bounded jitter-buffer behavior; and
-- run a two-hour changing-content test with no audible glitches or accumulating
-  A/V drift, followed by disconnect and session-switch cleanup checks.
+- verify packet-loss recovery and bounded jitter-buffer behavior;
+- implement bounded video-master correction, then run a two-hour
+  changing-content test with no audible glitches or accumulating A/V drift;
+- measure a synchronized flash/tone source to establish absolute offset; and
+- repeat disconnect and session-switch cleanup after the corrected soak.

@@ -6,10 +6,10 @@ The unsigned `stationconnect-client` DEB was assembled on the dedicated Ubuntu
 the private FFmpeg pkg-config and loader paths; a gate rejected an earlier
 attempt that had accidentally linked Ubuntu's system FFmpeg 8.
 
-The refreshed `0.1.0-0.3` amd64 package is approximately 18 MiB and has SHA-256:
+The refreshed `0.1.0-0.4` amd64 package is approximately 18 MiB and has SHA-256:
 
 ```text
-bd5ca8655c0d5d7759e24557cffe8d274f3411527cabcf0402d1160d643121f9
+3b17ed4dedb04dd6c5b571d49680544f247ae59feb92583d28cfbdbdacd0140b
 ```
 
 It installs Moonlight under `/usr/libexec/stationconnect/`, the launcher and
@@ -43,3 +43,10 @@ bundled FFmpeg 9 libraries from `/usr/libexec/stationconnect/lib/`. The first
 packaged scaled-span session connected successfully and retained opt-in A/V
 telemetry. Clean-image install, upgrade, rollback, removal, signing, and a
 separate debug/source artifact remain Phase 9 release gates.
+
+The 0.4 package intentionally retains the byte-identical qualified Moonlight
+binary while synchronizing its version with the host's UHID initialization
+fix. It was rebuilt against the recorded clean `d2a5550c` source and the pinned
+FFmpeg archive, then installed on the NUC. The stale per-user service copy and
+development-path drop-in were retired; systemd now loads only the packaged
+unit and `/usr/bin/stationconnect-client` launcher.

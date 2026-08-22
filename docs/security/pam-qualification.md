@@ -70,3 +70,10 @@ the matching session's stereo loopback source, and the NUC passed the decoded
 audio delivery gate. A cross-user live attempt remains prohibited on the
 shared qualification workstation; the mismatch path is covered by the focused
 host tests.
+
+The packaged 0.3 A/V baseline ended through a controlled client-service stop
+after 22 minutes. The `c10` `remote-desktop` logind session, broker child, and
+Sunshine audio source-output all disappeared; the persistent Sunshine user
+service and PAM broker remained active. Both machines were then upgraded to
+matching 0.4 packages and their stale development unit overrides were retired,
+so the next login exercises only the packaged launch path.
