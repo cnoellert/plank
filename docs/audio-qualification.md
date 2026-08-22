@@ -52,10 +52,16 @@ user-service journal and analyze it from the repository root:
   --warmup-seconds 10 --min-duration-seconds 7200
 ```
 
-The analyzer reports p95 clock jitter, accumulated relative A/V drift, and a
-one-hour projection. It normalizes the streams' independent starting epochs,
-so it does not claim absolute lip-sync offset. A synchronized flash/tone source
-and client-side event detector remain necessary for that measurement.
+The analyzer reports p95 clock jitter, raw accumulated relative A/V drift, and
+a least-squares drift fit across the complete measurement window. Its one-hour
+projection uses the fitted slope; a separately labeled endpoint projection is
+retained to expose short-window noise. Optional
+`--max-relative-drift-ms` and
+`--max-projected-relative-drift-ms-per-hour` arguments turn those metrics into
+explicit gates. The analyzer normalizes the streams' independent starting
+epochs, so it does not claim absolute lip-sync offset. A synchronized
+flash/tone source and client-side event detector remain necessary for that
+measurement.
 
 ## Remaining Phase 7 Gates
 

@@ -103,6 +103,20 @@ def interpolate(series: list[tuple[float, float]], elapsed_ms: float) -> float:
     return series[-1][1]
 
 
+def linear_slope(series: list[tuple[float, float]]) -> float:
+    """Return the least-squares clock-error slope in milliseconds per millisecond."""
+
+    mean_elapsed = sum(point[0] for point in series) / len(series)
+    mean_error = sum(point[1] for point in series) / len(series)
+    denominator = sum((point[0] - mean_elapsed) ** 2 for point in series)
+    if denominator == 0:
+        return 0.0
+    return sum(
+        (point[0] - mean_elapsed) * (point[1] - mean_error)
+        for point in series
+    ) / denominator
+
+
 def parse_log(lines: list[str]) -> tuple[list[Point], list[Point]]:
     """Parse audio and video samples from Moonlight log lines."""
 
@@ -144,10 +158,18 @@ def main() -> int:
     parser.add_argument("--warmup-seconds", type=float, default=10.0)
     parser.add_argument("--min-duration-seconds", type=float, default=0.0)
     parser.add_argument("--max-relative-drift-ms", type=float)
+    parser.add_argument("--max-projected-relative-drift-ms-per-hour", type=float)
     args = parser.parse_args()
 
     if args.warmup_seconds < 0 or args.min_duration_seconds < 0:
         parser.error("durations cannot be negative")
+    if args.max_relative_drift_ms is not None and args.max_relative_drift_ms < 0:
+        parser.error("relative drift limit cannot be negative")
+    if (
+        args.max_projected_relative_drift_ms_per_hour is not None
+        and args.max_projected_relative_drift_ms_per_hour < 0
+    ):
+        parser.error("projected relative drift limit cannot be negative")
     try:
         if args.log == "-":
             lines = sys.stdin.readlines()
@@ -165,7 +187,14 @@ def main() -> int:
     audio_error = interpolate(audio_clock, duration_ms)
     video_error = interpolate(video_clock, duration_ms)
     relative_drift_ms = audio_error - video_error
-    projected_drift = relative_drift_ms * 3_600_000 / duration_ms if duration_ms else 0.0
+    endpoint_projection = (
+        relative_drift_ms * 3_600_000 / duration_ms if duration_ms else 0.0
+    )
+    audio_fit = [point for point in audio_clock if point[0] <= duration_ms]
+    video_fit = [point for point in video_clock if point[0] <= duration_ms]
+    relative_slope = linear_slope(audio_fit) - linear_slope(video_fit)
+    fitted_relative_drift_ms = relative_slope * duration_ms
+    projected_drift = relative_slope * 3_600_000
     audio_jitter = [
         abs(audio_clock[index][1] - audio_clock[index - 1][1])
         for index in range(1, len(audio_clock))
@@ -181,14 +210,28 @@ def main() -> int:
     print(f"audio_clock_jitter_p95_ms={percentile(audio_jitter, 95):.3f}")
     print(f"video_clock_jitter_p95_ms={percentile(video_jitter, 95):.3f}")
     print(f"relative_av_drift_ms={relative_drift_ms:.3f}")
+    print(f"fitted_relative_av_drift_ms={fitted_relative_drift_ms:.3f}")
     print(f"projected_relative_av_drift_ms_per_hour={projected_drift:.3f}")
+    print(
+        "endpoint_projected_relative_av_drift_ms_per_hour="
+        f"{endpoint_projection:.3f}"
+    )
     print("absolute_av_offset=not_measured")
 
     if duration_ms < args.min_duration_seconds * 1000:
         print("av_sync_gate=fail (insufficient duration)")
         return 1
-    if args.max_relative_drift_ms is not None and abs(relative_drift_ms) > args.max_relative_drift_ms:
+    if (
+        args.max_relative_drift_ms is not None
+        and abs(relative_drift_ms) > args.max_relative_drift_ms
+    ):
         print("av_sync_gate=fail (relative drift)")
+        return 1
+    if (
+        args.max_projected_relative_drift_ms_per_hour is not None
+        and abs(projected_drift) > args.max_projected_relative_drift_ms_per_hour
+    ):
+        print("av_sync_gate=fail (projected relative drift)")
         return 1
     print("av_sync_gate=pass")
     return 0
