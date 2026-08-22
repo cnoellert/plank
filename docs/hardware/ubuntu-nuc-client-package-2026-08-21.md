@@ -50,3 +50,9 @@ fix. It was rebuilt against the recorded clean `d2a5550c` source and the pinned
 FFmpeg archive, then installed on the NUC. The stale per-user service copy and
 development-path drop-in were retired; systemd now loads only the packaged
 unit and `/usr/bin/stationconnect-client` launcher.
+
+A fresh password-on-stdin Desktop launch using only packaged executables
+authenticated as session `c11`. Moonlight held file descriptors for the two
+physical PTH-660 interfaces (`/dev/hidraw2` and `/dev/hidraw3`), and the host
+created matching `056a:0357` Pen, Pad, and Finger devices. This confirms exact
+raw-HID forwarding is restored with the synchronized 0.4 packages.

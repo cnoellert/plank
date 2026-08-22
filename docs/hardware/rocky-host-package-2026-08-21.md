@@ -29,5 +29,8 @@ rules, loads `uhid`, and retriggers `/dev/uhid`. On hardware-test-host the node 
 `uaccess` and `seat` tags plus an `operator:rw-` ACL. The host service now starts
 directly from the packaged user unit without its former `sg` development
 wrapper.
+An authenticated 0.4 client then opened both physical Wacom raw-HID
+interfaces. Rocky created virtual `056a:0357` Pen, Pad, and Finger input nodes
+under `/devices/virtual/misc/uhid/`, closing the package-level UHID regression.
 Package signing and clean-image install, upgrade, rollback, removal, and a
 separate debug/source artifact remain Phase 9 release gates.
