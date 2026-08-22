@@ -53,6 +53,8 @@ install -D -m 0644 "$repo_dir/packaging/sysusers.d/stationconnect.conf" \
   "$payload_dir/usr/lib/sysusers.d/stationconnect.conf"
 install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-wacom.rules" \
   "$payload_dir/usr/lib/udev/rules.d/70-stationconnect-wacom.rules"
+install -D -m 0644 "$repo_dir/packaging/modules-load.d/stationconnect.conf" \
+  "$payload_dir/usr/lib/modules-load.d/stationconnect.conf"
 install -D -m 0644 "$repo_dir/packaging/firewalld/stationconnect.xml" \
   "$payload_dir/usr/lib/firewalld/services/stationconnect.xml"
 install -D -m 0644 "$repo_dir/host/sunshine-fork/LICENSE" \
@@ -83,6 +85,7 @@ rpm_file=$(find "$output_dir" -maxdepth 1 -type f \
 }
 rpm -qpl "$rpm_file" >/dev/null
 rpm -qpR "$rpm_file" | rg -q 'libX11\.so\.6'
+rpm -qpl "$rpm_file" | rg -q '/usr/lib/modules-load\.d/stationconnect\.conf$'
 echo "host_rpm=${rpm_file}"
 echo "stationconnect_package_version=${package_version}"
 echo "host_rpm_manifest_gate=pass"
