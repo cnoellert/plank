@@ -192,7 +192,9 @@ def main() -> int:
     )
     audio_fit = [point for point in audio_clock if point[0] <= duration_ms]
     video_fit = [point for point in video_clock if point[0] <= duration_ms]
-    relative_slope = linear_slope(audio_fit) - linear_slope(video_fit)
+    audio_slope = linear_slope(audio_fit)
+    video_slope = linear_slope(video_fit)
+    relative_slope = audio_slope - video_slope
     fitted_relative_drift_ms = relative_slope * duration_ms
     projected_drift = relative_slope * 3_600_000
     audio_jitter = [
@@ -211,6 +213,8 @@ def main() -> int:
     print(f"video_clock_jitter_p95_ms={percentile(video_jitter, 95):.3f}")
     print(f"relative_av_drift_ms={relative_drift_ms:.3f}")
     print(f"fitted_relative_av_drift_ms={fitted_relative_drift_ms:.3f}")
+    print(f"audio_clock_rate_error_ms_per_hour={audio_slope * 3_600_000:.3f}")
+    print(f"video_clock_rate_error_ms_per_hour={video_slope * 3_600_000:.3f}")
     print(f"projected_relative_av_drift_ms_per_hour={projected_drift:.3f}")
     print(
         "endpoint_projected_relative_av_drift_ms_per_hour="

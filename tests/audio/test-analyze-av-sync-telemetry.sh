@@ -32,6 +32,8 @@ stable_output=$(
     --max-projected-relative-drift-ms-per-hour 1
 )
 rg -q '^relative_av_drift_ms=0\.000$' <<<"$stable_output"
+rg -q '^audio_clock_rate_error_ms_per_hour=0\.000$' <<<"$stable_output"
+rg -q '^video_clock_rate_error_ms_per_hour=0\.000$' <<<"$stable_output"
 rg -q '^projected_relative_av_drift_ms_per_hour=0\.000$' <<<"$stable_output"
 rg -q '^av_sync_gate=pass$' <<<"$stable_output"
 
@@ -44,6 +46,10 @@ if "$repo_dir/scripts/analyze-av-sync-telemetry.py" "$drifting_log" \
   exit 1
 fi
 rg -q '^projected_relative_av_drift_ms_per_hour=3600\.000$' \
+  "${work_dir}/drifting.out"
+rg -q '^audio_clock_rate_error_ms_per_hour=3600\.000$' \
+  "${work_dir}/drifting.out"
+rg -q '^video_clock_rate_error_ms_per_hour=0\.000$' \
   "${work_dir}/drifting.out"
 rg -q '^av_sync_gate=fail \(projected relative drift\)$' \
   "${work_dir}/drifting.out"
