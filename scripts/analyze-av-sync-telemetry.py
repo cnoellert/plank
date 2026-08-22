@@ -14,7 +14,8 @@ from dataclasses import dataclass
 AUDIO_PATTERN = re.compile(
     r"StationConnect A/V audio clock: media=(\d+) submit=(\d+) "
     r"queue=(-?\d+) device=(-?\d+) pending=(-?\d+) frame=(\d+)"
-    r"(?: correction=(-?\d+) skipped=(\d+) raw=(\d+))?"
+    r"(?: correction=(-?\d+) skipped=(\d+) raw=(\d+)"
+    r"(?: catchup=(-?\d+))?)?"
 )
 VIDEO_PATTERN = re.compile(
     r"StationConnect A/V video clock: media=(\d+) render=(\d+) "
@@ -123,7 +124,9 @@ def parse_log(
 ) -> tuple[list[Point], list[Point], list[Point], list[int], int | None]:
     """Parse audio and video samples from Moonlight log lines."""
 
-    audio_raw: list[tuple[int, int, int, int | None, int | None, int | None]] = []
+    audio_raw: list[
+        tuple[int, int, int, int | None, int | None, int | None, int | None]
+    ] = []
     video_raw: list[tuple[int, int]] = []
     for line in lines:
         audio = AUDIO_PATTERN.search(line)
@@ -133,6 +136,7 @@ def parse_log(
             correction = int(audio.group(7)) if audio.group(7) is not None else None
             skipped = int(audio.group(8)) if audio.group(8) is not None else None
             raw_media = int(audio.group(9)) if audio.group(9) is not None else None
+            catchup = int(audio.group(10)) if audio.group(10) is not None else None
             if queued >= 0 and device >= 0:
                 audio_raw.append(
                     (
@@ -142,6 +146,7 @@ def parse_log(
                         correction,
                         skipped,
                         raw_media,
+                        catchup,
                     )
                 )
             continue
@@ -176,6 +181,9 @@ def parse_log(
     ]
     corrections = [sample[3] for sample in audio_raw if sample[3] is not None]
     skipped_values = [sample[4] for sample in audio_raw if sample[4] is not None]
+    catchup_corrections = [
+        sample[6] for sample in audio_raw if sample[6] is not None
+    ]
     skipped_blocks = max(skipped_values) if skipped_values else None
     return (
         audio_points,
@@ -183,6 +191,7 @@ def parse_log(
         raw_audio_points,
         corrections,
         skipped_blocks,
+        catchup_corrections,
     )
 
 
@@ -221,6 +230,7 @@ def main() -> int:
             raw_audio_points,
             corrections,
             skipped_audio_blocks,
+            catchup_corrections,
         ) = parse_log(lines)
         audio_clock = clock_series(audio_points, round(args.warmup_seconds * 1000))
         video_clock = clock_series(video_points, round(args.warmup_seconds * 1000))
@@ -285,6 +295,12 @@ def main() -> int:
         "audio_blocks_skipped="
         f"{skipped_audio_blocks if skipped_audio_blocks is not None else 'not_reported'}"
     )
+    if catchup_corrections:
+        print(f"audio_backlog_correction_ppm_final={catchup_corrections[-1]}")
+        print(f"audio_backlog_correction_ppm_max={max(catchup_corrections)}")
+    else:
+        print("audio_backlog_correction_ppm_final=not_reported")
+        print("audio_backlog_correction_ppm_max=not_reported")
     print(f"projected_relative_av_drift_ms_per_hour={projected_drift:.3f}")
     print(
         "endpoint_projected_relative_av_drift_ms_per_hour="

@@ -15,7 +15,7 @@ skipped_log="${work_dir}/skipped.log"
 for index in $(seq 0 60); do
   elapsed=$((index * 1000))
   drifting_audio_media=$((index * 999))
-  printf 'StationConnect A/V audio clock: media=%d submit=%d queue=10 device=15 pending=0 frame=5 correction=12 skipped=0 raw=%d\n' \
+  printf 'StationConnect A/V audio clock: media=%d submit=%d queue=10 device=15 pending=0 frame=5 correction=12 skipped=0 raw=%d catchup=1000\n' \
     "$elapsed" "$((100000 + elapsed))" "$elapsed" >>"$stable_log"
   printf 'StationConnect A/V video clock: media=%d render=%d queue=0 renderer=5\n' \
     "$((500 + elapsed))" "$((200000 + elapsed))" >>"$stable_log"
@@ -40,6 +40,8 @@ rg -q '^projected_relative_av_drift_ms_per_hour=0\.000$' <<<"$stable_output"
 rg -q '^raw_audio_clock_rate_error_ms_per_hour=0\.000$' <<<"$stable_output"
 rg -q '^audio_correction_ppm_final=12$' <<<"$stable_output"
 rg -q '^audio_blocks_skipped=0$' <<<"$stable_output"
+rg -q '^audio_backlog_correction_ppm_final=1000$' <<<"$stable_output"
+rg -q '^audio_backlog_correction_ppm_max=1000$' <<<"$stable_output"
 rg -q '^av_sync_gate=pass$' <<<"$stable_output"
 
 cp -- "$stable_log" "$skipped_log"

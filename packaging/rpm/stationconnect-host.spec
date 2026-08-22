@@ -64,6 +64,12 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.7
+- Keep host and client revisions synchronized for audio phase convergence.
+
+* Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.6
+- Keep host and client package revisions synchronized for A/V backlog recovery.
+
 * Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.5
 - Synchronize host release with adaptive client A/V correction
 

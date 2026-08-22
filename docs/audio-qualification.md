@@ -54,10 +54,10 @@ user-service journal and analyze it from the repository root:
 ```
 
 The analyzer reports p95 clock jitter, corrected and raw audio clock rates,
-the applied correction range, skipped audio blocks, accumulated relative A/V
-drift, and a least-squares drift fit across the measurement window. Its one-hour
-projection uses the fitted slope; a separately labeled endpoint projection is
-retained to expose short-window noise. Optional
+the long-term and backlog-correction ranges, skipped audio blocks, accumulated
+relative A/V drift, and a least-squares drift fit across the measurement window.
+Its one-hour projection uses the fitted slope; a separately labeled endpoint
+projection is retained to expose short-window noise. Optional
 `--max-relative-drift-ms` and
 `--max-projected-relative-drift-ms-per-hour` arguments turn those metrics into
 explicit gates. The analyzer normalizes the streams' independent starting
@@ -92,6 +92,35 @@ at `5.751 ms` relative drift. The uncorrected audio clock still measured
 No audio blocks were skipped and the SDL queue remained bounded. This passes
 the 20 ms and 20 ms/hour development gates, but it is not the required two-hour
 soak or synchronized flash/tone offset measurement.
+
+The first installed 0.5-package soak reproduced a separate inherited failure
+at 7 minutes 42 seconds. Moonlight's generic 30 ms input-queue guard discarded
+three decoded 5 ms blocks after a short scheduling burst, despite no packet
+loss, decoder error, or connection failure. Dropping decoded audio violates the
+zero-skip gate even though it immediately reduces queued latency.
+
+Client 0.6 keeps that generic behavior outside StationConnect sessions. A
+StationConnect stream instead applies bounded resampler catch-up above a 15 ms
+input-queue target, limited to 10,000 ppm with 1,000 ppm update slew, and keeps
+a 100 ms emergency ceiling. A real-content run activated 1,000 ppm catch-up,
+returned to zero, and crossed the earlier failure point without skipping a
+block. Unit tests cover the inactive, capped, and drained states.
+
+The installed 0.6 run completed 7,303.019 seconds after warmup with zero audio
+skips. Backlog correction peaked at 1,000 ppm and returned to zero. Audio/video
+jitter p95 was 5/16 ms, and the fitted relative rate passed at 12.264 ms/hour,
+but accumulated relative drift reached 26.430 ms and failed the 20 ms gate.
+The individual fits showed corrected audio at 1.122 ms/hour and video at
+-11.142 ms/hour. Rate correction alone therefore could not remove accumulated
+phase error.
+
+The follow-up controller adds slow phase feedback from actually submitted audio
+frames with a 30-minute convergence horizon; the existing 250 ppm rate bound,
+2 ppm update slew, and separate backlog recovery remain unchanged. A simulated
+two-hour mismatch stays within 20 ms. A 20-minute real-content prototype then
+measured 1.308 ms endpoint drift and 12.579 ms/hour fitted drift over its
+1,002.066-second post-warmup window, with zero skips. This passes the development
+gate; synchronized 0.7 packages still require the full two-hour repeat.
 
 ## Remaining Phase 7 Gates
 

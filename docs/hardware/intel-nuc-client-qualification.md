@@ -695,3 +695,12 @@ correction, consumed its one-use token, and initialized input. Host `libinput`
 reported the forwarded Intuos Pro M pen, pad, and finger devices with tablet,
 tablet-pad, pointer, and gesture capabilities. The client user service was
 restored after the smoke test.
+
+The synchronized 0.6 follow-up replaced StationConnect's inherited 30 ms
+decoded-audio drop guard with bounded resampler catch-up. Its 7,303.019-second
+post-warmup run skipped no audio and kept the queue bounded, but accumulated
+relative drift reached 26.430 ms despite a passing 12.264 ms/hour fitted rate.
+This isolated the remaining problem to phase convergence. A phase-feedback
+prototype then ended a 1,002.066-second measurement at 1.308 ms relative drift
+and 12.579 ms/hour fitted drift with zero skips. The full synchronized 0.7
+two-hour repeat remains required.
