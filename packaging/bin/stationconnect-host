@@ -23,4 +23,10 @@ if [[ -n "${STATIONCONNECT_HOST_OPTIONS:-}" ]]; then
   read -r -a host_options <<<"${STATIONCONNECT_HOST_OPTIONS}"
 fi
 
+# Sunshine normally stores its server UUID below the effective user's home.
+# GDM and desktop workers use different homes, so enforce one root-managed
+# state file for the workstation identity. StationConnect does not persist
+# pairing credentials in this file.
+host_options+=(file_state=/var/lib/stationconnect/sunshine_state.json)
+
 exec "${host_binary}" "${host_options[@]}" "$@"

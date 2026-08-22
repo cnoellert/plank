@@ -1,7 +1,7 @@
 # Host Session Supervisor
 
-StationConnect revision 0.10 replaces the graphical-login host user service
-with `stationconnect-host.service`, a persistent system supervisor. The
+StationConnect revision 0.12 evolves the graphical-login host user service into
+`stationconnect-host.service`, a persistent machine-level Sender supervisor. The
 supervisor starts at boot and asks `systemd-logind` for the active local X11
 session on `seat0`. It accepts only `user` or `greeter` session classes in the
 `active` state; remote, inactive, Wayland, TTY, lock-screen, and non-`seat0`
@@ -14,21 +14,29 @@ whitelist (`DISPLAY`, `XAUTHORITY`, `XDG_RUNTIME_DIR`, and the session bus),
 requires a local display, and verifies that the runtime directory and regular
 Xauthority file belong to the selected UID.
 
-The root process never performs capture or encoding. Before executing
-`stationconnect-host`, its child installs the account's normal supplementary
-groups plus `stationconnect-auth`, changes to the account GID and UID, clears
-the inherited environment, and reconstructs only the values needed by the
-worker. The extra group provides access to the PAM broker socket and packaged
-TLS key without granting it permanently to interactive accounts.
+The supervisor launches one machine-level Sender identity as root. The Sender
+keeps `HOME=/var/lib/stationconnect`, clears the inherited environment, and
+receives only the selected session's validated X11 and runtime values. For
+audio it receives the selected account's owned PulseAudio socket and cookie;
+neither path is reused after a logind transition. This follows the persistent
+workstation-Sender lifecycle used by current RGS instead of creating a
+different host identity for every desktop owner.
 
-At GDM, the worker runs as the dynamically discovered greeter account.
-Sunshine permits a different PAM-authenticated account only when it receives a
-one-use attestation over an inherited local socket whose peer credentials prove
-that the root supervisor created it. The attested session must still be the
-active local `seat0` greeter in logind when authorization is checked. Once GDM
-creates the user's desktop, the supervisor terminates the greeter worker before
-starting a worker as the desktop owner. A client must reconnect after this
-Stage A transition.
+Sunshine accepts an account only after receiving a one-use attestation over an
+inherited local socket whose peer credentials prove that the root supervisor
+created it. At GDM any valid non-root PAM account is eligible. In a user
+session, the PAM account UID must equal the active seat owner. The supervisor
+rechecks logind when authorization occurs and replaces the media child when
+Xorg changes during login. The system service, TLS certificate, and workstation
+UUID remain stable across that transition; the current monolithic Sunshine
+child can still cause a brief stream reconnect while the display is replaced.
+
+The Sender uses the root-managed state file
+`/var/lib/stationconnect/sunshine_state.json`. Sunshine's default per-user
+state would assign separate workstation UUIDs to GDM and the desktop owner,
+causing the client to reject the post-login worker as a different computer.
+The packaged launcher enforces the machine state path. The TLS identity is
+likewise machine-scoped.
 
 Worker options are system-wide in `/etc/stationconnect/host.env`. The package
 generates a stable TLS keypair under `/etc/stationconnect/tls/`; the private key
@@ -39,9 +47,11 @@ authentication—remains separate work. The supervisor does not replay a
 password, inject GDM keystrokes, enable autologin, restart Xorg, or attach to a
 desktop owned by another user.
 
-The current Sunshine worker still combines network, capture, media, and input
-functions. The service bounds the supervisor's capabilities, and the child
-loses them when it changes UID, but several systemd filesystem/device/network
-restrictions cannot be applied to the supervisor cgroup without also breaking
-the worker. Splitting those responsibilities into separate service cgroups
-remains a later privilege-separation step.
+The current Sunshine Sender still combines network, capture, media, and input
+functions and therefore runs privileged. PAM remains a separate minimal broker,
+root remote login is denied, and systemd limits the supervisor to
+`CAP_DAC_READ_SEARCH` and `CAP_SYS_PTRACE`. Before `exec`, the child drops
+`CAP_SYS_PTRACE`, leaving only `CAP_DAC_READ_SEARCH` for the selected user's
+protected runtime and cookie paths. Read-only user homes, required address
+families, and kernel/system protections apply to both. Splitting capture/input
+from the network-facing process remains a later hardening step.

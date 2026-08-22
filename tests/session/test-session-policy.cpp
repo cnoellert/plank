@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <iostream>
 
+#include <unistd.h>
+
 namespace session = stationconnect::session;
 
 namespace {
@@ -21,8 +23,8 @@ namespace {
 
 int main() {
   if (getenv("STATIONCONNECT_SESSION_ATTESTATION_FD") != nullptr) {
-    const bool accepted = session::supervisor_attests_active_seat0_greeter();
-    std::cout << "greeter_attestation=" << (accepted ? "accepted" : "rejected") << '\n';
+    const bool accepted = session::supervisor_attests_account_for_active_seat0(getuid());
+    std::cout << "session_attestation=" << (accepted ? "accepted" : "rejected") << '\n';
     return accepted ? 0 : 9;
   }
 
@@ -36,8 +38,8 @@ int main() {
     std::cerr << "active local seat0 X11 greeter was rejected\n";
     return 1;
   }
-  if (session::greeter_attestation_message(descriptor) !=
-      "SC-GREETER-1\nc7\n1000") {
+  if (session::session_attestation_message(descriptor) !=
+      "SC-SESSION-1\nc7\n1000") {
     std::cerr << "eligible session attestation was malformed\n";
     return 8;
   }

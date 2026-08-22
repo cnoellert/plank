@@ -48,6 +48,11 @@ cp -a payload/. %{buildroot}/
   /etc/stationconnect/tls/key.pem /etc/stationconnect/tls/cert.pem || exit 1
 /usr/bin/chmod 0640 /etc/stationconnect/tls/key.pem || exit 1
 /usr/bin/chmod 0644 /etc/stationconnect/tls/cert.pem || exit 1
+/usr/libexec/stationconnect/stationconnect-host-state \
+  /var/lib/stationconnect/sunshine_state.json || exit 1
+/usr/bin/chown root:root \
+  /var/lib/stationconnect/sunshine_state.json || exit 1
+/usr/bin/chmod 0600 /var/lib/stationconnect/sunshine_state.json || exit 1
 %systemd_post stationconnect-pam-broker.service stationconnect-host.service
 /usr/bin/udevadm control --reload-rules >/dev/null 2>&1 || :
 /usr/sbin/modprobe uhid >/dev/null 2>&1 || :
@@ -68,11 +73,14 @@ cp -a payload/. %{buildroot}/
 %dir %attr(0750,root,stationconnect-auth) /etc/stationconnect/tls
 %ghost %config(noreplace) %attr(0644,root,stationconnect-auth) /etc/stationconnect/tls/cert.pem
 %ghost %config(noreplace) %attr(0640,root,stationconnect-auth) /etc/stationconnect/tls/key.pem
+%dir %attr(0750,root,root) /var/lib/stationconnect
+%ghost %attr(0600,root,root) /var/lib/stationconnect/sunshine_state.json
 /usr/bin/stationconnect-host
 /usr/bin/stationconnect-host-supervisor
 /usr/bin/stationconnect-pam-broker
 /usr/libexec/stationconnect/sunshine
 /usr/libexec/stationconnect/stationconnect-host-certificate
+/usr/libexec/stationconnect/stationconnect-host-state
 /usr/lib/systemd/system/stationconnect-pam-broker.service
 /usr/lib/systemd/system/stationconnect-host.service
 /usr/lib/systemd/system-preset/90-stationconnect.preset
@@ -83,6 +91,11 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.12
+- Keep one root-managed Sunshine UUID across GDM and desktop workers.
+- Prevent per-session homes from appearing as duplicate client workstations.
+- Run a capability-bounded machine Sender while keeping PAM isolated.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.11
 - Generate and validate the DNS SAN required by the client TLS profile.
 - Atomically repair invalid host certificates while preserving valid keys.

@@ -52,6 +52,8 @@ install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host" \
   "$payload_dir/usr/bin/stationconnect-host"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host-certificate" \
   "$payload_dir/usr/libexec/stationconnect/stationconnect-host-certificate"
+install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host-state" \
+  "$payload_dir/usr/libexec/stationconnect/stationconnect-host-state"
 install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-host.service" \
   "$payload_dir/usr/lib/systemd/system/stationconnect-host.service"
 install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-pam-broker.service" \
@@ -63,6 +65,7 @@ install -D -m 0644 "$repo_dir/packaging/pam/remote-desktop" \
 install -D -m 0644 "$repo_dir/packaging/config/host.env" \
   "$payload_dir/etc/stationconnect/host.env"
 install -d -m 0750 "$payload_dir/etc/stationconnect/tls"
+install -d -m 0750 "$payload_dir/var/lib/stationconnect"
 install -D -m 0644 "$repo_dir/packaging/sysusers.d/stationconnect.conf" \
   "$payload_dir/usr/lib/sysusers.d/stationconnect.conf"
 install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-wacom.rules" \
@@ -102,6 +105,7 @@ rpm -qpR "$rpm_file" | rg -q 'libX11\.so\.6'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/modules-load\.d/stationconnect\.conf$'
 rpm -qpl "$rpm_file" | rg -q '/usr/bin/stationconnect-host-supervisor$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-certificate$'
+rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-state$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
 if rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/user/stationconnect-host\.service$'; then
   echo "host RPM still contains the obsolete graphical-login user service" >&2

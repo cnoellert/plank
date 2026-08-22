@@ -243,6 +243,9 @@ if(BUILD_TESTING)
   add_test(NAME host-certificate-profile
     COMMAND bash
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-host-certificate.sh)
+  add_test(NAME host-state-profile
+    COMMAND bash
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-host-state.sh)
   add_test(NAME av-sync-telemetry-analyzer
     COMMAND bash
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio/test-analyze-av-sync-telemetry.sh)
