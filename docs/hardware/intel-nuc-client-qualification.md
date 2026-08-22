@@ -625,6 +625,27 @@ resolution, and aspect-fits resolutions above the currently qualified
 scaling and presentation. If display detection fails, the qualified 4K mode is
 the fallback.
 
+Moonlight commit `1e8b9a41` refines this policy for matching high-resolution
+displays. In automatic mode, if the physical client display exactly matches
+the selected host canvas, the client requests that resolution without the 4K
+fit. This avoids a host downscale followed by a client upscale; for example,
+a 5120x2160 client viewing the 5120x2160 scaled host span remains pixel-for-
+pixel. Non-matching displays, detection failures, and explicit overrides keep
+the qualified 3840x2160 ceiling. Display discovery and custom-resolution UI
+retain the upstream 8192x8192 safety limit.
+
+The Qt selection suite passes ten cases, including an exact 5120x2160 match,
+a non-matching 5120x2160 display, and an explicit over-4K override. A live
+5120x2160 run remains required because native resolution increases the current
+H.264 software-decoder workload.
+
+On the Raptor Lake development NUC, replacing `intel-media-va-driver` with
+the matching `intel-media-va-driver-non-free` 26.1.2 build did not add H.264
+High 10 or High 4:4:4 decode profiles. Both variants expose H.264 constrained
+baseline, main, and high only, while HEVC Main 4:4:4 10 remains available.
+The package therefore continues to depend on the free driver; the current
+H.264 High 10 4:4:4 identity stream requires FFmpeg software decoding.
+
 Auto selection is enabled by default. A saved preference can disable it and
 use the existing width/height setting as an explicit override; an automatic
 session does not overwrite that saved resolution. The NUC currently reports
