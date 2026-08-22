@@ -25,7 +25,11 @@ if [[ -f ${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}.tar.xz ]]; then
 else
   ffmpeg_archive="$(dirname -- "$ffmpeg_work_dir")/ffmpeg-${ffmpeg_version}.tar.xz"
 fi
-package_version=0.1.0-0.2
+package_version=$(<"${repo_dir}/packaging/VERSION")
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
+  echo "invalid shared package version: ${package_version}" >&2
+  exit 1
+}
 
 for command_name in dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum; do
   command -v "$command_name" >/dev/null || {

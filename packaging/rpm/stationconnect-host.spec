@@ -1,6 +1,9 @@
+%{!?stationconnect_version:%global stationconnect_version 0.1.0}
+%{!?stationconnect_release:%global stationconnect_release 0.3}
+
 Name:           stationconnect-host
-Version:        0.1.0
-Release:        0.1%{?dist}
+Version:        %{stationconnect_version}
+Release:        %{stationconnect_release}%{?dist}
 %global debug_package %{nil}
 Summary:        Authenticated StationConnect workstation host
 License:        GPL-3.0-only
@@ -56,5 +59,8 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.3
+- Bind authenticated streams to the matching desktop owner
+
 * Fri Aug 21 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.1
 - Initial development package

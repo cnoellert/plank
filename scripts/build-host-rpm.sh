@@ -10,6 +10,13 @@ fi
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 output_dir=$(realpath -m -- "${2:-${repo_dir}/artifacts/packages}")
+package_version=$(<"${repo_dir}/packaging/VERSION")
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
+  echo "invalid shared package version: ${package_version}" >&2
+  exit 1
+}
+rpm_version=${package_version%%-*}
+rpm_release=${package_version#*-}
 
 for command_name in cmake install rpmbuild tar; do
   command -v "$command_name" >/dev/null || {
@@ -62,12 +69,20 @@ tar --sort=name --mtime="@${source_epoch}" --owner=0 --group=0 \
 install -m 0644 "$repo_dir/packaging/rpm/stationconnect-host.spec" \
   "$rpm_topdir/SPECS/stationconnect-host.spec"
 rpmbuild -bb --define "_topdir ${rpm_topdir}" \
+  --define "stationconnect_version ${rpm_version}" \
+  --define "stationconnect_release ${rpm_release}" \
   "$rpm_topdir/SPECS/stationconnect-host.spec"
 
 mkdir -p "$output_dir"
 find "$rpm_topdir/RPMS" -type f -name '*.rpm' -exec install -m 0644 -t "$output_dir" {} +
-rpm_file=$(find "$output_dir" -maxdepth 1 -type f -name 'stationconnect-host-*.rpm' | sort | tail -1)
+rpm_file=$(find "$output_dir" -maxdepth 1 -type f \
+  -name "stationconnect-host-${rpm_version}-${rpm_release}*.rpm" | sort | tail -1)
+[[ -n $rpm_file ]] || {
+  echo "host RPM was not produced for shared version ${package_version}" >&2
+  exit 1
+}
 rpm -qpl "$rpm_file" >/dev/null
 rpm -qpR "$rpm_file" | rg -q 'libX11\.so\.6'
 echo "host_rpm=${rpm_file}"
+echo "stationconnect_package_version=${package_version}"
 echo "host_rpm_manifest_gate=pass"

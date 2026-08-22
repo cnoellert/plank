@@ -62,3 +62,11 @@ host and `operator` resolve to UID `540600009`. The focused authentication suite
 passes 5 tests, and the non-hardware host matrix passes 399 with two expected
 platform skips. This user-service check must be replaced by explicit selected
 logind-session ownership before the Phase 8 system-service design is enabled.
+
+The live post-restart gate passed on 2026-08-21. Sunshine, the authenticated
+`operator` account, and active `remote-desktop` logind session `c9` all resolved to
+UID `540600009` before the scaled-span stream started. Sunshine then recorded
+the matching session's stereo loopback source, and the NUC passed the decoded
+audio delivery gate. A cross-user live attempt remains prohibited on the
+shared qualification workstation; the mismatch path is covered by the focused
+host tests.

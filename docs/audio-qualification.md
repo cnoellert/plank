@@ -22,8 +22,9 @@ band. Pass a numeric PipeWire sink ID as the second argument when testing a
 non-default output. WAV captures and metric files are written under
 `artifacts/qualification/audio/` and excluded from Git.
 
-The live `hardware-test-host` to Intel NUC run on 2026-08-21 passed with an 11.70 dB target
-to control delta. It confirmed this path:
+Two live `hardware-test-host` to Intel NUC runs on 2026-08-21 passed with 11.70 dB and
+13.60 dB target-to-control deltas. The second run used the restarted,
+identity-bound session. They confirmed this path:
 
 ```text
 host session sink -> Sunshine capture -> Opus/RTP -> Moonlight decode
@@ -32,6 +33,11 @@ host session sink -> Sunshine capture -> Opus/RTP -> Moonlight decode
 
 The NUC opened a 720-sample stereo output buffer at 48 kHz, corresponding to
 15 ms of audio per callback.
+
+The restarted stream also passed the Stage A same-user ownership gate:
+Sunshine, authenticated account `operator`, and the selected `remote-desktop`
+logind session all resolved to UID `540600009`. This proves the permitted live
+path; automated host tests cover rejection and cleanup for a UID mismatch.
 
 ## Clock-Drift Telemetry
 
