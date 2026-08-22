@@ -7,6 +7,7 @@ workstation from the repository root:
 - [Ada `hardware-test-host` qualification](rocky-hardware-test-host-2026-08-19.md)
 - [Ampere/Turing capability matrix](nvidia-host-matrix-2026-08-19.md)
 - [Intel NUC client qualification](intel-nuc-client-qualification.md)
+- [End-to-end audio qualification](../audio-qualification.md)
 
 ```bash
 ./scripts/run-host-qualification.sh
