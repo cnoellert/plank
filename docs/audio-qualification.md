@@ -122,6 +122,22 @@ measured 1.308 ms endpoint drift and 12.579 ms/hour fitted drift over its
 1,002.066-second post-warmup window, with zero skips. This passes the development
 gate; synchronized 0.7 packages still require the full two-hour repeat.
 
+### Current handoff — 2026-08-22
+
+- Client commit `2404550e` and root commit `b39d621` are pushed.
+- The NUC and hardware-test-host still have synchronized 0.6 packages installed; 0.7 is the
+  next package revision and has not been built or deployed.
+- The packaged 0.6 soak log is
+  `~/stationconnect-avsync-soak-0.6.log` on the NUC. The
+  phase-prototype log is `stationconnect-avsync-phase-test.log` in the same
+  directory.
+- Build synchronized 0.7 DEB/RPM artifacts from the pushed commits, install and
+  restart both services, then repeat the 125-minute run with 180 seconds warmup
+  and the 7,200-second minimum-duration gate.
+- Pass criteria remain at most 20 ms endpoint drift, at most 20 ms/hour fitted
+  drift, and zero skipped audio blocks. Afterward, restore normal screen-blanking
+  policy and confirm both packaged services are active.
+
 ## Remaining Phase 7 Gates
 
 This tone test proves routing and decoded sample delivery; it does not prove
