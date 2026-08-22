@@ -25,7 +25,7 @@ if [[ -f ${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}.tar.xz ]]; then
 else
   ffmpeg_archive="$(dirname -- "$ffmpeg_work_dir")/ffmpeg-${ffmpeg_version}.tar.xz"
 fi
-package_version=0.1.0-0.1
+package_version=0.1.0-0.2
 
 for command_name in dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum; do
   command -v "$command_name" >/dev/null || {

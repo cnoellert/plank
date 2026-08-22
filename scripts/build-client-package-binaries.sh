@@ -43,7 +43,11 @@ export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PAT
 mkdir -p "$build_dir"
 (
   cd "$build_dir"
-  qmake6 "$source_dir" CONFIG+=release
+  qmake6 "$source_dir" CONFIG+=release \
+    "QMAKE_CFLAGS+=-ffile-prefix-map=${build_dir}=." \
+    "QMAKE_CFLAGS+=-ffile-prefix-map=${source_dir}=../src" \
+    "QMAKE_CXXFLAGS+=-ffile-prefix-map=${build_dir}=." \
+    "QMAKE_CXXFLAGS+=-ffile-prefix-map=${source_dir}=../src"
   make -j"$(nproc)"
 )
 
