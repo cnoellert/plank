@@ -124,7 +124,12 @@ gate; synchronized 0.7 packages still require the full two-hour repeat.
 
 ### Current handoff — 2026-08-22
 
-- Client commit `2404550e` and root commit `b39d621` are pushed.
+- The canonical integration repository is now
+  `https://github.com/instinctual/stationconnect`. Do not publish StationConnect
+  changes to `instinctual/stationconnectOS`; that repository is unrelated.
+  Local `main` tracks `origin/main`, and `stationconnect/wacom-raw-hid` tracks
+  the matching branch on the new repository.
+- Client phase commit `2404550e` and root phase commit `b39d621` are pushed.
 - The NUC and hardware-test-host still have synchronized 0.6 packages installed; 0.7 is the
   next package revision and has not been built or deployed.
 - The packaged 0.6 soak log is
