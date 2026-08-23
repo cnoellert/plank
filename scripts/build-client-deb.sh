@@ -95,8 +95,8 @@ install -m 0755 "$repo_dir/packaging/deb/postinst" \
   "$stage_dir/DEBIAN/postinst"
 install -m 0755 "$repo_dir/packaging/deb/postrm" \
   "$stage_dir/DEBIAN/postrm"
-install -D -m 0644 "$moonlight_source_dir/app/res/moonlight.svg" \
-  "$stage_dir/usr/share/icons/hicolor/scalable/apps/stationconnect-client.svg"
+install -D -m 0644 "$moonlight_source_dir/app/res/stationconnect.png" \
+  "$stage_dir/usr/share/icons/hicolor/512x512/apps/stationconnect-client.png"
 install -D -m 0644 "$moonlight_source_dir/LICENSE" \
   "$stage_dir/usr/share/doc/stationconnect-client/copyright"
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv2.1" \
@@ -185,9 +185,14 @@ done
 package_manifest=$(dpkg-deb --contents "$deb_file")
 grep -Fq './usr/share/applications/la.instinctual.StationConnect.desktop' \
   <<<"$package_manifest" || {
-    echo "client DEB is missing the canonical StationConnect desktop entry" >&2
-    exit 1
-  }
+  echo "client DEB is missing the canonical StationConnect desktop entry" >&2
+  exit 1
+}
+grep -Fq './usr/share/icons/hicolor/512x512/apps/stationconnect-client.png' \
+    <<<"$package_manifest" || {
+  echo "client DEB is missing the StationConnect application icon" >&2
+  exit 1
+}
 if grep -Fq './usr/share/applications/stationconnect-client.desktop' \
     <<<"$package_manifest"; then
   echo "client DEB still contains the superseded desktop entry" >&2
