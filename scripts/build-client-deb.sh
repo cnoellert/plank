@@ -31,7 +31,7 @@ package_version=$(<"${repo_dir}/packaging/VERSION")
   exit 1
 }
 
-for command_name in dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum; do
+for command_name in cmp dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -107,6 +107,23 @@ install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv3" \
 for library in libavcodec libavutil libswscale libswresample; do
   cp -a "${ffmpeg_lib_dir}/${library}.so."* "$private_lib_dir/"
 done
+cmp --silent "$moonlight_source_dir/app/res/stationconnect-logo.png" \
+  "$stage_dir/usr/share/icons/hicolor/512x512/apps/stationconnect-client.png" || {
+  echo "packaged client logo differs from the approved runtime source" >&2
+  exit 1
+}
+version_output=$(
+  QT_QPA_PLATFORM=offscreen \
+    LD_LIBRARY_PATH="$private_lib_dir" \
+    "$stage_dir/usr/libexec/stationconnect/moonlight" --version 2>&1
+)
+grep -Fxq "StationConnect ${package_version}" <<<"$version_output" || {
+  echo "packaged client did not report the expected StationConnect version" >&2
+  printf '%s\n' "$version_output" >&2
+  exit 1
+}
+echo "client_headless_version_gate=pass"
+echo "client_logo_identity_gate=pass"
 cat >"$work_dir/debian/control" <<'EOF'
 Source: stationconnect-client
 Section: net
