@@ -5,6 +5,7 @@ set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 host_launcher=${repo_dir}/packaging/bin/stationconnect-host
 client_launcher=${repo_dir}/packaging/bin/stationconnect-client
+host_profile=${repo_dir}/packaging/systemd/host.env.example
 
 expect_status() {
   local expected=$1
@@ -43,3 +44,6 @@ if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
   echo 'Client launcher did not prefer the private library directory' >&2
   exit 1
 fi
+
+grep -Eq '(^| )sw_vbv_maxrate_percentage=150( |$)' "${host_profile}"
+grep -Eq '(^| )sw_vbv_buffer_frames=4( |$)' "${host_profile}"
