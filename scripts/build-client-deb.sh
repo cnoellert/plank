@@ -85,8 +85,9 @@ install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-client.service" \
   "$stage_dir/usr/lib/systemd/user/stationconnect-client.service"
 install -D -m 0644 "$repo_dir/packaging/systemd/client.env.example" \
   "$stage_dir/usr/share/doc/stationconnect-client/client.env.example"
-install -D -m 0644 "$repo_dir/packaging/desktop/stationconnect-client.desktop" \
-  "$stage_dir/usr/share/applications/stationconnect-client.desktop"
+install -D -m 0644 \
+  "$repo_dir/packaging/desktop/la.instinctual.StationConnect.desktop" \
+  "$stage_dir/usr/share/applications/la.instinctual.StationConnect.desktop"
 install -D -m 0644 \
   "$repo_dir/packaging/udev/70-stationconnect-client-wacom.rules" \
   "$stage_dir/usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules"
@@ -182,6 +183,16 @@ for required_package in \
   }
 done
 package_manifest=$(dpkg-deb --contents "$deb_file")
+grep -Fq './usr/share/applications/la.instinctual.StationConnect.desktop' \
+  <<<"$package_manifest" || {
+    echo "client DEB is missing the canonical StationConnect desktop entry" >&2
+    exit 1
+  }
+if grep -Fq './usr/share/applications/stationconnect-client.desktop' \
+    <<<"$package_manifest"; then
+  echo "client DEB still contains the superseded desktop entry" >&2
+  exit 1
+fi
 grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' \
   <<<"$package_manifest" || {
     echo "client DEB is missing the Wacom udev access rule" >&2
