@@ -29,3 +29,18 @@ test locks the interface classification and packet calculations to these
 values. A post-install stream must confirm the log line
 `Using StationConnect VPN packet size: 1328 bytes` and show no repeated
 1432-plus-58 fragment pairs on the physical interface.
+
+## Release Artifacts
+
+The Ubuntu 26.04 development NUC built the client twice from clean Moonlight
+commit `536eaba8` and the pinned private FFmpeg 9.0.1 runtime. Both builds were
+byte-identical and passed the package manifest and runtime dependency gates.
+
+```text
+stationconnect-client_0.1.0-0.14_amd64.deb
+SHA-256 630418c44b61661f23d7acf287a3a20c547f32e3739c16859882244df6bece78
+```
+
+The synchronized host RPM passed its package-binary and manifest gates. It
+contains no functional host change and is not required for the packet-size
+test; an installed 0.13 host honors the size negotiated by the 0.14 client.
