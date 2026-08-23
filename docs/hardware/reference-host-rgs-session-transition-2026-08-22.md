@@ -27,3 +27,16 @@ new Desktop launch before falling back to resume. The repeated test retained
 the supervisor, replaced the worker, restored video on attempt 4, held the same
 worker for more than one minute with two session records present, and produced
 no coredump.
+
+The first end-user-NUC handoff also exposed stale raw-tablet state: the new host
+worker correctly had no UHID devices, while the surviving client tablet object
+continued sending reports under its old attachment generation. Revision 0.19
+resets the raw-HID client state only after the replacement encrypted control
+stream starts, then rediscovers the same physical USB Wacom and resends its
+identity and descriptors. This remains model-independent within the supported
+hardwired USB Wacom scope.
+
+That run's roughly 50 FPS result was not an encoder regression. A development
+client service had left overlapping stream processes, and the host reported two
+active software-encoded sessions. Once the development stream was removed, the
+single native 5120x2160 stream returned close to 60 FPS.

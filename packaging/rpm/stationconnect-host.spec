@@ -91,6 +91,10 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.19
+- Reattach the exact raw-HID Wacom after a graphical-session handoff.
+- Keep the host release synchronized with the client reconnect fix.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.18
 - Avoid racing per-session encoder probing with active NvFBC capture.
 - Prefer fresh Desktop launch after worker replacement with resume fallback.
