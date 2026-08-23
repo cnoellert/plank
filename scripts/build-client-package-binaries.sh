@@ -34,10 +34,43 @@ if [[ -n $(git -C "$source_dir" status --porcelain) ]]; then
   echo "Moonlight source tree is dirty; refusing a package build" >&2
   exit 1
 fi
+submodule_status=$(git -C "$source_dir" submodule status --recursive)
+if rg -q '^[+-U]' <<<"$submodule_status"; then
+  echo "Moonlight recursive submodules are missing or not at their pinned commits:" >&2
+  printf '%s\n' "$submodule_status" >&2
+  exit 1
+fi
 if [[ -d ${build_dir} && -n $(find "$build_dir" -mindepth 1 -maxdepth 1 -print -quit) ]]; then
   echo "package build directory is not empty: ${build_dir}" >&2
   exit 1
 fi
+
+# StationConnect is a remote-workstation client. Controller input and
+# controller-driven UI navigation are deliberately outside the product scope.
+for removed_path in \
+  app/SDL_GameControllerDB \
+  app/gui/GamepadMapper.qml \
+  app/gui/sdlgamepadkeynavigation.cpp \
+  app/gui/sdlgamepadkeynavigation.h \
+  app/settings/mappingfetcher.cpp \
+  app/settings/mappingfetcher.h \
+  app/settings/mappingmanager.cpp \
+  app/settings/mappingmanager.h \
+  app/streaming/input/gamepad.cpp; do
+  [[ ! -e ${source_dir}/${removed_path} ]] || {
+    echo "gamepad support is present in StationConnect client source: ${removed_path}" >&2
+    exit 1
+  }
+done
+if rg -n \
+  'SdlGamepadKeyNavigation|SDL_INIT_(JOYSTICK|GAMECONTROLLER)|Gamepad Settings|multi-controller|background-gamepad|swap-gamepad-buttons' \
+  "$source_dir/app" \
+  --glob '!**/languages/**' \
+  --glob '!**/Info.plist'; then
+  echo "gamepad support or controller UI navigation is present in StationConnect client source" >&2
+  exit 1
+fi
+echo "client_gamepad_absence_gate=pass"
 
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
