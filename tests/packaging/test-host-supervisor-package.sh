@@ -13,7 +13,7 @@ rg -Fxq 'EnvironmentFile=-/etc/stationconnect/host.env' "$unit"
 rg -Fxq 'NoNewPrivileges=yes' "$unit"
 rg -Fxq 'CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE' "$unit"
 rg -Fxq 'ProtectHome=read-only' "$unit"
-rg -Fxq 'RuntimeDirectory=stationconnect' "$unit"
+rg -Fxq 'RuntimeDirectory=stationconnect-host' "$unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$unit"
 if rg -q '^CapabilityBoundingSet=.*CAP_(SETUID|SETGID|KILL)' "$unit"; then
   echo 'machine Sender retained obsolete identity-switching capabilities' >&2
@@ -46,7 +46,7 @@ rg -Fq 'restrict_worker_capabilities' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stage_pulse_cookie' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-rg -Fq '/run/stationconnect/pulse-cookie' \
+rg -Fq '/run/stationconnect-host/pulse-cookie' \
   "$repo_dir/host/sunshine-fork/src/session/session_context.cpp"
 rg -Fq 'STATIONCONNECT_SESSION_CONTROL_FD' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
