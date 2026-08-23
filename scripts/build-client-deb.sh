@@ -181,8 +181,9 @@ for required_package in \
     exit 1
   }
 done
-dpkg-deb --contents "$deb_file" | \
-  grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' || {
+package_manifest=$(dpkg-deb --contents "$deb_file")
+grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' \
+  <<<"$package_manifest" || {
     echo "client DEB is missing the Wacom udev access rule" >&2
     exit 1
   }
