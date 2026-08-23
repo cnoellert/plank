@@ -5,7 +5,7 @@ Installed-Size: @INSTALLED_SIZE@
 Maintainer: StationConnect Engineering <engineering@stationconnect.invalid>
 Section: net
 Priority: optional
-Depends: bash, intel-media-va-driver, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, @DEPENDS@
+Depends: bash, intel-media-va-driver, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, udev, @DEPENDS@
 Description: StationConnect remote workstation client
  Dedicated Moonlight-based client for authenticated StationConnect sessions.
  The package carries its qualified FFmpeg runtime privately and leaves the

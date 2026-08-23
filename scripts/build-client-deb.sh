@@ -87,6 +87,9 @@ install -D -m 0644 "$repo_dir/packaging/systemd/client.env.example" \
   "$stage_dir/usr/share/doc/stationconnect-client/client.env.example"
 install -D -m 0644 "$repo_dir/packaging/desktop/stationconnect-client.desktop" \
   "$stage_dir/usr/share/applications/stationconnect-client.desktop"
+install -D -m 0644 \
+  "$repo_dir/packaging/udev/70-stationconnect-client-wacom.rules" \
+  "$stage_dir/usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules"
 install -m 0755 "$repo_dir/packaging/deb/postinst" \
   "$stage_dir/DEBIAN/postinst"
 install -m 0755 "$repo_dir/packaging/deb/postrm" \
@@ -171,12 +174,18 @@ for required_package in \
   qml6-module-qtquick \
   qml6-module-qtquick-controls \
   qml6-module-qtquick-layouts \
-  qml6-module-qtquick-window; do
+  qml6-module-qtquick-window \
+  udev; do
   dpkg-deb --field "$deb_file" Depends | grep -Fq "$required_package" || {
     echo "client DEB is missing required dependency: ${required_package}" >&2
     exit 1
   }
 done
+dpkg-deb --contents "$deb_file" | \
+  grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' || {
+    echo "client DEB is missing the Wacom udev access rule" >&2
+    exit 1
+  }
 control_audit_dir=$(mktemp -d --tmpdir stationconnect-client-control.XXXXXX)
 dpkg-deb --control "$deb_file" "$control_audit_dir"
 for maintainer_script in postinst postrm; do

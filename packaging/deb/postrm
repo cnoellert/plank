@@ -7,3 +7,12 @@ if [ "$1" = purge ] && [ -z "${DPKG_ROOT:-}" ] && \
   deb-systemd-helper --user purge stationconnect-client.service \
     >/dev/null || true
 fi
+
+if [ "$1" = purge ] && [ -z "${DPKG_ROOT:-}" ] && \
+   [ -x /usr/bin/udevadm ]; then
+  /usr/bin/udevadm control --reload-rules || true
+  /usr/bin/udevadm trigger --action=change \
+    --subsystem-match=hidraw || true
+  /usr/bin/udevadm trigger --action=change \
+    --subsystem-match=input || true
+fi
