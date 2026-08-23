@@ -91,6 +91,10 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.20
+- Stage the desktop PulseAudio cookie in a private writable runtime directory.
+- Restore the Sunshine virtual sink and streamed audio under host hardening.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.19
 - Reattach the exact raw-HID Wacom after a graphical-session handoff.
 - Keep the host release synchronized with the client reconnect fix.
