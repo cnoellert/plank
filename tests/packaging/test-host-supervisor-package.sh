@@ -44,10 +44,15 @@ rg -Fq 'restrict_worker_capabilities' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'STATIONCONNECT_SESSION_CONTROL_FD' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-rg -Fq 'Reattached persistent StationConnect worker' \
+rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-if rg -Fq 'stopping old worker' \
-  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"; then
-  echo 'supervisor still terminates Sunshine during desktop handoff' >&2
-  exit 1
-fi
+rg -Fq 'stop_worker(worker);' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+
+client_session="$repo_dir/client/moonlight-qt-fork/app/streaming/session.cpp"
+client_manager="$repo_dir/client/moonlight-qt-fork/app/backend/computermanager.cpp"
+rg -Fq 'StationConnect transport ended' "$client_session"
+rg -Fq 'MaximumAttempts = 20' "$client_session"
+rg -Fq 'replacement worker has no app to resume' "$client_session"
+rg -Fq 'm_CanReconnect.store(false)' "$client_session"
+rg -Fq 'rememberStationConnectReconnectCredentials' "$client_manager"

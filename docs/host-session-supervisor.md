@@ -1,6 +1,6 @@
 # Host Session Supervisor
 
-StationConnect revision 0.16 evolves the graphical-login host user service into
+StationConnect revision 0.17 evolves the graphical-login host user service into
 `stationconnect-host.service`, a persistent machine-level Sender supervisor. The
 supervisor starts at boot and asks `systemd-logind` for the active local X11
 session on `seat0`. It accepts only `user` or `greeter` session classes in the
@@ -14,7 +14,8 @@ whitelist (`DISPLAY`, `XAUTHORITY`, `XDG_RUNTIME_DIR`, and the session bus),
 requires a local display, and verifies that the runtime directory and regular
 Xauthority file belong to the selected UID.
 
-The supervisor launches one machine-level Sender identity as root. The Sender
+The supervisor owns one machine-level Sender identity and launches its media
+worker as root. The worker
 keeps `HOME=/var/lib/stationconnect`, clears the inherited environment, and
 receives only the selected session's validated X11 and runtime values. For
 audio it receives the selected account's owned PulseAudio socket and cookie;
@@ -30,13 +31,18 @@ rechecks the active seat and path ownership before acknowledging the update.
 Malformed, stale, inactive, remote, or non-seat0 updates are rejected.
 
 At GDM any valid non-root PAM account is eligible. In a user session, the PAM
-account UID must equal the active seat owner. During GDM-to-user handoff the
-supervisor keeps the same Sunshine process and sends a new attachment generation
-instead of terminating it. Sunshine updates its authorization context, rebuilds
-X11 capture and the generation-specific PulseAudio context, recreates the video
-encoder (forcing a clean random-access frame), and republishes tablet viewport
-geometry. RTSP, UDP, TLS, pairing, authentication, input devices, and the client
-session remain owned by the original process.
+account UID must equal the active seat owner. When logind selects a different
+graphical session, the supervisor deliberately replaces the Sunshine media
+worker. A fresh process is required because NVIDIA NvFBC/GLX cannot be safely
+reinitialized after the X server that created it has exited. The machine
+supervisor, TLS identity, state file, and workstation UUID remain stable.
+
+The client masks this bounded replacement. It retains the successful PAM
+credentials only in memory for the active stream, displays a reconnect overlay,
+stops the old transport, retries authentication for up to 20 seconds, and starts
+a fresh Desktop stream. Passwords and one-use tokens are cleared when consumed
+or when the session ends; they are never written to settings, arguments,
+environment variables, or logs. A local disconnect does not trigger reconnect.
 
 The Sender uses the root-managed state file
 `/var/lib/stationconnect/sunshine_state.json`. Sunshine's default per-user
@@ -52,9 +58,8 @@ is mode `0640`, owned by `root:stationconnect-auth`.
 Stage B—creating a correctly registered graphical session directly after PAM
 authentication—remains separate work. The supervisor does not replay a
 password, inject GDM keystrokes, enable autologin, restart Xorg, or attach to a
-desktop owned by another user. A temporary frozen frame can still be visible
-while logind and Xorg publish the replacement desktop; the host transport stays
-connected during that bounded gap.
+desktop owned by another user. The client may briefly show its reconnect overlay
+while logind and Xorg publish the replacement desktop.
 
 The Sunshine Sender still combines network, capture, media, and input functions
 and therefore runs privileged. PAM remains a separate minimal broker,

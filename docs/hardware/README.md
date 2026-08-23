@@ -8,6 +8,7 @@ workstation from the repository root:
 - [Ampere/Turing capability matrix](nvidia-host-matrix-2026-08-19.md)
 - [Intel NUC client qualification](intel-nuc-client-qualification.md)
 - [End-to-end audio qualification](../audio-qualification.md)
+- [Current RGS session-transition reference](reference-host-rgs-session-transition-2026-08-22.md)
 
 ```bash
 ./scripts/run-host-qualification.sh
