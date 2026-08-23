@@ -11,6 +11,11 @@ repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 source_dir="${repo_dir}/host/sunshine-fork"
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 ffmpeg_dir=$(realpath -m -- "${2:-${source_dir}/cmake-build-ffmpeg-x264rgb-install/ffmpeg}")
+build_jobs=${STATIONCONNECT_BUILD_JOBS:-8}
+[[ $build_jobs =~ ^[1-9][0-9]*$ ]] || {
+  echo "invalid host build job count: ${build_jobs}" >&2
+  exit 1
+}
 
 for command_name in cmake realpath rg; do
   command -v "$command_name" >/dev/null || {
@@ -53,7 +58,8 @@ cmake -S "$source_dir" -B "$build_dir" \
   -DSUNSHINE_ENABLE_WAYLAND=OFF \
   -DSUNSHINE_ENABLE_X11=ON \
   -DSUNSHINE_ENABLE_XDG_PORTAL=OFF
-cmake --build "$build_dir" --parallel --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
+cmake --build "$build_dir" --parallel "$build_jobs" \
+  --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
 
 if rg -a -q '/usr/local/assets' "$build_dir/sunshine"; then
   echo "package binary contains the development asset path" >&2
