@@ -42,3 +42,12 @@ rg -Fq 'stationconnect-host-certificate' "$builder"
 rg -Fq 'stationconnect-host-state' "$builder"
 rg -Fq 'restrict_worker_capabilities' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'STATIONCONNECT_SESSION_CONTROL_FD' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'Reattached persistent StationConnect worker' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+if rg -Fq 'stopping old worker' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"; then
+  echo 'supervisor still terminates Sunshine during desktop handoff' >&2
+  exit 1
+fi

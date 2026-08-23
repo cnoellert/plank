@@ -4,10 +4,7 @@
  */
 #include "session/session_context.h"
 
-#include <cstdlib>
 #include <iostream>
-
-#include <unistd.h>
 
 namespace session = stationconnect::session;
 
@@ -19,15 +16,19 @@ namespace {
   bool rejected(session::descriptor_t descriptor) {
     return !session::eligible_graphical_session(descriptor);
   }
+
+  session::update_t valid_update() {
+    return {
+      2,
+      valid_session(),
+      {":0", "/run/user/1000/gdm/Xauthority", "/run/user/1000",
+       "unix:path=/run/user/1000/bus", "unix:/run/user/1000/pulse/native",
+       "/home/test/.config/pulse/cookie"},
+    };
+  }
 }  // namespace
 
 int main() {
-  if (getenv("STATIONCONNECT_SESSION_ATTESTATION_FD") != nullptr) {
-    const bool accepted = session::supervisor_attests_account_for_active_seat0(getuid());
-    std::cout << "session_attestation=" << (accepted ? "accepted" : "rejected") << '\n';
-    return accepted ? 0 : 9;
-  }
-
   auto descriptor = valid_session();
   if (!session::eligible_graphical_session(descriptor)) {
     std::cerr << "active local seat0 X11 user was rejected\n";
@@ -38,10 +39,19 @@ int main() {
     std::cerr << "active local seat0 X11 greeter was rejected\n";
     return 1;
   }
-  if (session::session_attestation_message(descriptor) !=
-      "SC-SESSION-1\nc7\n1000") {
-    std::cerr << "eligible session attestation was malformed\n";
+  const auto update = valid_update();
+  const auto message = session::session_update_message(update);
+  const auto parsed = session::parse_session_update(message);
+  if (!parsed || parsed->generation != update.generation ||
+      parsed->session.id != update.session.id ||
+      parsed->environment.pulse_cookie != update.environment.pulse_cookie) {
+    std::cerr << "session update did not round trip\n";
     return 8;
+  }
+  if (session::parse_session_update(message.substr(0, message.size() - 1)) ||
+      session::parse_session_update(std::string_view {"SC-SESSION-2\0bad", 16})) {
+    std::cerr << "malformed session update was accepted\n";
+    return 9;
   }
 
   descriptor = valid_session();
@@ -62,5 +72,9 @@ int main() {
   descriptor = valid_session();
   descriptor.state = "closing";
   if (!rejected(descriptor)) return 7;
+
+  auto invalid_update = valid_update();
+  invalid_update.session.remote = true;
+  if (!session::session_update_message(invalid_update).empty()) return 10;
   return 0;
 }

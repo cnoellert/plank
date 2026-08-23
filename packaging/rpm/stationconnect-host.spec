@@ -91,6 +91,10 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.16
+- Preserve the authenticated stream across GDM-to-user desktop handoff.
+- Rebind X11 video and PulseAudio capture without replacing the Sender process.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.15
 - Synchronize the host release with the client Wacom permission fix.
 
