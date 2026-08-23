@@ -42,6 +42,34 @@ done
   exit 1
 }
 
+# StationConnect's Rocky host accepts workstation keyboard, mouse, touch, pen,
+# and raw-HID Wacom input only. Keep controller packet routing, feedback, Linux
+# virtual-gamepad integration, launch metadata, and configuration UI out of the
+# production host even though the shared libvirtualhid dependency remains.
+if rg -n \
+  'MULTI_CONTROLLER_MAGIC|SS_CONTROLLER_(ARRIVAL|TOUCH|MOTION|BATTERY)_MAGIC|gamepad_feedback|terminate_gamepads|probe_gamepads' \
+  "$source_dir/src/input.cpp" "$source_dir/src/input.h" \
+  "$source_dir/src/stream.cpp" "$source_dir/src/globals.h"; then
+  echo "controller packet routing or feedback is present in StationConnect host source" >&2
+  exit 1
+fi
+if rg -n -i \
+  'gamepad|controller|gcmap' \
+  "$source_dir/src/platform/linux/input/virtualhid.cpp" \
+  "$source_dir/src/platform/virtualhid_input.cpp" \
+  "$source_dir/src/platform/virtualhid_input.h" \
+  "$source_dir/src_assets/common/assets/web/configs/tabs/Inputs.vue" \
+  "$source_dir/src_assets/common/assets/web/config.html" \
+  "$source_dir/src_assets/common/assets/web/apps.html"; then
+  echo "Linux gamepad integration or host controller configuration is present" >&2
+  exit 1
+fi
+[[ ! -e ${source_dir}/tests/unit/platform/test_virtualhid_input.cpp ]] || {
+  echo "gamepad-specific host tests are present" >&2
+  exit 1
+}
+echo "host_gamepad_absence_gate=pass"
+
 cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \
