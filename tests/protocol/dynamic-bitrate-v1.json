@@ -1,10 +1,17 @@
 {
   "feature_flag": "0x08",
+  "target_ack_feature_flag": "0x10",
+  "initial_encoder_target_attribute": "x-sc-video.encoderTargetKbps",
   "control_type": "0x5505",
+  "ack_control_type": "0x5506",
   "reliable": true,
   "encrypted": true,
   "bitrate_kbps": 100000,
   "payload_little_endian_hex": "a0860100",
+  "ack_payload_little_endian_hex": "a0860100a0860100f0490200",
+  "applied_bitrate_kbps": 100000,
+  "peak_bitrate_kbps": 150000,
+  "ack_retry_interval_ms": 1000,
   "minimum_kbps": 500,
   "maximum_kbps": 500000
 }
