@@ -48,11 +48,14 @@ rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+test "$(rg -F -c '!stationconnect_authentication && video::probe_encoders()' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp")" -eq 2
 
 client_session="$repo_dir/client/moonlight-qt-fork/app/streaming/session.cpp"
 client_manager="$repo_dir/client/moonlight-qt-fork/app/backend/computermanager.cpp"
 rg -Fq 'StationConnect transport ended' "$client_session"
 rg -Fq 'MaximumAttempts = 20' "$client_session"
 rg -Fq 'replacement worker has no app to resume' "$client_session"
+rg -Fq 'worker already has an active Desktop stream' "$client_session"
 rg -Fq 'm_CanReconnect.store(false)' "$client_session"
 rg -Fq 'rememberStationConnectReconnectCredentials' "$client_manager"

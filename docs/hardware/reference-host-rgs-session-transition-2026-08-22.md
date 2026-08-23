@@ -19,3 +19,11 @@ after three bounded readiness failures, launched a fresh Desktop stream when
 the replacement worker reported nothing to resume, and received the first new
 video packet on reconnect attempt 4. No NvFBC crash or client process exit was
 observed.
+
+A later overlapping-session package test exposed an NvFBC crash when Sunshine's
+per-resume encoder probe raced a starting capture thread. Revision 0.18 makes
+the fresh worker's startup probe authoritative for StationConnect and prefers a
+new Desktop launch before falling back to resume. The repeated test retained
+the supervisor, replaced the worker, restored video on attempt 4, held the same
+worker for more than one minute with two session records present, and produced
+no coredump.

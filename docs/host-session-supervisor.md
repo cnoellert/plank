@@ -1,6 +1,6 @@
 # Host Session Supervisor
 
-StationConnect revision 0.17 evolves the graphical-login host user service into
+StationConnect revision 0.18 evolves the graphical-login host user service into
 `stationconnect-host.service`, a persistent machine-level Sender supervisor. The
 supervisor starts at boot and asks `systemd-logind` for the active local X11
 session on `seat0`. It accepts only `user` or `greeter` session classes in the
@@ -43,6 +43,12 @@ stops the old transport, retries authentication for up to 20 seconds, and starts
 a fresh Desktop stream. Passwords and one-use tokens are cleared when consumed
 or when the session ends; they are never written to settings, arguments,
 environment variables, or logs. A local disconnect does not trigger reconnect.
+
+StationConnect workers perform their NvFBC and encoder probe before opening the
+HTTP interface. They do not repeat Sunshine's generic hotplug probe while a
+Desktop launch or resume is beginning; the supervisor replaces the worker when
+the graphical session changes. This prevents encoder probing from racing active
+NvFBC capture during rapid or collaborative reconnects.
 
 The Sender uses the root-managed state file
 `/var/lib/stationconnect/sunshine_state.json`. Sunshine's default per-user

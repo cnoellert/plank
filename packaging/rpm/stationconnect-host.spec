@@ -91,6 +91,10 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.18
+- Avoid racing per-session encoder probing with active NvFBC capture.
+- Prefer fresh Desktop launch after worker replacement with resume fallback.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.17
 - Restart the media worker with fresh NvFBC state across X server replacement.
 - Retain the machine supervisor, workstation identity, and authenticated handoff.
