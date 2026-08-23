@@ -725,3 +725,30 @@ This isolated the remaining problem to phase convergence. A phase-feedback
 prototype then ended a 1,002.066-second measurement at 1.308 ms relative drift
 and 12.579 ms/hour fitted drift with zero skips. The full synchronized 0.7
 two-hour repeat remains required.
+
+## End-User NUC Thermal Diagnosis — 2026-08-22
+
+Read-only inspection of the fresh NUC13ANKi7 while receiving the native
+5120x2160p60 stream found no unexplained background load. StationConnect's
+Moonlight process averaged about 249% CPU over five seconds. Work was
+concentrated in `PacerRender`, three `Session Exec` threads, and `FFDecoder`,
+while the 16-logical-CPU system remained about 82% idle overall. This explains
+why aggregate load appeared low despite several sustained busy cores.
+
+The CPU package measured 74--84 degrees C at approximately 27--29 W, and the
+fan increased from about 3,900 to 4,200 RPM. The Intel GPU remained near idle
+at 300 MHz and roughly 0.35 W. Client logs confirmed that the H.264 High 4:4:4
+Predictive 10-bit GBR-identity stream could not use Intel VA-API or Vulkan
+hardware decoding and fell back to FFmpeg software decode as `gbrp10le`.
+The observed fan behavior therefore matches CPU decode, presentation, and
+pacing of roughly 664 million output pixels per second; no memory pressure,
+thermal-throttling warning, or runaway auxiliary process was found.
+
+One real client reconnect occurred during the inspection. Host logs showed the
+graphical session move from the user desktop to the GDM greeter and then to a
+new user session during login/logout. The supervisor replaced the display
+worker at each handoff and the client reconnected successfully. This was not a
+recurring decoder failure and does not explain the sustained thermal load.
+No configuration was changed on the production-workflow NUC. A future A/B at
+3840x2160 would reduce pixel workload by 25% and isolate the cost of native
+5120-wide software decoding.
