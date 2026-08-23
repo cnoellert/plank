@@ -10,12 +10,19 @@ The client sends reliable encrypted control type `0x5505` with one unsigned
 is 500 through 500000 Kbps. Sunshine rejects any other payload length or value.
 The host's configured `max_bitrate` remains an authoritative ceiling.
 
-On the qualified H.264 4:4:4 path, Sunshine updates the open FFmpeg/libx264
-context at a frame boundary. FFmpeg detects the changed average rate, VBV peak,
-and VBV buffer fields and invokes `x264_encoder_reconfig()`; RTP sequencing and
-the authenticated stream remain active. Control updates are rate-limited by
-the client while the slider is dragged and the final snapped value is sent on
-release.
+On the qualified H.264 4:4:4 path, Sunshine drains pending requests at a frame
+boundary and applies only the newest value. The selected bounded-ABR x264
+profile cannot change its sustained average target with
+`x264_encoder_reconfig()`; that API only changes the active bitrate when x264
+is operating in CBR mode. Sunshine therefore keeps capture, RTP sequencing,
+input, and the authenticated stream active while replacing only the encoder
+instance. The first frame from the replacement encoder is an IDR frame with
+fresh parameter sets.
+
+While the slider is moving, the client waits for 250 ms of inactivity before
+sending the latest snapped value. Releasing the slider sends its final value
+immediately. This prevents a separate encoder replacement for every pointer
+motion event while preserving interactive control.
 
 `tests/protocol/dynamic-bitrate-v1.json` contains the canonical 100 Mbps test
 vector. Host validation covers correct little-endian decoding, malformed
