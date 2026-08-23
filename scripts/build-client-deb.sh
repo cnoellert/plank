@@ -95,7 +95,7 @@ install -m 0755 "$repo_dir/packaging/deb/postinst" \
   "$stage_dir/DEBIAN/postinst"
 install -m 0755 "$repo_dir/packaging/deb/postrm" \
   "$stage_dir/DEBIAN/postrm"
-install -D -m 0644 "$moonlight_source_dir/app/res/stationconnect.png" \
+install -D -m 0644 "$moonlight_source_dir/app/res/stationconnect-logo.png" \
   "$stage_dir/usr/share/icons/hicolor/512x512/apps/stationconnect-client.png"
 install -D -m 0644 "$moonlight_source_dir/LICENSE" \
   "$stage_dir/usr/share/doc/stationconnect-client/copyright"
