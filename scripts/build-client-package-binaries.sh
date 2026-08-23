@@ -20,6 +20,12 @@ for command_name in git make pkg-config qmake6 readelf realpath rg; do
   }
 done
 
+package_version=$(<"${repo_dir}/packaging/VERSION")
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
+  echo "invalid shared package version: ${package_version}" >&2
+  exit 1
+}
+
 [[ -f ${source_dir}/moonlight-qt.pro ]] || {
   echo "Moonlight source tree is unavailable: ${source_dir}" >&2
   exit 1
@@ -44,6 +50,7 @@ mkdir -p "$build_dir"
 (
   cd "$build_dir"
   qmake6 "$source_dir" CONFIG+=release \
+    "STATIONCONNECT_VERSION=${package_version}" \
     "QMAKE_CFLAGS+=-ffile-prefix-map=${build_dir}=." \
     "QMAKE_CFLAGS+=-ffile-prefix-map=${source_dir}=../src" \
     "QMAKE_CXXFLAGS+=-ffile-prefix-map=${build_dir}=." \
@@ -56,6 +63,12 @@ client_binary="${build_dir}/app/moonlight"
   echo "Moonlight package binary was not produced" >&2
   exit 1
 }
+rg -a -Fq "$package_version" "$client_binary" || {
+  echo "Moonlight does not embed the StationConnect package version: ${package_version}" >&2
+  exit 1
+}
+echo "stationconnect_client_version=${package_version}"
+echo "client_version_banner_gate=pass"
 dynamic_section=$(readelf -d "$client_binary")
 for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
   rg -q "Shared library: \[${soname//./\\.}\]" <<<"$dynamic_section" || {
