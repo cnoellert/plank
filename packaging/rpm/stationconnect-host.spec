@@ -91,6 +91,9 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.14
+- Keep host and client release numbering synchronized for the ZeroTier packet fix.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.13
 - Keep host and client release numbering synchronized for native-resolution streaming.
 
