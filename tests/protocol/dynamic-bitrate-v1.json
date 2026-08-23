@@ -1,0 +1,10 @@
+{
+  "feature_flag": "0x08",
+  "control_type": "0x5505",
+  "reliable": true,
+  "encrypted": true,
+  "bitrate_kbps": 100000,
+  "payload_little_endian_hex": "a0860100",
+  "minimum_kbps": 500,
+  "maximum_kbps": 500000
+}
