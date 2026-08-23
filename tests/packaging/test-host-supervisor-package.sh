@@ -4,6 +4,7 @@ set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 unit=${repo_dir}/packaging/systemd/stationconnect-host.service
+pam_unit=${repo_dir}/packaging/systemd/stationconnect-pam-broker.service
 spec=${repo_dir}/packaging/rpm/stationconnect-host.spec
 builder=${repo_dir}/scripts/build-host-rpm.sh
 
@@ -13,8 +14,12 @@ rg -Fxq 'EnvironmentFile=-/etc/stationconnect/host.env' "$unit"
 rg -Fxq 'NoNewPrivileges=yes' "$unit"
 rg -Fxq 'CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE' "$unit"
 rg -Fxq 'ProtectHome=read-only' "$unit"
-rg -Fxq 'RuntimeDirectory=stationconnect-host' "$unit"
+rg -Fxq 'RuntimeDirectory=stationconnect/host' "$unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$unit"
+rg -Fxq 'RuntimeDirectory=stationconnect/pam' "$pam_unit"
+rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --group stationconnect-auth' "$pam_unit"
+rg -Fq '/run/stationconnect/pam/auth.sock' \
+  "$repo_dir/packaging/bin/stationconnect-host"
 if rg -q '^CapabilityBoundingSet=.*CAP_(SETUID|SETGID|KILL)' "$unit"; then
   echo 'machine Sender retained obsolete identity-switching capabilities' >&2
   exit 1
@@ -46,7 +51,7 @@ rg -Fq 'restrict_worker_capabilities' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stage_pulse_cookie' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-rg -Fq '/run/stationconnect-host/pulse-cookie' \
+rg -Fq '/run/stationconnect/host/pulse-cookie' \
   "$repo_dir/host/sunshine-fork/src/session/session_context.cpp"
 rg -Fq 'STATIONCONNECT_SESSION_CONTROL_FD' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"

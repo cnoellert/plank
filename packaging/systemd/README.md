@@ -20,7 +20,7 @@ systemctl status stationconnect-pam-broker.service
 ```
 
 Sunshine activates StationConnect authentication only when it can read and
-write `/run/stationconnect/auth.sock`. The broker forks one bounded worker for
+write `/run/stationconnect/pam/auth.sock`. The broker forks one bounded worker for
 each PAM conversation so the worker, rather than the persistent listener, owns
 the logind session. The worker exits when its stream releases the authentication
 socket; the service limits itself to 40 total tasks.

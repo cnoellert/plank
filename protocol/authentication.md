@@ -7,7 +7,7 @@ every new connection. The network-facing Sunshine process never links to PAM,
 runs PAM modules, or stores a password. A root-owned
 `stationconnect-pam-broker` performs PAM operations through the dedicated
 `remote-desktop` service and exposes only a Unix socket at
-`/run/stationconnect/auth.sock`. The socket is mode `0660`, owned by root and
+`/run/stationconnect/pam/auth.sock`. The socket is mode `0660`, owned by root and
 the `stationconnect-auth` group.
 
 The broker accepts only local `AF_UNIX` peers, records their kernel-supplied

@@ -91,6 +91,9 @@ cp -a payload/. %{buildroot}/
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.22
+- Organize PAM and media runtime files under isolated StationConnect subdirectories.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.21
 - Isolate the media worker runtime from the PAM broker runtime directory.
 
