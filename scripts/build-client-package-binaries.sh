@@ -181,6 +181,11 @@ if rg -q 'placeholderText: qsTr\("hardware-test-host(\.stationconnect\.io)?"\)' 
   echo "connection dialog contains misleading workstation example text" >&2
   exit 1
 fi
+rg -U -q 'case AddressRole:(.|\n)*!computer->manualAddress\.isNull\(\)(.|\n)*!computer->activeAddress\.isNull\(\)(.|\n)*return QString\(\);' \
+  "$source_dir/app/gui/computermodel.cpp" || {
+  echo "workstation rows can expose a null manual address" >&2
+  exit 1
+}
 echo "client_offline_bookmark_gate=pass"
 
 # A configured physical path MTU is converted once to a conservative,
