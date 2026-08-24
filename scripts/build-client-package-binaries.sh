@@ -96,6 +96,23 @@ if rg -n \
 fi
 echo "client_remote_host_control_absence_gate=pass"
 
+# StationConnect has one qualified SDR 4:4:4 video profile. HDR and chroma
+# subsampling are protocol invariants, not user preferences or CLI overrides.
+if rg -n \
+  'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "optional HDR or YUV 4:4:4 controls are present in StationConnect client" >&2
+  exit 1
+fi
+if rg -n \
+  'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_(H264\)|H265\)|H265_MAIN|AV1_MAIN)' \
+  "$source_dir/app/streaming/session.cpp"; then
+  echo "a 4:2:0 video profile is advertised by the StationConnect session" >&2
+  exit 1
+fi
+echo "client_sdr_444_profile_gate=pass"
+
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 [[ $(pkg-config --modversion libavcodec) == 63.* ]] || {
