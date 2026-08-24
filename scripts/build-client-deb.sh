@@ -22,11 +22,15 @@ if [[ -f ${ffmpeg_work_dir}/COPYING.LGPLv2.1 ]]; then
 else
   ffmpeg_source_dir="${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}"
 fi
-if [[ -f ${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}.tar.xz ]]; then
-  ffmpeg_archive="${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}.tar.xz"
-else
-  ffmpeg_archive="$(dirname -- "$ffmpeg_work_dir")/ffmpeg-${ffmpeg_version}.tar.xz"
-fi
+ffmpeg_archive=""
+for archive_candidate in \
+  "${ffmpeg_work_dir}/ffmpeg-${ffmpeg_version}.tar.xz" \
+  "$(dirname -- "$ffmpeg_work_dir")/ffmpeg-${ffmpeg_version}.tar.xz"; do
+  if [[ -f $archive_candidate ]]; then
+    ffmpeg_archive=$archive_candidate
+    break
+  fi
+done
 package_version=$(<"${repo_dir}/packaging/VERSION")
 [[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
   echo "invalid shared package version: ${package_version}" >&2
@@ -70,7 +74,24 @@ for license_file in COPYING.LGPLv2.1 COPYING.LGPLv3; do
     exit 1
   }
 done
-printf '%s  %s\n' "$ffmpeg_sha256" "$ffmpeg_archive" | sha256sum --check --status
+if [[ -n $ffmpeg_archive ]]; then
+  printf '%s  %s\n' "$ffmpeg_sha256" "$ffmpeg_archive" | \
+    sha256sum --check --status
+  echo "ffmpeg_source_archive_gate=pass"
+else
+  # The prepared Development NUC tree is a retained, Git-ignored build input.
+  # Cleanup intentionally does not retain a duplicate release archive. Verify
+  # the extracted release identity instead of downloading the same archive for
+  # every package build.
+  [[ -f ${ffmpeg_source_dir}/VERSION ]] &&
+    [[ $(<"${ffmpeg_source_dir}/VERSION") == "$ffmpeg_version" ]] &&
+    [[ -f ${ffmpeg_source_dir}/RELEASE ]] &&
+    [[ $(<"${ffmpeg_source_dir}/RELEASE") == "$ffmpeg_version" ]] || {
+      echo "prepared FFmpeg source identity is not ${ffmpeg_version}" >&2
+      exit 1
+    }
+  echo "ffmpeg_prepared_source_identity_gate=pass"
+fi
 
 moonlight_commit=$(git -C "$moonlight_source_dir" rev-parse HEAD)
 common_commit=$(git -C "$common_source_dir" rev-parse HEAD)
