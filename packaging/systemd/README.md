@@ -83,6 +83,14 @@ file to browse for advertised workstations. The client launcher loads its env
 file for app-icon launches as well as user-service launches. Saved and manually
 entered workstations continue to connect when mDNS is disabled.
 
+The Linux client mirrors its already-redacted stderr/journal output to private,
+persistent per-user files under `$XDG_STATE_HOME/stationconnect/logs/`, or
+`~/.local/state/stationconnect/logs/` when `XDG_STATE_HOME` is unset or not an
+absolute path. The directory is mode `0700`; each timestamped
+`stationconnect-client-*.log` is mode `0600`, capped at 10 MiB, and only the
+newest 10 files are retained. Continue using
+`journalctl --user -u stationconnect-client.service` for live service output.
+
 The StationConnect host is built without Sunshine's browser configuration
 server and without its frontend assets. There is no listener on the former Web
 UI port and no second writable configuration path. Do not remove or block the

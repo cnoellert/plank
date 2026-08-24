@@ -13,7 +13,7 @@ ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
 
-for command_name in git make pkg-config qmake6 readelf realpath rg; do
+for command_name in find git make mktemp pkg-config qmake6 readelf realpath rg stat timeout; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -331,6 +331,33 @@ rg -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' \
 }
 echo "client_mdns_default_off_gate=pass"
 
+# Linux client diagnostics must survive a reboot and remain readable without
+# root access. Keep the same redacted output in both the user journal and a
+# private XDG state log, with bounded file size and retention.
+for required_log_token in \
+  XDG_STATE_HOME \
+  '.local/state' \
+  'stationconnect/logs'; do
+  rg -Fq "$required_log_token" "$source_dir/app/path.cpp" || {
+    echo "client persistent log path invariant is missing: ${required_log_token}" >&2
+    exit 1
+  }
+done
+for required_log_token in \
+  'stationconnect-client-*.log' \
+  'MAX_LOG_SIZE_BYTES (10 * 1024 * 1024)' \
+  'QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner' \
+  'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \
+  's_LoggerFileStream << message' \
+  '#if defined(Q_OS_LINUX) || !defined(LOG_TO_FILE)' \
+  'Persistent client log:'; do
+  rg -Fq "$required_log_token" "$source_dir/app/main.cpp" || {
+    echo "client persistent log invariant is missing: ${required_log_token}" >&2
+    exit 1
+  }
+done
+echo "client_persistent_log_source_gate=pass"
+
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 [[ $(pkg-config --modversion libavcodec) == 63.* ]] || {
@@ -370,5 +397,59 @@ for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so
 done
 "${repo_dir}/scripts/audit-package-runtime.sh" \
   "$client_binary" "${ffmpeg_prefix}/lib"
+
+log_runtime_root=$(mktemp -d)
+log_runtime_home="${log_runtime_root}/home"
+log_runtime_state="${log_runtime_root}/state"
+log_runtime_dir="${log_runtime_state}/stationconnect/logs"
+log_runtime_config="${log_runtime_root}/config"
+log_runtime_cache="${log_runtime_root}/cache"
+log_runtime_session="${log_runtime_root}/runtime"
+mkdir -p "$log_runtime_home" "$log_runtime_dir" "$log_runtime_config" \
+  "$log_runtime_cache" "$log_runtime_session"
+chmod 0700 "$log_runtime_home" "$log_runtime_dir" "$log_runtime_config" \
+  "$log_runtime_cache" "$log_runtime_session"
+for old_log in {01..11}; do
+  touch "${log_runtime_dir}/stationconnect-client-20000101-000000-000-${old_log}.log"
+done
+chmod 0600 "${log_runtime_dir}"/*.log
+
+set +e
+log_runtime_output=$(env \
+  HOME="$log_runtime_home" \
+  QT_QPA_PLATFORM=offscreen \
+  XDG_CACHE_HOME="$log_runtime_cache" \
+  XDG_CONFIG_HOME="$log_runtime_config" \
+  XDG_RUNTIME_DIR="$log_runtime_session" \
+  XDG_STATE_HOME="$log_runtime_state" \
+  timeout 10s "$client_binary" --version 2>&1)
+log_runtime_status=$?
+set -e
+if [[ $log_runtime_status -ne 0 ]]; then
+  printf '%s\n' "$log_runtime_output" >&2
+  echo "client persistent log runtime exited with status ${log_runtime_status}" >&2
+  exit 1
+fi
+
+mapfile -t runtime_logs < <(find "$log_runtime_dir" -maxdepth 1 -type f \
+  -name 'stationconnect-client-*.log' -print)
+if [[ ${#runtime_logs[@]} -ne 10 ]]; then
+  printf '%s\n' "$log_runtime_output" >&2
+  echo "client did not retain exactly 10 persistent logs" >&2
+  exit 1
+fi
+runtime_log=$(find "$log_runtime_dir" -maxdepth 1 -type f -size +0c -print -quit)
+if [[ -z $runtime_log ]] ||
+   [[ $(stat -c '%a' "$log_runtime_dir") != 700 ]] ||
+   [[ $(stat -c '%a' "$runtime_log") != 600 ]] ||
+   ! rg -Fq 'Persistent client log:' "$runtime_log" ||
+   ! rg -Fq 'Persistent client log:' <<<"$log_runtime_output"; then
+  printf '%s\n' "$log_runtime_output" >&2
+  echo "client persistent log path, permissions, content, or stderr mirror is invalid" >&2
+  exit 1
+fi
+rm -rf -- "$log_runtime_root"
+echo "client_persistent_log_runtime_gate=pass"
+
 echo "client_binary=${client_binary}"
 echo "client_package_binary_gate=pass"

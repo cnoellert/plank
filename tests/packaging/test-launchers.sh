@@ -7,6 +7,8 @@ host_launcher=${repo_dir}/packaging/bin/stationconnect-host
 client_launcher=${repo_dir}/packaging/bin/stationconnect-client
 host_profile=${repo_dir}/packaging/config/stationconnect.conf
 client_profile=${repo_dir}/packaging/systemd/client.env.example
+client_main=${repo_dir}/client/moonlight-qt-fork/app/main.cpp
+client_path=${repo_dir}/client/moonlight-qt-fork/app/path.cpp
 
 expect_status() {
   local expected=$1
@@ -71,3 +73,17 @@ if rg -q '^[[:space:]]*[A-Z][A-Z0-9_]*=' "${host_profile}"; then
   exit 1
 fi
 grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' "${client_profile}"
+
+for required_log_token in XDG_STATE_HOME '.local/state' 'stationconnect/logs'; do
+  rg -Fq "${required_log_token}" "${client_path}"
+done
+for required_log_token in \
+  'stationconnect-client-*.log' \
+  'MAX_LOG_SIZE_BYTES (10 * 1024 * 1024)' \
+  'QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner' \
+  'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \
+  's_LoggerFileStream << message' \
+  '#if defined(Q_OS_LINUX) || !defined(LOG_TO_FILE)' \
+  'Persistent client log:'; do
+  rg -Fq "${required_log_token}" "${client_main}"
+done
