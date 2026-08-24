@@ -24,6 +24,9 @@ Use these dispositions:
 | `c1623ff44e4e3059bd5b34626bcbf957e4efc397` | Switch the default renderer color range to full | skipped | Redundant: StationConnect's `FFmpegVideoDecoder` already explicitly requests full range for identity GBR. |
 | `e596c2dcdc9aaeaa6fef1f32a1bf639e29f83f45` | Update moonlight-common-c with SIMD acceleration for FEC | superseded | The early SIMDe-wrapper implementation was not cherry-picked. StationConnect selected the later native runtime-dispatch implementation represented by `0c897036`. |
 | `0c8970364c5db84a6804861fbc7575fedadfa7c4` | Switch to upstream nanors with native SIMD and GFNI runtime dispatching | ported | Adapted into StationConnect Moonlight commit `bb86a9ffd40521f05d699ce9a21ae07d95bce3cd`, preserving private common-c protocol and FEC-accounting changes. Candidate version: 0.61. |
+| `e1bbf8144e94bd22c3151a499cbf33c629ef547d` | Switch AppImage to SDL3+SDL2-compat | skipped | AppImage-only packaging is outside StationConnect's DEB workflow. Its dependency approach informed the later general migration but this commit itself is not applicable. |
+| `9813932c1b8e0f5e3bc24d280d6f574ff04a8e78` | Switch to SDL3+SDL2-compat | pending | Upstream retains the SDL2 API/ABI through `sdl2-compat` rather than performing a native SDL3 API rewrite. Evaluate this modernization in an isolated client worktree with the full Wayland windowing, toolbar, mouse, keyboard, and raw-Wacom matrix. It is not required to test native PipeWire audio because the qualified Ubuntu SDL 2.32.10 library already provides a PipeWire driver. |
+| `f2a512d3aa46abe81e92c0cb745f379ee76cbbe1` | Update libplacebo, sdl2-compat, OpenSSL, and SDL3 | pending | Follow-up dependency refresh for the SDL3 compatibility migration. Review only together with `9813932`; do not independently alter StationConnect's pinned FFmpeg or qualified renderer path. |
 
 ## moonlight-common-c
 
