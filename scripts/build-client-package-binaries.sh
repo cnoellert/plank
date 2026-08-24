@@ -168,6 +168,16 @@ rg -U -q 'id: addPcDialog(.|\n)*width: Math\.min\(640, parent\.width - 40\)(.|\n
   echo "connection dialog must remain wide without dimming the launcher" >&2
   exit 1
 }
+rg -U -q 'id: addPcDialog(.|\n)*ColumnLayout \{\n[[:space:]]+width: parent\.width' \
+  "$source_dir/app/gui/main.qml" || {
+  echo "connection fields must fill the dialog width" >&2
+  exit 1
+}
+if rg -q 'placeholderText: qsTr\("hardware-test-host(\.stationconnect\.io)?"\)' \
+  "$source_dir/app/gui/main.qml"; then
+  echo "connection dialog contains misleading workstation example text" >&2
+  exit 1
+fi
 echo "client_offline_bookmark_gate=pass"
 
 # A configured physical path MTU is converted once to a conservative,
