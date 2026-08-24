@@ -133,6 +133,8 @@ fi
 for required_window_token in \
   SDL_HINT_VIDEO_WAYLAND_ALLOW_LIBDECOR \
   SDL_HINT_VIDEO_WAYLAND_PREFER_LIBDECOR \
+  SDL_HINT_OVERRIDE \
+  SDL_RestoreWindow \
   SDL_SetWindowBordered \
   SDL_SetWindowResizable; do
   rg -q "$required_window_token" "$source_dir/app" || {
@@ -159,6 +161,11 @@ done
 rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\)\)' \
   "$source_dir/app/gui/main.qml" || {
   echo "manual workstation dialog does not submit both address and nickname" >&2
+  exit 1
+}
+rg -U -q 'id: addPcDialog(.|\n)*width: Math\.min\(640, parent\.width - 40\)(.|\n)*dim: false' \
+  "$source_dir/app/gui/main.qml" || {
+  echo "connection dialog must remain wide without dimming the launcher" >&2
   exit 1
 }
 echo "client_offline_bookmark_gate=pass"
