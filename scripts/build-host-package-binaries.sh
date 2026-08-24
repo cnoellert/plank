@@ -73,6 +73,31 @@ fi
 echo "host_remote_control_absence_gate=pass"
 
 if rg -n \
+  'root\.mac|get_mac_address|Unable to find MAC address' \
+  "$source_dir/src" \
+  --glob '*.{cpp,h,mm}'; then
+  echo "Wake-on-LAN MAC metadata is present in StationConnect host source" >&2
+  exit 1
+fi
+echo "host_wake_on_lan_absence_gate=pass"
+
+for required_pc_range_token in \
+  'av_color_range_from_name(' \
+  'sunshine_colorspace.full_range ? "pc" : "tv"' \
+  'colorspace.full_range ? "PC" : "TV"'; do
+  rg -Fq "$required_pc_range_token" \
+    "$source_dir/src/video_colorspace.cpp" "$source_dir/src/video.cpp" || {
+    echo "StationConnect PC/full-range encoder terminology is missing: ${required_pc_range_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'Color range:.*JPEG|Color range:.*MPEG' "$source_dir/src/video.cpp"; then
+  echo "legacy JPEG/MPEG color-range terminology remains in the StationConnect encoder log" >&2
+  exit 1
+fi
+echo "host_pc_color_range_gate=pass"
+
+if rg -n \
   'SS_TOUCH_MAGIC|PSS_TOUCH_PACKET|platf::touch_update|create_touchscreen|supports_touchscreen|native_pen_touch' \
   "$source_dir/src/input.cpp" \
   "$source_dir/src/platform/virtualhid_input.cpp" \

@@ -299,6 +299,17 @@ if rg -n 'DetailsRole|showPcDetailsDialog|View Details|Running Game ID|MAC Addre
 fi
 echo "client_workstation_details_absence_gate=pass"
 
+# StationConnect workstations are expected to be available through their
+# approved network path. Do not retain Moonlight's Wake-on-LAN UI, MAC-address
+# persistence, CLI auto-wake, or magic-packet transport.
+if rg -n 'Wake PC|WakeableRole|wakeComputer|macAddress|SER_MAC|wolPayload|STATIC_WOL_PORTS|DYNAMIC_WOL_PORTS|computer->wake\(\)' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "Wake-on-LAN support is present in StationConnect client" >&2
+  exit 1
+fi
+echo "client_wake_on_lan_absence_gate=pass"
+
 # A configured physical path MTU is converted once to a conservative,
 # 16-byte-aligned video packet size. Keep the old raw packet-size control out.
 if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER' \
