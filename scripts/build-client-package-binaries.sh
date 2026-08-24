@@ -208,6 +208,8 @@ for required_loss_token in \
 done
 for required_loss_ui_token in \
   'm_CurrentVideoPacketLossPercent' \
+  'currentVideoPacketLossPercent' \
+  'Incoming video packet loss (before FEC): %.2f%%' \
   'packetLossColor' \
   'const QColor blue(52, 132, 228)' \
   'const QColor green(52, 199, 110)' \
