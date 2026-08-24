@@ -116,6 +116,26 @@ for required_raw_hid_token in \
 done
 echo "host_raw_hid_focus_suspend_gate=pass"
 
+# Exact raw-HID and normalized pen-tablet backends must never coexist after a
+# raw group attaches. Flame otherwise applies Tablet Margins to the inactive
+# generic device while pressure arrives from the exact Wacom endpoint.
+for required_tablet_ownership_token in \
+  sync_tablet_backend \
+  set_normalized_pen_enabled \
+  has_endpoints \
+  'Exact raw HID tablet active; removed normalized pen fallback' \
+  ExactRawTabletSuppressesNormalizedFallbackUntilDetach; do
+  rg -Fq "$required_tablet_ownership_token" \
+    "$source_dir/src/input.cpp" \
+    "$source_dir/src/platform/virtualhid_input.cpp" \
+    "$source_dir/src/raw_hid_tablet.cpp" \
+    "$source_dir/tests/unit/test_input.cpp" || {
+    echo "host raw/normalized tablet ownership invariant is missing: ${required_tablet_ownership_token}" >&2
+    exit 1
+  }
+done
+echo "host_raw_hid_fallback_exclusion_gate=pass"
+
 # StationConnect keeps every host runtime setting in one Sunshine config file.
 # mDNS advertisement remains opt-in and defaults to disabled there.
 for required_mdns_token in \
