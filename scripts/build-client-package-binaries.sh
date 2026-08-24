@@ -190,6 +190,43 @@ if rg -n 'RS_DIR|reedsolomon/rs\.c|reed_solomon_reconstruct\(' \
 fi
 echo "client_simd_fec_gate=pass"
 
+# The compact toolbar exposes one authoritative rolling video data-packet loss
+# sample from the FEC queue. Do not substitute ENet control loss, post-FEC frame
+# drops, or parity arrival counts: those measure different things and would
+# either hide recovered network loss or report false loss on healthy streams.
+for required_loss_token in \
+  'ConnListenerVideoPacketLossUpdate' \
+  'packetLossExpectedDataPackets' \
+  'packetLossMissingDataPackets' \
+  'queue->bufferDataPackets - queue->receivedDataPackets' \
+  'getVideoDataPacketLossPercentage' \
+  'videoPacketLossUpdate'; do
+  rg -Fq "$required_loss_token" "$client_common_root/src" || {
+    echo "video packet-loss telemetry invariant is missing: ${required_loss_token}" >&2
+    exit 1
+  }
+done
+for required_loss_ui_token in \
+  'm_CurrentVideoPacketLossPercent' \
+  'packetLossColor' \
+  'const QColor blue(52, 132, 228)' \
+  'const QColor green(52, 199, 110)' \
+  'const QColor red(239, 88, 88)' \
+  'clampedLoss <= 5.0' \
+  '(clampedLoss - 5.0) / 5.0' \
+  'QString("%1%").arg(m_PacketLossPercent' \
+  'return toolbarLeft() + 229'; do
+  rg -Fq "$required_loss_ui_token" \
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/streaming/session.h" \
+    "$source_dir/app/streaming/stationconnecttoolbar.cpp" \
+    "$source_dir/app/streaming/stationconnecttoolbar.h" || {
+    echo "video packet-loss toolbar invariant is missing: ${required_loss_ui_token}" >&2
+    exit 1
+  }
+done
+echo "client_video_packet_loss_indicator_gate=pass"
+
 # Remote-workstation sessions capture OS-level key combinations by default so
 # shortcuts such as Alt+Tab reach the host in both windowed and borderless mode.
 rg -U -q 'settings\.value\(SER_CAPTURESYSKEYS,\n[[:space:]]+static_cast<int>\(CaptureSysKeysMode::CSK_ALWAYS\)\)' \

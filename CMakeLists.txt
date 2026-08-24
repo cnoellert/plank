@@ -266,6 +266,15 @@ if(BUILD_TESTING)
   add_test(NAME extended-fec-block-indices
     COMMAND extended-fec-block-indices-test)
 
+  add_executable(video-packet-loss-telemetry-test
+    tests/protocol/video-packet-loss-telemetry.c)
+  target_compile_options(video-packet-loss-telemetry-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(video-packet-loss-telemetry-test PRIVATE
+    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+  add_test(NAME video-packet-loss-telemetry
+    COMMAND video-packet-loss-telemetry-test)
+
   add_executable(wacom-hid-v2-test tests/protocol/wacom-hid-v2.c)
   target_compile_options(wacom-hid-v2-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
