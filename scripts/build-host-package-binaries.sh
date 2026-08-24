@@ -91,13 +91,17 @@ echo "host_touchscreen_absence_gate=pass"
 host_common_dir="${source_dir}/third-party/moonlight-common-c/src"
 for required_raw_hid_token in \
   '#define SC_RAW_HID_WIRE_VERSION 2U' \
-  'SC_RAW_HID_SUSPEND = 13' \
-  '#define LI_FF_RAW_HID_FOCUS_SUSPEND 0x20'; do
+  'SC_RAW_HID_SUSPEND = 13'; do
   rg -Fq "$required_raw_hid_token" "$host_common_dir" || {
     echo "host raw-HID focus-suspend protocol invariant is missing: ${required_raw_hid_token}" >&2
     exit 1
   }
 done
+rg -q '#define[[:space:]]+LI_FF_RAW_HID_FOCUS_SUSPEND[[:space:]]+0x20' \
+  "$host_common_dir/Limelight.h" || {
+  echo "host raw-HID focus-suspend feature bit is missing" >&2
+  exit 1
+}
 for required_raw_hid_token in \
   raw_hid_focus_suspend \
   SC_RAW_HID_SUSPEND \
