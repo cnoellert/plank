@@ -248,11 +248,25 @@ for required_bookmark_token in \
     exit 1
   }
 done
-rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\)\)' \
+rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addDisplayChoice\.currentIndex === 0\)' \
   "$source_dir/app/gui/main.qml" || {
-  echo "manual workstation dialog does not submit both address and nickname" >&2
+  echo "manual workstation dialog does not submit address, nickname, and display preference" >&2
   exit 1
 }
+for required_bookmark_editor_token in \
+  'Edit bookmark…' \
+  editComputerBookmark \
+  editManualBookmark \
+  editDisplayChoice; do
+  rg -Fq "$required_bookmark_editor_token" "$source_dir/app" || {
+    echo "workstation bookmark editor invariant is missing: ${required_bookmark_editor_token}" >&2
+    exit 1
+  }
+done
+if rg -Fq 'text: qsTr("Display…")' "$source_dir/app/gui/PcView.qml"; then
+  echo "standalone workstation display menu must remain inside bookmark editing" >&2
+  exit 1
+fi
 rg -U -q 'id: addPcDialog(.|\n)*width: Math\.min\(640, parent\.width - 40\)(.|\n)*dim: false' \
   "$source_dir/app/gui/main.qml" || {
   echo "connection dialog must remain wide without dimming the launcher" >&2
