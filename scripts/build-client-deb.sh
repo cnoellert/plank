@@ -12,6 +12,8 @@ moonlight_binary=$(realpath -- "$1")
 ffmpeg_work_dir=$(realpath -- "$2")
 output_dir=$(realpath -m -- "${3:-${repo_dir}/artifacts/packages}")
 moonlight_source_dir=$(realpath -- "${4:-${repo_dir}/client/moonlight-qt-fork}")
+common_source_dir="${moonlight_source_dir}/moonlight-common-c/moonlight-common-c"
+nanors_source_dir="${common_source_dir}/nanors"
 ffmpeg_version=9.0.1
 ffmpeg_sha256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
 ffmpeg_lib_dir="${ffmpeg_work_dir}/install/lib"
@@ -46,6 +48,10 @@ done
   echo "Moonlight source tree is unavailable: ${moonlight_source_dir}" >&2
   exit 1
 }
+[[ -f ${nanors_source_dir}/LICENSE ]] || {
+  echo "nanors source tree is unavailable: ${nanors_source_dir}" >&2
+  exit 1
+}
 if [[ -n $(git -C "$moonlight_source_dir" status --porcelain) ]]; then
   echo "Moonlight source tree is dirty; refusing to create a release package" >&2
   exit 1
@@ -67,6 +73,8 @@ done
 printf '%s  %s\n' "$ffmpeg_sha256" "$ffmpeg_archive" | sha256sum --check --status
 
 moonlight_commit=$(git -C "$moonlight_source_dir" rev-parse HEAD)
+common_commit=$(git -C "$common_source_dir" rev-parse HEAD)
+nanors_commit=$(git -C "$nanors_source_dir" rev-parse HEAD)
 source_epoch=$(git -C "$moonlight_source_dir" log -1 --format=%ct)
 work_dir=$(mktemp -d --tmpdir stationconnect-client-deb.XXXXXX)
 cleanup() {
@@ -99,6 +107,8 @@ install -D -m 0644 "$moonlight_source_dir/app/res/stationconnect-logo.png" \
   "$stage_dir/usr/share/icons/hicolor/512x512/apps/stationconnect-client.png"
 install -D -m 0644 "$moonlight_source_dir/LICENSE" \
   "$stage_dir/usr/share/doc/stationconnect-client/copyright"
+install -D -m 0644 "$nanors_source_dir/LICENSE" \
+  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.nanors"
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv2.1" \
   "$stage_dir/usr/share/doc/stationconnect-client/COPYING.FFmpeg.LGPLv2.1"
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv3" \
@@ -160,6 +170,8 @@ depends=$(sed -n 's/^shlibs:Depends=//p' "$work_dir/shlibdeps")
 
 cat >"$stage_dir/usr/share/doc/stationconnect-client/BUILD-INFO" <<EOF
 Moonlight-Qt commit: ${moonlight_commit}
+moonlight-common-c commit: ${common_commit}
+nanors commit: ${nanors_commit}
 FFmpeg version: ${ffmpeg_version}
 FFmpeg source SHA-256: ${ffmpeg_sha256}
 Moonlight binary SHA-256: $(sha256sum "$moonlight_binary" | awk '{print $1}')
@@ -217,9 +229,14 @@ if grep -Fq './usr/share/applications/stationconnect-client.desktop' \
 fi
 grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' \
   <<<"$package_manifest" || {
-    echo "client DEB is missing the Wacom udev access rule" >&2
-    exit 1
-  }
+  echo "client DEB is missing the Wacom udev access rule" >&2
+  exit 1
+}
+grep -Fq './usr/share/doc/stationconnect-client/COPYING.nanors' \
+  <<<"$package_manifest" || {
+  echo "client DEB is missing the nanors license" >&2
+  exit 1
+}
 control_audit_dir=$(mktemp -d --tmpdir stationconnect-client-control.XXXXXX)
 dpkg-deb --control "$deb_file" "$control_audit_dir"
 for maintainer_script in postinst postrm; do

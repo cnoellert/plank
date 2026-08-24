@@ -156,6 +156,40 @@ rg -U -q 'void LinuxRawWacomInput::setActive\(bool active\)(.|\n)*?if \(!active\
 }
 echo "client_raw_hid_focus_suspend_gate=pass"
 
+# High-bitrate video recovery uses upstream nanors with runtime-selected SIMD
+# and GFNI implementations. Keep the old scalar Reed-Solomon source out of the
+# client build while preserving StationConnect's extended-FEC queue logic.
+client_common_root="${source_dir}/moonlight-common-c/moonlight-common-c"
+for required_fec_source in \
+  nanors/rs.c \
+  nanors/deps/obl/oblas_common.c \
+  nanors/deps/obl/oblas_lite.c; do
+  [[ -f "${client_common_root}/${required_fec_source}" ]] || {
+    echo "optimized FEC source is unavailable: ${required_fec_source}" >&2
+    exit 1
+  }
+  rg -Fq "\$\$COMMON_C_DIR/${required_fec_source}" \
+    "${source_dir}/moonlight-common-c/moonlight-common-c.pro" || {
+    echo "optimized FEC source is absent from the Qt build: ${required_fec_source}" >&2
+    exit 1
+  }
+done
+for required_fec_token in \
+  'reed_solomon_decode(' \
+  'memcpy(queue->rs->p, parity, sizeof(parity));'; do
+  rg -Fq "$required_fec_token" "$client_common_root/src" || {
+    echo "nanors FEC integration invariant is missing: ${required_fec_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'RS_DIR|reedsolomon/rs\.c|reed_solomon_reconstruct\(' \
+  "${source_dir}/moonlight-common-c/moonlight-common-c.pro" \
+  "$client_common_root/src"; then
+  echo "legacy scalar Reed-Solomon integration is present" >&2
+  exit 1
+fi
+echo "client_simd_fec_gate=pass"
+
 # Remote-workstation sessions capture OS-level key combinations by default so
 # shortcuts such as Alt+Tab reach the host in both windowed and borderless mode.
 rg -U -q 'settings\.value\(SER_CAPTURESYSKEYS,\n[[:space:]]+static_cast<int>\(CaptureSysKeysMode::CSK_ALWAYS\)\)' \
