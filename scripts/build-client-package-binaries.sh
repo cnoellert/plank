@@ -289,6 +289,16 @@ rg -U -q 'case AddressRole:(.|\n)*!computer->manualAddress\.isNull\(\)(.|\n)*!co
 }
 echo "client_offline_bookmark_gate=pass"
 
+# Workstation diagnostics belong in the bounded persistent log rather than a
+# user-facing context-menu dump of internal addresses and identifiers.
+if rg -n 'DetailsRole|showPcDetailsDialog|View Details|Running Game ID|MAC Address:' \
+  "$source_dir/app/gui" \
+  --glob '!**/languages/**'; then
+  echo "legacy workstation details UI is present" >&2
+  exit 1
+fi
+echo "client_workstation_details_absence_gate=pass"
+
 # A configured physical path MTU is converted once to a conservative,
 # 16-byte-aligned video packet size. Keep the old raw packet-size control out.
 if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER' \
