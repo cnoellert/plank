@@ -2,13 +2,12 @@
 
 set -euo pipefail
 
-if (($# < 1 || $# > 2)); then
-  echo "usage: $0 STATE_FILE [LEGACY_STATE_FILE]" >&2
+if (($# != 1)); then
+  echo "usage: $0 STATE_FILE" >&2
   exit 2
 fi
 
 state_file=$1
-legacy_state=${2:-}
 state_dir=$(dirname -- "$state_file")
 uuid_pattern='[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}'
 
@@ -32,13 +31,7 @@ if [[ $existing_uuid =~ ^$uuid_pattern$ ]]; then
   exit 0
 fi
 
-selected_uuid=
-if [[ -n $legacy_state ]]; then
-  selected_uuid=$(read_uuid "$legacy_state" || true)
-fi
-if [[ ! $selected_uuid =~ ^$uuid_pattern$ ]]; then
-  selected_uuid=$(< /proc/sys/kernel/random/uuid)
-fi
+selected_uuid=$(< /proc/sys/kernel/random/uuid)
 selected_uuid=${selected_uuid^^}
 
 umask 0077

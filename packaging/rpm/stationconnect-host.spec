@@ -49,13 +49,10 @@ cp -a payload/. %{buildroot}/
 /usr/bin/chmod 0640 /etc/stationconnect/tls/key.pem || exit 1
 /usr/bin/chmod 0644 /etc/stationconnect/tls/cert.pem || exit 1
 /usr/libexec/stationconnect/stationconnect-host-state \
-  /var/lib/stationconnect/stationconnect_state.json \
-  /var/lib/stationconnect/sunshine_state.json || exit 1
+  /var/lib/stationconnect/stationconnect_state.json || exit 1
 /usr/bin/chown root:root \
   /var/lib/stationconnect/stationconnect_state.json || exit 1
 /usr/bin/chmod 0600 /var/lib/stationconnect/stationconnect_state.json || exit 1
-/usr/bin/test ! -f /var/lib/stationconnect/sunshine_state.json || \
-  /usr/bin/rm -f /var/lib/stationconnect/sunshine_state.json
 %systemd_post stationconnect-pam-broker.service stationconnect-host.service
 /usr/bin/udevadm control --reload-rules >/dev/null 2>&1 || :
 /usr/sbin/modprobe uhid >/dev/null 2>&1 || :

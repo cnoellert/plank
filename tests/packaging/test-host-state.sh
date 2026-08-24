@@ -11,12 +11,7 @@ cleanup() {
 trap cleanup EXIT
 
 state_file=${test_dir}/stationconnect_state.json
-legacy_file=${test_dir}/sunshine_state.json
-legacy_uuid=1DE40C5B-53F1-E425-5493-2C5A6D9CC108
-
-printf '{"root":{"uniqueid":"%s"}}\n' "$legacy_uuid" >"$legacy_file"
-"$helper" "$state_file" "$legacy_file"
-rg -Fq "\"uniqueid\": \"${legacy_uuid}\"" "$state_file"
+"$helper" "$state_file"
 if rg -q 'named_devices' "$state_file"; then
   echo 'state helper retained obsolete paired-device storage' >&2
   exit 1
