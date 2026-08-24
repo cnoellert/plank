@@ -215,6 +215,7 @@ for required_loss_ui_token in \
   'clampedLoss <= 5.0' \
   '(clampedLoss - 5.0) / 5.0' \
   'QString("%1%").arg(m_PacketLossPercent' \
+  'QRect(174, 16, 52, 17)' \
   'return toolbarLeft() + 229'; do
   rg -Fq "$required_loss_ui_token" \
     "$source_dir/app/streaming/session.cpp" \
