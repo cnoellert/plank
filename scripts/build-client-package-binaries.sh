@@ -223,7 +223,8 @@ for required_loss_ui_token in \
     "$source_dir/app/streaming/session.cpp" \
     "$source_dir/app/streaming/session.h" \
     "$source_dir/app/streaming/stationconnecttoolbar.cpp" \
-    "$source_dir/app/streaming/stationconnecttoolbar.h" || {
+    "$source_dir/app/streaming/stationconnecttoolbar.h" \
+    "$source_dir/app/streaming/video/ffmpeg.cpp" || {
     echo "video packet-loss toolbar invariant is missing: ${required_loss_ui_token}" >&2
     exit 1
   }
