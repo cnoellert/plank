@@ -105,7 +105,7 @@ rg -q '#define[[:space:]]+LI_FF_RAW_HID_FOCUS_SUSPEND[[:space:]]+0x20' \
 for required_raw_hid_token in \
   raw_hid_focus_suspend \
   SC_RAW_HID_SUSPEND \
-  'Suspended raw-HID transport while retaining'; do
+  'Suspended raw HID tablet transport while retaining endpoints'; do
   rg -Fq "$required_raw_hid_token" \
     "$source_dir/src/platform/common.h" \
     "$source_dir/src/platform/linux/input/virtualhid.cpp" \
