@@ -136,7 +136,10 @@ for required_window_token in \
   SDL_HINT_OVERRIDE \
   SDL_RestoreWindow \
   SDL_SetWindowBordered \
-  SDL_SetWindowResizable; do
+  SDL_SetWindowResizable \
+  'Action::ToggleFullscreen' \
+  fullscreenContains \
+  'toolbar fullscreen toggle requested'; do
   rg -q "$required_window_token" "$source_dir/app" || {
     echo "decorated Wayland window invariant is missing: ${required_window_token}" >&2
     exit 1
