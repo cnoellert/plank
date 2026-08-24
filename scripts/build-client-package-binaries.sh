@@ -72,6 +72,30 @@ if rg -n \
 fi
 echo "client_gamepad_absence_gate=pass"
 
+# StationConnect disconnects streams without changing the physical workstation
+# display or terminating the workstation application. Keep Moonlight's legacy
+# SOPS and remote app-cancel controls out of the product.
+for removed_path in \
+  app/cli/quitstream.cpp \
+  app/cli/quitstream.h \
+  app/gui/CliQuitStreamSegue.qml \
+  app/gui/QuitSegue.qml \
+  app/streaming/input/abstouch.cpp \
+  app/streaming/input/reltouch.cpp; do
+  [[ ! -e ${source_dir}/${removed_path} ]] || {
+    echo "remote host-control source is present: ${removed_path}" >&2
+    exit 1
+  }
+done
+if rg -n \
+  'Host Settings|gameOptimizations|quitAppAfter|quitRunningApp|quitAppCompleted|unlockBitrate|Unlock bitrate limit|absoluteTouchMode|swapMouseButtons|reverseScrollDirection|absoluteMouseMode|touchscreen-trackpad|mouse-buttons-swap|reverse-scroll-direction|absolute-mouse|Use touchscreen as a virtual trackpad|Swap left and right mouse buttons|Reverse mouse scrolling direction|Optimize mouse for remote desktop|KeyComboToggleMouseMode|SDL_FINGER(DOWN|MOTION|UP)|LiSendTouchEvent|SDL_(Get|Set)RelativeMouseMode|[?&]sops=|game-optimization|quit-after' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "legacy SOPS or remote app termination is present in StationConnect client" >&2
+  exit 1
+fi
+echo "client_remote_host_control_absence_gate=pass"
+
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 [[ $(pkg-config --modversion libavcodec) == 63.* ]] || {

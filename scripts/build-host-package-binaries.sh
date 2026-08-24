@@ -70,6 +70,30 @@ fi
 }
 echo "host_gamepad_absence_gate=pass"
 
+if rg -n \
+  'enable_sops|SUNSHINE_CLIENT_ENABLE_SOPS|resource\["\^/cancel\$"\]|root\.cancel' \
+  "$source_dir/src" \
+  --glob '*.{cpp,h}'; then
+  echo "legacy client-controlled display or remote app cancellation is present in StationConnect host" >&2
+  exit 1
+fi
+echo "host_remote_control_absence_gate=pass"
+
+if rg -n \
+  'SS_TOUCH_MAGIC|PSS_TOUCH_PACKET|platf::touch_update|create_touchscreen|supports_touchscreen|native_pen_touch' \
+  "$source_dir/src/input.cpp" \
+  "$source_dir/src/platform/virtualhid_input.cpp" \
+  "$source_dir/src/platform/virtualhid_input.h" \
+  "$source_dir/src/platform/linux/input/virtualhid.cpp" \
+  "$source_dir/src/config.cpp" \
+  "$source_dir/src/config.h" \
+  "$source_dir/src_assets/common/assets/web/configs/tabs/Inputs.vue" \
+  "$source_dir/src_assets/common/assets/web/config.html"; then
+  echo "direct touchscreen support is present in StationConnect host" >&2
+  exit 1
+fi
+echo "host_touchscreen_absence_gate=pass"
+
 cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \
