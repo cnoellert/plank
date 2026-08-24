@@ -121,9 +121,9 @@ if rg -n \
 fi
 echo "client_remote_host_control_absence_gate=pass"
 
-# StationConnect has one qualified SDR 4:4:4 video profile and one windowed
-# launcher mode. These are product invariants, not user preferences or CLI
-# overrides.
+# StationConnect has one qualified SDR H.264 High 10 4:4:4 identity profile,
+# decoded through the proven FFmpeg software path, and one windowed launcher
+# mode. These are product invariants, not user preferences or CLI overrides.
 if rg -n \
   'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"|GUI display mode|uiDisplayMode|UIDisplayMode|UI_(WINDOWED|MAXIMIZED|FULLSCREEN)|uidisplaymode|startwindowed' \
   "$source_dir/app" \
@@ -142,6 +142,24 @@ if rg -n \
   'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_(H264\)|H265\)|H265_MAIN|AV1_MAIN)' \
   "$source_dir/app/streaming/session.cpp"; then
   echo "a 4:2:0 video profile is advertised by the StationConnect session" >&2
+  exit 1
+fi
+profile_appends=$(rg -F \
+  'm_SupportedVideoFormats.append(VIDEO_FORMAT_' \
+  "$source_dir/app/streaming/session.cpp" || true)
+if [[ $profile_appends != *'m_SupportedVideoFormats.append(VIDEO_FORMAT_H264_HIGH10_444);'* ]] ||
+   [[ $(wc -l <<<"$profile_appends") -ne 1 ]]; then
+  echo "StationConnect must advertise only H.264 High 10 4:4:4" >&2
+  printf '%s\n' "$profile_appends" >&2
+  exit 1
+fi
+if ! rg -Fq \
+  'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_FORCE_SOFTWARE;' \
+  "$source_dir/app/streaming/session.cpp" ||
+   rg -Fq \
+  'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_AUTO;' \
+  "$source_dir/app/streaming/session.cpp"; then
+  echo "StationConnect must use the qualified FFmpeg software decoder" >&2
   exit 1
 fi
 echo "client_sdr_444_profile_gate=pass"
