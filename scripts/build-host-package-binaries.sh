@@ -42,10 +42,11 @@ done
   exit 1
 }
 
-# StationConnect's Rocky host accepts workstation keyboard, mouse, touch, pen,
-# and raw-HID Wacom input only. Keep controller packet routing, feedback, Linux
-# virtual-gamepad integration, launch metadata, and configuration UI out of the
-# production host even though the shared libvirtualhid dependency remains.
+# StationConnect's Rocky host accepts workstation keyboard, mouse, normalized
+# pen, and raw-HID Wacom input only. Keep controller packet routing, feedback,
+# Linux virtual-gamepad integration, launch metadata, and configuration UI out
+# of the production host even though the shared libvirtualhid dependency
+# remains.
 if rg -n \
   'MULTI_CONTROLLER_MAGIC|SS_CONTROLLER_(ARRIVAL|TOUCH|MOTION|BATTERY)_MAGIC|gamepad_feedback|terminate_gamepads|probe_gamepads' \
   "$source_dir/src/input.cpp" "$source_dir/src/input.h" \
