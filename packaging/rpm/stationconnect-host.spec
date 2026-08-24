@@ -68,7 +68,7 @@ cp -a payload/. %{buildroot}/
 %license /usr/share/licenses/stationconnect-host/LICENSE-Sunshine
 %doc /usr/share/doc/stationconnect-host/README.md
 %config(noreplace) /etc/pam.d/remote-desktop
-%config(noreplace) /etc/stationconnect/host.env
+%config(noreplace) /etc/stationconnect/stationconnect.conf
 %dir %attr(0755,root,root) /etc/stationconnect
 %dir %attr(0750,root,stationconnect-auth) /etc/stationconnect/tls
 %ghost %config(noreplace) %attr(0644,root,stationconnect-auth) /etc/stationconnect/tls/cert.pem

@@ -7,15 +7,23 @@ unit=${repo_dir}/packaging/systemd/stationconnect-host.service
 pam_unit=${repo_dir}/packaging/systemd/stationconnect-pam-broker.service
 spec=${repo_dir}/packaging/rpm/stationconnect-host.spec
 builder=${repo_dir}/scripts/build-host-rpm.sh
+firewalld_service=${repo_dir}/packaging/firewalld/stationconnect.xml
 
 rg -Fxq 'ExecStart=/usr/bin/stationconnect-host-supervisor' "$unit"
 rg -Fxq 'WantedBy=multi-user.target' "$unit"
-rg -Fxq 'EnvironmentFile=-/etc/stationconnect/host.env' "$unit"
+if rg -q '^EnvironmentFile=' "$unit"; then
+  echo 'host service still loads a second environment configuration file' >&2
+  exit 1
+fi
 rg -Fxq 'NoNewPrivileges=yes' "$unit"
 rg -Fxq 'CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE' "$unit"
 rg -Fxq 'ProtectHome=read-only' "$unit"
 rg -Fxq 'RuntimeDirectory=stationconnect/host' "$unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$unit"
+if rg -q '47990' "$firewalld_service"; then
+  echo 'firewalld service still exposes the removed Web UI port' >&2
+  exit 1
+fi
 rg -Fxq 'RuntimeDirectory=stationconnect/pam' "$pam_unit"
 rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --group stationconnect-auth' "$pam_unit"
 rg -Fq '/run/stationconnect/pam/auth.sock' \
@@ -36,8 +44,8 @@ rg -Fq '%sysusers_create stationconnect.conf' "$spec"
 rg -Fq 'stationconnect-host-certificate' "$spec"
 rg -Fq 'stationconnect-host-state' "$spec"
 rg -Fq '/var/lib/stationconnect/sunshine_state.json' "$spec"
-rg -Fq 'file_state=/var/lib/stationconnect/sunshine_state.json' \
-  "$repo_dir/packaging/bin/stationconnect-host"
+rg -Fxq 'file_state = /var/lib/stationconnect/sunshine_state.json' \
+  "$repo_dir/packaging/config/stationconnect.conf"
 if rg -Fq '/usr/lib/systemd/user/stationconnect-host.service' "$spec"; then
   echo 'RPM manifest still contains the obsolete host user unit' >&2
   exit 1
@@ -55,18 +63,33 @@ rg -Fq '/run/stationconnect/host/pulse-cookie' \
   "$repo_dir/host/sunshine-fork/src/session/session_context.cpp"
 rg -Fq 'STATIONCONNECT_SESSION_CONTROL_FD' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-rg -Fq 'STATIONCONNECT_MDNS_DISCOVERY' \
-  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-rg -Fq 'stationconnect_mdns_discovery_enabled' \
-  "$repo_dir/host/sunshine-fork/src/main.cpp"
-rg -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' \
-  "$repo_dir/packaging/config/host.env"
+if rg -q 'STATIONCONNECT_(HOST_OPTIONS|MDNS_DISCOVERY)' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp" \
+  "$repo_dir/host/sunshine-fork/src/main.cpp" \
+  "$repo_dir/packaging/bin/stationconnect-host"; then
+  echo 'legacy host environment configuration remains' >&2
+  exit 1
+fi
+rg -Fq 'stationconnect_mdns_discovery' \
+  "$repo_dir/host/sunshine-fork/src/config.cpp"
+rg -Fxq 'stationconnect_mdns_discovery = false' \
+  "$repo_dir/packaging/config/stationconnect.conf"
+rg -Fq '/etc/stationconnect/stationconnect.conf' \
+  "$repo_dir/packaging/bin/stationconnect-host"
 rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-test "$(rg -F -c '!stationconnect_authentication && video::probe_encoders()' \
-  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp")" -eq 2
+if rg -q 'stationconnect_authentication|/pair|pair_session_t|pairing' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp" \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.h"; then
+  echo 'host retained legacy PIN/certificate pairing code' >&2
+  exit 1
+fi
+rg -Fq 'StationConnect PAM broker is unavailable; refusing to start session negotiation' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
+rg -Fq '/run/stationconnect/pam/auth.sock' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
 
 client_session="$repo_dir/client/moonlight-qt-fork/app/streaming/session.cpp"
 client_manager="$repo_dir/client/moonlight-qt-fork/app/backend/computermanager.cpp"

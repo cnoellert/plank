@@ -44,8 +44,9 @@ the local connection. The local socket is not a client-facing API.
 
 ## HTTPS Authentication
 
-When the broker socket is available, Sunshine disables pairing and client
-certificates, requires TLS 1.3, and exposes `POST /stationconnect/auth/start`
+The host refuses to start its network service unless the broker socket is
+available. It has no PIN-pairing or persistent client-certificate path, requires
+TLS 1.3, and exposes `POST /stationconnect/auth/start`
 and `POST /stationconnect/auth/respond`. The first body contains `username`;
 the second contains an opaque `conversation_id` and a `responses` array.
 Replies are non-cacheable JSON with `challenge`, `authenticated`, or `denied`

@@ -7,7 +7,6 @@ After=stationconnect-pam-broker.service display-manager.service network-online.t
 
 [Service]
 Type=simple
-EnvironmentFile=-/etc/stationconnect/host.env
 ExecStart=/usr/bin/stationconnect-host-supervisor
 Restart=on-failure
 RestartSec=2s

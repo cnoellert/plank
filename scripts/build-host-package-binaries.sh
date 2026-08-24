@@ -17,17 +17,12 @@ build_jobs=${STATIONCONNECT_BUILD_JOBS:-8}
   exit 1
 }
 
-for command_name in cmake node npm realpath rg; do
+for command_name in cmake nm realpath rg; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
   }
 done
-node_major=$(node --version | sed -E 's/^v([0-9]+).*/\1/')
-[[ $node_major =~ ^[0-9]+$ && $node_major -ge 22 ]] || {
-  echo "Node.js 22 or newer is required to build the host web UI" >&2
-  exit 1
-}
 for compiler in \
   /opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   /opt/rh/gcc-toolset-14/root/usr/bin/g++ \
@@ -58,10 +53,7 @@ if rg -n -i \
   'gamepad|controller|gcmap' \
   "$source_dir/src/platform/linux/input/virtualhid.cpp" \
   "$source_dir/src/platform/virtualhid_input.cpp" \
-  "$source_dir/src/platform/virtualhid_input.h" \
-  "$source_dir/src_assets/common/assets/web/configs/tabs/Inputs.vue" \
-  "$source_dir/src_assets/common/assets/web/config.html" \
-  "$source_dir/src_assets/common/assets/web/apps.html"; then
+  "$source_dir/src/platform/virtualhid_input.h"; then
   echo "Linux gamepad integration or host controller configuration is present" >&2
   exit 1
 fi
@@ -87,36 +79,45 @@ if rg -n \
   "$source_dir/src/platform/virtualhid_input.h" \
   "$source_dir/src/platform/linux/input/virtualhid.cpp" \
   "$source_dir/src/config.cpp" \
-  "$source_dir/src/config.h" \
-  "$source_dir/src_assets/common/assets/web/configs/tabs/Inputs.vue" \
-  "$source_dir/src_assets/common/assets/web/config.html"; then
+  "$source_dir/src/config.h"; then
   echo "direct touchscreen support is present in StationConnect host" >&2
   exit 1
 fi
 echo "host_touchscreen_absence_gate=pass"
 
-# StationConnect deployments opt into mDNS advertisement explicitly. The
-# supervisor must preserve the env setting after it clears the worker env.
+# StationConnect keeps every host runtime setting in one Sunshine config file.
+# mDNS advertisement remains opt-in and defaults to disabled there.
 for required_mdns_token in \
-  STATIONCONNECT_MDNS_DISCOVERY \
-  stationconnect_mdns_discovery_enabled \
+  stationconnect_mdns_discovery \
   'StationConnect mDNS advertisement is disabled'; do
   rg -Fq "$required_mdns_token" "$source_dir/src/main.cpp" || {
     echo "host mDNS default-off invariant is missing: ${required_mdns_token}" >&2
     exit 1
   }
 done
-rg -Fq 'STATIONCONNECT_MDNS_DISCOVERY' \
-  "$source_dir/src/session/host_supervisor.cpp" || {
-  echo "host supervisor does not preserve the mDNS environment setting" >&2
+if rg -q 'STATIONCONNECT_(HOST_OPTIONS|MDNS_DISCOVERY)' \
+  "$source_dir/src/main.cpp" \
+  "$source_dir/src/session/host_supervisor.cpp" \
+  "$repo_dir/packaging/bin/stationconnect-host" \
+  "$repo_dir/packaging/systemd/stationconnect-host.service" \
+  "$repo_dir/packaging/config/stationconnect.conf"; then
+  echo "legacy host environment configuration is still present" >&2
   exit 1
-}
-rg -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' \
-  "$repo_dir/packaging/config/host.env" || {
+fi
+rg -Fxq 'stationconnect_mdns_discovery = false' \
+  "$repo_dir/packaging/config/stationconnect.conf" || {
   echo "host mDNS configuration does not default to disabled" >&2
   exit 1
 }
 echo "host_mdns_default_off_gate=pass"
+
+[[ ! -e ${repo_dir}/packaging/config/host.env ]] || {
+  echo "legacy host.env remains in the package source" >&2
+  exit 1
+}
+rg -Fq '/etc/stationconnect/stationconnect.conf' \
+  "$repo_dir/packaging/bin/stationconnect-host"
+echo "host_single_config_gate=pass"
 
 cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
@@ -126,7 +127,6 @@ cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
   -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
   -DFFMPEG_PREPARED_BINARIES="$ffmpeg_dir" \
-  -DNPM="$(command -v npm)" \
   -DBUILD_DOCS=OFF \
   -DBUILD_TESTS=OFF \
   -DSUNSHINE_ENABLE_CUDA=ON \
@@ -134,32 +134,38 @@ cmake -S "$source_dir" -B "$build_dir" \
   -DSUNSHINE_ENABLE_KMS=OFF \
   -DSUNSHINE_ENABLE_KWIN=OFF \
   -DSUNSHINE_ENABLE_PORTAL=OFF \
-  -DSUNSHINE_ENABLE_TRAY=OFF \
   -DSUNSHINE_ENABLE_VAAPI=ON \
   -DSUNSHINE_ENABLE_VULKAN=OFF \
   -DSUNSHINE_ENABLE_WAYLAND=OFF \
   -DSUNSHINE_ENABLE_X11=ON \
   -DSUNSHINE_ENABLE_XDG_PORTAL=OFF
 cmake --build "$build_dir" --parallel "$build_jobs" \
-  --target sunshine stationconnect-pam-broker stationconnect-host-supervisor web-ui
+  --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
 
 if rg -a -q '/usr/local/assets' "$build_dir/sunshine"; then
   echo "package binary contains the development asset path" >&2
   exit 1
 fi
 rg -a -q '/usr/share/stationconnect' "$build_dir/sunshine"
-[[ -f ${build_dir}/assets/web/index.html ]] || {
-  echo "host web UI was not produced" >&2
+[[ ! -d ${build_dir}/assets/web ]] || {
+  echo "host Web UI assets were produced" >&2
   exit 1
 }
-rg -q 'StationConnect Host' "$build_dir/assets/web/index.html" || {
-  echo "host web UI is missing StationConnect branding" >&2
+if nm -C "$build_dir/sunshine" | rg -q 'confighttp::'; then
+  echo "host binary still contains the configuration HTTP server" >&2
   exit 1
-}
+fi
+if rg -a -q 'Sunshine - Web UI|Configuration UI available at' "$build_dir/sunshine"; then
+  echo "host binary still contains Web UI runtime paths" >&2
+  exit 1
+fi
+if nm -C "$build_dir/sunshine" | rg -q 'nvhttp::(pair|pin|unpair_client|getservercert|clientchallenge|clientpairingsecret)'; then
+  echo "host binary still contains legacy pairing code" >&2
+  exit 1
+fi
 "${repo_dir}/scripts/audit-package-runtime.sh" "$build_dir/sunshine" >/dev/null
 
-echo "host_web_node_version=$(node --version)"
-echo "host_web_branding_gate=pass"
+echo "host_web_ui_absence_gate=pass"
 echo "host_binary=${build_dir}/sunshine"
 echo "pam_broker_binary=${build_dir}/stationconnect-pam-broker"
 echo "host_supervisor_binary=${build_dir}/stationconnect-host-supervisor"

@@ -57,9 +57,10 @@ causing the client to reject the post-login worker as a different computer.
 The packaged launcher enforces the machine state path. The TLS identity is
 likewise machine-scoped.
 
-Worker options are system-wide in `/etc/stationconnect/host.env`. The package
-generates a stable TLS keypair under `/etc/stationconnect/tls/`; the private key
-is mode `0640`, owned by `root:stationconnect-auth`.
+Worker options are system-wide in the sectioned INI file
+`/etc/stationconnect/stationconnect.conf`. The package generates a stable TLS
+keypair under `/etc/stationconnect/tls/`; the private key is mode `0640`, owned
+by `root:stationconnect-auth`.
 
 Stage B—creating a correctly registered graphical session directly after PAM
 authentication—remains separate work. The supervisor does not replay a

@@ -30,7 +30,7 @@ socket; the service limits itself to 40 total tasks.
 Install the launchers from `packaging/bin/` as `/usr/bin/stationconnect-host`
 and `/usr/bin/stationconnect-client`. Production packages place their Sunshine
 and Moonlight binaries under `/usr/libexec/stationconnect/`; a development
-environment can override each binary path in its environment file.
+environment can override the binary path while invoking the launcher.
 
 Build and bundle the pinned FFmpeg 9 client runtime next to Moonlight before
 packaging it:
@@ -65,22 +65,29 @@ sudo systemctl enable --now stationconnect-pam-broker.service \
 systemctl --user enable --now stationconnect-client.service
 ```
 
-Configure shared host worker options in `/etc/stationconnect/host.env` and
-client options in `~/.config/stationconnect/client.env`. The current host
-profile must select its qualified physical
+Configure every host runtime option in the single root-managed
+`/etc/stationconnect/stationconnect.conf`. Client options remain in
+`~/.config/stationconnect/client.env`. The current host profile must select its qualified physical
 output; `output_name=1` is specific to hardware-test-host and is not a universal default.
 The software profile expands x264 worker affinity to the qualified CPU set and
 uses 16 slices on hardware-test-host; neither the CPU count nor slice count is a universal
-default. Launcher options are whitespace-delimited; do not use paths with spaces
-in `STATIONCONNECT_HOST_OPTIONS`.
+default. The host configuration uses INI-style section headers and one globally
+scoped `key = value` setting per line. The package no longer loads a host
+environment file, and shell environment syntax is not accepted in the host
+configuration.
 
 mDNS is disabled by default on both sides. Set
-`STATIONCONNECT_MDNS_DISCOVERY=1` in the host env file to publish the host with
-Avahi, or in the client env file to browse for advertised workstations. The
-host supervisor explicitly preserves this variable when it creates a
-graphical-session worker. The client launcher loads its env file for app-icon
-launches as well as user-service launches. Saved and manually entered
-workstations continue to connect when mDNS is disabled.
+`stationconnect_mdns_discovery = true` in the host `stationconnect.conf` to publish
+the host with Avahi, or set `STATIONCONNECT_MDNS_DISCOVERY=1` in the client env
+file to browse for advertised workstations. The client launcher loads its env
+file for app-icon launches as well as user-service launches. Saved and manually
+entered workstations continue to connect when mDNS is disabled.
+
+The StationConnect host is built without Sunshine's browser configuration
+server and without its frontend assets. There is no listener on the former Web
+UI port and no second writable configuration path. Do not remove or block the
+separate NVHTTP, HTTPS, RTSP, audio, video, or control services required by the
+client protocol.
 
 Leave Sunshine's `bind_address` empty so media listens on all available IPv4
 and IPv6 interfaces. When explicitly enabled, mDNS discovery also uses the

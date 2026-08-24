@@ -18,15 +18,10 @@ if [[ ! -r "${auth_socket}" || ! -w "${auth_socket}" ]]; then
   exit 1
 fi
 
-host_options=()
-if [[ -n "${STATIONCONNECT_HOST_OPTIONS:-}" ]]; then
-  read -r -a host_options <<<"${STATIONCONNECT_HOST_OPTIONS}"
+config_file=/etc/stationconnect/stationconnect.conf
+if [[ ! -r "${config_file}" ]]; then
+  echo "StationConnect host configuration is unavailable: ${config_file}" >&2
+  exit 1
 fi
 
-# Sunshine normally stores its server UUID below the effective user's home.
-# GDM and desktop workers use different homes, so enforce one root-managed
-# state file for the workstation identity. StationConnect does not persist
-# pairing credentials in this file.
-host_options+=(file_state=/var/lib/stationconnect/sunshine_state.json)
-
-exec "${host_binary}" "${host_options[@]}" "$@"
+exec "${host_binary}" "${config_file}" "$@"

@@ -62,8 +62,8 @@ install -D -m 0644 "$repo_dir/packaging/systemd/90-stationconnect.preset" \
   "$payload_dir/usr/lib/systemd/system-preset/90-stationconnect.preset"
 install -D -m 0644 "$repo_dir/packaging/pam/remote-desktop" \
   "$payload_dir/etc/pam.d/remote-desktop"
-install -D -m 0644 "$repo_dir/packaging/config/host.env" \
-  "$payload_dir/etc/stationconnect/host.env"
+install -D -m 0644 "$repo_dir/packaging/config/stationconnect.conf" \
+  "$payload_dir/etc/stationconnect/stationconnect.conf"
 install -d -m 0750 "$payload_dir/etc/stationconnect/tls"
 install -d -m 0750 "$payload_dir/var/lib/stationconnect"
 install -D -m 0644 "$repo_dir/packaging/sysusers.d/stationconnect.conf" \
@@ -107,6 +107,11 @@ rpm -qpl "$rpm_file" | rg -q '/usr/bin/stationconnect-host-supervisor$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-certificate$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-state$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
+rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'
+if rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/host\.env$|/usr/share/stationconnect/web/'; then
+  echo "host RPM still contains legacy environment configuration or Web UI assets" >&2
+  exit 1
+fi
 if rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/user/stationconnect-host\.service$'; then
   echo "host RPM still contains the obsolete graphical-login user service" >&2
   exit 1

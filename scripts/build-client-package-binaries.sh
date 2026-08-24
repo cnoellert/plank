@@ -72,6 +72,31 @@ if rg -n \
 fi
 echo "client_gamepad_absence_gate=pass"
 
+# StationConnect uses per-session operating-system authentication. It has no
+# GameStream PIN workflow or persistent client-certificate identity.
+for removed_path in \
+  app/backend/identitymanager.cpp \
+  app/backend/identitymanager.h \
+  app/backend/nvpairingmanager.cpp \
+  app/backend/nvpairingmanager.h \
+  app/cli/pair.cpp \
+  app/cli/pair.h \
+  app/gui/CliPair.qml; do
+  [[ ! -e ${source_dir}/${removed_path} ]] || {
+    echo "legacy pairing source is present in StationConnect client: ${removed_path}" >&2
+    exit 1
+  }
+done
+if rg -n \
+  'IdentityManager|NvPairingManager|PendingPairingTask|PairRequested|pairComputer|generatePinString|setServerCert|serverCert' \
+  "$source_dir/app" \
+  --glob '!**/languages/**' \
+  --glob '!**/deploy/**'; then
+  echo "legacy PIN or persistent client-certificate workflow is present in StationConnect client" >&2
+  exit 1
+fi
+echo "client_pairing_absence_gate=pass"
+
 # StationConnect disconnects streams without changing the physical workstation
 # display or terminating the workstation application. Keep Moonlight's legacy
 # SOPS and remote app-cancel controls out of the product.
