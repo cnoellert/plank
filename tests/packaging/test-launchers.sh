@@ -39,12 +39,14 @@ expect_status 0 env STATIONCONNECT_CLIENT_BINARY=/bin/true \
 
 client_environment=$(env STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
   STATIONCONNECT_CLIENT_LIBDIR="${repo_dir}/packaging" \
+  XDG_CONFIG_HOME=/does/not/exist \
   LD_LIBRARY_PATH=/system/lib DISPLAY=:99 "${client_launcher}")
 if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
   <<<"${client_environment}"; then
   echo 'Client launcher did not prefer the private library directory' >&2
   exit 1
 fi
+grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' <<<"${client_environment}"
 
 client_config_root=$(mktemp -d)
 trap 'rm -rf -- "${client_config_root}"' EXIT

@@ -10,6 +10,7 @@ if [[ -r ${client_env} ]]; then
   source "${client_env}"
   set +a
 fi
+export STATIONCONNECT_MDNS_DISCOVERY=${STATIONCONNECT_MDNS_DISCOVERY:-0}
 
 client_binary=${STATIONCONNECT_CLIENT_BINARY:-/usr/libexec/stationconnect/moonlight}
 
