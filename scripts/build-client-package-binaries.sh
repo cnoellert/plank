@@ -96,13 +96,21 @@ if rg -n \
 fi
 echo "client_remote_host_control_absence_gate=pass"
 
-# StationConnect has one qualified SDR 4:4:4 video profile. HDR and chroma
-# subsampling are protocol invariants, not user preferences or CLI overrides.
+# StationConnect has one qualified SDR 4:4:4 video profile and one windowed
+# launcher mode. These are product invariants, not user preferences or CLI
+# overrides.
 if rg -n \
-  'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"' \
+  'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"|GUI display mode|uiDisplayMode|UIDisplayMode|UI_(WINDOWED|MAXIMIZED|FULLSCREEN)|uidisplaymode|startwindowed' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "optional HDR or YUV 4:4:4 controls are present in StationConnect client" >&2
+  echo "optional HDR, YUV 4:4:4, or GUI display-mode controls are present in StationConnect client" >&2
+  exit 1
+fi
+if ! rg -U -q 'id: codecComboBox\n[[:space:]]+enabled: false' \
+  "$source_dir/app/gui/SettingsView.qml" ||
+   rg -q 'VCC_(AUTO|FORCE_HEVC|FORCE_AV1)' \
+  "$source_dir/app/gui/SettingsView.qml"; then
+  echo "the StationConnect video codec selector is not locked to H.264" >&2
   exit 1
 fi
 if rg -n \
@@ -112,6 +120,67 @@ if rg -n \
   exit 1
 fi
 echo "client_sdr_444_profile_gate=pass"
+
+# The StationConnect client is Wayland-only. It offers compositor-managed
+# borderless and decorated/resizable windowed streaming, but no exclusive
+# modesetting path.
+if rg -n '\bWM_FULLSCREEN\b|\{"fullscreen",[[:space:]]*StreamingPreferences::WM|m_FullScreenFlag[[:space:]]*=[[:space:]]*SDL_WINDOW_FULLSCREEN;' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "exclusive fullscreen support is present in the Wayland-only StationConnect client" >&2
+  exit 1
+fi
+for required_window_token in \
+  SDL_HINT_VIDEO_WAYLAND_ALLOW_LIBDECOR \
+  SDL_HINT_VIDEO_WAYLAND_PREFER_LIBDECOR \
+  SDL_SetWindowBordered \
+  SDL_SetWindowResizable; do
+  rg -q "$required_window_token" "$source_dir/app" || {
+    echo "decorated Wayland window invariant is missing: ${required_window_token}" >&2
+    exit 1
+  }
+done
+echo "client_wayland_window_mode_gate=pass"
+
+# Manually entered workstations are persistent bookmarks even while offline.
+# They retain both the entered address and editable nickname, then bind to the
+# first server identity that successfully answers at that address.
+for required_bookmark_token in \
+  stationconnect-manual-bookmark \
+  stationconnect-server-uuid \
+  acceptsServerUuid \
+  'Address or hostname' \
+  Nickname; do
+  rg -Fq "$required_bookmark_token" "$source_dir/app" || {
+    echo "offline workstation bookmark invariant is missing: ${required_bookmark_token}" >&2
+    exit 1
+  }
+done
+rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\)\)' \
+  "$source_dir/app/gui/main.qml" || {
+  echo "manual workstation dialog does not submit both address and nickname" >&2
+  exit 1
+}
+echo "client_offline_bookmark_gate=pass"
+
+# A configured physical path MTU is converted once to a conservative,
+# 16-byte-aligned video packet size. Keep the old raw packet-size control out.
+if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "legacy raw packet-size configuration is present in StationConnect client" >&2
+  exit 1
+fi
+for required_mtu_token in \
+  'Network Settings' \
+  stationconnect-network-mtu \
+  videoPacketSizeForPhysicalMtu; do
+  rg -Fq "$required_mtu_token" "$source_dir/app" || {
+    echo "client MTU configuration invariant is missing: ${required_mtu_token}" >&2
+    exit 1
+  }
+done
+echo "client_network_mtu_gate=pass"
 
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"

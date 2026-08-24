@@ -233,5 +233,6 @@ rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
   "$stage_dir/usr/libexec/stationconnect/moonlight" "$private_lib_dir"
 dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'
+dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-gtk'
 echo "client_deb=${deb_file}"
 echo "client_deb_manifest_gate=pass"
