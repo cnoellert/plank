@@ -170,6 +170,35 @@ rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
 
+# Host runtime diagnostics are written privately to a bounded persistent file
+# while stdout remains attached to journald. systemd owns the writable log
+# directory; the single administrator configuration file owns the log path.
+rg -Fxq 'log_path = /var/log/stationconnect/stationconnect-host.log' \
+  "$repo_dir/packaging/config/stationconnect.conf" || {
+  echo "host persistent log path is not configured" >&2
+  exit 1
+}
+for required_log_directory_token in \
+  'LogsDirectory=stationconnect' \
+  'LogsDirectoryMode=0700'; do
+  rg -Fxq "$required_log_directory_token" \
+    "$repo_dir/packaging/systemd/stationconnect-host.service" || {
+    echo "host private systemd log directory invariant is missing: ${required_log_directory_token}" >&2
+    exit 1
+  }
+done
+for required_log_rotation_token in \
+  'retained_log_file_count {10}' \
+  'max_log_file_size {10U * 1024U * 1024U}' \
+  'rotating_file_stream'; do
+  rg -Fq "$required_log_rotation_token" \
+    "$source_dir/src/logging.h" "$source_dir/src/logging.cpp" || {
+    echo "host bounded log rotation invariant is missing: ${required_log_rotation_token}" >&2
+    exit 1
+  }
+done
+echo "host_persistent_logging_gate=pass"
+
 cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \

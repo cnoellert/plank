@@ -91,6 +91,14 @@ absolute path. The directory is mode `0700`; each timestamped
 newest 10 files are retained. Continue using
 `journalctl --user -u stationconnect-client.service` for live service output.
 
+The host writes its streaming runtime diagnostics to
+`/var/log/stationconnect/stationconnect-host.log` while continuing to mirror
+the same output to `journalctl -u stationconnect-host.service`. systemd creates
+the root-only log directory with mode `0700`, and the service umask creates log
+files with mode `0600`. The active file rotates at 10 MiB and retains
+`stationconnect-host.log.1` through `.10`. Supervisor messages that occur
+outside the media worker remain available in the service journal.
+
 The StationConnect host is built without Sunshine's browser configuration
 server and without its frontend assets. There is no listener on the former Web
 UI port and no second writable configuration path. Do not remove or block the
