@@ -180,6 +180,11 @@ for required_mtu_token in \
     exit 1
   }
 done
+rg -U -q 'id: networkSettingsGroupBox\n[[:space:]]+parent: settingsColumn1' \
+  "$source_dir/app/gui/SettingsView.qml" || {
+  echo "Network Settings is not assigned to the left configuration column" >&2
+  exit 1
+}
 echo "client_network_mtu_gate=pass"
 
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
