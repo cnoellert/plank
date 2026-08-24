@@ -43,8 +43,9 @@ rg -Fq '/usr/lib/systemd/system-preset/90-stationconnect.preset' "$spec"
 rg -Fq '%sysusers_create stationconnect.conf' "$spec"
 rg -Fq 'stationconnect-host-certificate' "$spec"
 rg -Fq 'stationconnect-host-state' "$spec"
+rg -Fq '/var/lib/stationconnect/stationconnect_state.json' "$spec"
 rg -Fq '/var/lib/stationconnect/sunshine_state.json' "$spec"
-rg -Fxq 'file_state = /var/lib/stationconnect/sunshine_state.json' \
+rg -Fxq 'file_state = /var/lib/stationconnect/stationconnect_state.json' \
   "$repo_dir/packaging/config/stationconnect.conf"
 if rg -Fq '/usr/lib/systemd/user/stationconnect-host.service' "$spec"; then
   echo 'RPM manifest still contains the obsolete host user unit' >&2

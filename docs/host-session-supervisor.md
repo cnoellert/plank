@@ -51,7 +51,7 @@ the graphical session changes. This prevents encoder probing from racing active
 NvFBC capture during rapid or collaborative reconnects.
 
 The Sender uses the root-managed state file
-`/var/lib/stationconnect/sunshine_state.json`. Sunshine's default per-user
+`/var/lib/stationconnect/stationconnect_state.json`. The former per-user
 state would assign separate workstation UUIDs to GDM and the desktop owner,
 causing the client to reject the post-login worker as a different computer.
 The packaged launcher enforces the machine state path. The TLS identity is

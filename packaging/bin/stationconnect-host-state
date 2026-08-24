@@ -51,8 +51,7 @@ trap cleanup EXIT
 printf '%s\n' \
   '{' \
   '    "root": {' \
-  "        \"uniqueid\": \"${selected_uuid}\"," \
-  '        "named_devices": []' \
+  "        \"uniqueid\": \"${selected_uuid}\"" \
   '    }' \
   '}' >"$temporary_file"
 
