@@ -121,6 +121,46 @@ if rg -n \
 fi
 echo "client_remote_host_control_absence_gate=pass"
 
+# Focus loss must stop local raw-Wacom forwarding without sending the
+# destructive detach that removes and recreates host UHID/XInput endpoints.
+client_common_dir="${source_dir}/moonlight-common-c/moonlight-common-c/src"
+for required_raw_hid_token in \
+  '#define SC_RAW_HID_WIRE_VERSION 2U' \
+  'SC_RAW_HID_SUSPEND = 13' \
+  '#define LI_FF_RAW_HID_FOCUS_SUSPEND 0x20'; do
+  rg -Fq "$required_raw_hid_token" "$client_common_dir" || {
+    echo "client raw-HID focus-suspend protocol invariant is missing: ${required_raw_hid_token}" >&2
+    exit 1
+  }
+done
+for required_raw_hid_token in \
+  LI_FF_RAW_HID_FOCUS_SUSPEND \
+  suspendForFocusLoss \
+  'sendFrame(SC_RAW_HID_SUSPEND, 0, 0, nullptr, 0)'; do
+  rg -Fq "$required_raw_hid_token" \
+    "$source_dir/app/streaming/input/input.cpp" \
+    "$source_dir/app/streaming/input/linuxrawwacom.cpp" \
+    "$source_dir/app/streaming/input/linuxrawwacom.h" || {
+    echo "client raw-HID focus-suspend invariant is missing: ${required_raw_hid_token}" >&2
+    exit 1
+  }
+done
+rg -U -q 'void LinuxRawWacomInput::setActive\(bool active\)(.|\n)*?if \(!active\) \{(.|\n)*?suspendForFocusLoss\(\);' \
+  "$source_dir/app/streaming/input/linuxrawwacom.cpp" || {
+  echo "client focus loss does not use non-destructive raw-HID suspension" >&2
+  exit 1
+}
+echo "client_raw_hid_focus_suspend_gate=pass"
+
+# Remote-workstation sessions capture OS-level key combinations by default so
+# shortcuts such as Alt+Tab reach the host in both windowed and borderless mode.
+rg -U -q 'settings\.value\(SER_CAPTURESYSKEYS,\n[[:space:]]+static_cast<int>\(CaptureSysKeysMode::CSK_ALWAYS\)\)' \
+  "$source_dir/app/settings/streamingpreferences.cpp" || {
+  echo "system keyboard shortcut capture does not default to Always" >&2
+  exit 1
+}
+echo "client_system_shortcut_default_gate=pass"
+
 # StationConnect has one qualified SDR H.264 High 10 4:4:4 identity profile,
 # decoded through the proven FFmpeg software path, and one windowed launcher
 # mode. These are product invariants, not user preferences or CLI overrides.

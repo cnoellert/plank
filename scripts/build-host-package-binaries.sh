@@ -85,6 +85,33 @@ if rg -n \
 fi
 echo "host_touchscreen_absence_gate=pass"
 
+# Losing client-window focus suspends raw-HID transport without destroying the
+# host UHID/XInput endpoints. Stable endpoint identity prevents applications
+# such as Flame from retaining a stale stylus/eraser device ID after refocus.
+host_common_dir="${source_dir}/third-party/moonlight-common-c/src"
+for required_raw_hid_token in \
+  '#define SC_RAW_HID_WIRE_VERSION 2U' \
+  'SC_RAW_HID_SUSPEND = 13' \
+  '#define LI_FF_RAW_HID_FOCUS_SUSPEND 0x20'; do
+  rg -Fq "$required_raw_hid_token" "$host_common_dir" || {
+    echo "host raw-HID focus-suspend protocol invariant is missing: ${required_raw_hid_token}" >&2
+    exit 1
+  }
+done
+for required_raw_hid_token in \
+  raw_hid_focus_suspend \
+  SC_RAW_HID_SUSPEND \
+  'Suspended raw-HID transport while retaining'; do
+  rg -Fq "$required_raw_hid_token" \
+    "$source_dir/src/platform/common.h" \
+    "$source_dir/src/platform/linux/input/virtualhid.cpp" \
+    "$source_dir/src/raw_hid_tablet.cpp" || {
+    echo "host raw-HID endpoint-preservation invariant is missing: ${required_raw_hid_token}" >&2
+    exit 1
+  }
+done
+echo "host_raw_hid_focus_suspend_gate=pass"
+
 # StationConnect keeps every host runtime setting in one Sunshine config file.
 # mDNS advertisement remains opt-in and defaults to disabled there.
 for required_mdns_token in \

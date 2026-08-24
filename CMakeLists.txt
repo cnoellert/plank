@@ -266,6 +266,13 @@ if(BUILD_TESTING)
   add_test(NAME extended-fec-block-indices
     COMMAND extended-fec-block-indices-test)
 
+  add_executable(wacom-hid-v2-test tests/protocol/wacom-hid-v2.c)
+  target_compile_options(wacom-hid-v2-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(wacom-hid-v2-test PRIVATE
+    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+  add_test(NAME wacom-hid-v2 COMMAND wacom-hid-v2-test)
+
   add_test(NAME kms-probe-self-test COMMAND connect-probe-kms --self-test)
   if(TARGET connect-probe-nvfbc)
     add_test(NAME nvfbc-probe-self-test COMMAND connect-probe-nvfbc --self-test)

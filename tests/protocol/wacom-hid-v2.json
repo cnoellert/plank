@@ -1,0 +1,29 @@
+{
+  "wire_version": 2,
+  "host_feature_flag": "0x20",
+  "transport": "authenticated-encrypted-control",
+  "reliable": true,
+  "ordered": true,
+  "focus_loss_message": {
+    "type": 13,
+    "name": "SC_RAW_HID_SUSPEND",
+    "interface_id": 0,
+    "transaction_id": 0,
+    "payload_length": 0,
+    "preserve_host_endpoints": true,
+    "accept_input_while_suspended": false
+  },
+  "focus_return": {
+    "new_generation_required": true,
+    "reuse_requires_identical_usb_identity": true,
+    "reuse_requires_identical_descriptors": true,
+    "preserve_xinput_identity": true
+  },
+  "destructive_detach_reasons": [
+    "physical-unplug",
+    "hid-io-error",
+    "identity-change",
+    "descriptor-change",
+    "explicit-final-teardown"
+  ]
+}
