@@ -233,6 +233,10 @@ rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
   "$stage_dir/usr/libexec/stationconnect/moonlight" "$private_lib_dir"
 dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'
-dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-gtk'
+dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-cairo'
+if dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-gtk'; then
+  echo "client DEB still requires the main-thread-only GTK libdecor plugin" >&2
+  exit 1
+fi
 echo "client_deb=${deb_file}"
 echo "client_deb_manifest_gate=pass"
