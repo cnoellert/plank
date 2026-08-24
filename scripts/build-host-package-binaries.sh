@@ -95,6 +95,29 @@ if rg -n \
 fi
 echo "host_touchscreen_absence_gate=pass"
 
+# StationConnect deployments opt into mDNS advertisement explicitly. The
+# supervisor must preserve the env setting after it clears the worker env.
+for required_mdns_token in \
+  STATIONCONNECT_MDNS_DISCOVERY \
+  stationconnect_mdns_discovery_enabled \
+  'StationConnect mDNS advertisement is disabled'; do
+  rg -Fq "$required_mdns_token" "$source_dir/src/main.cpp" || {
+    echo "host mDNS default-off invariant is missing: ${required_mdns_token}" >&2
+    exit 1
+  }
+done
+rg -Fq 'STATIONCONNECT_MDNS_DISCOVERY' \
+  "$source_dir/src/session/host_supervisor.cpp" || {
+  echo "host supervisor does not preserve the mDNS environment setting" >&2
+  exit 1
+}
+rg -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' \
+  "$repo_dir/packaging/config/host.env" || {
+  echo "host mDNS configuration does not default to disabled" >&2
+  exit 1
+}
+echo "host_mdns_default_off_gate=pass"
+
 cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \

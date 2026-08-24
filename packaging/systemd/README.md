@@ -74,10 +74,19 @@ uses 16 slices on hardware-test-host; neither the CPU count nor slice count is a
 default. Launcher options are whitespace-delimited; do not use paths with spaces
 in `STATIONCONNECT_HOST_OPTIONS`.
 
-Leave Sunshine's `bind_address` empty so discovery and media listen on all
-available IPv4 and IPv6 interfaces. On the client, the approved-interface
-setting applies to StationConnect TLS control and PAM credentials; discovery
-and media transport may use every interface. Enforce
+mDNS is disabled by default on both sides. Set
+`STATIONCONNECT_MDNS_DISCOVERY=1` in the host env file to publish the host with
+Avahi, or in the client env file to browse for advertised workstations. The
+host supervisor explicitly preserves this variable when it creates a
+graphical-session worker. The client launcher loads its env file for app-icon
+launches as well as user-service launches. Saved and manually entered
+workstations continue to connect when mDNS is disabled.
+
+Leave Sunshine's `bind_address` empty so media listens on all available IPv4
+and IPv6 interfaces. When explicitly enabled, mDNS discovery also uses the
+available interfaces. On the client, the approved-interface setting applies
+to StationConnect TLS control and PAM credentials; media transport may use
+every interface. Enforce
 the intended deployment boundary in the host firewall even though the
 process listens on wildcard addresses.
 

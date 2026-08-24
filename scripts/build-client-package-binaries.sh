@@ -212,6 +212,33 @@ rg -U -q 'id: networkSettingsGroupBox\n[[:space:]]+parent: settingsColumn1' \
 }
 echo "client_network_mtu_gate=pass"
 
+# mDNS discovery is opt-in. A deployment env override takes precedence over
+# the user preference and locks the corresponding UI control.
+rg -Fq 'settings.value(SER_MDNS, false)' \
+  "$source_dir/app/settings/streamingpreferences.cpp" || {
+  echo "client mDNS discovery does not default to disabled" >&2
+  exit 1
+}
+for required_mdns_token in \
+  STATIONCONNECT_MDNS_DISCOVERY \
+  mdnsDiscoveryManaged \
+  '!StreamingPreferences.mdnsDiscoveryManaged'; do
+  rg -Fq "$required_mdns_token" "$source_dir/app" || {
+    echo "client managed mDNS invariant is missing: ${required_mdns_token}" >&2
+    exit 1
+  }
+done
+rg -Fq 'source "${client_env}"' "$repo_dir/packaging/bin/stationconnect-client" || {
+  echo "client launcher does not load its deployment env file" >&2
+  exit 1
+}
+rg -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' \
+  "$repo_dir/packaging/systemd/client.env.example" || {
+  echo "client mDNS example does not default to disabled" >&2
+  exit 1
+}
+echo "client_mdns_default_off_gate=pass"
+
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 [[ $(pkg-config --modversion libavcodec) == 63.* ]] || {

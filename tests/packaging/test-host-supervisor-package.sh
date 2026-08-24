@@ -55,6 +55,12 @@ rg -Fq '/run/stationconnect/host/pulse-cookie' \
   "$repo_dir/host/sunshine-fork/src/session/session_context.cpp"
 rg -Fq 'STATIONCONNECT_SESSION_CONTROL_FD' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'STATIONCONNECT_MDNS_DISCOVERY' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'stationconnect_mdns_discovery_enabled' \
+  "$repo_dir/host/sunshine-fork/src/main.cpp"
+rg -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' \
+  "$repo_dir/packaging/config/host.env"
 rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \
