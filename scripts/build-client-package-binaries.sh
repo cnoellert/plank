@@ -351,6 +351,23 @@ if rg -n 'stationConnectVideoProfile|Encoding profile' \
   echo "encoding profile remains a global StationConnect preference" >&2
   exit 1
 fi
+
+for required_reconnect_wait_token in \
+  'Waiting for previous workstation session to finish...' \
+  'constexpr int RetryIntervalMs = 500;' \
+  'constexpr int MaximumWaitMs = 30000;' \
+  'sessionCleanupWaitChanged' \
+  'cancelConnectionStart()'; do
+  rg -Fq "$required_reconnect_wait_token" \
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/streaming/session.h" \
+    "$source_dir/app/gui/StreamSegue.qml" || {
+    echo "rapid reconnect client wait invariant is missing: ${required_reconnect_wait_token}" >&2
+    exit 1
+  }
+done
+echo "client_rapid_reconnect_wait_gate=pass"
+
 if ! rg -Fq \
   'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_FORCE_SOFTWARE;' \
   "$source_dir/app/streaming/session.cpp" ||

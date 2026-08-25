@@ -268,6 +268,21 @@ if nm -C "$build_dir/sunshine" | rg -q 'nvhttp::(pair|pin|unpair_client|getserve
   echo "host binary still contains legacy pairing code" >&2
   exit 1
 fi
+
+for required_reconnect_token in \
+  'std::mutex session_start_mutex' \
+  'rtsp_stream::session_count() == 0' \
+  'rtsp_stream::launch_session_pending()' \
+  'Clearing orphaned StationConnect Desktop reservation before launch'; do
+  rg -Fq "$required_reconnect_token" \
+    "$source_dir/src/nvhttp.cpp" "$source_dir/src/rtsp.cpp" \
+    "$source_dir/src/rtsp.h" || {
+    echo "rapid reconnect host cleanup invariant is missing: ${required_reconnect_token}" >&2
+    exit 1
+  }
+done
+echo "host_rapid_reconnect_cleanup_gate=pass"
+
 "${repo_dir}/scripts/audit-package-runtime.sh" "$build_dir/sunshine" >/dev/null
 
 echo "host_web_ui_absence_gate=pass"
