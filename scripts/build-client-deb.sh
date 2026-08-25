@@ -62,7 +62,7 @@ if [[ -n $(git -C "$moonlight_source_dir" status --porcelain) ]]; then
 fi
 
 for library in \
-  libavcodec.so.63 libavutil.so.61 libswscale.so.10; do
+  libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
   [[ -e ${ffmpeg_lib_dir}/${library} ]] || {
     echo "required FFmpeg ${ffmpeg_version} library is unavailable: ${library}" >&2
     exit 1
@@ -135,7 +135,7 @@ install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv2.1" \
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv3" \
   "$stage_dir/usr/share/doc/stationconnect-client/COPYING.FFmpeg.LGPLv3"
 
-for library in libavcodec libavutil libswscale; do
+for library in libavcodec libavutil libswscale libswresample; do
   cp -a "${ffmpeg_lib_dir}/${library}.so."* "$private_lib_dir/"
 done
 cmp --silent "$moonlight_source_dir/app/res/stationconnect-logo.png" \
@@ -170,6 +170,7 @@ cat >"$work_dir/shlibs.local" <<'EOF'
 libavcodec 63 stationconnect-client
 libavutil 61 stationconnect-client
 libswscale 10 stationconnect-client
+libswresample 7 stationconnect-client
 EOF
 
 (
