@@ -36,18 +36,18 @@ a02950302035008b882100001a023a80
 # Each tuple is:
 # pixel clock MHz, h active/start/end/total, v active/start/end/total.
 MODE_TIMINGS = {
-    "1024x2160": (157.75, 1024, 1072, 1104, 1184, 2160, 2163, 2173, 2222),
-    "1280x720": (63.75, 1280, 1328, 1360, 1440, 720, 723, 728, 741),
-    "1280x1024": (90.75, 1280, 1328, 1360, 1440, 1024, 1027, 1034, 1054),
-    "1280x2160": (191.75, 1280, 1328, 1360, 1440, 2160, 2163, 2173, 2222),
-    "1920x1080": (138.50, 1920, 1968, 2000, 2080, 1080, 1083, 1088, 1111),
-    "1920x1200": (154.00, 1920, 1968, 2000, 2080, 1200, 1203, 1209, 1235),
-    "2560x1440": (241.50, 2560, 2608, 2640, 2720, 1440, 1443, 1448, 1481),
-    "2560x1600": (268.50, 2560, 2608, 2640, 2720, 1600, 1603, 1609, 1646),
-    "2560x2160": (362.50, 2560, 2608, 2640, 2720, 2160, 2163, 2173, 2222),
-    "3440x1440": (319.75, 3440, 3488, 3520, 3600, 1440, 1443, 1453, 1481),
-    "3840x1600": (394.75, 3840, 3888, 3920, 4000, 1600, 1603, 1613, 1646),
-    "3840x2160": (533.00, 3840, 3888, 3920, 4000, 2160, 2163, 2168, 2222),
+    "1024x2160": (157.53, 1024, 1072, 1104, 1180, 2160, 2163, 2173, 2225),
+    "1280x720": (64.38, 1280, 1328, 1360, 1450, 720, 723, 728, 740),
+    "1280x1024": (90.72, 1280, 1328, 1360, 1440, 1024, 1027, 1034, 1050),
+    "1280x2160": (192.24, 1280, 1328, 1360, 1440, 2160, 2163, 2173, 2225),
+    "1920x1080": (139.86, 1920, 1968, 2000, 2100, 1080, 1083, 1088, 1110),
+    "1920x1200": (155.61, 1920, 1968, 2000, 2100, 1200, 1203, 1209, 1235),
+    "2560x1440": (241.98, 2560, 2608, 2640, 2725, 1440, 1443, 1448, 1480),
+    "2560x1600": (269.28, 2560, 2608, 2640, 2720, 1600, 1603, 1609, 1650),
+    "2560x2160": (363.12, 2560, 2608, 2640, 2720, 2160, 2163, 2173, 2225),
+    "3440x1440": (319.68, 3440, 3488, 3520, 3600, 1440, 1443, 1453, 1480),
+    "3840x1600": (395.04, 3840, 3888, 3920, 4000, 1600, 1603, 1613, 1646),
+    "3840x2160": (533.28, 3840, 3888, 3920, 4000, 2160, 2163, 2168, 2222),
     # CTA-861 VIC 102. EDID 1.x detailed timings are limited to 4095 active
     # pixels, so this mode is advertised through the CTA video data block.
     "4096x2160": (594.00, 4096, 4184, 4272, 4400, 2160, 2168, 2178, 2250),
@@ -160,6 +160,15 @@ def displayid_timing_extensions(preferred_mode: str) -> list[bytes]:
     return extensions
 
 
+def validate_exact_refresh_rates() -> None:
+    """Require every qualified timing to be exactly 60 Hz after encoding."""
+    for mode, timing in MODE_TIMINGS.items():
+        clock_mhz, _, _, _, h_total, _, _, _, v_total = timing
+        encoded_clock_hz = round(clock_mhz * 100) * 10_000
+        if encoded_clock_hz != h_total * v_total * 60:
+            raise ValueError(f"qualified mode is not exactly 60 Hz: {mode}")
+
+
 def validate_displayid_mode_pool(edid: bytes, preferred_mode: str) -> None:
     """Verify that every qualified mode occurs once and only one is preferred."""
     advertised = []
@@ -186,6 +195,7 @@ def validate_displayid_mode_pool(edid: bytes, preferred_mode: str) -> None:
 
 def build_edid(index: int, mode: str) -> bytes:
     """Build one checksum-valid EDID with a stable StationConnect identity."""
+    validate_exact_refresh_rates()
     edid = bytearray.fromhex(BASE_EDID_HEX)
     if len(edid) != 256:
         raise ValueError(f"base EDID has {len(edid)} bytes instead of 256")

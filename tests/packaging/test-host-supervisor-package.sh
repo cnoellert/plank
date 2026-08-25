@@ -97,6 +97,8 @@ rg -Fq 'Only the active desktop user may change its display layout' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
 rg -Fq 'layout_arguments(request.mode_1, request.mode_2)' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq '"--rate", "60"' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 if rg -q 'AllowNonEdidModes|--newmode|--addmode|StationConnect-' \
   "$repo_dir/packaging/bin/stationconnect-display-prepare" \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"; then
