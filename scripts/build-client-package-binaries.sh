@@ -316,7 +316,7 @@ if rg -n 'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_' \
   echo "StationConnect must advertise the one selected H.264 profile, not fixed fallback formats" >&2
   exit 1
 fi
-rg -U -q 'settings\.value\(SER_STATIONCONNECT_VIDEO_PROFILE,\n[[:space:]]+static_cast<int>\(SCVP_H264_10BIT_444\)\)' \
+rg -U -q 'settings\.value\(\n[[:space:]]+SER_STATIONCONNECT_VIDEO_PROFILE,\n[[:space:]]+static_cast<int>\(SCVP_H264_10BIT_444\)\)' \
   "$source_dir/app/settings/streamingpreferences.cpp" || {
   echo "StationConnect encoding profile does not default to H.264 High 10 4:4:4" >&2
   exit 1
