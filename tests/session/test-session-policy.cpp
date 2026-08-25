@@ -54,17 +54,18 @@ int main() {
     return 9;
   }
   const session::display_request_t display_request {
-    "dual-horizontal", "4096x2160", "1024x2160"
+    "dual-horizontal", "4096x2160", "1024x2160", 1000
   };
   const auto display_message = session::display_request_message(display_request);
   const auto parsed_display = session::parse_display_request(display_message);
   if (!parsed_display || parsed_display->layout != display_request.layout ||
       parsed_display->mode_1 != display_request.mode_1 ||
-      parsed_display->mode_2 != display_request.mode_2) {
+      parsed_display->mode_2 != display_request.mode_2 ||
+      parsed_display->account_uid != display_request.account_uid) {
     std::cerr << "display request did not round trip\n";
     return 11;
   }
-  if (!session::display_request_message({"single", "5120x2160", {}}).empty() ||
+  if (!session::display_request_message({"single", "5120x2160", {}, 1000}).empty() ||
       session::parse_display_request(display_message.substr(0, display_message.size() - 1))) {
     std::cerr << "malformed display request was accepted\n";
     return 12;
