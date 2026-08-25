@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 1 describes the host desktop after operating-system
+Protocol version 2 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,17 +11,21 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 1` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 1 defines these bits:
+The host returns `schema_version: 2` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 2 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
 - `0x4` — unified absolute-input geometry
 - `0x8` — aspect-preserving scaled desktop span
 - `0x10` — topology-generation binding at launch and during streaming
+- `0x20` — host-layout and virtual-output metadata
+- `0x40` — composite-stream source rectangles for local presentation
+- `0x80` — exact host-layout binding at launch
 
-The client sends `scProtocolVersion=1`, `scFeatureFlags`, and `scDisplayMode` on
-`/launch`. A client negotiating `0x10` also sends the exact
+The client sends `scProtocolVersion=2`, `scFeatureFlags`, `scDisplayMode`,
+`scHostLayout`, and `scVirtualMode` on `/launch`. A client negotiating `0x10`
+also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
 requires `scOutputId`; `scaled-span` captures the desktop bounds and omits it.
 An output ID is opaque to the client. Linux/X11 IDs use the current
@@ -31,10 +35,28 @@ sent as stable IDs.
 ## Topology Document
 
 The document contains a monotonically changing `generation`, the bounding
-desktop rectangle, and an `outputs` array. Each connected output carries its
+desktop rectangle, a `layout` object, and an `outputs` array. `layout.kind` is
+`physical`, `single`, or `dual-horizontal`; `layout.virtual_mode` is empty for
+a physical layout and is one of the administrator-qualified virtual modes for
+a virtual layout. The layout also publishes whether it is virtual and its
+output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
-negative. Unknown refresh is zero.
+negative. Unknown refresh is zero. Each output also carries `virtual` and a
+`source_rect` in composite-source coordinates. Version 2 currently makes the
+source rectangle identical to the output rectangle relative to the desktop
+origin; keeping it explicit avoids inferring monitor boundaries from a wide
+encoded frame.
+
+Bookmarks persist `configured`, `physical`, `single`, or `dual-horizontal` as
+their host-layout requirement. `configured` is resolved to the authenticated
+topology's exact current layout before launch; it is not sent as a wildcard.
+Virtual layouts also persist an enumerated `1920x1080` or `3840x2160` mode.
+The host compares the requested layout and mode with both its administrator
+configuration and the live topology before claiming the one-use PAM launch
+state. A mismatch returns 409 with a clear restart/configuration requirement.
+The first implementation never restarts Xorg or changes an active Flame
+desktop in response to a network request.
 
 The client persists the chosen output ID per host UUID. If it has no valid
 mapping, it selects the primary output, then the first output as a final
@@ -65,11 +87,17 @@ sees the same desktop topology and applies its normal physical-tablet mapping.
 
 When several host outputs feed one client display, `scaled-span` is the default
 StationConnect mode. `single-output` remains available when native pixel detail
-is more important than simultaneous visibility. Synchronized per-output
-streams require a future feature bit and must not be inferred from this schema.
+is more important than simultaneous visibility. `separate-displays` uses the
+same one-decoder composite stream as `scaled-span`, but the client presents the
+published source rectangles in synchronized local windows. Synchronized
+per-output streams remain a future feature and must not be inferred from this
+schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v1.json` represents the qualification host:
-3840x2160 Flame on primary `DP-2` and 1280x2160 scopes on `DP-1`. Parsers must
-preserve order-independent identity, geometry, and the primary fallback.
+`tests/protocol/output-topology-v2.json` represents the qualified headless-test-host
+dual-horizontal virtual layout. Parsers must preserve order-independent
+identity, geometry, virtual provenance, source rectangles, exact layout
+binding, and the primary fallback. The version-1 vector remains historical
+evidence only; StationConnect has no deployed legacy clients requiring a
+silent version fallback.

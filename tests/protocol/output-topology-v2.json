@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "feature_flags": 255,
+  "generation": "x11:2d755187df5d015c",
+  "layout": {
+    "kind": "dual-horizontal",
+    "virtual": true,
+    "virtual_mode": "1920x1080",
+    "output_count": 2
+  },
+  "desktop": {
+    "x": 0,
+    "y": 0,
+    "width": 3840,
+    "height": 1080
+  },
+  "outputs": [
+    {
+      "id": "x11:DP-0",
+      "name": "DP-0",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "rotation": 0,
+      "refresh_millihz": 60000,
+      "primary": true,
+      "virtual": true,
+      "source_rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "id": "x11:DP-2",
+      "name": "DP-2",
+      "x": 1920,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "rotation": 0,
+      "refresh_millihz": 60000,
+      "primary": false,
+      "virtual": true,
+      "source_rect": {
+        "x": 1920,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ]
+}
