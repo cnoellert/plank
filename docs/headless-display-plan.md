@@ -243,7 +243,7 @@ physical-display workstation.
 
 ## Protocol Evolution
 
-Version 3 is the current StationConnect headless-layout protocol. It retains the
+Version 4 is the current StationConnect headless-layout protocol. It retains the
 existing physical-output `single-output` and `scaled-span` presentation modes
 and adds:
 
@@ -256,10 +256,11 @@ and adds:
 - capability limits and explicit rejection reasons;
 - optional future per-output stream IDs.
 
-The negotiated feature mask is `0x1ff`: version 1's topology generation,
+The negotiated feature mask is `0x3ff`: version 1's topology generation,
 display identity, geometry, presentation mode, and authenticated topology
 features; version 2 layout metadata, composite source regions, and exact layout
-binding; plus version 3 independent virtual-output modes. Launch requests carry
+binding; version 3 independent virtual-output modes; plus version 4 GDM-only
+dynamic host-layout transitions. Launch requests carry
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2`; the host compares them
 with both administrator policy and the live X11 layout before it consumes
 one-use PAM state.

@@ -80,6 +80,14 @@ rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'Scheduled StationConnect display transition from GDM' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq '/usr/libexec/stationconnect/stationconnect-display-prepare' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fxq 'ReadWritePaths=/etc/X11/xorg.conf.d' \
+  "$repo_dir/packaging/systemd/stationconnect-host.service"
+rg -Fq 'Host display layout cannot change while a user desktop is active' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
 if rg -q 'stationconnect_authentication|/pair|pair_session_t|pairing' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp" \
   "$repo_dir/host/sunshine-fork/src/nvhttp.h"; then

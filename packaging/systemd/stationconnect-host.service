@@ -30,6 +30,7 @@ ProtectKernelTunables=yes
 ProtectHome=read-only
 ProtectSystem=full
 ReadOnlyPaths=-/vol/home
+ReadWritePaths=/etc/X11/xorg.conf.d
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictSUIDSGID=yes
 SystemCallArchitectures=native

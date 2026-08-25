@@ -6,9 +6,12 @@ config_file=/etc/stationconnect/stationconnect.conf
 output_file=/etc/X11/xorg.conf.d/99-stationconnect-headless.conf
 edid_dir=/usr/share/stationconnect/display
 cleanup_only=false
+requested_layout=
+requested_mode_1=
+requested_mode_2=
 
 usage() {
-  echo "usage: $0 [--cleanup] [--config FILE] [--output FILE] [--edid-dir DIRECTORY]" >&2
+  echo "usage: $0 [--cleanup] [--config FILE] [--output FILE] [--edid-dir DIRECTORY] [--layout LAYOUT --mode-1 MODE [--mode-2 MODE]]" >&2
 }
 
 while (($#)); do
@@ -30,6 +33,21 @@ while (($#)); do
     --edid-dir)
       (($# >= 2)) || { usage; exit 2; }
       edid_dir=$2
+      shift 2
+      ;;
+    --layout)
+      (($# >= 2)) || { usage; exit 2; }
+      requested_layout=$2
+      shift 2
+      ;;
+    --mode-1)
+      (($# >= 2)) || { usage; exit 2; }
+      requested_mode_1=$2
+      shift 2
+      ;;
+    --mode-2)
+      (($# >= 2)) || { usage; exit 2; }
+      requested_mode_2=$2
       shift 2
       ;;
     *)
@@ -86,6 +104,24 @@ display_settings=$(awk '
 ' "$config_file") || exit 1
 
 IFS=$'\t' read -r virtual_outputs virtual_mode_1 virtual_mode_2 <<<"$display_settings"
+if [[ -n $requested_layout || -n $requested_mode_1 || -n $requested_mode_2 ]]; then
+  [[ -n $requested_layout && -n $requested_mode_1 ]] || {
+    echo "a requested display transition requires --layout and --mode-1" >&2
+    exit 2
+  }
+  virtual_outputs=$requested_layout
+  virtual_mode_1=$requested_mode_1
+  if [[ $virtual_outputs == dual-horizontal ]]; then
+    [[ -n $requested_mode_2 ]] || {
+      echo "a dual display transition requires --mode-2" >&2
+      exit 2
+    }
+    virtual_mode_2=$requested_mode_2
+  elif [[ -n $requested_mode_2 ]]; then
+    echo "--mode-2 is valid only for a dual display transition" >&2
+    exit 2
+  fi
+fi
 case $virtual_outputs in
   off|single|dual-horizontal) ;;
   *)
@@ -206,7 +242,8 @@ trap cleanup EXIT
 
 cat >"$temporary_file" <<EOF
 ${generated_marker}
-# Source of truth: /etc/stationconnect/stationconnect.conf [display]
+# Boot source: /etc/stationconnect/stationconnect.conf [display]
+# The host supervisor may replace this owned overlay with a validated GDM-only request.
 
 Section "ServerFlags"
     Option "DefaultServerLayout" "StationConnect Virtual Display Layout"

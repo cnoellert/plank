@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 3 describes the host desktop after operating-system
+Protocol version 4 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 3` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 3 defines these bits:
+The host returns `schema_version: 4` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 4 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -23,8 +23,9 @@ The host returns `schema_version: 3` and a numeric `feature_flags` field from
 - `0x40` — composite-stream source rectangles for local presentation
 - `0x80` — exact host-layout binding at launch
 - `0x100` — independently selected modes for virtual outputs 1 and 2
+- `0x200` — bounded host-layout activation while GDM owns the active seat
 
-The client sends `scProtocolVersion=3`, `scFeatureFlags`, `scDisplayMode`,
+The client sends `scProtocolVersion=4`, `scFeatureFlags`, `scDisplayMode`,
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
@@ -45,7 +46,7 @@ output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`configured_mode` and a `source_rect` in composite-source coordinates. Version 3 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 4 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -57,11 +58,14 @@ Virtual layouts persist one enumerated mode per requested output. The current
 60 Hz allowlist is `1024x2160`, `1280x720`, `1280x1024`, `1280x2160`,
 `1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `3440x1440`,
 `3840x1600`, `3840x2160`, and `4096x2160`. The host compares the requested
-layout and both modes with its administrator
-configuration and the live topology before claiming the one-use PAM launch
-state. A mismatch returns 409 with a clear restart/configuration requirement.
-The first implementation never restarts Xorg or changes an active Flame
-desktop in response to a network request.
+layout and both modes with the live topology before claiming the one-use PAM
+launch state. If GDM owns the active graphical session, a mismatch returns 425,
+submits only the enumerated layout and modes to the root supervisor, and starts
+a bounded display-manager transition. The client retains credentials only in
+memory, waits for the replacement GDM worker, reauthenticates, refreshes the
+topology generation, and continues launch. If an authenticated user desktop
+owns the active seat, the host returns 423 and does not inspect application
+processes or change Xorg.
 
 The client persists the chosen output ID per host UUID. If it has no valid
 mapping, it selects the primary output, then the first output as a final
@@ -100,7 +104,7 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v3.json` represents the Flame-style
+`tests/protocol/output-topology-v4.json` represents the Flame-style
 3840x2160 primary plus 1280x2160 secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout
 binding, independent modes, and the primary fallback. The version-1 and

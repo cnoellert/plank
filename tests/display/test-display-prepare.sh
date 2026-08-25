@@ -31,6 +31,13 @@ run_prepare() {
       --config "$config_file" --output "$output_file" --edid-dir "$edid_dir"
 }
 
+run_requested_prepare() {
+  PATH="${fake_bin}:${PATH}" \
+    "$repo_dir/packaging/bin/stationconnect-display-prepare" \
+      --config "$config_file" --output "$output_file" --edid-dir "$edid_dir" \
+      "$@"
+}
+
 cat >"${fake_bin}/systemctl" <<'EOF'
 #!/usr/bin/env bash
 exit 1
@@ -53,6 +60,18 @@ grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
 grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: 1280x2160 +3840+0' "$output_file"
 grep -Fq 'virtual-2-1280x2160.edid' "$output_file"
 grep -Fq 'Virtual 5120 2160' "$output_file"
+
+run_requested_prepare --layout single --mode-1 2560x1600 >/dev/null
+grep -Fq 'Option "ConnectedMonitor" "DFP-0"' "$output_file"
+grep -Fq 'DFP-0: 2560x1600 +0+0' "$output_file"
+grep -Fq 'virtual-1-2560x1600.edid' "$output_file"
+grep -Fq 'Virtual 2560 1600' "$output_file"
+grep -Fq 'virtual_outputs = dual-horizontal' "$config_file"
+
+if run_requested_prepare --layout dual-horizontal --mode-1 4096x2160 >/dev/null 2>&1; then
+  echo "a dual transition without mode 2 was accepted" >&2
+  exit 1
+fi
 
 printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
 run_prepare >/dev/null
