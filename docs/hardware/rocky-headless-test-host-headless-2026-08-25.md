@@ -214,3 +214,22 @@ The prior `nvidia-settings`-generated configuration remains available at
 `460c32a53b7387a89417d5210a8ec01061b52c492eb21e30a26a94863bc380f6`.
 Production virtual-display support will overlay the Autodesk-derived baseline;
 it will not modify that baseline for each requested topology.
+
+## Packaged Cold-Boot and Stream Baseline
+
+The `.81-c3` host package from root
+`1e515e44847efdf71c5e55bee84c8f181016a30d` and Sunshine
+`c142eaeca934a63506501e438986b57dd36d52b6` is installed. Its configuration
+selects two horizontal 1920x1080 virtual outputs. A cold reboot recreated the
+same depth-30 3840x1080 desktop before GDM without changing the Autodesk
+baseline hash. The host found both outputs and emitted no unknown-configuration
+warnings.
+
+The Development NUC `.80` client authenticated to headless-test-host and negotiated the
+existing version-1 `scaled-span` path. The host captured the complete
+3840x1080 virtual desktop and aspect-preservingly placed it at
+`3840x1080+0+540` in a 3840x2160 transport. The client validated format `0x8`
+as `gbrp10le`, 10-bit 4:4:4 identity, PC range, and the qualified FFmpeg
+software decoder. The 92-second automated stream disconnected cleanly and the
+client user service was restored. This is the baseline for bookmark/protocol
+work; it does not yet qualify separate local-display windows, Flame, or Wacom.
