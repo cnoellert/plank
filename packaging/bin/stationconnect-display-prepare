@@ -211,8 +211,7 @@ for edid_name in "${required_edids[@]}"; do
     echo "packaged StationConnect EDID is not readable: ${edid_file}" >&2
     exit 1
   }
-  expected_edid_size=256
-  [[ $edid_name == *-4096x2160.edid ]] && expected_edid_size=384
+  expected_edid_size=640
   [[ $(wc -c <"$edid_file") -eq $expected_edid_size ]] || {
     echo "packaged StationConnect EDID has the wrong size (expected ${expected_edid_size} bytes): ${edid_file}" >&2
     exit 1
@@ -266,7 +265,6 @@ Section "Device"
     Option "UseDisplayDevice" "${connected_monitors}"
     Option "CustomEDID" "${custom_edid}"
     Option "MetaModes" "${metamodes}"
-    Option "ModeValidation" "AllowNonEdidModes"
     Option "nvidiaXineramaInfoOrder" "DFP-0, DFP-2"
     Option "HardDPMS" "False"
     Option "Interactive" "False"

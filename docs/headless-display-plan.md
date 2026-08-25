@@ -241,6 +241,13 @@ supporting asymmetric Flame layouts such as `3840x2160 + 1280x2160` and
 `4096x2160 + 1024x2160`. The packaged defaults do not alter an existing
 physical-display workstation.
 
+Every packaged virtual-monitor EDID advertises this complete qualified mode
+pool in DisplayID detailed-timing sections and marks that EDID file's selected
+mode preferred. NVIDIA therefore validates the full live-switching pool when
+Xorg starts. An authenticated reconnect changes layouts using only those
+published RandR mode names; StationConnect does not enable
+`AllowNonEdidModes` or inject runtime modelines with `xrandr --newmode`.
+
 ## Protocol Evolution
 
 Version 4 is the current StationConnect headless-layout protocol. It retains the

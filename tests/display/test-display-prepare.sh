@@ -15,12 +15,14 @@ edid_dir="${work_dir}/display"
 fake_bin="${work_dir}/bin"
 mkdir -p "$fake_bin"
 python3 "$repo_dir/packaging/display/generate-virtual-edids.py" "$edid_dir" >/dev/null
-[[ $(wc -c <"${edid_dir}/virtual-1-3840x2160.edid") -eq 256 ]]
-[[ $(wc -c <"${edid_dir}/virtual-1-2560x2160.edid") -eq 256 ]]
-[[ $(wc -c <"${edid_dir}/virtual-1-4096x2160.edid") -eq 384 ]]
-displayid_header=$(od -An -j 256 -N 8 -tx1 "${edid_dir}/virtual-1-4096x2160.edid" | tr -d '[:space:]')
-[[ $displayid_header == 7013170300030014 ]]
-for block_offset in 0 128 256; do
+[[ $(wc -c <"${edid_dir}/virtual-1-3840x2160.edid") -eq 640 ]]
+[[ $(wc -c <"${edid_dir}/virtual-1-2560x2160.edid") -eq 640 ]]
+[[ $(wc -c <"${edid_dir}/virtual-1-4096x2160.edid") -eq 640 ]]
+displayid_headers=$(for block_offset in 256 384 512; do
+  od -An -j "$block_offset" -N 8 -tx1 "${edid_dir}/virtual-1-2560x2160.edid" | tr -d '[:space:]'
+done)
+[[ $displayid_headers == '7013670302030064701367000003006470133f000003003c' ]]
+for block_offset in 0 128 256 384 512; do
   checksum=$(od -An -j "$block_offset" -N 128 -tu1 "${edid_dir}/virtual-1-4096x2160.edid" |
     awk '{ for (field = 1; field <= NF; ++field) sum += $field } END { print sum % 256 }')
   [[ $checksum -eq 0 ]]
@@ -52,7 +54,10 @@ run_prepare >/dev/null
 printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
-grep -Fq 'Option "ModeValidation" "AllowNonEdidModes"' "$output_file"
+if grep -Fq 'AllowNonEdidModes' "$output_file"; then
+  echo "generated Xorg overlay permits a non-EDID mode" >&2
+  exit 1
+fi
 grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'Virtual 3840 2160' "$output_file"
 grep -Fq 'virtual-1-3840x2160.edid' "$output_file"

@@ -97,8 +97,12 @@ rg -Fq 'Only the active desktop user may change its display layout' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
 rg -Fq 'layout_arguments(request.mode_1, request.mode_2)' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-rg -Fq 'Option "ModeValidation" "AllowNonEdidModes"' \
-  "$repo_dir/packaging/bin/stationconnect-display-prepare"
+if rg -q 'AllowNonEdidModes|--newmode|--addmode|StationConnect-' \
+  "$repo_dir/packaging/bin/stationconnect-display-prepare" \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"; then
+  echo 'host retained non-EDID live mode injection' >&2
+  exit 1
+fi
 if rg -q 'stationconnect_authentication|/pair|pair_session_t|pairing' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp" \
   "$repo_dir/host/sunshine-fork/src/nvhttp.h"; then

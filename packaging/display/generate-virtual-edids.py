@@ -115,21 +115,13 @@ def detailed_timing(mode: str) -> tuple[bytes, int, int]:
     return bytes(descriptor), h_size_mm, v_size_mm
 
 
-def displayid_timing_extension(mode: str) -> bytes:
-    """Encode one preferred DisplayID 1.3 Type I detailed timing."""
+def displayid_timing(mode: str, preferred: bool) -> bytes:
+    """Encode one DisplayID 1.3 Type I detailed timing descriptor."""
     (clock_mhz, h_active, h_sync_start, h_sync_end, h_total,
      v_active, v_sync_start, v_sync_end, v_total) = MODE_TIMINGS[mode]
-    extension = bytearray(128)
-    extension[0] = 0x70  # DisplayID extension tag
-    extension[1] = 0x13  # DisplayID version 1.3
-    extension[2] = 23  # Data bytes following the four-byte header
-    extension[3] = 0x03  # Standalone display device
-    extension[4] = 0  # No additional DisplayID sections
-    extension[5:8] = bytes((0x03, 0x00, 0x14))  # Type I timing, revision 0, 20 bytes
-
     descriptor = bytearray(20)
     descriptor[0:3] = (round(clock_mhz * 100) - 1).to_bytes(3, "little")
-    descriptor[3] = 0x88  # Preferred timing; aspect ratio left undefined
+    descriptor[3] = 0x08 | (0x80 if preferred else 0)
     descriptor[4:6] = (h_active - 1).to_bytes(2, "little")
     descriptor[6:8] = (h_total - h_active - 1).to_bytes(2, "little")
     descriptor[8:10] = ((h_sync_start - h_active - 1) | 0x8000).to_bytes(2, "little")
@@ -138,10 +130,58 @@ def displayid_timing_extension(mode: str) -> bytes:
     descriptor[14:16] = (v_total - v_active - 1).to_bytes(2, "little")
     descriptor[16:18] = ((v_sync_start - v_active - 1) | 0x8000).to_bytes(2, "little")
     descriptor[18:20] = (v_sync_end - v_sync_start - 1).to_bytes(2, "little")
-    extension[8:28] = descriptor
-    extension[28] = (-sum(extension[1:28])) & 0xFF  # DisplayID structure checksum
-    extension[127] = (-sum(extension[:127])) & 0xFF  # EDID extension checksum
-    return bytes(extension)
+    return bytes(descriptor)
+
+
+def displayid_timing_extensions(preferred_mode: str) -> list[bytes]:
+    """Advertise the complete qualified mode pool in DisplayID sections."""
+    modes = list(MODE_TIMINGS)
+    chunks = [modes[offset : offset + 5] for offset in range(0, len(modes), 5)]
+    extensions = []
+    for section_index, chunk in enumerate(chunks):
+        extension = bytearray(128)
+        extension[0] = 0x70  # DisplayID extension tag
+        extension[1] = 0x13  # DisplayID version 1.3
+        extension[2] = 3 + 20 * len(chunk)
+        # Product type and continuation count belong only to the first
+        # DisplayID section. Continuation sections carry zero in both fields.
+        extension[3] = 0x03 if section_index == 0 else 0
+        extension[4] = len(chunks) - 1 if section_index == 0 else 0
+        extension[5:8] = bytes((0x03, 0x00, 20 * len(chunk)))
+        descriptor_offset = 8
+        for mode in chunk:
+            extension[descriptor_offset : descriptor_offset + 20] = displayid_timing(
+                mode, mode == preferred_mode
+            )
+            descriptor_offset += 20
+        extension[descriptor_offset] = (-sum(extension[1:descriptor_offset])) & 0xFF
+        extension[127] = (-sum(extension[:127])) & 0xFF
+        extensions.append(bytes(extension))
+    return extensions
+
+
+def validate_displayid_mode_pool(edid: bytes, preferred_mode: str) -> None:
+    """Verify that every qualified mode occurs once and only one is preferred."""
+    advertised = []
+    preferred = []
+    for offset in range(256, len(edid), 128):
+        extension = edid[offset : offset + 128]
+        if (extension[0] != 0x70 or extension[5:7] != bytes((0x03, 0x00)) or
+                extension[7] == 0 or extension[7] % 20 != 0):
+            raise ValueError("generated DisplayID timing section is invalid")
+        for descriptor_offset in range(8, 8 + extension[7], 20):
+            descriptor = extension[descriptor_offset : descriptor_offset + 20]
+            resolution = (
+                int.from_bytes(descriptor[4:6], "little") + 1,
+                int.from_bytes(descriptor[12:14], "little") + 1,
+            )
+            advertised.append(resolution)
+            if descriptor[3] & 0x80:
+                preferred.append(resolution)
+    expected = [(timing[1], timing[5]) for timing in MODE_TIMINGS.values()]
+    selected = MODE_TIMINGS[preferred_mode]
+    if advertised != expected or preferred != [(selected[1], selected[5])]:
+        raise ValueError("generated DisplayID mode pool or preferred timing is invalid")
 
 
 def build_edid(index: int, mode: str) -> bytes:
@@ -175,25 +215,29 @@ def build_edid(index: int, mode: str) -> bytes:
         set_text_descriptor(edid, 72, 0xFC, f"SC Virtual {index}")
         edid[90:108] = range_descriptor
         edid[108:126] = bytes(18)
-        edid[126] = 2
     else:
         edid[54:72] = timing
         set_text_descriptor(edid, 72, 0xFF, f"SCVIRT{index:06d}")
         set_text_descriptor(edid, 90, 0xFC, f"SC Virtual {index}")
     edid[127] = (-sum(edid[:127])) & 0xFF
 
+    # Keep CTA VIC 102 for conservative NVIDIA recognition when 4096x2160 is
+    # the selected mode. DisplayID provides exact detailed timings for the
+    # complete qualified pool without making 4096 the CTA preference for a
+    # lower-resolution virtual monitor.
+    if edid[132] != 0x4C:
+        raise ValueError("base EDID CTA video data block changed unexpectedly")
     if mode == "4096x2160":
-        # The base Dell CTA block begins with a 12-entry Video Data Block at
-        # byte 132. Advertise CTA VIC 102 as an additional non-native source;
-        # the DisplayID timing is authoritative and marks the mode preferred.
-        if edid[132] != 0x4C:
-            raise ValueError("base EDID CTA video data block changed unexpectedly")
         edid[133] = CTA_4096X2160P60_VIC
-        edid[255] = (-sum(edid[128:255])) & 0xFF
-        edid.extend(displayid_timing_extension(mode))
+    displayid_extensions = displayid_timing_extensions(mode)
+    edid[126] = 1 + len(displayid_extensions)
+    edid[127] = (-sum(edid[:127])) & 0xFF
+    edid[255] = (-sum(edid[128:255])) & 0xFF
+    edid.extend(b"".join(displayid_extensions))
 
     if any(sum(edid[offset : offset + 128]) & 0xFF for offset in range(0, len(edid), 128)):
         raise ValueError("generated EDID checksum is invalid")
+    validate_displayid_mode_pool(edid, mode)
     return bytes(edid)
 
 
