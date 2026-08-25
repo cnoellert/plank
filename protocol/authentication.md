@@ -59,12 +59,11 @@ Concurrent streams may share it. Releasing the last stream closes PAM and
 invalidates the token; a later resume requires a new login. Pending
 conversations expire after 120 seconds, and unclaimed tokens after 300 seconds.
 
-## TLS and VPN Gate
+## TLS and Network Policy
 
 Generate an RSA-3072/SHA-256 certificate with a DNS-only SAN using
-`scripts/generate-stationconnect-certificate.sh`. The client accepts that
-self-signed profile only when the kernel route uses the configured VPN
-interface. Production deployments must set Sunshine's `bind_address` to the
-VPN address and apply matching interface-scoped firewall rules. The
-`STATIONCONNECT_VPN_INTERFACE` environment variable exists for explicit
-qualification on a named non-ZeroTier interface; do not set it in production.
+`scripts/generate-stationconnect-certificate.sh`. The client accepts only that
+self-signed certificate profile and requires TLS 1.3, but it does not classify
+or restrict the network interface selected by the operating system. Production
+deployments must enforce their intended network boundary with interface-scoped
+host firewall rules.

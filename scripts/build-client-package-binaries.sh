@@ -97,6 +97,15 @@ if rg -n \
 fi
 echo "client_pairing_absence_gate=pass"
 
+if rg -n \
+  'STATIONCONNECT_VPN_INTERFACE|isApprovedStationConnectRoute|approved VPN route' \
+  "$source_dir/app" \
+  "$repo_dir/packaging/systemd/client.env.example"; then
+  echo "client-side VPN route restriction is present in StationConnect" >&2
+  exit 1
+fi
+echo "client_vpn_route_check_absence_gate=pass"
+
 # StationConnect disconnects streams without changing the physical workstation
 # display or terminating the workstation application. Keep Moonlight's legacy
 # SOPS and remote app-cancel controls out of the product.
@@ -356,7 +365,6 @@ fi
 
 for required_reconnect_wait_token in \
   'Waiting for previous workstation session to finish...' \
-  'StationConnect requires an approved VPN route' \
   'constexpr int RetryIntervalMs = 500;' \
   'constexpr int MaximumWaitMs = 30000;' \
   'sessionCleanupWaitChanged' \

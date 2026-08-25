@@ -119,11 +119,10 @@ client protocol.
 
 Leave Sunshine's `bind_address` empty so media listens on all available IPv4
 and IPv6 interfaces. When explicitly enabled, mDNS discovery also uses the
-available interfaces. On the client, the approved-interface setting applies
-to StationConnect TLS control and PAM credentials; media transport may use
-every interface. Enforce
-the intended deployment boundary in the host firewall even though the
-process listens on wildcard addresses.
+available interfaces. The client does not restrict which local network
+interface carries control, credentials, or media. Enforce the intended
+deployment boundary in the host firewall even though the process listens on
+wildcard addresses.
 
 Install `packaging/firewalld/stationconnect.xml` in firewalld's service
 directory, reload firewalld, and enable it only in the zone assigned to the
