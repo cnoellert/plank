@@ -52,9 +52,10 @@ executing the media host. At GDM it launches as the discovered greeter UID; it
 does not hardcode `gdm`, a numeric UID, `DISPLAY`, or an Xauthority path. On a
 GDM-to-user transition it stops the old worker before starting the new one.
 
-This is Stage A session handling: an authenticated client can see GDM, but must
-complete the graphical login and reconnect after the worker transition. The
-supervisor does not inject input into GDM or create a new graphical session.
+This is Stage A session handling: an authenticated client can see GDM, and the
+client automatically reconnects while the supervisor replaces the greeter
+worker with the authenticated desktop worker. The supervisor does not inject
+input into GDM or create a new graphical session.
 
 `stationconnect-display-prepare.service` runs before the display manager. It
 keeps the workstation's Autodesk-derived `/etc/X11/xorg.conf` as the baseline
@@ -62,9 +63,12 @@ and atomically adds or removes only
 `/etc/X11/xorg.conf.d/99-stationconnect-headless.conf`. Configure `[display]`
 in `stationconnect.conf` with `virtual_outputs = off`, `single`, or
 `dual-horizontal`. `virtual_mode_1` and `virtual_mode_2` independently select
-one of the package-documented 60 Hz monitor presets; output 2 is ignored for a
-single-head layout. The default is `off`. A changed topology is applied on reboot;
-the helper refuses to replace its overlay while the display manager is active.
+one of the package-documented 60 Hz monitor presets. A single-head Xorg overlay
+keeps the second virtual connector present but inactive so the same
+PAM-authenticated desktop owner can later switch resolutions or enable the
+second head through the supervisor's allowlisted live-XRandR path. Other users
+are refused. The default is `off`. A changed static topology is applied on
+reboot; the helper refuses to replace its overlay while the display manager is active.
 Package removal deletes only an overlay carrying StationConnect's generated
 file marker; it does not alter the currently running X server.
 

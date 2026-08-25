@@ -81,7 +81,7 @@ fi
 /usr/bin/stationconnect-host
 /usr/bin/stationconnect-host-supervisor
 /usr/bin/stationconnect-pam-broker
-/usr/libexec/stationconnect/sunshine
+/usr/libexec/stationconnect/stationconnect-host
 /usr/libexec/stationconnect/stationconnect-host-certificate
 /usr/libexec/stationconnect/stationconnect-host-state
 /usr/libexec/stationconnect/stationconnect-display-prepare

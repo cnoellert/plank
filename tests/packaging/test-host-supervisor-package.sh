@@ -38,6 +38,11 @@ if rg -q '%h|graphical-session.target' "$unit"; then
 fi
 
 rg -Fq '/usr/bin/stationconnect-host-supervisor' "$spec"
+rg -Fq '/usr/libexec/stationconnect/stationconnect-host' "$spec"
+rg -Fq 'OUTPUT_NAME "stationconnect-host"' \
+  "$repo_dir/host/sunshine-fork/cmake/targets/common.cmake"
+rg -Fq '/usr/libexec/stationconnect/stationconnect-host' \
+  "$repo_dir/packaging/bin/stationconnect-host"
 rg -Fq '/usr/lib/systemd/system/stationconnect-host.service' "$spec"
 rg -Fq '/usr/lib/systemd/system-preset/90-stationconnect.preset' "$spec"
 rg -Fq '%sysusers_create stationconnect.conf' "$spec"
@@ -80,13 +85,15 @@ rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
-rg -Fq 'Scheduled StationConnect display transition from GDM' \
+rg -Fq 'Scheduled StationConnect display transition from ' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'StationConnect live display transition completed for UID' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '/usr/libexec/stationconnect/stationconnect-display-prepare' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fxq 'ReadWritePaths=/etc/X11/xorg.conf.d' \
   "$repo_dir/packaging/systemd/stationconnect-host.service"
-rg -Fq 'Host display layout cannot change while a user desktop is active' \
+rg -Fq 'Only the active desktop user may change its display layout' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
 if rg -q 'stationconnect_authentication|/pair|pair_session_t|pairing' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp" \
@@ -108,6 +115,8 @@ rg -Fq 'MaximumAttempts = 20' "$client_session"
 rg -Fq 'replacement worker has no app to resume' "$client_session"
 rg -Fq 'worker already has an active Desktop stream' "$client_session"
 rg -Fq 'm_InputHandler->resetRawHidAfterReconnect();' "$client_session"
+rg -Fq 'suspendForReconnect();' "$client_session"
+rg -Fq 'resumeAfterReconnect();' "$client_session"
 rg -Fq 'm_LinuxRawWacomInput->resetAfterReconnect();' "$client_input"
 rg -Fq 'release(false);' "$client_raw_wacom"
 rg -Fq 'm_AttachFailed.store(false);' "$client_raw_wacom"

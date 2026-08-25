@@ -56,7 +56,7 @@ their host-layout requirement. `configured` is resolved to the authenticated
 topology's exact current layout before launch; it is not sent as a wildcard.
 Virtual layouts persist one enumerated mode per requested output. The current
 60 Hz allowlist is `1024x2160`, `1280x720`, `1280x1024`, `1280x2160`,
-`1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `3440x1440`,
+`1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`, `3440x1440`,
 `3840x1600`, `3840x2160`, and `4096x2160`. The host compares the requested
 layout and both modes with the live topology before claiming the one-use PAM
 launch state. If GDM owns the active graphical session, a mismatch returns 425,

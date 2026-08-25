@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-host_binary=${STATIONCONNECT_HOST_BINARY:-/usr/libexec/stationconnect/sunshine}
+host_binary=${STATIONCONNECT_HOST_BINARY:-/usr/libexec/stationconnect/stationconnect-host}
 auth_socket=${STATIONCONNECT_AUTH_SOCKET:-/run/stationconnect/pam/auth.sock}
 
 if [[ ! -x "${host_binary}" ]]; then

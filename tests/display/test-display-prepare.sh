@@ -16,6 +16,7 @@ fake_bin="${work_dir}/bin"
 mkdir -p "$fake_bin"
 python3 "$repo_dir/packaging/display/generate-virtual-edids.py" "$edid_dir" >/dev/null
 [[ $(wc -c <"${edid_dir}/virtual-1-3840x2160.edid") -eq 256 ]]
+[[ $(wc -c <"${edid_dir}/virtual-1-2560x2160.edid") -eq 256 ]]
 [[ $(wc -c <"${edid_dir}/virtual-1-4096x2160.edid") -eq 384 ]]
 displayid_header=$(od -An -j 256 -N 8 -tx1 "${edid_dir}/virtual-1-4096x2160.edid" | tr -d '[:space:]')
 [[ $displayid_header == 7013170300030014 ]]
@@ -50,9 +51,11 @@ run_prepare >/dev/null
 
 printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
-grep -Fq 'Option "ConnectedMonitor" "DFP-0"' "$output_file"
+grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
+grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'Virtual 3840 2160' "$output_file"
 grep -Fq 'virtual-1-3840x2160.edid' "$output_file"
+grep -Fq 'virtual-2-1280x2160.edid' "$output_file"
 
 printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
@@ -62,11 +65,16 @@ grep -Fq 'virtual-2-1280x2160.edid' "$output_file"
 grep -Fq 'Virtual 5120 2160' "$output_file"
 
 run_requested_prepare --layout single --mode-1 2560x1600 >/dev/null
-grep -Fq 'Option "ConnectedMonitor" "DFP-0"' "$output_file"
-grep -Fq 'DFP-0: 2560x1600 +0+0' "$output_file"
+grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
+grep -Fq 'DFP-0: 2560x1600 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'virtual-1-2560x1600.edid' "$output_file"
 grep -Fq 'Virtual 2560 1600' "$output_file"
 grep -Fq 'virtual_outputs = dual-horizontal' "$config_file"
+
+run_requested_prepare --layout single --mode-1 2560x2160 >/dev/null
+grep -Fq 'DFP-0: 2560x2160 +0+0, DFP-2: NULL' "$output_file"
+grep -Fq 'virtual-1-2560x2160.edid' "$output_file"
+grep -Fq 'Virtual 2560 2160' "$output_file"
 
 if run_requested_prepare --layout dual-horizontal --mode-1 4096x2160 >/dev/null 2>&1; then
   echo "a dual transition without mode 2 was accepted" >&2

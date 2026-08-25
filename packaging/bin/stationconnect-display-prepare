@@ -139,6 +139,7 @@ mode_dimensions() {
     1920x1200) echo '1920 1200' ;;
     2560x1440) echo '2560 1440' ;;
     2560x1600) echo '2560 1600' ;;
+    2560x2160) echo '2560 2160' ;;
     3440x1440) echo '3440 1440' ;;
     3840x1600) echo '3840 1600' ;;
     3840x2160) echo '3840 2160' ;;
@@ -200,10 +201,10 @@ if [[ $virtual_outputs == off ]]; then
   exit 0
 fi
 
-required_edids=("virtual-1-${virtual_mode_1}.edid")
-if [[ $virtual_outputs == dual-horizontal ]]; then
-  required_edids+=("virtual-2-${virtual_mode_2}.edid")
-fi
+required_edids=(
+  "virtual-1-${virtual_mode_1}.edid"
+  "virtual-2-${virtual_mode_2}.edid"
+)
 for edid_name in "${required_edids[@]}"; do
   edid_file="${edid_dir}/${edid_name}"
   [[ -r $edid_file ]] || {
@@ -219,9 +220,12 @@ for edid_name in "${required_edids[@]}"; do
 done
 
 if [[ $virtual_outputs == single ]]; then
-  connected_monitors=DFP-0
-  custom_edid="DFP-0:${edid_dir}/virtual-1-${virtual_mode_1}.edid"
-  metamodes="DFP-0: ${virtual_mode_1} +0+0"
+  # Keep the second virtual connector present but inactive. This allows the
+  # authenticated desktop owner to switch between single and dual layouts
+  # with XRandR without restarting Xorg and losing the desktop session.
+  connected_monitors="DFP-0, DFP-2"
+  custom_edid="DFP-0:${edid_dir}/virtual-1-${virtual_mode_1}.edid; DFP-2:${edid_dir}/virtual-2-${virtual_mode_2}.edid"
+  metamodes="DFP-0: ${virtual_mode_1} +0+0, DFP-2: NULL"
   canvas_width=$output_1_width
   canvas_height=$output_1_height
 else

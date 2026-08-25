@@ -379,6 +379,21 @@ for required_reconnect_wait_token in \
 done
 echo "client_rapid_reconnect_wait_gate=pass"
 
+for required_retained_renderer_token in \
+  'suspendForReconnect()' \
+  'resumeAfterReconnect()' \
+  'Paused FFmpeg decode while retaining the stream renderer' \
+  'resumedRenderer ? "retained" : "recreated"'; do
+  rg -Fq "$required_retained_renderer_token" \
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/streaming/video/decoder.h" \
+    "$source_dir/app/streaming/video/ffmpeg.cpp" || {
+    echo "retained reconnect renderer invariant is missing: ${required_retained_renderer_token}" >&2
+    exit 1
+  }
+done
+echo "client_retained_reconnect_renderer_gate=pass"
+
 for required_client_identity_token in \
   'QGuiApplication::setApplicationDisplayName("StationConnect Client");' \
   'SDL_SetHint("SDL_APP_NAME", "StationConnect Client");' \

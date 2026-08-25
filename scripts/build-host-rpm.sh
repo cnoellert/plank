@@ -42,8 +42,8 @@ rpm_topdir="${work_dir}/rpmbuild"
 mkdir -p "$payload_dir" "$rpm_topdir/SOURCES" "$rpm_topdir/SPECS" \
   "$rpm_topdir/BUILD" "$rpm_topdir/BUILDROOT" "$rpm_topdir/RPMS" "$rpm_topdir/SRPMS"
 
-install -D -m 0755 "$build_dir/sunshine" \
-  "$payload_dir/usr/libexec/stationconnect/sunshine"
+install -D -m 0755 "$build_dir/stationconnect-host" \
+  "$payload_dir/usr/libexec/stationconnect/stationconnect-host"
 install -D -m 0755 "$build_dir/stationconnect-pam-broker" \
   "$payload_dir/usr/bin/stationconnect-pam-broker"
 install -D -m 0755 "$build_dir/stationconnect-host-supervisor" \
@@ -120,6 +120,7 @@ rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-3840x2
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1280x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-4096x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1024x2160\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-2560x2160\.edid$'
 if rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/host\.env$|/usr/share/stationconnect/web/'; then
   echo "host RPM still contains legacy environment configuration or Web UI assets" >&2
   exit 1

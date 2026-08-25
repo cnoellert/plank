@@ -40,15 +40,15 @@ done
 sudo -n true
 
 qualification_gso_mode=false
-while IFS= read -r sunshine_pid; do
-  if sudo -n tr '\0' '\n' <"/proc/${sunshine_pid}/environ" 2>/dev/null |
+while IFS= read -r stationconnect_host_pid; do
+  if sudo -n tr '\0' '\n' <"/proc/${stationconnect_host_pid}/environ" 2>/dev/null |
       grep -qx 'SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1'; then
     qualification_gso_mode=true
     break
   fi
-done < <(pgrep -x sunshine || true)
+done < <(pgrep -f '^/usr/libexec/stationconnect/stationconnect-host([[:space:]]|$)' || true)
 if [[ ${qualification_gso_mode} != true ]]; then
-  echo "Sunshine must run with SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1" >&2
+  echo "StationConnect Host must run with SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1" >&2
   exit 2
 fi
 

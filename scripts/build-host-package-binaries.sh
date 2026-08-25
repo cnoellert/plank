@@ -290,24 +290,24 @@ cmake -S "$source_dir" -B "$build_dir" \
 cmake --build "$build_dir" --parallel "$build_jobs" \
   --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
 
-if rg -a -q '/usr/local/assets' "$build_dir/sunshine"; then
+if rg -a -q '/usr/local/assets' "$build_dir/stationconnect-host"; then
   echo "package binary contains the development asset path" >&2
   exit 1
 fi
-rg -a -q '/usr/share/stationconnect' "$build_dir/sunshine"
+rg -a -q '/usr/share/stationconnect' "$build_dir/stationconnect-host"
 [[ ! -d ${build_dir}/assets/web ]] || {
   echo "host Web UI assets were produced" >&2
   exit 1
 }
-if nm -C "$build_dir/sunshine" | rg -q 'confighttp::'; then
+if nm -C "$build_dir/stationconnect-host" | rg -q 'confighttp::'; then
   echo "host binary still contains the configuration HTTP server" >&2
   exit 1
 fi
-if rg -a -q 'Sunshine - Web UI|Configuration UI available at' "$build_dir/sunshine"; then
+if rg -a -q 'Sunshine - Web UI|Configuration UI available at' "$build_dir/stationconnect-host"; then
   echo "host binary still contains Web UI runtime paths" >&2
   exit 1
 fi
-if nm -C "$build_dir/sunshine" | rg -q 'nvhttp::(pair|pin|unpair_client|getservercert|clientchallenge|clientpairingsecret)'; then
+if nm -C "$build_dir/stationconnect-host" | rg -q 'nvhttp::(pair|pin|unpair_client|getservercert|clientchallenge|clientpairingsecret)'; then
   echo "host binary still contains legacy pairing code" >&2
   exit 1
 fi
@@ -326,10 +326,10 @@ for required_reconnect_token in \
 done
 echo "host_rapid_reconnect_cleanup_gate=pass"
 
-"${repo_dir}/scripts/audit-package-runtime.sh" "$build_dir/sunshine" >/dev/null
+"${repo_dir}/scripts/audit-package-runtime.sh" "$build_dir/stationconnect-host" >/dev/null
 
 echo "host_web_ui_absence_gate=pass"
-echo "host_binary=${build_dir}/sunshine"
+echo "host_binary=${build_dir}/stationconnect-host"
 echo "pam_broker_binary=${build_dir}/stationconnect-pam-broker"
 echo "host_supervisor_binary=${build_dir}/stationconnect-host-supervisor"
 echo "host_package_binary_gate=pass"

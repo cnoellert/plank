@@ -234,7 +234,7 @@ virtual_mode_2 = 3840x2160
 `virtual_outputs` accepts only `off`, `single`, or `dual-horizontal` and
 defaults to `off`. `virtual_mode_1` and `virtual_mode_2` independently select
 one of the qualified 60 Hz modes: `1024x2160`, `1280x720`, `1280x1024`,
-`1280x2160`, `1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`,
+`1280x2160`, `1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`,
 `3440x1440`, `3840x1600`, `3840x2160`, or `4096x2160`. The preset boundary
 keeps arbitrary modelines out of the privileged display-preparation path while
 supporting asymmetric Flame layouts such as `3840x2160 + 1280x2160` and
@@ -259,8 +259,8 @@ and adds:
 The negotiated feature mask is `0x3ff`: version 1's topology generation,
 display identity, geometry, presentation mode, and authenticated topology
 features; version 2 layout metadata, composite source regions, and exact layout
-binding; version 3 independent virtual-output modes; plus version 4 GDM-only
-dynamic host-layout transitions. Launch requests carry
+binding; version 3 independent virtual-output modes; plus version 4
+authenticated dynamic host-layout transitions. Launch requests carry
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2`; the host compares them
 with both administrator policy and the live X11 layout before it consumes
 one-use PAM state.
@@ -281,7 +281,9 @@ compatibility mode.
 - Refuse unsupported output count, dimensions, refresh, pixel rate, or GPU
   head count with a specific logged reason.
 - Time out if Xorg does not publish the exact expected topology.
-- Do not restart or reconfigure an active Flame Xorg session automatically.
+- Never restart an authenticated user's Xorg session to change layouts. The
+  same PAM-authenticated desktop owner may apply an allowlisted XRandR layout
+  in that live session; every other account is refused.
 - Roll back only generated runtime state after preparation failure; do not
   modify the canonical workstation Xorg configuration.
 
