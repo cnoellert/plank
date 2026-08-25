@@ -330,6 +330,12 @@ if ! rg -Fq \
   echo "StationConnect must use the qualified FFmpeg software decoder" >&2
   exit 1
 fi
+if rg -Fq \
+  'Your settings selection to force software decoding may cause poor streaming performance.' \
+  "$source_dir/app/streaming/session.cpp"; then
+  echo "the qualified StationConnect software decoder still emits an obsolete warning" >&2
+  exit 1
+fi
 echo "client_h264_profile_selection_gate=pass"
 
 # The StationConnect client is Wayland-only. It offers compositor-managed
