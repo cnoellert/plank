@@ -408,9 +408,9 @@ for required_bookmark_token in \
     exit 1
   }
 done
-rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addDisplayChoice\.currentIndex === 0\)' \
+rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addDisplayChoice\.currentIndex === 0,[[:space:]]*addEncodingProfileModel\.get\(' \
   "$source_dir/app/gui/main.qml" || {
-  echo "manual workstation dialog does not submit address, nickname, and display preference" >&2
+  echo "manual workstation dialog does not submit address, nickname, display, and encoding profile" >&2
   exit 1
 }
 for required_bookmark_editor_token in \
