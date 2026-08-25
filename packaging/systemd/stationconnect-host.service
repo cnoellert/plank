@@ -1,6 +1,7 @@
 [Unit]
 Description=StationConnect workstation host supervisor
 Documentation=file:/usr/share/doc/stationconnect-host/README.md
+X-StationConnect-ApplicationId=la.instinctual.StationConnect.Host
 Requires=stationconnect-pam-broker.service
 Wants=network-online.target
 After=stationconnect-pam-broker.service display-manager.service network-online.target systemd-user-sessions.service

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "default": "h264-high10-444-identity-gbr",
+  "fallback": "none",
+  "profiles": [
+    {
+      "name": "h264-high8-422-bt709",
+      "video_format": "0x0002",
+      "server_capability": "0x02000000",
+      "chroma_sampling_type": 2,
+      "dynamic_range_mode": 0,
+      "encoder_csc_mode": 3,
+      "identity_gbr": false
+    },
+    {
+      "name": "h264-high8-444-identity-gbr",
+      "video_format": "0x0004",
+      "server_capability": "0x00040000",
+      "chroma_sampling_type": 1,
+      "dynamic_range_mode": 0,
+      "encoder_csc_mode": 7,
+      "identity_gbr": true
+    },
+    {
+      "name": "h264-high10-422-bt709",
+      "video_format": "0x0010",
+      "server_capability": "0x04000000",
+      "chroma_sampling_type": 2,
+      "dynamic_range_mode": 1,
+      "encoder_csc_mode": 3,
+      "identity_gbr": false
+    },
+    {
+      "name": "h264-high10-444-identity-gbr",
+      "video_format": "0x0008",
+      "server_capability": "0x01000000",
+      "chroma_sampling_type": 1,
+      "dynamic_range_mode": 1,
+      "encoder_csc_mode": 7,
+      "identity_gbr": true
+    }
+  ]
+}

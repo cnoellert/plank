@@ -44,6 +44,15 @@ a fresh Desktop stream. Passwords and one-use tokens are cleared when consumed
 or when the session ends; they are never written to settings, arguments,
 environment variables, or logs. A local disconnect does not trigger reconnect.
 
+A new launch synchronously joins any stopped RTSP session before evaluating the
+process-less Desktop reservation. If no active or pending session still owns the
+reservation, the host clears it and admits the replacement launch immediately.
+If a session really is still active, the client keeps the pre-stream progress
+view open, reports that it is waiting for the previous workstation session,
+and retries every 500 ms for at most 30 seconds. The wait can be cancelled;
+unrelated launch errors are never retried. This makes rapid manual reconnects
+deterministic without allowing a second client to displace an active session.
+
 StationConnect workers perform their NvFBC and encoder probe before opening the
 HTTP interface. They do not repeat Sunshine's generic hotplug probe while a
 Desktop launch or resume is beginning; the supervisor replaces the worker when

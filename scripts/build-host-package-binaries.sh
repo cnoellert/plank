@@ -195,6 +195,14 @@ rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
 
+rg -Fxq \
+  'X-StationConnect-ApplicationId=la.instinctual.StationConnect.Host' \
+  "$repo_dir/packaging/systemd/stationconnect-host.service" || {
+  echo "host systemd metadata does not carry the canonical application ID" >&2
+  exit 1
+}
+echo "host_application_id_gate=pass"
+
 # Host runtime diagnostics are written privately to a bounded persistent file
 # while stdout remains attached to journald. systemd owns the writable log
 # directory; the single administrator configuration file owns the log path.
@@ -268,6 +276,21 @@ if nm -C "$build_dir/sunshine" | rg -q 'nvhttp::(pair|pin|unpair_client|getserve
   echo "host binary still contains legacy pairing code" >&2
   exit 1
 fi
+
+for required_reconnect_token in \
+  'std::mutex session_start_mutex' \
+  'rtsp_stream::session_count() == 0' \
+  'rtsp_stream::launch_session_pending()' \
+  'Clearing orphaned StationConnect Desktop reservation before launch'; do
+  rg -Fq "$required_reconnect_token" \
+    "$source_dir/src/nvhttp.cpp" "$source_dir/src/rtsp.cpp" \
+    "$source_dir/src/rtsp.h" || {
+    echo "rapid reconnect host cleanup invariant is missing: ${required_reconnect_token}" >&2
+    exit 1
+  }
+done
+echo "host_rapid_reconnect_cleanup_gate=pass"
+
 "${repo_dir}/scripts/audit-package-runtime.sh" "$build_dir/sunshine" >/dev/null
 
 echo "host_web_ui_absence_gate=pass"

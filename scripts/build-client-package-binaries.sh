@@ -270,9 +270,11 @@ rg -U -q 'settings\.value\(SER_CAPTURESYSKEYS,\n[[:space:]]+static_cast<int>\(Ca
 }
 echo "client_system_shortcut_default_gate=pass"
 
-# StationConnect has one qualified SDR H.264 High 10 4:4:4 identity profile,
-# decoded through the proven FFmpeg software path, and one windowed launcher
-# mode. These are product invariants, not user preferences or CLI overrides.
+# StationConnect currently has four explicit SDR H.264 profiles. The bookmark
+# owns the complete profile choice, including codec family, bit depth, and
+# chroma. The client advertises only that selected profile and decodes through
+# the proven FFmpeg software path. Future codec families must be introduced as
+# new bookmark profiles rather than as a conflicting global codec preference.
 if rg -n \
   'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"|GUI display mode|uiDisplayMode|UIDisplayMode|UI_(WINDOWED|MAXIMIZED|FULLSCREEN)|uidisplaymode|startwindowed' \
   "$source_dir/app" \
@@ -280,38 +282,143 @@ if rg -n \
   echo "optional HDR, YUV 4:4:4, or GUI display-mode controls are present in StationConnect client" >&2
   exit 1
 fi
-if ! rg -U -q 'id: codecComboBox\n[[:space:]]+enabled: false' \
-  "$source_dir/app/gui/SettingsView.qml" ||
-   rg -q 'VCC_(AUTO|FORCE_HEVC|FORCE_AV1)' \
-  "$source_dir/app/gui/SettingsView.qml"; then
-  echo "the StationConnect video codec selector is not locked to H.264" >&2
+if rg -n \
+  'VideoCodecConfig|videoCodecConfig|SER_VIDEOCFG|VCC_|video-codec|codecComboBox|resVCCTitle|Video codec' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "the obsolete global video codec preference is still present" >&2
   exit 1
 fi
+echo "client_global_video_codec_absence_gate=pass"
 if rg -n \
   'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_(H264\)|H265\)|H265_MAIN|AV1_MAIN)' \
   "$source_dir/app/streaming/session.cpp"; then
   echo "a 4:2:0 video profile is advertised by the StationConnect session" >&2
   exit 1
 fi
-profile_appends=$(rg -F \
-  'm_SupportedVideoFormats.append(VIDEO_FORMAT_' \
-  "$source_dir/app/streaming/session.cpp" || true)
-if [[ $profile_appends != *'m_SupportedVideoFormats.append(VIDEO_FORMAT_H264_HIGH10_444);'* ]] ||
-   [[ $(wc -l <<<"$profile_appends") -ne 1 ]]; then
-  echo "StationConnect must advertise only H.264 High 10 4:4:4" >&2
-  printf '%s\n' "$profile_appends" >&2
-  exit 1
-fi
-if ! rg -Fq \
-  'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_FORCE_SOFTWARE;' \
-  "$source_dir/app/streaming/session.cpp" ||
-   rg -Fq \
-  'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_AUTO;' \
+for required_profile_token in \
+  'SCVP_H264_8BIT_422' \
+  'SCVP_H264_8BIT_444' \
+  'SCVP_H264_10BIT_422' \
+  'SCVP_H264_10BIT_444' \
+  'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH8_422;' \
+  'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH8_444;' \
+  'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH10_422;' \
+  'int selectedVideoFormat = VIDEO_FORMAT_H264_HIGH10_444;' \
+  'm_SupportedVideoFormats.append(selectedVideoFormat);'; do
+  rg -Fq "$required_profile_token" \
+    "$source_dir/app/settings/streamingpreferences.h" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "StationConnect exact H.264 profile selection is missing: ${required_profile_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_' \
   "$source_dir/app/streaming/session.cpp"; then
-  echo "StationConnect must use the qualified FFmpeg software decoder" >&2
+  echo "StationConnect must advertise the one selected H.264 profile, not fixed fallback formats" >&2
   exit 1
 fi
-echo "client_sdr_444_profile_gate=pass"
+for required_bookmark_profile_token in \
+  '#define SER_VIDEOPROFILE "stationconnect-video-profile"' \
+  'int stationConnectVideoProfile = 0;' \
+  'settings.value(SER_VIDEOPROFILE,' \
+  'settings.setValue(SER_VIDEOPROFILE, stationConnectVideoProfile);' \
+  'stationConnectVideoProfile == that.stationConnectVideoProfile' \
+  'stationConnectVideoProfile(int computerIndex) const' \
+  'm_StationConnectVideoProfile'; do
+  rg -Fq "$required_bookmark_profile_token" \
+    "$source_dir/app/backend/nvcomputer.h" \
+    "$source_dir/app/backend/nvcomputer.cpp" \
+    "$source_dir/app/gui/computermodel.h" \
+    "$source_dir/app/gui/computermodel.cpp" \
+    "$source_dir/app/streaming/session.h" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "StationConnect bookmark encoding profile is missing: ${required_bookmark_profile_token}" >&2
+    exit 1
+  }
+done
+for required_bookmark_profile_ui_token in \
+  'addEncodingProfile' \
+  'editEncodingProfile' \
+  'computerModel.stationConnectVideoProfile(index)'; do
+  rg -Fq "$required_bookmark_profile_ui_token" \
+    "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
+    echo "StationConnect bookmark encoding-profile UI is missing: ${required_bookmark_profile_ui_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'stationConnectVideoProfile|Encoding profile' \
+  "$source_dir/app/gui/SettingsView.qml" \
+  "$source_dir/app/settings/streamingpreferences.cpp"; then
+  echo "encoding profile remains a global StationConnect preference" >&2
+  exit 1
+fi
+
+for required_reconnect_wait_token in \
+  'Waiting for previous workstation session to finish...' \
+  'constexpr int RetryIntervalMs = 500;' \
+  'constexpr int MaximumWaitMs = 30000;' \
+  'sessionCleanupWaitChanged' \
+  'cancelConnectionStart()'; do
+  rg -Fq "$required_reconnect_wait_token" \
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/streaming/session.h" \
+    "$source_dir/app/gui/StreamSegue.qml" || {
+    echo "rapid reconnect client wait invariant is missing: ${required_reconnect_wait_token}" >&2
+    exit 1
+  }
+done
+echo "client_rapid_reconnect_wait_gate=pass"
+
+for required_client_identity_token in \
+  'QGuiApplication::setApplicationDisplayName("StationConnect Client");' \
+  'SDL_SetHint("SDL_APP_NAME", "StationConnect Client");' \
+  'app.setDesktopFileName("la.instinctual.StationConnect.Client");'; do
+  rg -Fq "$required_client_identity_token" "$source_dir/app/main.cpp" || {
+    echo "client application identity is missing: ${required_client_identity_token}" >&2
+    exit 1
+  }
+done
+rg -Fq 'TARGET = stationconnect-client' "$source_dir/app/app.pro" || {
+  echo "client build target is not branded stationconnect-client" >&2
+  exit 1
+}
+client_desktop="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.desktop"
+client_appstream="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.appdata.xml"
+rg -Fxq 'Name=StationConnect Client' "$client_desktop" || {
+  echo "client desktop display name is not StationConnect Client" >&2
+  exit 1
+}
+rg -Fxq 'StartupWMClass=la.instinctual.StationConnect.Client' \
+  "$client_desktop" || {
+  echo "client desktop application ID is not canonical" >&2
+  exit 1
+}
+rg -Fq '<id>la.instinctual.StationConnect.Client</id>' \
+  "$client_appstream" || {
+  echo "client AppStream application ID is not canonical" >&2
+  exit 1
+}
+echo "client_application_id_gate=pass"
+
+if rg -n \
+  'VideoDecoderSelection|videoDecoderSelection|VDS_FORCE_|VDS_AUTO|video-decoder|DECODER_HINT|text:[[:space:]]*qsTr\("Video decoder"\)' \
+  "$source_dir/app" --glob '!**/languages/**'; then
+  echo "the removed global video decoder preference or override is still present" >&2
+  exit 1
+fi
+for required_exact_decoder_token in \
+  'DecoderSelectionMode::PreferExactHardwareThenSoftware' \
+  'validateDecodedProfileFrame(frame, params)' \
+  'frame->hw_frames_ctx->data' \
+  'Exact profile validation rejected decoded format' \
+  'Exact identity GBR validation rejected decoded color metadata'; do
+  rg -Fq "$required_exact_decoder_token" "$source_dir/app" || {
+    echo "exact decoder qualification is missing: ${required_exact_decoder_token}" >&2
+    exit 1
+  }
+done
+echo "client_exact_decoder_selection_gate=pass"
 
 # The StationConnect client is Wayland-only. It offers compositor-managed
 # borderless and decorated/resizable windowed streaming, but no exclusive
@@ -353,9 +460,9 @@ for required_bookmark_token in \
     exit 1
   }
 done
-rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addDisplayChoice\.currentIndex === 0\)' \
+rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addDisplayChoice\.currentIndex === 0,[[:space:]]*addEncodingProfileModel\.get\(' \
   "$source_dir/app/gui/main.qml" || {
-  echo "manual workstation dialog does not submit address, nickname, and display preference" >&2
+  echo "manual workstation dialog does not submit address, nickname, display, and encoding profile" >&2
   exit 1
 }
 for required_bookmark_editor_token in \
@@ -517,11 +624,15 @@ mkdir -p "$build_dir"
   make -j"$(nproc)"
 )
 
-client_binary="${build_dir}/app/moonlight"
+client_binary="${build_dir}/app/stationconnect-client"
 [[ -x ${client_binary} ]] || {
-  echo "Moonlight package binary was not produced" >&2
+  echo "StationConnect client package binary was not produced" >&2
   exit 1
 }
+if [[ -e ${build_dir}/app/moonlight ]]; then
+  echo "client build still produced the superseded Moonlight runtime name" >&2
+  exit 1
+fi
 rg -a -Fq "$package_version" "$client_binary" || {
   echo "Moonlight does not embed the StationConnect package version: ${package_version}" >&2
   exit 1
