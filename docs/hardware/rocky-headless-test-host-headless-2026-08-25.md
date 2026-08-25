@@ -233,3 +233,26 @@ as `gbrp10le`, 10-bit 4:4:4 identity, PC range, and the qualified FFmpeg
 software decoder. The 92-second automated stream disconnected cleanly and the
 client user service was restored. This is the baseline for bookmark/protocol
 work; it does not yet qualify separate local-display windows, Flame, or Wacom.
+
+## Protocol-v2 Bookmark and Layout Checkpoint
+
+The `.82` host package from root `be9e654` and Sunshine `7dfa3dad` is installed
+on headless-test-host. The `.82` client package from root `0853d0a` and Moonlight-Qt
+`c221c282` is installed on the Development NUC. The client now persists exact
+host-layout and virtual-mode choices per bookmark, parses topology schema 2,
+and sends the negotiated layout with each launch. The host validates the
+requested layout against both `stationconnect.conf` and the live X11 topology
+before claiming the PAM launch state.
+
+A 30-second native Wayland run requested protocol 2, feature mask `255`,
+`scaled-span`, `dual-horizontal`, and `1920x1080`. The client selected topology
+generation `x11:2d755187df5d015c`; the host captured the full 3840x1080 source
+and placed it at `3840x1080+0+540` in the 3840x2160 transport. Format `0x8`
+remained the qualified 10-bit H.264 4:4:4 identity path. The run reported 0.00%
+incoming packet loss, 4.66 ms average decode time, and a clean disconnect. The
+Development NUC client service was restored active. The Qt 6.10.2 topology
+parser test passed 5/5 and the host layout validator passed 4/4.
+
+This accepts the successful-layout portion of H4. Unit tests cover a
+non-consuming layout mismatch; a live mismatch rejection and the H5 separate
+local-display renderer remain open.

@@ -238,8 +238,9 @@ defaults do not alter an existing physical-display workstation.
 
 ## Protocol Evolution
 
-Version 1 remains valid for current physical-output `single-output` and
-`scaled-span` sessions. A new negotiated feature/version adds:
+Version 2 is the first StationConnect headless-layout protocol. It retains the
+existing physical-output `single-output` and `scaled-span` presentation modes
+and adds:
 
 - requested host layout and preset mode;
 - virtual versus physical output provenance;
@@ -250,10 +251,17 @@ Version 1 remains valid for current physical-output `single-output` and
 - capability limits and explicit rejection reasons;
 - optional future per-output stream IDs.
 
-Every protocol change requires synchronized host, client, common-c, schema,
-and test-vector commits. Old or missing fields must fail clearly when a
-headless layout is required; there are no deployed legacy clients requiring a
-silent compatibility mode.
+The negotiated feature mask is `0xff`: version 1's topology generation,
+display identity, geometry, presentation mode, and authenticated topology
+features plus version 2 layout metadata, composite source regions, and exact
+layout binding. Launch requests carry `scHostLayout` and `scVirtualMode`; the
+host compares them with both administrator policy and the live X11 layout
+before it consumes one-use PAM state.
+
+Every protocol change requires synchronized host, client, schema, and
+test-vector commits. Old or missing fields must fail clearly when a headless
+layout is required; there are no deployed legacy clients requiring a silent
+compatibility mode.
 
 ## Security and Failure Policy
 
