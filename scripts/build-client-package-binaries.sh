@@ -356,6 +356,7 @@ fi
 
 for required_reconnect_wait_token in \
   'Waiting for previous workstation session to finish...' \
+  'StationConnect requires an approved VPN route' \
   'constexpr int RetryIntervalMs = 500;' \
   'constexpr int MaximumWaitMs = 30000;' \
   'sessionCleanupWaitChanged' \
