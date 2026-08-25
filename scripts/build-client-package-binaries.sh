@@ -401,22 +401,24 @@ rg -Fq '<id>la.instinctual.StationConnect.Client</id>' \
 }
 echo "client_application_id_gate=pass"
 
-if ! rg -Fq \
-  'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_FORCE_SOFTWARE;' \
-  "$source_dir/app/streaming/session.cpp" ||
-   rg -Fq \
-  'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_AUTO;' \
-  "$source_dir/app/streaming/session.cpp"; then
-  echo "StationConnect must use the qualified FFmpeg software decoder" >&2
+if rg -n \
+  'VideoDecoderSelection|videoDecoderSelection|VDS_FORCE_|VDS_AUTO|video-decoder|DECODER_HINT|text:[[:space:]]*qsTr\("Video decoder"\)' \
+  "$source_dir/app" --glob '!**/languages/**'; then
+  echo "the removed global video decoder preference or override is still present" >&2
   exit 1
 fi
-if rg -Fq \
-  'Your settings selection to force software decoding may cause poor streaming performance.' \
-  "$source_dir/app/streaming/session.cpp"; then
-  echo "the qualified StationConnect software decoder still emits an obsolete warning" >&2
-  exit 1
-fi
-echo "client_h264_profile_selection_gate=pass"
+for required_exact_decoder_token in \
+  'DecoderSelectionMode::PreferExactHardwareThenSoftware' \
+  'validateDecodedProfileFrame(frame, params)' \
+  'frame->hw_frames_ctx->data' \
+  'Exact profile validation rejected decoded format' \
+  'Exact identity GBR validation rejected decoded color metadata'; do
+  rg -Fq "$required_exact_decoder_token" "$source_dir/app" || {
+    echo "exact decoder qualification is missing: ${required_exact_decoder_token}" >&2
+    exit 1
+  }
+done
+echo "client_exact_decoder_selection_gate=pass"
 
 # The StationConnect client is Wayland-only. It offers compositor-managed
 # borderless and decorated/resizable windowed streaming, but no exclusive
