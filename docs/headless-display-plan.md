@@ -1,0 +1,415 @@
+# Headless and Multi-Monitor Display Plan
+
+## Objective
+
+Support StationConnect hosts with no physical monitor or display emulator while
+preserving the qualified NVIDIA Xorg, NvFBC, CUDA, H.264, absolute-input, and
+raw-HID Wacom paths. A bookmark may request one or two stable host displays.
+The client may present that workspace on one physical display as a scaled span
+or map two host displays onto two client displays.
+
+This plan extends the versioned output-topology and scaled-span implementation
+documented in `protocol/output-topology.md`. It does not replace that protocol
+or introduce a second display-configuration source.
+
+## Product Scenarios
+
+1. A headless workstation exposes one virtual 3840x2160 display and a client
+   presents it fullscreen on one monitor.
+2. A headless workstation exposes two virtual displays and a single-monitor
+   client presents the combined desktop through the existing CUDA scaled-span
+   path.
+3. A headless workstation exposes two virtual displays and a dual-monitor
+   client maps one host output to each local output.
+4. A workstation with physical displays continues to use its qualified layout
+   unless an administrator explicitly enables StationConnect-owned virtual
+   outputs.
+5. The virtual display identity and geometry survive a client disconnect so
+   Flame does not move windows or exchange pen and eraser state on reconnect.
+
+## Fixed Constraints
+
+- Preserve the workstation's proprietary NVIDIA Xorg/DDX, GLX, CUDA, NvFBC,
+  and Flame environment. Do not replace it with a headless Wayland compositor,
+  Xvfb, a generic dummy DDX, or public-KMS capture.
+- Keep one X screen and one desktop coordinate space. Do not use separate X
+  screens such as `:0.0` and `:0.1` for separate monitors.
+- NvFBC remains the production capture path and CUDA remains the span-scaling
+  path. NvFBC 1.9 BGRA8888 remains honestly labeled as an 8-bit source.
+- Keep host configuration in `/etc/stationconnect/stationconnect.conf` and
+  mutable identity/state in `/var/lib/stationconnect/`.
+- A client request is constrained by administrator policy. It cannot provide
+  arbitrary Xorg options, file paths, modelines, EDID bytes, connector names,
+  shell commands, or unbounded dimensions.
+- Display topology is selected before consuming PAM launch state. A stale or
+  unsupported topology fails clearly.
+- The host display remains stable for an active workstation session. The first
+  implementation does not dynamically add, remove, rotate, or resize virtual
+  outputs while Flame is running.
+- Keyboard, absolute mouse, normalized pen, and raw-HID Wacom remain the only
+  supported input classes. No removed controller, generic-touchscreen, or
+  relative-mouse preference may return as part of this work.
+- The End-User NUC remains a manual-install target and is not used for builds.
+
+## Existing Baseline
+
+The current vertical slice already provides:
+
+- authenticated output topology at `GET /stationconnect/topology`;
+- stable Linux output IDs in the form `x11:<connector>`;
+- a topology generation bound to launch and the active session;
+- per-bookmark `scaled-span` or `single-output` selection;
+- complete-desktop NvFBC capture for scaled span;
+- host-side, aspect-preserving CUDA scaling into the negotiated transport
+  canvas;
+- a shared touch-port geometry for normalized absolute input;
+- fail-closed handling of an explicit topology replacement;
+- a 3840x2160 qualified client transport ceiling, except for an exact native
+  match already proven by the client display resolver.
+
+The missing pieces are virtual-output creation, lifecycle ownership, explicit
+host-layout selection, local dual-display mapping, synchronized presentation,
+and the larger-canvas performance decision.
+
+## Architecture
+
+### 1. Host display ownership
+
+The StationConnect supervisor owns headless display preparation because it is
+already responsible for boot, GDM/user-session transitions, and media-worker
+replacement. The unprivileged media worker may inspect the resulting topology
+but must not write Xorg configuration or invoke privileged modesets.
+
+The supervisor prepares only an administrator-approved topology. Generated
+runtime material belongs under `/run/stationconnect/display/`; packaged EDIDs
+and immutable templates belong under `/usr/share/stationconnect/display/`.
+Production code must not rewrite the workstation's canonical Xorg
+configuration in place.
+
+The preferred host shape is:
+
+```text
+NVIDIA GPU
+  `- Xorg display :0, one X screen and one framebuffer
+       |- virtual output 1 / stable EDID / stable RandR connector
+       `- virtual output 2 / stable EDID / stable RandR connector
+```
+
+The two candidate mechanisms are:
+
+1. NVIDIA-connected virtual outputs backed by packaged EDIDs and explicit
+   metamodes.
+2. A headless NVIDIA framebuffer divided into XRandR 1.5 logical monitors.
+
+Mechanism 1 is preferred if it works on the qualified driver because Flame,
+Xinerama, desktop shells, and toolkits are more likely to treat EDID-backed
+outputs as genuine monitors. Mechanism 2 is acceptable only if qualification
+proves that Flame sees two independent monitors and NvFBC reports stable output
+regions. Merely creating a large framebuffer does not qualify as two monitors.
+
+### 2. Requested and actual topology
+
+Bookmarks describe a bounded layout request, not an Xorg implementation:
+
+- layout: `single`, `dual-horizontal`, or `dual-vertical`;
+- width, height, and refresh rate for each virtual display;
+- primary display;
+- presentation: `scaled-span`, `single-output`, or `separate-displays`;
+- stable local-output mapping when `separate-displays` is selected.
+
+The host returns its actual topology after preparation. The active topology
+continues to use opaque output IDs, rectangles, rotation, refresh, primary
+state, and generation. Protocol and code must never infer two outputs merely
+from a wide video frame.
+
+Initially expose qualified presets rather than arbitrary modelines. Suggested
+probe presets are one 3840x2160p60 output, two 1920x1080p60 outputs, two
+2560x1440p60 outputs, and two 3840x2160p60 outputs. A preset becomes a product
+option only after Xorg, Flame, NvFBC, encoder, decoder, render, and input gates
+pass.
+
+### 3. Session lifecycle
+
+Display preparation occurs before the authenticated graphical session is
+launched or attached:
+
+1. Resolve the bookmark request against administrator policy.
+2. Reuse an identical, healthy active topology when possible.
+3. Otherwise refuse a topology change while a workstation session is active.
+4. Prepare Xorg and wait for the exact expected RandR topology.
+5. Start or attach the graphical user session.
+6. Re-enumerate outputs and publish a fresh topology generation.
+7. Consume PAM launch state only after the requested topology is satisfiable.
+8. Preserve Xorg and the virtual outputs across network disconnects.
+
+Unexpected topology replacement during streaming retains the existing
+fail-closed behavior: end media, raise held buttons, cancel pen contact, detach
+raw devices cleanly, and require fresh authentication. Seamless hot-plug is a
+later feature.
+
+### 4. Capture and transport
+
+The first implementation retains one composite video stream:
+
+- `single-output` captures one selected host output;
+- `scaled-span` captures the complete host desktop and uses the existing CUDA
+  scaler to fit the requested client canvas;
+- `separate-displays` initially captures the complete host desktop once and
+  sends one composite frame plus stable source rectangles for client cropping.
+
+One composite stream preserves one encoder, one decoder, one FEC timeline, one
+bitrate target, one audio clock, and one set of toolbar statistics. It is the
+lowest-risk path to dual-display presentation.
+
+Dual 4K creates a 7680x2160 source canvas. The qualified client currently uses
+software decoding for the exact 10-bit 4:4:4 identity profile, so native dual
+4K60 must be treated as an unqualified performance case. The negotiated
+transport dimensions may be smaller than the host workspace for scaled span.
+The host workspace, source canvas, and transport canvas must remain distinct in
+telemetry and input transforms.
+
+If a combined stream cannot meet the frame-time, codec-dimension, or decoder
+cost gates, add synchronized per-output streams as a later protocol feature.
+Do not build multiple streams until measurement demonstrates that they are
+necessary.
+
+### 5. Client presentation
+
+The client remains native Wayland/SDL3/Vulkan. It must not depend on one giant
+Wayland window spanning several physical outputs.
+
+For `separate-displays`:
+
+- decode the composite frame once;
+- create one SDL3 fullscreen window and Vulkan swapchain per selected local
+  output;
+- render the corresponding source rectangle from the same decoded Vulkan
+  image into each swapchain;
+- use one presentation clock and measure inter-output presentation skew;
+- fall back clearly if a mapped local output disappears.
+
+For `scaled-span`, one window presents the complete host canvas with
+aspect-preserving scaling and explicit letterbox geometry. For
+`single-output`, one window presents the selected source rectangle.
+
+Persist local display mappings using the most stable SDL3/Wayland identity
+available, plus geometry as a fallback. Enumeration order alone is not stable.
+If a saved local output is absent, prompt or fall back to scaled span; never
+silently exchange left and right displays.
+
+### 6. Absolute input mapping
+
+All input uses the same immutable topology and presentation snapshot as video:
+
+```text
+local window position
+  -> destination viewport position
+  -> host output rectangle
+  -> full host desktop coordinates
+  -> normalized StationConnect absolute coordinates
+```
+
+Clicks in letterbox or pillarbox regions do not reach the host. Crossing local
+windows crosses the corresponding host-output boundary. A topology generation
+change invalidates the transform before another input event is sent.
+
+Normalized pen follows the same mapping. Raw-HID Wacom reports remain
+byte-for-byte device data; the host Xorg/Wacom configuration sees the virtual
+desktop topology and applies its normal mapping. Qualification must confirm
+that Tablet Margins, tip/eraser identity, pressure, ExpressKeys, and reconnect
+behavior remain correct with one and two virtual outputs.
+
+## Configuration Model
+
+Add one administrator-controlled `[display]` section to
+`stationconnect.conf`. Exact key names will be finalized after the Xorg probe,
+but the configuration model is:
+
+```ini
+[display]
+virtual_outputs = off
+allowed_layouts = single,dual-horizontal
+allowed_modes = 1920x1080@60,2560x1440@60,3840x2160@60
+maximum_outputs = 2
+maximum_canvas_width = 7680
+maximum_canvas_height = 4320
+maximum_pixel_rate = 995328000
+```
+
+`virtual_outputs` defaults to `off` until headless qualification passes. The
+packaged defaults must not alter an existing physical-display workstation.
+Dimensions, output count, and pixel rate are hard security/resource limits,
+not suggestions.
+
+## Protocol Evolution
+
+Version 1 remains valid for current physical-output `single-output` and
+`scaled-span` sessions. A new negotiated feature/version adds:
+
+- requested host layout and preset mode;
+- virtual versus physical output provenance;
+- stable virtual output identity;
+- separate local-display presentation mapping;
+- source rectangles within a composite stream;
+- source-canvas and transport-canvas dimensions;
+- capability limits and explicit rejection reasons;
+- optional future per-output stream IDs.
+
+Every protocol change requires synchronized host, client, common-c, schema,
+and test-vector commits. Old or missing fields must fail clearly when a
+headless layout is required; there are no deployed legacy clients requiring a
+silent compatibility mode.
+
+## Security and Failure Policy
+
+- Authenticate before returning detailed topology, as today.
+- Validate topology requests before consuming one-use PAM state.
+- Accept only enumerated presets and policy-bounded layouts.
+- Keep EDID content and Xorg templates immutable and package-owned.
+- Never interpolate client strings into a shell command or Xorg option.
+- Run display preparation in a narrowly scoped supervisor helper.
+- Refuse unsupported output count, dimensions, refresh, pixel rate, or GPU
+  head count with a specific logged reason.
+- Time out if Xorg does not publish the exact expected topology.
+- Do not restart or reconfigure an active Flame Xorg session automatically.
+- Roll back only generated runtime state after preparation failure; do not
+  modify the canonical workstation Xorg configuration.
+
+## Implementation Phases
+
+### Phase H0 - Non-disruptive inventory and probe design
+
+- Record GPU, NVIDIA driver, Xorg command line, Xorg configuration fragments,
+  current RandR providers/outputs/properties, EDID state, GDM ownership, and
+  NvFBC output inventory on `hardware-test-host`.
+- Determine whether the installed NVIDIA stack exposes a documented headless
+  virtual-output mechanism and how many heads it permits.
+- Add read-only inventory output to the qualification report where useful.
+- Design an isolated secondary-X-server test that cannot alter `:0`, GDM, or
+  the active Flame session.
+
+Exit gate: one exact, reviewable probe procedure can test a virtual output
+without changing or restarting the production Xorg server.
+
+### Phase H1 - Single virtual output qualification
+
+- Start an isolated NVIDIA Xorg server with no physical output dependency.
+- Verify a stable connected RandR output, mode, EDID identity, OpenGL/CUDA GPU,
+  and NvFBC visibility.
+- Verify GDM/user-session feasibility without altering the production display.
+- Capture and encode the virtual desktop through the qualified pipeline.
+
+Exit gate: a rebootable one-output topology works without a monitor or dongle
+and meets existing capture, color, timing, and session gates.
+
+### Phase H2 - Dual virtual output qualification
+
+- Expose two independent outputs in one X screen.
+- Verify XRandR, Xinerama/toolkit screen enumeration, primary output, stable
+  geometry, and Flame monitor awareness.
+- Exercise dual 1080p, dual 1440p, and dual 4K source canvases.
+- Measure NvFBC capture and CUDA scaling without periodic topology polling on
+  the capture hot path.
+
+Exit gate: Flame sees two stable monitors and the combined desktop captures
+without changing output identity or missing the 60 fps capture gate.
+
+### Phase H3 - Supervisor-owned headless lifecycle
+
+- Add bounded configuration parsing and validation.
+- Package immutable display templates/EDIDs.
+- Add a narrowly scoped display-preparation helper and supervisor state
+  machine.
+- Preserve the topology across disconnect and replace only the media worker
+  during display-owner transitions.
+- Add unit and integration tests for invalid configuration, unsupported modes,
+  timeout, active-session refusal, and cleanup.
+
+Exit gate: cold boot, GDM, login, disconnect, reconnect, logout, and service
+restart preserve or cleanly recreate the requested headless topology.
+
+### Phase H4 - Bookmark and protocol integration
+
+- Add per-bookmark host-layout and client-presentation choices.
+- Negotiate requested and actual topology before launch.
+- Publish virtual-output provenance and source/transport rectangles.
+- Add explicit unsupported/stale-layout client messages and retry rules.
+- Update schemas and protocol test vectors.
+
+Exit gate: all bookmark layouts produce the expected host topology or a clear,
+non-consuming rejection.
+
+### Phase H5 - Dual client presentation
+
+- Add SDL3 local-output inventory and stable mapping.
+- Add one Vulkan presentation window per mapped output.
+- Decode once and render cropped source regions without a second CPU upload.
+- Add presentation-skew and per-window failure telemetry.
+- Retain scaled-span as the default when no explicit two-display mapping is
+  valid.
+
+Exit gate: left/right output identity remains correct across application
+restart, reconnect, client reboot, and local monitor reordering.
+
+### Phase H6 - Input, performance, and reliability qualification
+
+- Validate keyboard, absolute mouse, buttons, scrolling, normalized pen, and
+  raw-HID Wacom across every source/destination mapping.
+- Validate the four exact H.264 encoding profiles and their color/range rules.
+- Measure encoder, decoder, Vulkan, memory, packet loss, FEC, and A/V sync for
+  single 4K, dual 1080p, dual 1440p, and dual 4K.
+- Run reconnect, service restart, client crash, network loss, multi-hour soak,
+  and host reboot tests.
+- Decide from evidence whether synchronized per-output streams are required.
+
+Exit gate: the selected production layouts meet the existing StationConnect
+latency, color, input, security, and reliability gates without a physical
+display device.
+
+## Validation Matrix
+
+For every qualified layout, record:
+
+- physical display present versus no physical display;
+- cold boot, GDM, authenticated desktop, logout, and reconnect;
+- Xorg screen dimensions, RandR outputs, Xinerama/toolkit monitor count, EDID
+  identity, primary output, refresh, and topology generation;
+- NvFBC screen/output inventory, capture rectangle, source precision, capture
+  age, CUDA scale time, and deadline misses;
+- requested profile, actual encoder input format, full/PC range, matrix, output
+  bitstream profile, decoder surface, and rendered pixel checks;
+- one-client-display scaled span and two-client-display mapping;
+- local monitor reorder, unplug, and replug behavior;
+- pointer boundary crossing, letterbox rejection, Wacom tip/eraser/pressure,
+  Tablet Margins, ExpressKeys, and reconnect identity;
+- requested/actual source and transport dimensions, target bitrate, packet
+  loss, FEC recovery, frame holds, A/V drift, CPU, GPU, and RSS;
+- absence of Xorg restart, Flame window rearrangement, stuck input, and stale
+  topology acceptance.
+
+## Performance Decision Gates
+
+- NvFBC capture-call p95 stays within the 16.67 ms frame budget at 60 fps.
+- CUDA scaling and color preparation retain the existing production margin.
+- Client decode plus presentation sustains the negotiated cadence without a
+  rising render queue or periodic holds.
+- Separate local windows remain synchronized closely enough that a boundary
+  crossing is not visibly discontinuous; record actual skew before setting the
+  acceptance threshold.
+- Dual 4K is not advertised merely because Xorg can create the framebuffer.
+  It must pass codec dimensions, encoder cadence, software-decoder cost,
+  Vulkan presentation, and soak tests.
+
+## Initial Deliverables
+
+1. A read-only `hardware-test-host` headless-display inventory report.
+2. A non-disruptive isolated-Xorg probe and rollback procedure.
+3. Evidence selecting EDID-backed NVIDIA outputs or logical RandR monitors.
+4. A single-virtual-output prototype behind an administrator-disabled default.
+5. A dual-output prototype and performance report.
+6. Versioned protocol/test-vector changes and bookmark UI.
+7. Client scaled-span and separate-display acceptance results.
+
+No candidate package is accepted until exact source provenance, build-machine
+rules, artifacts, installation state, validation evidence, and remaining gates
+are recorded in `HANDOFF.md`.
