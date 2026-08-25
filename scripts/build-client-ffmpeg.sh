@@ -52,7 +52,7 @@ mkdir -p "${build_dir}" "${install_dir}"
 )
 
 mkdir -p "${bundle_dir}/licenses/ffmpeg"
-for library in libavcodec libavutil libswscale libswresample; do
+for library in libavcodec libavutil libswscale; do
   cp -a "${install_dir}/lib/${library}.so"* "${bundle_dir}/"
 done
 cp -a "${source_dir}/COPYING.LGPLv2.1" "${source_dir}/COPYING.LGPLv3" \
