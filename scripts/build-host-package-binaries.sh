@@ -218,8 +218,8 @@ for required_display_token in \
   }
 done
 for required_display_token in \
+  'off|single|dual-horizontal' \
   'virtual_outputs == single' \
-  'virtual_outputs == dual-horizontal' \
   'refusing to change the display topology while the display manager is active'; do
   rg -Fq "$required_display_token" \
     "$repo_dir/packaging/bin/stationconnect-display-prepare" || {
