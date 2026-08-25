@@ -379,6 +379,17 @@ for required_reconnect_wait_token in \
 done
 echo "client_rapid_reconnect_wait_gate=pass"
 
+for required_display_transition_token in \
+  'display transition is still pending' \
+  'authentication will be refreshed once'; do
+  rg -Fq "$required_display_transition_token" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "display-transition retry invariant is missing: ${required_display_transition_token}" >&2
+    exit 1
+  }
+done
+echo "client_display_transition_retry_gate=pass"
+
 for required_retained_renderer_token in \
   'suspendForReconnect()' \
   'resumeAfterReconnect()' \

@@ -52,6 +52,7 @@ run_prepare >/dev/null
 printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
+grep -Fq 'Option "ModeValidation" "AllowNonEdidModes"' "$output_file"
 grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'Virtual 3840 2160' "$output_file"
 grep -Fq 'virtual-1-3840x2160.edid' "$output_file"

@@ -95,6 +95,10 @@ rg -Fxq 'ReadWritePaths=/etc/X11/xorg.conf.d' \
   "$repo_dir/packaging/systemd/stationconnect-host.service"
 rg -Fq 'Only the active desktop user may change its display layout' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
+rg -Fq 'layout_arguments(request.mode_1, request.mode_2)' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'Option "ModeValidation" "AllowNonEdidModes"' \
+  "$repo_dir/packaging/bin/stationconnect-display-prepare"
 if rg -q 'stationconnect_authentication|/pair|pair_session_t|pairing' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp" \
   "$repo_dir/host/sunshine-fork/src/nvhttp.h"; then
@@ -117,6 +121,8 @@ rg -Fq 'worker already has an active Desktop stream' "$client_session"
 rg -Fq 'm_InputHandler->resetRawHidAfterReconnect();' "$client_session"
 rg -Fq 'suspendForReconnect();' "$client_session"
 rg -Fq 'resumeAfterReconnect();' "$client_session"
+rg -Fq 'display transition is still pending' "$client_session"
+rg -Fq 'authentication will be refreshed once' "$client_session"
 rg -Fq 'm_LinuxRawWacomInput->resetAfterReconnect();' "$client_input"
 rg -Fq 'release(false);' "$client_raw_wacom"
 rg -Fq 'm_AttachFailed.store(false);' "$client_raw_wacom"
