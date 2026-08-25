@@ -316,11 +316,41 @@ if rg -n 'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_' \
   echo "StationConnect must advertise the one selected H.264 profile, not fixed fallback formats" >&2
   exit 1
 fi
-rg -U -q 'settings\.value\(\n[[:space:]]+SER_STATIONCONNECT_VIDEO_PROFILE,\n[[:space:]]+static_cast<int>\(SCVP_H264_10BIT_444\)\)' \
-  "$source_dir/app/settings/streamingpreferences.cpp" || {
-  echo "StationConnect encoding profile does not default to H.264 High 10 4:4:4" >&2
+for required_bookmark_profile_token in \
+  '#define SER_VIDEOPROFILE "stationconnect-video-profile"' \
+  'int stationConnectVideoProfile = 0;' \
+  'settings.value(SER_VIDEOPROFILE,' \
+  'settings.setValue(SER_VIDEOPROFILE, stationConnectVideoProfile);' \
+  'stationConnectVideoProfile == that.stationConnectVideoProfile' \
+  'stationConnectVideoProfile(int computerIndex) const' \
+  'm_StationConnectVideoProfile'; do
+  rg -Fq "$required_bookmark_profile_token" \
+    "$source_dir/app/backend/nvcomputer.h" \
+    "$source_dir/app/backend/nvcomputer.cpp" \
+    "$source_dir/app/gui/computermodel.h" \
+    "$source_dir/app/gui/computermodel.cpp" \
+    "$source_dir/app/streaming/session.h" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "StationConnect bookmark encoding profile is missing: ${required_bookmark_profile_token}" >&2
+    exit 1
+  }
+done
+for required_bookmark_profile_ui_token in \
+  'addEncodingProfile' \
+  'editEncodingProfile' \
+  'computerModel.stationConnectVideoProfile(index)'; do
+  rg -Fq "$required_bookmark_profile_ui_token" \
+    "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
+    echo "StationConnect bookmark encoding-profile UI is missing: ${required_bookmark_profile_ui_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'stationConnectVideoProfile|Encoding profile' \
+  "$source_dir/app/gui/SettingsView.qml" \
+  "$source_dir/app/settings/streamingpreferences.cpp"; then
+  echo "encoding profile remains a global StationConnect preference" >&2
   exit 1
-}
+fi
 if ! rg -Fq \
   'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_FORCE_SOFTWARE;' \
   "$source_dir/app/streaming/session.cpp" ||

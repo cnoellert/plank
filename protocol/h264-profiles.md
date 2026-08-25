@@ -1,7 +1,8 @@
 # StationConnect H.264 profile negotiation
 
-StationConnect clients advertise exactly one H.264 encoding profile for a
-session. The host must either advertise and produce that exact profile or
+Each StationConnect workstation bookmark stores one H.264 encoding profile.
+When that bookmark starts a session, the client advertises exactly its saved
+profile. The host must either advertise and produce that exact profile or
 reject the launch; bit depth and chroma sampling never fall back silently.
 
 | Client profile | Video format | Chroma type | Dynamic range | Color transform |
@@ -14,6 +15,9 @@ reject the launch; bit depth and chroma sampling never fall back silently.
 The existing 10-bit 4:4:4 identity profile remains the default and qualified
 production profile. The selectable alternatives require their own image,
 latency, and sustained-frame-rate qualification before production use.
+Encoding profile is intentionally absent from global Client Configuration;
+it is selected when creating a bookmark and can be changed with
+`Edit bookmark…`.
 
 The qualified Intel NUC does not expose VA-API H.264 High 4:2:2 or High 4:2:2
 10-bit decode profiles. Both 4:2:2 modes therefore use the pinned FFmpeg
