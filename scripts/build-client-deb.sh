@@ -107,7 +107,7 @@ private_lib_dir="${stage_dir}/usr/libexec/stationconnect/lib"
 mkdir -p "$stage_dir/DEBIAN" "$private_lib_dir" "$work_dir/debian"
 
 install -D -m 0755 "$moonlight_binary" \
-  "$stage_dir/usr/libexec/stationconnect/moonlight"
+  "$stage_dir/usr/libexec/stationconnect/stationconnect-client"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-client" \
   "$stage_dir/usr/bin/stationconnect-client"
 install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-client.service" \
@@ -146,7 +146,7 @@ cmp --silent "$moonlight_source_dir/app/res/stationconnect-logo.png" \
 version_output=$(
   QT_QPA_PLATFORM=offscreen \
     LD_LIBRARY_PATH="$private_lib_dir" \
-    "$stage_dir/usr/libexec/stationconnect/moonlight" --version 2>&1
+    "$stage_dir/usr/libexec/stationconnect/stationconnect-client" --version 2>&1
 )
 grep -Fxq "StationConnect ${package_version}" <<<"$version_output" || {
   echo "packaged client did not report the expected StationConnect version" >&2
@@ -243,6 +243,15 @@ grep -Fq './usr/share/icons/hicolor/512x512/apps/stationconnect-client.png' \
   echo "client DEB is missing the StationConnect application icon" >&2
   exit 1
 }
+grep -Fq './usr/libexec/stationconnect/stationconnect-client' \
+    <<<"$package_manifest" || {
+  echo "client DEB is missing the branded StationConnect runtime" >&2
+  exit 1
+}
+if grep -Fq './usr/libexec/stationconnect/moonlight' <<<"$package_manifest"; then
+  echo "client DEB still contains the superseded Moonlight runtime name" >&2
+  exit 1
+fi
 if grep -Fq './usr/share/applications/stationconnect-client.desktop' \
     <<<"$package_manifest"; then
   echo "client DEB still contains the superseded desktop entry" >&2
@@ -269,7 +278,7 @@ for maintainer_script in postinst postrm; do
 done
 rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
-  "$stage_dir/usr/libexec/stationconnect/moonlight" "$private_lib_dir"
+  "$stage_dir/usr/libexec/stationconnect/stationconnect-client" "$private_lib_dir"
 dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'
 dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-cairo'
 if dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-gtk'; then

@@ -12,7 +12,7 @@ if [[ -r ${client_env} ]]; then
 fi
 export STATIONCONNECT_MDNS_DISCOVERY=${STATIONCONNECT_MDNS_DISCOVERY:-0}
 
-client_binary=${STATIONCONNECT_CLIENT_BINARY:-/usr/libexec/stationconnect/moonlight}
+client_binary=${STATIONCONNECT_CLIENT_BINARY:-/usr/libexec/stationconnect/stationconnect-client}
 
 if [[ ! -x "${client_binary}" ]]; then
   echo "StationConnect client binary is not executable: ${client_binary}" >&2
