@@ -246,6 +246,9 @@ if(BUILD_TESTING)
   add_test(NAME host-state-profile
     COMMAND bash
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-host-state.sh)
+  add_test(NAME display-prepare
+    COMMAND bash
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/display/test-display-prepare.sh)
   add_test(NAME av-sync-telemetry-analyzer
     COMMAND bash
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio/test-analyze-av-sync-telemetry.sh)

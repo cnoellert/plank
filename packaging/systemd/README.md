@@ -56,6 +56,17 @@ This is Stage A session handling: an authenticated client can see GDM, but must
 complete the graphical login and reconnect after the worker transition. The
 supervisor does not inject input into GDM or create a new graphical session.
 
+`stationconnect-display-prepare.service` runs before the display manager. It
+keeps the workstation's Autodesk-derived `/etc/X11/xorg.conf` as the baseline
+and atomically adds or removes only
+`/etc/X11/xorg.conf.d/99-stationconnect-headless.conf`. Configure `[display]`
+in `stationconnect.conf` with `virtual_outputs = off`, `single`, or
+`dual-horizontal` and a qualified `virtual_mode` of `1920x1080` or
+`3840x2160`. The default is `off`. A changed topology is applied on reboot;
+the helper refuses to replace its overlay while the display manager is active.
+Package removal deletes only an overlay carrying StationConnect's generated
+file marker; it does not alter the currently running X server.
+
 Install `stationconnect-client.service` in the system user-unit directory so
 the client inherits its Wayland display. Enable the services with:
 

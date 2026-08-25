@@ -222,24 +222,19 @@ behavior remain correct with one and two virtual outputs.
 ## Configuration Model
 
 Add one administrator-controlled `[display]` section to
-`stationconnect.conf`. Exact key names will be finalized after the Xorg probe,
-but the configuration model is:
+`stationconnect.conf`. The first qualified implementation uses:
 
 ```ini
 [display]
 virtual_outputs = off
-allowed_layouts = single,dual-horizontal
-allowed_modes = 1920x1080@60,2560x1440@60,3840x2160@60
-maximum_outputs = 2
-maximum_canvas_width = 7680
-maximum_canvas_height = 4320
-maximum_pixel_rate = 995328000
+virtual_mode = 3840x2160
 ```
 
-`virtual_outputs` defaults to `off` until headless qualification passes. The
-packaged defaults must not alter an existing physical-display workstation.
-Dimensions, output count, and pixel rate are hard security/resource limits,
-not suggestions.
+`virtual_outputs` accepts only `off`, `single`, or `dual-horizontal` and
+defaults to `off`. `virtual_mode` accepts only the qualified `1920x1080` or
+`3840x2160` 60 Hz EDID modes. Those enumerations bound the first implementation
+to two outputs, a 7680x2160 canvas, and 995,328,000 pixels/s. The packaged
+defaults do not alter an existing physical-display workstation.
 
 ## Protocol Evolution
 

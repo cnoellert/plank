@@ -53,16 +53,19 @@ cp -a payload/. %{buildroot}/
 /usr/bin/chown root:root \
   /var/lib/stationconnect/stationconnect_state.json || exit 1
 /usr/bin/chmod 0600 /var/lib/stationconnect/stationconnect_state.json || exit 1
-%systemd_post stationconnect-pam-broker.service stationconnect-host.service
+%systemd_post stationconnect-pam-broker.service stationconnect-display-prepare.service stationconnect-host.service
 /usr/bin/udevadm control --reload-rules >/dev/null 2>&1 || :
 /usr/sbin/modprobe uhid >/dev/null 2>&1 || :
 /usr/bin/udevadm trigger --action=change --subsystem-match=misc --sysname-match=uhid >/dev/null 2>&1 || :
 
 %preun
-%systemd_preun stationconnect-pam-broker.service stationconnect-host.service
+if [ "$1" -eq 0 ]; then
+  /usr/libexec/stationconnect/stationconnect-display-prepare --cleanup || exit 1
+fi
+%systemd_preun stationconnect-pam-broker.service stationconnect-display-prepare.service stationconnect-host.service
 
 %postun
-%systemd_postun_with_restart stationconnect-pam-broker.service stationconnect-host.service
+%systemd_postun_with_restart stationconnect-pam-broker.service stationconnect-display-prepare.service stationconnect-host.service
 
 %files
 %license /usr/share/licenses/stationconnect-host/LICENSE-Sunshine
@@ -81,7 +84,9 @@ cp -a payload/. %{buildroot}/
 /usr/libexec/stationconnect/sunshine
 /usr/libexec/stationconnect/stationconnect-host-certificate
 /usr/libexec/stationconnect/stationconnect-host-state
+/usr/libexec/stationconnect/stationconnect-display-prepare
 /usr/lib/systemd/system/stationconnect-pam-broker.service
+/usr/lib/systemd/system/stationconnect-display-prepare.service
 /usr/lib/systemd/system/stationconnect-host.service
 /usr/lib/systemd/system-preset/90-stationconnect.preset
 /usr/lib/sysusers.d/stationconnect.conf

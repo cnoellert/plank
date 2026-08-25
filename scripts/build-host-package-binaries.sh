@@ -195,6 +195,40 @@ rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
 
+# Virtual-display preparation augments the Autodesk Xorg baseline before GDM.
+# It is opt-in, bounded to qualified layouts, and may not reconfigure a live
+# display manager.
+for required_display_token in \
+  'virtual_outputs = off' \
+  'virtual_mode = 3840x2160'; do
+  rg -Fq "$required_display_token" \
+    "$repo_dir/packaging/config/stationconnect.conf" || {
+    echo "host display default is missing: ${required_display_token}" >&2
+    exit 1
+  }
+done
+for required_display_token in \
+  'Before=display-manager.service' \
+  'ExecStart=/usr/libexec/stationconnect/stationconnect-display-prepare' \
+  'ReadWritePaths=/etc/X11/xorg.conf.d'; do
+  rg -Fxq "$required_display_token" \
+    "$repo_dir/packaging/systemd/stationconnect-display-prepare.service" || {
+    echo "host display-preparation unit invariant is missing: ${required_display_token}" >&2
+    exit 1
+  }
+done
+for required_display_token in \
+  'virtual_outputs == single' \
+  'virtual_outputs == dual-horizontal' \
+  'refusing to change the display topology while the display manager is active'; do
+  rg -Fq "$required_display_token" \
+    "$repo_dir/packaging/bin/stationconnect-display-prepare" || {
+    echo "host display-preparation helper invariant is missing: ${required_display_token}" >&2
+    exit 1
+  }
+done
+echo "host_headless_display_default_off_gate=pass"
+
 rg -Fxq \
   'X-StationConnect-ApplicationId=la.instinctual.StationConnect.Host' \
   "$repo_dir/packaging/systemd/stationconnect-host.service" || {

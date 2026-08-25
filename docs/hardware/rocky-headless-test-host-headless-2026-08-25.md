@@ -140,6 +140,20 @@ normal GDM command line, the result was:
 The overlay was removed and GDM was restarted into its original configuration
 after the probe.
 
+### Packaged display-preparation helper
+
+The candidate production helper generated the same configuration from a
+temporary StationConnect INI containing `virtual_outputs = dual-horizontal`
+and `virtual_mode = 1920x1080`. It ran only after GDM stopped, then normal GDM
+startup produced two independent 1920x1080 outputs, a 3840x1080 X screen,
+depth-30 direct NVIDIA rendering, and matching NvFBC output rectangles.
+NvFBC completed 120 forced calls at 60.00 calls/s with 88 us p95, 116 us
+maximum capture time, zero driver-missed frames, and zero deadline misses.
+
+The helper's cleanup removed only its marked overlay. GDM returned to the
+physical one-monitor layout, and `/etc/X11/xorg.conf` retained SHA-256
+`2ecfcd68f51b8c47b8d9dfea8d73f6a20a57faddf0fa995956b4749451c3ecb8`.
+
 ### Rejected integration approach
 
 Passing an absolute or search-relative `XORGCONFIG` environment variable to

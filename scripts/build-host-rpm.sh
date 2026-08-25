@@ -23,7 +23,7 @@ if [[ -n $(git -C "$repo_dir" status --porcelain --untracked-files=normal) ]]; t
   exit 1
 fi
 
-for command_name in cmake install rpmbuild tar; do
+for command_name in cmake install python3 rpmbuild tar; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -54,10 +54,14 @@ install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host-certificate" \
   "$payload_dir/usr/libexec/stationconnect/stationconnect-host-certificate"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host-state" \
   "$payload_dir/usr/libexec/stationconnect/stationconnect-host-state"
+install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-display-prepare" \
+  "$payload_dir/usr/libexec/stationconnect/stationconnect-display-prepare"
 install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-host.service" \
   "$payload_dir/usr/lib/systemd/system/stationconnect-host.service"
 install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-pam-broker.service" \
   "$payload_dir/usr/lib/systemd/system/stationconnect-pam-broker.service"
+install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-display-prepare.service" \
+  "$payload_dir/usr/lib/systemd/system/stationconnect-display-prepare.service"
 install -D -m 0644 "$repo_dir/packaging/systemd/90-stationconnect.preset" \
   "$payload_dir/usr/lib/systemd/system-preset/90-stationconnect.preset"
 install -D -m 0644 "$repo_dir/packaging/pam/remote-desktop" \
@@ -74,6 +78,8 @@ install -D -m 0644 "$repo_dir/packaging/modules-load.d/stationconnect.conf" \
   "$payload_dir/usr/lib/modules-load.d/stationconnect.conf"
 install -D -m 0644 "$repo_dir/packaging/firewalld/stationconnect.xml" \
   "$payload_dir/usr/lib/firewalld/services/stationconnect.xml"
+python3 "$repo_dir/packaging/display/generate-virtual-edids.py" \
+  "$payload_dir/usr/share/stationconnect/display"
 install -D -m 0644 "$repo_dir/host/sunshine-fork/LICENSE" \
   "$payload_dir/usr/share/licenses/stationconnect-host/LICENSE-Sunshine"
 install -D -m 0644 "$repo_dir/packaging/README.md" \
@@ -106,8 +112,12 @@ rpm -qpl "$rpm_file" | rg -q '/usr/lib/modules-load\.d/stationconnect\.conf$'
 rpm -qpl "$rpm_file" | rg -q '/usr/bin/stationconnect-host-supervisor$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-certificate$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-state$'
+rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-display-prepare$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
+rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-display-prepare\.service$'
 rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2\.edid$'
 if rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/host\.env$|/usr/share/stationconnect/web/'; then
   echo "host RPM still contains legacy environment configuration or Web UI assets" >&2
   exit 1

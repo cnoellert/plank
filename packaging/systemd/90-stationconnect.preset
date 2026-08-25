@@ -1,2 +1,3 @@
 enable stationconnect-pam-broker.service
+enable stationconnect-display-prepare.service
 enable stationconnect-host.service
