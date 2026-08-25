@@ -256,3 +256,35 @@ parser test passed 5/5 and the host layout validator passed 4/4.
 This accepts the successful-layout portion of H4. Unit tests cover a
 non-consuming layout mismatch; a live mismatch rejection and the H5 separate
 local-display renderer remain open.
+
+## Asymmetric 4096x2160 + 1024x2160 Qualification
+
+The initial `.83` implementation could not make 4096x2160 survive desktop
+policy. EDID 1.x detailed timings have only 12 horizontal-active bits, so the
+candidate used a 3840x2160 base DTD and advertised CTA VIC 102. NVIDIA accepted
+the explicit 4096x2160 MetaMode during Xorg initialization, but GDM then asked
+for `nvidia-auto-select` and received the 3840x2160 fallback. Removing the base
+preferred flag could leave DP-0 without an active mode. This candidate was
+rejected rather than shipped as approximate 4K.
+
+The `.84` EDID generator instead appends a DisplayID 1.3 extension with a
+preferred Type I detailed timing. `edid-decode` reports 4096x2160 at 60 Hz,
+594 MHz, 4400x2250 total, positive horizontal and vertical sync, and the
+preferred flag. The base block contains no competing detailed timing. CTA VIC
+102 remains a non-native additional mode source.
+
+With `.84` installed and a cold reboot, NVIDIA 580.159.04 and GDM retained:
+
+```text
+Screen 0: 5120x2160
+DP-0: 4096x2160+0+0, primary and preferred
+DP-2: 1024x2160+4096+0, preferred
+```
+
+`nvidia-settings` reported the exact source MetaMode with 4096x2160 and
+1024x2160 viewports. Xorg logged one validated 5120x2160 MetaMode and no later
+3840 substitution. The package-generated overlay SHA-256 is
+`2e6c5f12f64a4087e02eecdbebd695f0fe161ac28befbdf048a715392ab18398`;
+the installed primary EDID is 384 bytes with SHA-256
+`243c62058d7e54be49902744707e713038fbde3c2220a7014c9364e0a75770f3`.
+The Autodesk baseline remains unchanged.
