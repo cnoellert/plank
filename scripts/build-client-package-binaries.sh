@@ -235,6 +235,32 @@ for required_loss_ui_token in \
 done
 echo "client_video_packet_loss_indicator_gate=pass"
 
+# The speed candidate keeps the accepted system-memory allocator as its
+# default and exposes two developer-only alternatives through an environment
+# selector. The mapped allocator is the measured reference experiment. The
+# host-import allocator preserves cacheable FFmpeg reference frames while
+# importing their allocations as Vulkan transfer buffers, avoiding the Intel
+# driver's CPU linear-to-tiled upload path.
+for required_frame_allocator_token in \
+  'static int getMappedBuffer(AVCodecContext *context, AVFrame *frame, int flags);' \
+  'static int getImportedHostBuffer(AVCodecContext *context, AVFrame *frame, int flags);' \
+  'mappedContext.opaque = const_cast<pl_gpu*>(&renderer->m_Vulkan->gpu);' \
+  'return pl_get_buffer2(&mappedContext, frame, flags);' \
+  'STATIONCONNECT_VULKAN_FRAME_ALLOCATOR' \
+  'requestedAllocator == "host-import"' \
+  'bufferParams.import_handle = PL_HANDLE_HOST_PTR' \
+  'Using pooled cacheable FFmpeg decode buffers imported into Vulkan' \
+  'context->get_buffer2 = getMappedBuffer;' \
+  'Using persistently mapped Vulkan decode buffers'; do
+  rg -Fq "$required_frame_allocator_token" \
+    "$source_dir/app/streaming/video/ffmpeg-renderers/plvk.cpp" \
+    "$source_dir/app/streaming/video/ffmpeg-renderers/plvk.h" || {
+    echo "Vulkan frame-allocator invariant is missing: ${required_frame_allocator_token}" >&2
+    exit 1
+  }
+done
+echo "client_vulkan_frame_allocator_gate=pass"
+
 # Remote-workstation sessions capture OS-level key combinations by default so
 # shortcuts such as Alt+Tab reach the host in both windowed and borderless mode.
 rg -U -q 'settings\.value\(SER_CAPTURESYSKEYS,\n[[:space:]]+static_cast<int>\(CaptureSysKeysMode::CSK_ALWAYS\)\)' \
