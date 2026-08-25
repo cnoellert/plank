@@ -2,6 +2,16 @@
 
 set -euo pipefail
 
+client_config_home=${XDG_CONFIG_HOME:-${HOME:?}/.config}
+client_env=${client_config_home}/stationconnect/client.env
+if [[ -r ${client_env} ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${client_env}"
+  set +a
+fi
+export STATIONCONNECT_MDNS_DISCOVERY=${STATIONCONNECT_MDNS_DISCOVERY:-0}
+
 client_binary=${STATIONCONNECT_CLIENT_BINARY:-/usr/libexec/stationconnect/moonlight}
 
 if [[ ! -x "${client_binary}" ]]; then

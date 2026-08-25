@@ -7,3 +7,4 @@ Icon=stationconnect-client
 Terminal=false
 Categories=Network;RemoteAccess;
 StartupNotify=true
+StartupWMClass=la.instinctual.StationConnect

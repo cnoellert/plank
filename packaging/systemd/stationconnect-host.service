@@ -1,16 +1,37 @@
 [Unit]
-Description=StationConnect workstation host
-After=graphical-session.target network-online.target
-PartOf=graphical-session.target
+Description=StationConnect workstation host supervisor
+Documentation=file:/usr/share/doc/stationconnect-host/README.md
+Requires=stationconnect-pam-broker.service
+Wants=network-online.target
+After=stationconnect-pam-broker.service display-manager.service network-online.target systemd-user-sessions.service
 
 [Service]
 Type=simple
-EnvironmentFile=-%h/.config/stationconnect/host.env
-ExecStart=/usr/bin/stationconnect-host
-Restart=always
+ExecStart=/usr/bin/stationconnect-host-supervisor
+Restart=on-failure
 RestartSec=2s
-TimeoutStopSec=10s
+TimeoutStopSec=15s
+KillMode=mixed
 UMask=0077
+RuntimeDirectory=stationconnect/host
+RuntimeDirectoryMode=0700
+LogsDirectory=stationconnect
+LogsDirectoryMode=0700
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+LockPersonality=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectHome=read-only
+ProtectSystem=full
+ReadOnlyPaths=-/vol/home
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=multi-user.target

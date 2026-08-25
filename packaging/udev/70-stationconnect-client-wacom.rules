@@ -1,0 +1,8 @@
+# Permit the active local session to exclusively grab every Wacom input
+# function while its complete USB group is redirected to the host.
+ACTION!="remove", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_VENDOR_ID}=="056a", TAG+="uaccess"
+
+# Raw-HID redirection must read input reports and answer feature/output
+# reports. Access remains scoped to the active local session and Wacom's USB
+# vendor ID; no input or hidraw device is made globally writable.
+ACTION!="remove", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="056a", TAG+="uaccess"

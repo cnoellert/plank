@@ -3,7 +3,7 @@
 set -euo pipefail
 
 host_binary=${STATIONCONNECT_HOST_BINARY:-/usr/libexec/stationconnect/sunshine}
-auth_socket=${STATIONCONNECT_AUTH_SOCKET:-/run/stationconnect/auth.sock}
+auth_socket=${STATIONCONNECT_AUTH_SOCKET:-/run/stationconnect/pam/auth.sock}
 
 if [[ ! -x "${host_binary}" ]]; then
   echo "StationConnect host binary is not executable: ${host_binary}" >&2
@@ -18,9 +18,10 @@ if [[ ! -r "${auth_socket}" || ! -w "${auth_socket}" ]]; then
   exit 1
 fi
 
-host_options=()
-if [[ -n "${STATIONCONNECT_HOST_OPTIONS:-}" ]]; then
-  read -r -a host_options <<<"${STATIONCONNECT_HOST_OPTIONS}"
+config_file=/etc/stationconnect/stationconnect.conf
+if [[ ! -r "${config_file}" ]]; then
+  echo "StationConnect host configuration is unavailable: ${config_file}" >&2
+  exit 1
 fi
 
-exec "${host_binary}" "${host_options[@]}" "$@"
+exec "${host_binary}" "${config_file}" "$@"

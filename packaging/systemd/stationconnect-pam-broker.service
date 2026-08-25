@@ -5,10 +5,10 @@ Before=sunshine.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/auth.sock --group stationconnect-auth
+ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --group stationconnect-auth
 User=root
 Group=root
-RuntimeDirectory=stationconnect
+RuntimeDirectory=stationconnect/pam
 RuntimeDirectoryMode=0750
 UMask=0077
 Restart=on-failure

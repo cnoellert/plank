@@ -25,7 +25,7 @@ core-pen fallback.
 
 ## Wire Framing
 
-Production messages use protocol version 1 and begin with the packed 20-byte
+Production messages use protocol version 2 and begin with the packed 20-byte
 `SC_RAW_HID_WIRE_HEADER` from `StationConnect.h`. All integer fields are
 little-endian. The header carries magic `SCWH`, message type, interface index,
 device generation, transaction ID, and payload length. The client sends the
@@ -46,6 +46,8 @@ All lifecycle and control messages are reliable and ordered:
 - `tablet-set-report` / `tablet-set-report-result`, correlated by transaction ID
 - `tablet-output-report` for host-to-client `UHID_OUTPUT`
 - `tablet-open`, `tablet-close`, and `tablet-detach`
+- `tablet-suspend`, which stops transport delivery without removing the host
+  UHID endpoints
 
 The client answers control requests with `HIDIOCGFEATURE`, `HIDIOCSFEATURE`, or
 the corresponding input/output-report ioctl on the original `hidraw` node.
@@ -56,10 +58,18 @@ successful feature reply.
 
 Raw access is granted only to the active local session. Once attach succeeds,
 the client exclusively grabs every pen, pad, and touch event node belonging to
-the USB group so local desktop input cannot occur in parallel. On disconnect,
-timeout, generation change, or hot-unplug, the host sends `UHID_DESTROY` for all
-interfaces and the client releases all grabs. Stale reports from an older
-generation are discarded.
+the USB group so local desktop input cannot occur in parallel. Client focus
+loss sends `tablet-suspend`, releases the local grabs, and closes the physical
+nodes while the host keeps its UHID endpoints and XInput identities. Focus
+return starts a new generation; byte-identical USB identity and descriptors
+reactivate the retained endpoints without recreating them. This is required
+because Autodesk Flame caches XInput device IDs.
+
+A physical hot-unplug, HID I/O error, changed USB identity or descriptor, or
+explicit final device teardown remains destructive and sends `tablet-detach`.
+An ordinary resumable stream disconnect also suspends transport and retains the
+same endpoints. Stale reports from an older or suspended generation are
+discarded.
 
 ## Acceptance
 

@@ -56,3 +56,27 @@ authenticated as session `c11`. Moonlight held file descriptors for the two
 physical PTH-660 interfaces (`/dev/hidraw2` and `/dev/hidraw3`), and the host
 created matching `056a:0357` Pen, Pad, and Finger devices. This confirms exact
 raw-HID forwarding is restored with the synchronized 0.4 packages.
+
+## Fresh-install dependency correction — 2026-08-22
+
+A clean Ubuntu 26.04 Desktop installation exposed a package metadata gap in
+0.7: Qt's ELF libraries were present, but `QtQuick.Controls` failed to load
+because QML imports are invisible to `dpkg-shlibdeps`. Revision 0.8 explicitly
+depends on the Qt Quick, Controls, Layouts, and Window QML modules. It also
+uses Debian's standard user-service maintainer helpers to enable future
+graphical-session launches and remove that state on purge.
+
+The corrected DEB was assembled twice on the development NUC from clean
+Moonlight commit `2404550e` and the pinned private FFmpeg 9.0.1 runtime. Both
+assemblies produced SHA-256
+`d6ca95a28cb925aed48c2d93ef5089dc2a161aa5d242482343752498eb2074b5`.
+Manifest, private-runtime, dependency, maintainer-script syntax, and
+reproducibility gates passed. The production-workflow NUC was used only for
+read-only diagnosis; installation and verification are operator-owned.
+
+Revision 0.9 additionally requires Ubuntu's open
+`intel-media-va-driver`. A fresh installation had the generic `libva`
+libraries, an active `i915` kernel driver, an accessible render node, and no
+`iHD_drv_video.so`; without the implementation driver Moonlight correctly
+reported that hardware-accelerated decoding was unavailable. The development
+NUC's qualified VA-API path uses the same open driver release.
