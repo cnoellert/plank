@@ -227,22 +227,27 @@ Add one administrator-controlled `[display]` section to
 ```ini
 [display]
 virtual_outputs = off
-virtual_mode = 3840x2160
+virtual_mode_1 = 3840x2160
+virtual_mode_2 = 3840x2160
 ```
 
 `virtual_outputs` accepts only `off`, `single`, or `dual-horizontal` and
-defaults to `off`. `virtual_mode` accepts only the qualified `1920x1080` or
-`3840x2160` 60 Hz EDID modes. Those enumerations bound the first implementation
-to two outputs, a 7680x2160 canvas, and 995,328,000 pixels/s. The packaged
-defaults do not alter an existing physical-display workstation.
+defaults to `off`. `virtual_mode_1` and `virtual_mode_2` independently select
+one of the qualified 60 Hz modes: `1024x2160`, `1280x720`, `1280x1024`,
+`1280x2160`, `1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`,
+`3440x1440`, `3840x1600`, `3840x2160`, or `4096x2160`. The preset boundary
+keeps arbitrary modelines out of the privileged display-preparation path while
+supporting asymmetric Flame layouts such as `3840x2160 + 1280x2160` and
+`4096x2160 + 1024x2160`. The packaged defaults do not alter an existing
+physical-display workstation.
 
 ## Protocol Evolution
 
-Version 2 is the first StationConnect headless-layout protocol. It retains the
+Version 3 is the current StationConnect headless-layout protocol. It retains the
 existing physical-output `single-output` and `scaled-span` presentation modes
 and adds:
 
-- requested host layout and preset mode;
+- requested host layout and one preset mode per virtual output;
 - virtual versus physical output provenance;
 - stable virtual output identity;
 - separate local-display presentation mapping;
@@ -251,12 +256,13 @@ and adds:
 - capability limits and explicit rejection reasons;
 - optional future per-output stream IDs.
 
-The negotiated feature mask is `0xff`: version 1's topology generation,
+The negotiated feature mask is `0x1ff`: version 1's topology generation,
 display identity, geometry, presentation mode, and authenticated topology
-features plus version 2 layout metadata, composite source regions, and exact
-layout binding. Launch requests carry `scHostLayout` and `scVirtualMode`; the
-host compares them with both administrator policy and the live X11 layout
-before it consumes one-use PAM state.
+features; version 2 layout metadata, composite source regions, and exact layout
+binding; plus version 3 independent virtual-output modes. Launch requests carry
+`scHostLayout`, `scVirtualMode1`, and `scVirtualMode2`; the host compares them
+with both administrator policy and the live X11 layout before it consumes
+one-use PAM state.
 
 Every protocol change requires synchronized host, client, schema, and
 test-vector commits. Old or missing fields must fail clearly when a headless

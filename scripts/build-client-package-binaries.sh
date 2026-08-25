@@ -453,7 +453,8 @@ for required_bookmark_token in \
   stationconnect-manual-bookmark \
   stationconnect-server-uuid \
   stationconnect-host-layout \
-  stationconnect-virtual-mode \
+  stationconnect-virtual-mode-1 \
+  stationconnect-virtual-mode-2 \
   acceptsServerUuid \
   'Address or hostname' \
   Nickname; do
@@ -462,9 +463,9 @@ for required_bookmark_token in \
     exit 1
   }
 done
-rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addHostLayout\.currentIndex,[[:space:]]*addVirtualMode\.currentIndex,[[:space:]]*addDisplayChoice\.currentIndex,[[:space:]]*addEncodingProfileModel\.get\(' \
+rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addHostLayout\.currentIndex,[[:space:]]*addVirtualMode1\.currentIndex,[[:space:]]*addVirtualMode2\.currentIndex,[[:space:]]*addDisplayChoice\.currentIndex,[[:space:]]*addEncodingProfileModel\.get\(' \
   "$source_dir/app/gui/main.qml" || {
-  echo "manual workstation dialog does not submit address, nickname, host layout, virtual mode, presentation, and encoding profile" >&2
+  echo "manual workstation dialog does not submit address, nickname, host layout, independent virtual modes, presentation, and encoding profile" >&2
   exit 1
 }
 for required_bookmark_editor_token in \

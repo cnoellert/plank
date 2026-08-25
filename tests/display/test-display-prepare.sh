@@ -32,16 +32,25 @@ printf '[display]\nvirtual_outputs = off\n' >"$config_file"
 run_prepare >/dev/null
 [[ ! -e $output_file ]]
 
-printf '[display]\nvirtual_outputs = single\nvirtual_mode = 3840x2160\n' >"$config_file"
+printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0"' "$output_file"
 grep -Fq 'Virtual 3840 2160' "$output_file"
+grep -Fq 'virtual-1-3840x2160.edid' "$output_file"
 
-printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode = 1920x1080\n' >"$config_file"
+printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
-grep -Fq 'DFP-2: 1920x1080 +1920+0' "$output_file"
-grep -Fq 'Virtual 3840 1080' "$output_file"
+grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: 1280x2160 +3840+0' "$output_file"
+grep -Fq 'virtual-2-1280x2160.edid' "$output_file"
+grep -Fq 'Virtual 5120 2160' "$output_file"
+
+printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
+run_prepare >/dev/null
+grep -Fq 'DFP-0: 4096x2160 +0+0, DFP-2: 1024x2160 +4096+0' "$output_file"
+grep -Fq 'virtual-1-4096x2160.edid' "$output_file"
+grep -Fq 'virtual-2-1024x2160.edid' "$output_file"
+grep -Fq 'Virtual 5120 2160' "$output_file"
 
 previous_hash=$(sha256sum "$output_file")
 printf '[display]\nvirtual_outputs = three\n' >"$config_file"
@@ -56,15 +65,21 @@ cat >"${fake_bin}/systemctl" <<'EOF'
 exit 0
 EOF
 chmod 0755 "${fake_bin}/systemctl"
-printf '[display]\nvirtual_outputs = single\nvirtual_mode = 1920x1080\n' >"$config_file"
+printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 1920x1080\n' >"$config_file"
 if run_prepare >/dev/null 2>&1; then
   echo "an active display manager did not block a topology change" >&2
   exit 1
 fi
 [[ $(sha256sum "$output_file") == "$previous_hash" ]]
 
-printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode = 1920x1080\n' >"$config_file"
+printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
 run_prepare >/dev/null
+
+printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 5120x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
+if run_prepare >/dev/null 2>&1; then
+  echo "an unqualified independent virtual mode was accepted" >&2
+  exit 1
+fi
 
 cat >"${fake_bin}/systemctl" <<'EOF'
 #!/usr/bin/env bash

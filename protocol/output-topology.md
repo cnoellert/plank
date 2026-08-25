@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 2 describes the host desktop after operating-system
+Protocol version 3 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 2` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 2 defines these bits:
+The host returns `schema_version: 3` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 3 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -22,9 +22,10 @@ The host returns `schema_version: 2` and a numeric `feature_flags` field from
 - `0x20` — host-layout and virtual-output metadata
 - `0x40` — composite-stream source rectangles for local presentation
 - `0x80` — exact host-layout binding at launch
+- `0x100` — independently selected modes for virtual outputs 1 and 2
 
-The client sends `scProtocolVersion=2`, `scFeatureFlags`, `scDisplayMode`,
-`scHostLayout`, and `scVirtualMode` on `/launch`. A client negotiating `0x10`
+The client sends `scProtocolVersion=3`, `scFeatureFlags`, `scDisplayMode`,
+`scHostLayout`, `scVirtualMode1`, and `scVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
 requires `scOutputId`; `scaled-span` captures the desktop bounds and omits it.
@@ -36,14 +37,15 @@ sent as stable IDs.
 
 The document contains a monotonically changing `generation`, the bounding
 desktop rectangle, a `layout` object, and an `outputs` array. `layout.kind` is
-`physical`, `single`, or `dual-horizontal`; `layout.virtual_mode` is empty for
-a physical layout and is one of the administrator-qualified virtual modes for
-a virtual layout. The layout also publishes whether it is virtual and its
+`physical`, `single`, or `dual-horizontal`; `layout.virtual_modes` is empty for
+a physical layout, contains one administrator-qualified mode for `single`, and
+contains the independently ordered primary/secondary modes for
+`dual-horizontal`. The layout also publishes whether it is virtual and its
 output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`source_rect` in composite-source coordinates. Version 2 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 3 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -51,8 +53,11 @@ encoded frame.
 Bookmarks persist `configured`, `physical`, `single`, or `dual-horizontal` as
 their host-layout requirement. `configured` is resolved to the authenticated
 topology's exact current layout before launch; it is not sent as a wildcard.
-Virtual layouts also persist an enumerated `1920x1080` or `3840x2160` mode.
-The host compares the requested layout and mode with both its administrator
+Virtual layouts persist one enumerated mode per requested output. The current
+60 Hz allowlist is `1024x2160`, `1280x720`, `1280x1024`, `1280x2160`,
+`1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `3440x1440`,
+`3840x1600`, `3840x2160`, and `4096x2160`. The host compares the requested
+layout and both modes with its administrator
 configuration and the live topology before claiming the one-use PAM launch
 state. A mismatch returns 409 with a clear restart/configuration requirement.
 The first implementation never restarts Xorg or changes an active Flame
@@ -95,9 +100,10 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v2.json` represents the qualified headless-test-host
-dual-horizontal virtual layout. Parsers must preserve order-independent
+`tests/protocol/output-topology-v3.json` represents the Flame-style
+3840x2160 primary plus 1280x2160 secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout
-binding, and the primary fallback. The version-1 vector remains historical
+binding, independent modes, and the primary fallback. The version-1 and
+version-2 vectors remain historical
 evidence only; StationConnect has no deployed legacy clients requiring a
 silent version fallback.

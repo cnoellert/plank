@@ -200,7 +200,8 @@ echo "host_single_config_gate=pass"
 # display manager.
 for required_display_token in \
   'virtual_outputs = off' \
-  'virtual_mode = 3840x2160'; do
+  'virtual_mode_1 = 3840x2160' \
+  'virtual_mode_2 = 3840x2160'; do
   rg -Fq "$required_display_token" \
     "$repo_dir/packaging/config/stationconnect.conf" || {
     echo "host display default is missing: ${required_display_token}" >&2

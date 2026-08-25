@@ -61,8 +61,9 @@ keeps the workstation's Autodesk-derived `/etc/X11/xorg.conf` as the baseline
 and atomically adds or removes only
 `/etc/X11/xorg.conf.d/99-stationconnect-headless.conf`. Configure `[display]`
 in `stationconnect.conf` with `virtual_outputs = off`, `single`, or
-`dual-horizontal` and a qualified `virtual_mode` of `1920x1080` or
-`3840x2160`. The default is `off`. A changed topology is applied on reboot;
+`dual-horizontal`. `virtual_mode_1` and `virtual_mode_2` independently select
+one of the package-documented 60 Hz monitor presets; output 2 is ignored for a
+single-head layout. The default is `off`. A changed topology is applied on reboot;
 the helper refuses to replace its overlay while the display manager is active.
 Package removal deletes only an overlay carrying StationConnect's generated
 file marker; it does not alter the currently running X server.

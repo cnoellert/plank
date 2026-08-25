@@ -116,8 +116,10 @@ rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-display
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-display-prepare\.service$'
 rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1\.edid$'
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-3840x2160\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1280x2160\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-4096x2160\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1024x2160\.edid$'
 if rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/host\.env$|/usr/share/stationconnect/web/'; then
   echo "host RPM still contains legacy environment configuration or Web UI assets" >&2
   exit 1
