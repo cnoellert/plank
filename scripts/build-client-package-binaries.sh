@@ -539,6 +539,36 @@ rg -U -q 'case AddressRole:(.|\n)*!computer->manualAddress\.isNull\(\)(.|\n)*!co
 }
 echo "client_offline_bookmark_gate=pass"
 
+# Both bookmark dialogs consume the backend's canonical ordered mode list.
+# Duplicated QML arrays can silently shift choice indices when a mode is added.
+for bookmark_ui in \
+  "$source_dir/app/gui/main.qml" \
+  "$source_dir/app/gui/PcView.qml"; do
+  rg -Fq 'property var virtualModeChoices: ComputerManager.stationConnectVirtualModeChoices()' \
+    "$bookmark_ui" || {
+    echo "bookmark resolution UI does not use the canonical backend list: ${bookmark_ui}" >&2
+    exit 1
+  }
+done
+for required_virtual_mode_token in \
+  'Q_INVOKABLE QStringList stationConnectVirtualModeChoices() const;' \
+  'QStringList choices = NvOutputTopology::qualifiedVirtualModes();' \
+  'int hostLayout = 0, int virtualMode1 = 11' \
+  'addVirtualMode1.currentIndex = 11' \
+  'property int virtualMode1Index: 11' \
+  'height: 820' \
+  'minimumHeight: 720'; do
+  rg -Fq "$required_virtual_mode_token" \
+    "$source_dir/app/backend/computermanager.h" \
+    "$source_dir/app/backend/computermanager.cpp" \
+    "$source_dir/app/gui/main.qml" \
+    "$source_dir/app/gui/PcView.qml" || {
+    echo "bookmark resolution-list invariant is missing: ${required_virtual_mode_token}" >&2
+    exit 1
+  }
+done
+echo "client_bookmark_resolution_list_gate=pass"
+
 # Workstation diagnostics belong in the bounded persistent log rather than a
 # user-facing context-menu dump of internal addresses and identifiers.
 if rg -n 'DetailsRole|showPcDetailsDialog|View Details|Running Game ID|MAC Address:' \
