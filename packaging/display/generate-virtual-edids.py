@@ -8,8 +8,10 @@ import hashlib
 from pathlib import Path
 
 
-# Qualified Dell U4021QW timing data. StationConnect replaces the identity
-# descriptors while retaining its standard and CTA timing definitions.
+# Qualified Dell U4021QW base timing data. StationConnect replaces the
+# identity and detailed timings. The generated EDID is deliberately limited
+# to 384 bytes because Mutter 40 reads at most 400 bytes from XRandR; a longer
+# property is truncated to a non-128-byte length and rejected as unknown.
 BASE_EDID_HEX = """
 00ffffffffffff0010ac0a424c313732
 141f0104b54127783a52f5b04f42ab25
@@ -53,9 +55,6 @@ MODE_TIMINGS = {
     "4096x2160": (594.00, 4096, 4184, 4272, 4400, 2160, 2168, 2178, 2250),
 }
 
-CTA_4096X2160P60_VIC = 102
-
-
 def eisa_manufacturer_id(name: str) -> bytes:
     """Return the packed two-byte EISA manufacturer identifier."""
     if len(name) != 3 or any(letter < "A" or letter > "Z" for letter in name):
@@ -88,11 +87,11 @@ def detailed_timing(mode: str) -> tuple[bytes, int, int]:
     v_sync_offset = v_sync_start - v_active
     v_sync_width = v_sync_end - v_sync_start
 
-    # Give desktop software a plausible physical aspect without claiming a
-    # particular commercial monitor size. The 1280x2160 Flame sidecar is
-    # intentionally tall; all other presets use the same 600 mm width.
-    h_size_mm = 320 if mode in ("1024x2160", "1280x2160") else 600
-    v_size_mm = round(h_size_mm * v_active / h_active)
+    # These are virtual outputs, not physical panels. Mutter recognizes
+    # 160x90 mm as an aspect-ratio marker, avoids deriving a misleading DPI,
+    # and uses the EDID product identity in its display name.
+    h_size_mm = 160
+    v_size_mm = 90
     descriptor = bytearray(18)
     descriptor[0:2] = round(clock_mhz * 100).to_bytes(2, "little")
     descriptor[2] = h_active & 0xFF
@@ -133,9 +132,26 @@ def displayid_timing(mode: str, preferred: bool) -> bytes:
     return bytes(descriptor)
 
 
-def displayid_timing_extensions(preferred_mode: str) -> list[bytes]:
-    """Advertise the complete qualified mode pool in DisplayID sections."""
-    modes = list(MODE_TIMINGS)
+def base_timing_modes(preferred_mode: str) -> list[str]:
+    """Choose three exact timings for the base block, preferred first."""
+    if preferred_mode == "4096x2160":
+        # EDID 1.x cannot represent 4096 active pixels. DisplayID marks it
+        # preferred; these are conservative exact-60 base fallbacks.
+        return ["3840x2160", "1920x1080", "1280x720"]
+
+    modes = [preferred_mode]
+    for fallback in ("1920x1080", "1280x720", "3840x2160"):
+        if fallback not in modes:
+            modes.append(fallback)
+        if len(modes) == 3:
+            break
+    return modes
+
+
+def displayid_timing_extensions(modes: list[str], preferred_mode: str) -> list[bytes]:
+    """Encode ten remaining exact timings in two DisplayID sections."""
+    if len(modes) != 10:
+        raise ValueError("exactly ten DisplayID timings are required")
     chunks = [modes[offset : offset + 5] for offset in range(0, len(modes), 5)]
     extensions = []
     for section_index, chunk in enumerate(chunks):
@@ -169,11 +185,13 @@ def validate_exact_refresh_rates() -> None:
             raise ValueError(f"qualified mode is not exactly 60 Hz: {mode}")
 
 
-def validate_displayid_mode_pool(edid: bytes, preferred_mode: str) -> None:
-    """Verify that every qualified mode occurs once and only one is preferred."""
-    advertised = []
+def validate_mode_pool(edid: bytes, base_modes: list[str], preferred_mode: str) -> None:
+    """Verify one complete exact-60 pool and one preferred timing."""
+    advertised = list(base_modes)
     preferred = []
-    for offset in range(256, len(edid), 128):
+    if edid[24] & 0x02:
+        preferred.append(base_modes[0])
+    for offset in range(128, len(edid), 128):
         extension = edid[offset : offset + 128]
         if (extension[0] != 0x70 or extension[5:7] != bytes((0x03, 0x00)) or
                 extension[7] == 0 or extension[7] % 20 != 0):
@@ -184,70 +202,60 @@ def validate_displayid_mode_pool(edid: bytes, preferred_mode: str) -> None:
                 int.from_bytes(descriptor[4:6], "little") + 1,
                 int.from_bytes(descriptor[12:14], "little") + 1,
             )
-            advertised.append(resolution)
+            mode = next((name for name, timing in MODE_TIMINGS.items()
+                         if resolution == (timing[1], timing[5])), None)
+            if mode is None:
+                raise ValueError("generated DisplayID timing is not qualified")
+            advertised.append(mode)
             if descriptor[3] & 0x80:
-                preferred.append(resolution)
-    expected = [(timing[1], timing[5]) for timing in MODE_TIMINGS.values()]
-    selected = MODE_TIMINGS[preferred_mode]
-    if advertised != expected or preferred != [(selected[1], selected[5])]:
-        raise ValueError("generated DisplayID mode pool or preferred timing is invalid")
+                preferred.append(mode)
+    if (len(advertised) != len(MODE_TIMINGS) or
+            set(advertised) != set(MODE_TIMINGS) or
+            preferred != [preferred_mode]):
+        raise ValueError("generated mode pool or preferred timing is invalid")
 
 
 def build_edid(index: int, mode: str) -> bytes:
     """Build one checksum-valid EDID with a stable StationConnect identity."""
     validate_exact_refresh_rates()
-    edid = bytearray.fromhex(BASE_EDID_HEX)
-    if len(edid) != 256:
-        raise ValueError(f"base EDID has {len(edid)} bytes instead of 256")
+    edid = bytearray.fromhex(BASE_EDID_HEX)[:128]
+    if len(edid) != 128:
+        raise ValueError(f"base EDID has {len(edid)} bytes instead of 128")
     if edid[:8] != b"\x00\xff\xff\xff\xff\xff\xff\x00":
         raise ValueError("base EDID header is invalid")
-    if any(sum(edid[offset : offset + 128]) & 0xFF for offset in range(0, len(edid), 128)):
+    if sum(edid) & 0xFF:
         raise ValueError("base EDID checksum is invalid")
 
+    # INS is the product-selected short manufacturer identity for Instinctual.
     edid[8:10] = eisa_manufacturer_id("INS")
     edid[10:12] = (0x5300 + index).to_bytes(2, byteorder="little")
     edid[12:16] = index.to_bytes(4, byteorder="little")
     edid[16] = 1
     edid[17] = 36
-    timing, h_size_mm, v_size_mm = detailed_timing(mode)
-    if mode == "4096x2160":
-        h_size_mm = 600
-        v_size_mm = round(h_size_mm * MODE_TIMINGS[mode][6] / MODE_TIMINGS[mode][1])
+    base_modes = base_timing_modes(mode)
+    timing, h_size_mm, v_size_mm = detailed_timing(base_modes[0])
     edid[21] = min(255, round(h_size_mm / 10))
     edid[22] = min(255, round(v_size_mm / 10))
     if mode == "4096x2160":
-        # EDID 1.x DTDs cannot encode 4096 active pixels. Do not publish a
-        # competing 3840 fallback: the preferred Type I DisplayID timing below
-        # is the authoritative mode for desktop auto-selection.
+        # The preferred Type I DisplayID timing is authoritative.
         edid[24] &= ~0x02
-        range_descriptor = bytes(edid[108:126])
-        set_text_descriptor(edid, 54, 0xFF, f"SCVIRT{index:06d}")
-        set_text_descriptor(edid, 72, 0xFC, f"SC Virtual {index}")
-        edid[90:108] = range_descriptor
-        edid[108:126] = bytes(18)
-    else:
-        edid[54:72] = timing
-        set_text_descriptor(edid, 72, 0xFF, f"SCVIRT{index:06d}")
-        set_text_descriptor(edid, 90, 0xFC, f"SC Virtual {index}")
-    edid[127] = (-sum(edid[:127])) & 0xFF
+    edid[54:72] = timing
+    edid[72:90] = detailed_timing(base_modes[1])[0]
+    edid[90:108] = detailed_timing(base_modes[2])[0]
+    set_text_descriptor(edid, 108, 0xFC, f"SC Virtual {index}")
 
-    # Keep CTA VIC 102 for conservative NVIDIA recognition when 4096x2160 is
-    # the selected mode. DisplayID provides exact detailed timings for the
-    # complete qualified pool without making 4096 the CTA preference for a
-    # lower-resolution virtual monitor.
-    if edid[132] != 0x4C:
-        raise ValueError("base EDID CTA video data block changed unexpectedly")
-    if mode == "4096x2160":
-        edid[133] = CTA_4096X2160P60_VIC
-    displayid_extensions = displayid_timing_extensions(mode)
-    edid[126] = 1 + len(displayid_extensions)
+    displayid_modes = [candidate for candidate in MODE_TIMINGS
+                       if candidate not in base_modes]
+    displayid_extensions = displayid_timing_extensions(displayid_modes, mode)
+    edid[126] = len(displayid_extensions)
     edid[127] = (-sum(edid[:127])) & 0xFF
-    edid[255] = (-sum(edid[128:255])) & 0xFF
     edid.extend(b"".join(displayid_extensions))
 
     if any(sum(edid[offset : offset + 128]) & 0xFF for offset in range(0, len(edid), 128)):
         raise ValueError("generated EDID checksum is invalid")
-    validate_displayid_mode_pool(edid, mode)
+    if len(edid) != 384:
+        raise ValueError("generated EDID exceeds Mutter's complete-read limit")
+    validate_mode_pool(edid, base_modes, mode)
     return bytes(edid)
 
 

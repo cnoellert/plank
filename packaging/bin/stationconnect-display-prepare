@@ -211,7 +211,9 @@ for edid_name in "${required_edids[@]}"; do
     echo "packaged StationConnect EDID is not readable: ${edid_file}" >&2
     exit 1
   }
-  expected_edid_size=640
+  # Mutter 40 requests at most 400 bytes from the XRandR EDID property. Keep
+  # the complete identity and exact timing pool within three 128-byte blocks.
+  expected_edid_size=384
   [[ $(wc -c <"$edid_file") -eq $expected_edid_size ]] || {
     echo "packaged StationConnect EDID has the wrong size (expected ${expected_edid_size} bytes): ${edid_file}" >&2
     exit 1
@@ -219,9 +221,9 @@ for edid_name in "${required_edids[@]}"; do
 done
 
 if [[ $virtual_outputs == single ]]; then
-  # Keep the second virtual connector present but inactive. This allows the
-  # authenticated desktop owner to switch between single and dual layouts
-  # with XRandR without restarting Xorg and losing the desktop session.
+  # Keep the second virtual connector available to Xorg but inactive. The host
+  # supervisor marks it non-desktop after Xorg starts, hiding it from GNOME
+  # until a dual-layout request hot-plugs it through XRandR.
   connected_monitors="DFP-0, DFP-2"
   custom_edid="DFP-0:${edid_dir}/virtual-1-${virtual_mode_1}.edid; DFP-2:${edid_dir}/virtual-2-${virtual_mode_2}.edid"
   metamodes="DFP-0: ${virtual_mode_1} +0+0, DFP-2: NULL"

@@ -15,18 +15,19 @@ edid_dir="${work_dir}/display"
 fake_bin="${work_dir}/bin"
 mkdir -p "$fake_bin"
 python3 "$repo_dir/packaging/display/generate-virtual-edids.py" "$edid_dir" >/dev/null
-[[ $(wc -c <"${edid_dir}/virtual-1-3840x2160.edid") -eq 640 ]]
-[[ $(wc -c <"${edid_dir}/virtual-1-2560x2160.edid") -eq 640 ]]
-[[ $(wc -c <"${edid_dir}/virtual-1-4096x2160.edid") -eq 640 ]]
-displayid_headers=$(for block_offset in 256 384 512; do
+[[ $(wc -c <"${edid_dir}/virtual-1-3840x2160.edid") -eq 384 ]]
+[[ $(wc -c <"${edid_dir}/virtual-1-2560x2160.edid") -eq 384 ]]
+[[ $(wc -c <"${edid_dir}/virtual-1-4096x2160.edid") -eq 384 ]]
+displayid_headers=$(for block_offset in 128 256; do
   od -An -j "$block_offset" -N 8 -tx1 "${edid_dir}/virtual-1-2560x2160.edid" | tr -d '[:space:]'
 done)
-[[ $displayid_headers == '7013670302030064701367000003006470133f000003003c' ]]
-for block_offset in 0 128 256 384 512; do
+[[ $displayid_headers == '70136703010300647013670000030064' ]]
+for block_offset in 0 128 256; do
   checksum=$(od -An -j "$block_offset" -N 128 -tu1 "${edid_dir}/virtual-1-4096x2160.edid" |
     awk '{ for (field = 1; field <= NF; ++field) sum += $field } END { print sum % 256 }')
   [[ $checksum -eq 0 ]]
 done
+[[ $(od -An -j 8 -N 2 -tx1 "${edid_dir}/virtual-1-2560x2160.edid" | tr -d '[:space:]') == '25d3' ]]
 
 run_prepare() {
   PATH="${fake_bin}:${PATH}" \

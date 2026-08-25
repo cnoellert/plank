@@ -288,3 +288,32 @@ DP-2: 1024x2160+4096+0, preferred
 the installed primary EDID is 384 bytes with SHA-256
 `243c62058d7e54be49902744707e713038fbde3c2220a7014c9364e0a75770f3`.
 The Autodesk baseline remains unchanged.
+
+## Single-Output Visibility and GNOME Identity Diagnosis
+
+After a live transition to one 2560x2160 output, XRandR correctly reported
+DP-0 active and DP-2 inactive. DP-2 nevertheless remained connected because
+Xorg deliberately keeps both package-owned EDIDs available for later live
+dual-output transitions, so GNOME Displays continued to offer a second
+monitor. Setting DP-2's standard XRandR `non-desktop` property to `1` made
+XRandR report it disconnected and removed it from Mutter's DisplayConfig
+state, without changing the active 2560x2160 desktop. The production
+transaction therefore treats that property as virtual hot-plug state: single
+layouts set it to `1`, while dual layouts clear it to `0` before enabling the
+second output.
+
+Mutter reported the active virtual monitor as `Unknown` even though
+`edid-decode` and the NVIDIA driver parsed the package's 640-byte EDID. Rocky
+9's Mutter 40.9 source explains the mismatch: its XRandR EDID read requests at
+most 100 32-bit units, or 400 bytes. The 640-byte property was truncated to
+400 bytes and then rejected because its length was not a multiple of the
+128-byte EDID block size.
+
+The replacement EDID is 384 bytes and retains all thirteen exact 60.000 Hz
+qualified modes by placing three timings in the base block and ten across two
+DisplayID 1.3 extensions. It uses stable manufacturer `INS`, product
+`SC Virtual 1` or `SC Virtual 2`, and the 160x90 EDID aspect-ratio marker so
+GNOME can show the product identity without assigning a fictitious physical
+size. `edid-decode` accepts both ordinary and 4096x2160-preferred generated
+variants with no warnings or failures. Package installation and a fresh Xorg
+start remain required before recording final GNOME hardware evidence.

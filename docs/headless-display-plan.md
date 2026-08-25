@@ -241,12 +241,34 @@ supporting asymmetric Flame layouts such as `3840x2160 + 1280x2160` and
 `4096x2160 + 1024x2160`. The packaged defaults do not alter an existing
 physical-display workstation.
 
-Every packaged virtual-monitor EDID advertises this complete qualified mode
-pool as exact 60.000 Hz DisplayID detailed timings and marks that EDID file's
-selected mode preferred. NVIDIA therefore validates the full live-switching
-pool when Xorg starts. An authenticated reconnect selects the 60 Hz entry by
-its published RandR mode name and rate; StationConnect does not enable
+Every packaged virtual-monitor EDID is exactly 384 bytes: one base block and
+two DisplayID 1.3 extension blocks. Three qualified modes occupy the base
+detailed-timing slots and the remaining ten occupy the DisplayID blocks, so
+the complete pool is advertised exactly once at 60.000 Hz. The selected mode
+is preferred in a base detailed timing except for 4096x2160, whose preferred
+timing is carried by DisplayID because EDID 1.x cannot represent 4096 active
+horizontal pixels. Keeping the EDID at or below 384 bytes is required by the
+qualified Rocky 9 GNOME/Mutter 40 path, which reads at most 400 bytes from the
+XRandR EDID property and rejects a truncated property whose length is not a
+multiple of 128.
+
+The stable monitor identities are manufacturer `INS` and product names
+`SC Virtual 1` and `SC Virtual 2`. Their 160x90 physical-size fields are an
+EDID aspect-ratio marker, not a claim about physical dimensions; this lets
+Mutter present the product identity without deriving inappropriate DPI from a
+fictitious virtual-monitor size. NVIDIA validates the full live-switching pool
+when Xorg starts. An authenticated reconnect selects the 60 Hz entry by its
+published RandR mode name and rate; StationConnect does not enable
 `AllowNonEdidModes` or inject runtime modelines with `xrandr --newmode`.
+
+The two stable NVIDIA outputs remain available to Xorg so an authenticated
+user can switch between single and dual layouts without restarting the
+desktop. In a single-output layout, StationConnect turns the secondary output
+off and sets its standard XRandR `non-desktop` property to `1`; Mutter then
+hides it from GNOME Displays instead of showing a connected but inactive
+monitor. A dual-output transition first clears `non-desktop` to `0`, then
+activates and positions the secondary output. This is the virtual-monitor
+hot-plug boundary; it does not modify the immutable EDID or inject a connector.
 
 ## Protocol Evolution
 
