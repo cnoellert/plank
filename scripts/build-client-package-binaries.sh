@@ -235,9 +235,12 @@ for required_loss_ui_token in \
 done
 echo "client_video_packet_loss_indicator_gate=pass"
 
-# The speed candidate defaults to pooled host imports when the Vulkan driver
-# advertises a fast host-pointer path. The mapped and system allocators remain
-# developer-only controlled comparison/fallback paths.
+# The speed candidate keeps the accepted system-memory allocator as its
+# default and exposes two developer-only alternatives through an environment
+# selector. The mapped allocator is the measured reference experiment. The
+# host-import allocator preserves cacheable FFmpeg reference frames while
+# importing their allocations as Vulkan transfer buffers, avoiding the Intel
+# driver's CPU linear-to-tiled upload path.
 for required_frame_allocator_token in \
   'static int getMappedBuffer(AVCodecContext *context, AVFrame *frame, int flags);' \
   'static int getImportedHostBuffer(AVCodecContext *context, AVFrame *frame, int flags);' \
@@ -257,27 +260,6 @@ for required_frame_allocator_token in \
   }
 done
 echo "client_vulkan_frame_allocator_gate=pass"
-
-# Native SDL3 frequency-ratio control provides StationConnect's bounded
-# video-master audio correction without a second FFmpeg resampling pass.
-for required_audio_ratio_token in \
-  'SDL_SetAudioStreamFrequencyRatio' \
-  'StationConnect video-master SDL audio correction enabled' \
-  'm_SubmittedAudioFrames += inputFrames / m_AudioFrequencyRatio'; do
-  rg -Fq "$required_audio_ratio_token" \
-    "$source_dir/app/streaming/audio/renderers/sdlaud.cpp" || {
-    echo "native SDL audio-ratio invariant is missing: ${required_audio_ratio_token}" >&2
-    exit 1
-  }
-done
-if rg -q 'libswresample|swr_' \
-    "$source_dir/app/app.pro" \
-    "$source_dir/app/streaming/audio/renderers/sdlaud.cpp" \
-    "$source_dir/app/streaming/audio/renderers/sdl.h"; then
-  echo "obsolete FFmpeg audio resampler remains in the StationConnect client" >&2
-  exit 1
-fi
-echo "client_native_sdl_audio_ratio_gate=pass"
 
 # Remote-workstation sessions capture OS-level key combinations by default so
 # shortcuts such as Alt+Tab reach the host in both windowed and borderless mode.
@@ -547,16 +529,12 @@ rg -a -Fq "$package_version" "$client_binary" || {
 echo "stationconnect_client_version=${package_version}"
 echo "client_version_banner_gate=pass"
 dynamic_section=$(readelf -d "$client_binary")
-for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10; do
+for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
   rg -q "Shared library: \[${soname//./\\.}\]" <<<"$dynamic_section" || {
     echo "Moonlight did not link the required FFmpeg 9 SONAME: ${soname}" >&2
     exit 1
   }
 done
-if rg -q 'Shared library: \[libswresample\.so\.' <<<"$dynamic_section"; then
-  echo "Moonlight still links the obsolete FFmpeg audio resampler" >&2
-  exit 1
-fi
 "${repo_dir}/scripts/audit-package-runtime.sh" \
   "$client_binary" "${ffmpeg_prefix}/lib"
 
