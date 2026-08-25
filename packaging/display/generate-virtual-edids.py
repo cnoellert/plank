@@ -114,6 +114,35 @@ def detailed_timing(mode: str) -> tuple[bytes, int, int]:
     return bytes(descriptor), h_size_mm, v_size_mm
 
 
+def displayid_timing_extension(mode: str) -> bytes:
+    """Encode one preferred DisplayID 1.3 Type I detailed timing."""
+    (clock_mhz, h_active, h_sync_start, h_sync_end, h_total,
+     v_active, v_sync_start, v_sync_end, v_total) = MODE_TIMINGS[mode]
+    extension = bytearray(128)
+    extension[0] = 0x70  # DisplayID extension tag
+    extension[1] = 0x13  # DisplayID version 1.3
+    extension[2] = 23  # Data bytes following the four-byte header
+    extension[3] = 0x03  # Standalone display device
+    extension[4] = 0  # No additional DisplayID sections
+    extension[5:8] = bytes((0x03, 0x00, 0x14))  # Type I timing, revision 0, 20 bytes
+
+    descriptor = bytearray(20)
+    descriptor[0:3] = (round(clock_mhz * 100) - 1).to_bytes(3, "little")
+    descriptor[3] = 0x88  # Preferred timing; aspect ratio left undefined
+    descriptor[4:6] = (h_active - 1).to_bytes(2, "little")
+    descriptor[6:8] = (h_total - h_active - 1).to_bytes(2, "little")
+    descriptor[8:10] = ((h_sync_start - h_active - 1) | 0x8000).to_bytes(2, "little")
+    descriptor[10:12] = (h_sync_end - h_sync_start - 1).to_bytes(2, "little")
+    descriptor[12:14] = (v_active - 1).to_bytes(2, "little")
+    descriptor[14:16] = (v_total - v_active - 1).to_bytes(2, "little")
+    descriptor[16:18] = ((v_sync_start - v_active - 1) | 0x8000).to_bytes(2, "little")
+    descriptor[18:20] = (v_sync_end - v_sync_start - 1).to_bytes(2, "little")
+    extension[8:28] = descriptor
+    extension[28] = (-sum(extension[1:28])) & 0xFF  # DisplayID structure checksum
+    extension[127] = (-sum(extension[:127])) & 0xFF  # EDID extension checksum
+    return bytes(extension)
+
+
 def build_edid(index: int, mode: str) -> bytes:
     """Build one checksum-valid EDID with a stable StationConnect identity."""
     edid = bytearray.fromhex(BASE_EDID_HEX)
@@ -130,21 +159,37 @@ def build_edid(index: int, mode: str) -> bytes:
     edid[16] = 1
     edid[17] = 36
     timing, h_size_mm, v_size_mm = detailed_timing(mode)
+    if mode == "4096x2160":
+        h_size_mm = 600
+        v_size_mm = round(h_size_mm * MODE_TIMINGS[mode][6] / MODE_TIMINGS[mode][1])
     edid[21] = min(255, round(h_size_mm / 10))
     edid[22] = min(255, round(v_size_mm / 10))
-    edid[54:72] = timing
-    set_text_descriptor(edid, 72, 0xFF, f"SCVIRT{index:06d}")
-    set_text_descriptor(edid, 90, 0xFC, f"SC Virtual {index}")
+    if mode == "4096x2160":
+        # EDID 1.x DTDs cannot encode 4096 active pixels. Do not publish a
+        # competing 3840 fallback: the preferred Type I DisplayID timing below
+        # is the authoritative mode for desktop auto-selection.
+        edid[24] &= ~0x02
+        range_descriptor = bytes(edid[108:126])
+        set_text_descriptor(edid, 54, 0xFF, f"SCVIRT{index:06d}")
+        set_text_descriptor(edid, 72, 0xFC, f"SC Virtual {index}")
+        edid[90:108] = range_descriptor
+        edid[108:126] = bytes(18)
+        edid[126] = 2
+    else:
+        edid[54:72] = timing
+        set_text_descriptor(edid, 72, 0xFF, f"SCVIRT{index:06d}")
+        set_text_descriptor(edid, 90, 0xFC, f"SC Virtual {index}")
     edid[127] = (-sum(edid[:127])) & 0xFF
 
     if mode == "4096x2160":
         # The base Dell CTA block begins with a 12-entry Video Data Block at
-        # byte 132. Make CTA VIC 102 its native first entry. The Xorg NVIDIA
-        # driver then publishes the standard 4096x2160 mode used by MetaModes.
+        # byte 132. Advertise CTA VIC 102 as an additional non-native source;
+        # the DisplayID timing is authoritative and marks the mode preferred.
         if edid[132] != 0x4C:
             raise ValueError("base EDID CTA video data block changed unexpectedly")
-        edid[133] = 0x80 | CTA_4096X2160P60_VIC
+        edid[133] = CTA_4096X2160P60_VIC
         edid[255] = (-sum(edid[128:255])) & 0xFF
+        edid.extend(displayid_timing_extension(mode))
 
     if any(sum(edid[offset : offset + 128]) & 0xFF for offset in range(0, len(edid), 128)):
         raise ValueError("generated EDID checksum is invalid")

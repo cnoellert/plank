@@ -15,6 +15,15 @@ edid_dir="${work_dir}/display"
 fake_bin="${work_dir}/bin"
 mkdir -p "$fake_bin"
 python3 "$repo_dir/packaging/display/generate-virtual-edids.py" "$edid_dir" >/dev/null
+[[ $(wc -c <"${edid_dir}/virtual-1-3840x2160.edid") -eq 256 ]]
+[[ $(wc -c <"${edid_dir}/virtual-1-4096x2160.edid") -eq 384 ]]
+displayid_header=$(od -An -j 256 -N 8 -tx1 "${edid_dir}/virtual-1-4096x2160.edid" | tr -d '[:space:]')
+[[ $displayid_header == 7013170300030014 ]]
+for block_offset in 0 128 256; do
+  checksum=$(od -An -j "$block_offset" -N 128 -tu1 "${edid_dir}/virtual-1-4096x2160.edid" |
+    awk '{ for (field = 1; field <= NF; ++field) sum += $field } END { print sum % 256 }')
+  [[ $checksum -eq 0 ]]
+done
 
 run_prepare() {
   PATH="${fake_bin}:${PATH}" \
