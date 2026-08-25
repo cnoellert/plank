@@ -37,7 +37,7 @@ package_version=$(<"${repo_dir}/packaging/VERSION")
   exit 1
 }
 
-for command_name in cmp dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum; do
+for command_name in cmp dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum tar; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -115,8 +115,11 @@ install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-client.service" \
 install -D -m 0644 "$repo_dir/packaging/systemd/client.env.example" \
   "$stage_dir/usr/share/doc/stationconnect-client/client.env.example"
 install -D -m 0644 \
-  "$repo_dir/packaging/desktop/la.instinctual.StationConnect.desktop" \
-  "$stage_dir/usr/share/applications/la.instinctual.StationConnect.desktop"
+  "$repo_dir/packaging/desktop/la.instinctual.StationConnect.Client.desktop" \
+  "$stage_dir/usr/share/applications/la.instinctual.StationConnect.Client.desktop"
+install -D -m 0644 \
+  "$moonlight_source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.appdata.xml" \
+  "$stage_dir/usr/share/metainfo/la.instinctual.StationConnect.Client.appdata.xml"
 install -D -m 0644 \
   "$repo_dir/packaging/udev/70-stationconnect-client-wacom.rules" \
   "$stage_dir/usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules"
@@ -233,9 +236,26 @@ for required_package in \
   }
 done
 package_manifest=$(dpkg-deb --contents "$deb_file")
-grep -Fq './usr/share/applications/la.instinctual.StationConnect.desktop' \
+grep -Fq './usr/share/applications/la.instinctual.StationConnect.Client.desktop' \
   <<<"$package_manifest" || {
   echo "client DEB is missing the canonical StationConnect desktop entry" >&2
+  exit 1
+}
+grep -Fq './usr/share/metainfo/la.instinctual.StationConnect.Client.appdata.xml' \
+    <<<"$package_manifest" || {
+  echo "client DEB is missing the canonical StationConnect AppStream metadata" >&2
+  exit 1
+}
+desktop_entry=$(dpkg-deb --fsys-tarfile "$deb_file" | \
+  tar -xOf - ./usr/share/applications/la.instinctual.StationConnect.Client.desktop)
+grep -Fxq 'Name=StationConnect Client' <<<"$desktop_entry" || {
+  echo "client desktop metadata does not identify StationConnect Client" >&2
+  exit 1
+}
+appstream_metadata=$(dpkg-deb --fsys-tarfile "$deb_file" | \
+  tar -xOf - ./usr/share/metainfo/la.instinctual.StationConnect.Client.appdata.xml)
+grep -Fq '<name>StationConnect Client</name>' <<<"$appstream_metadata" || {
+  echo "client AppStream metadata does not identify StationConnect Client" >&2
   exit 1
 }
 grep -Fq './usr/share/icons/hicolor/512x512/apps/stationconnect-client.png' \
@@ -255,6 +275,12 @@ fi
 if grep -Fq './usr/share/applications/stationconnect-client.desktop' \
     <<<"$package_manifest"; then
   echo "client DEB still contains the superseded desktop entry" >&2
+  exit 1
+fi
+if grep -Eq \
+    '\./usr/share/(applications/la\.instinctual\.StationConnect\.desktop|metainfo/la\.instinctual\.StationConnect\.appdata\.xml)' \
+    <<<"$package_manifest"; then
+  echo "client DEB still contains the unsuffixed StationConnect application ID" >&2
   exit 1
 fi
 grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' \

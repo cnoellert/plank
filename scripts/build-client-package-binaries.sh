@@ -270,10 +270,11 @@ rg -U -q 'settings\.value\(SER_CAPTURESYSKEYS,\n[[:space:]]+static_cast<int>\(Ca
 }
 echo "client_system_shortcut_default_gate=pass"
 
-# StationConnect has four explicit SDR H.264 profiles. The client advertises
-# only the selected profile, defaults to the qualified High 10 4:4:4 identity
-# mode, and decodes through the proven FFmpeg software path. The codec family
-# and launcher mode remain product invariants rather than user overrides.
+# StationConnect currently has four explicit SDR H.264 profiles. The bookmark
+# owns the complete profile choice, including codec family, bit depth, and
+# chroma. The client advertises only that selected profile and decodes through
+# the proven FFmpeg software path. Future codec families must be introduced as
+# new bookmark profiles rather than as a conflicting global codec preference.
 if rg -n \
   'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"|GUI display mode|uiDisplayMode|UIDisplayMode|UI_(WINDOWED|MAXIMIZED|FULLSCREEN)|uidisplaymode|startwindowed' \
   "$source_dir/app" \
@@ -281,13 +282,14 @@ if rg -n \
   echo "optional HDR, YUV 4:4:4, or GUI display-mode controls are present in StationConnect client" >&2
   exit 1
 fi
-if ! rg -U -q 'id: codecComboBox\n[[:space:]]+enabled: false' \
-  "$source_dir/app/gui/SettingsView.qml" ||
-   rg -q 'VCC_(AUTO|FORCE_HEVC|FORCE_AV1)' \
-  "$source_dir/app/gui/SettingsView.qml"; then
-  echo "the StationConnect video codec selector is not locked to H.264" >&2
+if rg -n \
+  'VideoCodecConfig|videoCodecConfig|SER_VIDEOCFG|VCC_|video-codec|codecComboBox|resVCCTitle|Video codec' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "the obsolete global video codec preference is still present" >&2
   exit 1
 fi
+echo "client_global_video_codec_absence_gate=pass"
 if rg -n \
   'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_(H264\)|H265\)|H265_MAIN|AV1_MAIN)' \
   "$source_dir/app/streaming/session.cpp"; then
@@ -367,6 +369,37 @@ for required_reconnect_wait_token in \
   }
 done
 echo "client_rapid_reconnect_wait_gate=pass"
+
+for required_client_identity_token in \
+  'QGuiApplication::setApplicationDisplayName("StationConnect Client");' \
+  'SDL_SetHint("SDL_APP_NAME", "StationConnect Client");' \
+  'app.setDesktopFileName("la.instinctual.StationConnect.Client");'; do
+  rg -Fq "$required_client_identity_token" "$source_dir/app/main.cpp" || {
+    echo "client application identity is missing: ${required_client_identity_token}" >&2
+    exit 1
+  }
+done
+rg -Fq 'TARGET = stationconnect-client' "$source_dir/app/app.pro" || {
+  echo "client build target is not branded stationconnect-client" >&2
+  exit 1
+}
+client_desktop="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.desktop"
+client_appstream="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.appdata.xml"
+rg -Fxq 'Name=StationConnect Client' "$client_desktop" || {
+  echo "client desktop display name is not StationConnect Client" >&2
+  exit 1
+}
+rg -Fxq 'StartupWMClass=la.instinctual.StationConnect.Client' \
+  "$client_desktop" || {
+  echo "client desktop application ID is not canonical" >&2
+  exit 1
+}
+rg -Fq '<id>la.instinctual.StationConnect.Client</id>' \
+  "$client_appstream" || {
+  echo "client AppStream application ID is not canonical" >&2
+  exit 1
+}
+echo "client_application_id_gate=pass"
 
 if ! rg -Fq \
   'm_Preferences->videoDecoderSelection = StreamingPreferences::VDS_FORCE_SOFTWARE;' \
@@ -589,11 +622,15 @@ mkdir -p "$build_dir"
   make -j"$(nproc)"
 )
 
-client_binary="${build_dir}/app/moonlight"
+client_binary="${build_dir}/app/stationconnect-client"
 [[ -x ${client_binary} ]] || {
-  echo "Moonlight package binary was not produced" >&2
+  echo "StationConnect client package binary was not produced" >&2
   exit 1
 }
+if [[ -e ${build_dir}/app/moonlight ]]; then
+  echo "client build still produced the superseded Moonlight runtime name" >&2
+  exit 1
+fi
 rg -a -Fq "$package_version" "$client_binary" || {
   echo "Moonlight does not embed the StationConnect package version: ${package_version}" >&2
   exit 1

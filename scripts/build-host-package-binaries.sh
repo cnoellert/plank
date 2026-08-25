@@ -195,6 +195,14 @@ rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
 
+rg -Fxq \
+  'X-StationConnect-ApplicationId=la.instinctual.StationConnect.Host' \
+  "$repo_dir/packaging/systemd/stationconnect-host.service" || {
+  echo "host systemd metadata does not carry the canonical application ID" >&2
+  exit 1
+}
+echo "host_application_id_gate=pass"
+
 # Host runtime diagnostics are written privately to a bounded persistent file
 # while stdout remains attached to journald. systemd owns the writable log
 # directory; the single administrator configuration file owns the log path.
