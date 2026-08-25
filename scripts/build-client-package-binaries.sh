@@ -190,10 +190,11 @@ if rg -n 'RS_DIR|reedsolomon/rs\.c|reed_solomon_reconstruct\(' \
 fi
 echo "client_simd_fec_gate=pass"
 
-# The compact toolbar exposes one authoritative rolling video data-packet loss
-# sample from the FEC queue. Do not substitute ENet control loss, post-FEC frame
-# drops, or parity arrival counts: those measure different things and would
-# either hide recovered network loss or report false loss on healthy streams.
+# The compact toolbar exposes one authoritative rolling 10-second peak of the
+# FEC queue's one-second video data-packet loss samples. Do not substitute ENet
+# control loss, post-FEC frame drops, or parity arrival counts: those measure
+# different things and would either hide recovered network loss or report false
+# loss on healthy streams.
 for required_loss_token in \
   'ConnListenerVideoPacketLossUpdate' \
   'packetLossExpectedDataPackets' \
@@ -209,6 +210,8 @@ done
 for required_loss_ui_token in \
   'm_CurrentVideoPacketLossPercent' \
   'currentVideoPacketLossPercent' \
+  'VideoPacketLossPeakWindow' \
+  'kWindowMs = 10000' \
   'Incoming video packet loss (before FEC): %.2f%%' \
   'packetLossColor' \
   'const QColor blue(52, 132, 228)' \
@@ -222,6 +225,7 @@ for required_loss_ui_token in \
   rg -Fq "$required_loss_ui_token" \
     "$source_dir/app/streaming/session.cpp" \
     "$source_dir/app/streaming/session.h" \
+    "$source_dir/app/streaming/videopacketlosswindow.h" \
     "$source_dir/app/streaming/stationconnecttoolbar.cpp" \
     "$source_dir/app/streaming/stationconnecttoolbar.h" \
     "$source_dir/app/streaming/video/ffmpeg.cpp" || {

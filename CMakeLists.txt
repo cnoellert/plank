@@ -275,6 +275,16 @@ if(BUILD_TESTING)
   add_test(NAME video-packet-loss-telemetry
     COMMAND video-packet-loss-telemetry-test)
 
+  add_executable(video-packet-loss-window-test
+    tests/protocol/video-packet-loss-window.cpp)
+  target_compile_features(video-packet-loss-window-test PRIVATE cxx_std_17)
+  target_compile_options(video-packet-loss-window-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(video-packet-loss-window-test PRIVATE
+    client/moonlight-qt-fork)
+  add_test(NAME video-packet-loss-window
+    COMMAND video-packet-loss-window-test)
+
   add_executable(wacom-hid-v2-test tests/protocol/wacom-hid-v2.c)
   target_compile_options(wacom-hid-v2-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
