@@ -249,7 +249,7 @@ for required_frame_allocator_token in \
   'STATIONCONNECT_VULKAN_FRAME_ALLOCATOR' \
   'requestedAllocator == "host-import"' \
   'bufferParams.import_handle = PL_HANDLE_HOST_PTR' \
-  'Using cacheable FFmpeg decode buffers imported into Vulkan' \
+  'Using pooled cacheable FFmpeg decode buffers imported into Vulkan' \
   'context->get_buffer2 = getMappedBuffer;' \
   'Using persistently mapped Vulkan decode buffers'; do
   rg -Fq "$required_frame_allocator_token" \
