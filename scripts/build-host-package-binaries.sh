@@ -207,6 +207,29 @@ rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
 
+# Capture output is negotiated from the authenticated bookmark session. Keep
+# the old machine-specific global selector out of both the packaged config and
+# Sunshine's static video configuration while retaining session.output_name.
+if rg -n '^[[:space:]]*output_name[[:space:]]*=' \
+  "$repo_dir/packaging/config/stationconnect.conf" ||
+  rg -n \
+    'video_config\.output_name|config::video\.output_name|"output_name",[[:space:]]*video\.output_name' \
+    "$source_dir/src" "$source_dir/tests" \
+    --glob '*.{cpp,h}'; then
+  echo "legacy static capture-output selector is present" >&2
+  exit 1
+fi
+for required_capture_token in \
+  'session.output_name = *capture_name' \
+  'config.monitor.output_name = session.span_desktop ? std::string {} : session.output_name' \
+  'config.m_device_id = session.output_name'; do
+  rg -Fq "$required_capture_token" "$source_dir/src" || {
+    echo "negotiated session capture selector is missing: ${required_capture_token}" >&2
+    exit 1
+  }
+done
+echo "host_static_capture_selector_absence_gate=pass"
+
 # Virtual-display preparation augments the Autodesk Xorg baseline before GDM.
 # It is opt-in, bounded to qualified layouts, and may not reconfigure a live
 # display manager.

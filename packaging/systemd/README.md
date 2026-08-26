@@ -93,8 +93,9 @@ systemctl --user enable --now stationconnect-client.service
 
 Configure every host runtime option in the single root-managed
 `/etc/stationconnect/stationconnect.conf`. Client options remain in
-`~/.config/stationconnect/client.env`. The current host profile must select its qualified physical
-output; `output_name=1` is specific to hardware-test-host and is not a universal default.
+`~/.config/stationconnect/client.env`. Capture selection follows the
+authenticated bookmark topology for each session; there is no fixed
+administrator capture-output selector.
 The software profile expands x264 worker affinity to the qualified CPU set and
 uses 16 slices on hardware-test-host; neither the CPU count nor slice count is a universal
 default. The host configuration uses INI-style section headers and one globally

@@ -90,6 +90,24 @@ rg -Fxq 'stationconnect_mdns_discovery = false' \
   "$repo_dir/packaging/config/stationconnect.conf"
 rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
+if rg -n '^[[:space:]]*output_name[[:space:]]*=' \
+  "$repo_dir/packaging/config/stationconnect.conf" ||
+  rg -n \
+    'video_config\.output_name|config::video\.output_name|"output_name",[[:space:]]*video\.output_name' \
+    "$repo_dir/host/sunshine-fork/src" \
+    "$repo_dir/host/sunshine-fork/tests" \
+    --glob '*.{cpp,h}'; then
+  echo 'legacy static capture-output selector remains' >&2
+  exit 1
+fi
+rg -Fq 'session.output_name = *capture_name' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
+rg -Fq 'config.monitor.output_name = session.span_desktop ? std::string {} : session.output_name' \
+  "$repo_dir/host/sunshine-fork/src/rtsp.cpp"
+rg -Fq 'config.m_device_id = session.output_name' \
+  "$repo_dir/host/sunshine-fork/src/display_device.cpp"
+rg -Fq 'host_static_capture_selector_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \
