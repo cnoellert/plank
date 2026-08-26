@@ -231,13 +231,13 @@ Add one administrator-controlled `[display]` section to
 
 ```ini
 [display]
-virtual_outputs = off
+startup_layout = physical
 virtual_mode_1 = 1920x1080
 virtual_mode_2 = 1920x1080
 ```
 
-`virtual_outputs` accepts only `off`, `single`, or `dual-horizontal` and
-defaults to `off`. `virtual_mode_1` and `virtual_mode_2` independently select
+`startup_layout` accepts only `physical`, `single`, or `dual-horizontal` and
+defaults to `physical`. `virtual_mode_1` and `virtual_mode_2` independently select
 one of the qualified 60 Hz modes: `1024x2160`, `1280x720`, `1280x1024`,
 `1280x2160`, `1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`,
 `3440x1440`, `3840x1600`, `3840x2160`, or `4096x2160`. The preset boundary

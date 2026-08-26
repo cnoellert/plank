@@ -279,7 +279,7 @@ echo "host_static_capture_selector_absence_gate=pass"
 # It is opt-in, bounded to qualified layouts, and may not reconfigure a live
 # display manager.
 for required_display_token in \
-  'virtual_outputs = off' \
+  'startup_layout = physical' \
   'virtual_mode_1 = 1920x1080' \
   'virtual_mode_2 = 1920x1080'; do
   rg -Fq "$required_display_token" \
@@ -299,8 +299,8 @@ for required_display_token in \
   }
 done
 for required_display_token in \
-  'off|single|dual-horizontal' \
-  'virtual_outputs == single' \
+  'physical|single|dual-horizontal' \
+  'startup_layout == single' \
   'refusing to change the display topology while the display manager is active'; do
   rg -Fq "$required_display_token" \
     "$repo_dir/packaging/bin/stationconnect-display-prepare" || {
@@ -308,7 +308,7 @@ for required_display_token in \
     exit 1
   }
 done
-echo "host_headless_display_default_off_gate=pass"
+echo "host_display_startup_layout_gate=pass"
 
 rg -Fxq \
   'X-StationConnect-ApplicationId=la.instinctual.StationConnect.Host' \

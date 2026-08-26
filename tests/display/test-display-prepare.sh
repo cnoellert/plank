@@ -49,7 +49,7 @@ exit 1
 EOF
 chmod 0755 "${fake_bin}/systemctl"
 
-printf '[display]\nvirtual_outputs = off\n' >"$config_file"
+printf '[display]\nstartup_layout = physical\n' >"$config_file"
 run_prepare >/dev/null
 [[ ! -e $output_file ]]
 if run_requested_prepare --layout single --mode-1 3840x2160 >/dev/null 2>&1; then
@@ -58,14 +58,14 @@ if run_requested_prepare --layout single --mode-1 3840x2160 >/dev/null 2>&1; the
 fi
 [[ ! -e $output_file ]]
 
-printf '[display]\nvirtual_outputs = single\n' >"$config_file"
+printf '[display]\nstartup_layout = single\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'DFP-0: 1920x1080 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'virtual-1-1920x1080.edid' "$output_file"
 grep -Fq 'virtual-2-1920x1080.edid' "$output_file"
 grep -Fq 'Virtual 8192 2160' "$output_file"
 
-printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
+printf '[display]\nstartup_layout = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
 if grep -Fq 'AllowNonEdidModes' "$output_file"; then
@@ -77,7 +77,7 @@ grep -Fq 'Virtual 8192 2160' "$output_file"
 grep -Fq 'virtual-1-3840x2160.edid' "$output_file"
 grep -Fq 'virtual-2-1280x2160.edid' "$output_file"
 
-printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
+printf '[display]\nstartup_layout = dual-horizontal\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
 grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: 1280x2160 +3840+0' "$output_file"
@@ -89,7 +89,7 @@ grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
 grep -Fq 'DFP-0: 2560x1600 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'virtual-1-2560x1600.edid' "$output_file"
 grep -Fq 'Virtual 8192 2160' "$output_file"
-grep -Fq 'virtual_outputs = dual-horizontal' "$config_file"
+grep -Fq 'startup_layout = dual-horizontal' "$config_file"
 
 run_requested_prepare --layout single --mode-1 2560x2160 >/dev/null
 grep -Fq 'DFP-0: 2560x2160 +0+0, DFP-2: NULL' "$output_file"
@@ -101,7 +101,7 @@ if run_requested_prepare --layout dual-horizontal --mode-1 4096x2160 >/dev/null 
   exit 1
 fi
 
-printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
+printf '[display]\nstartup_layout = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'DFP-0: 4096x2160 +0+0, DFP-2: 1024x2160 +4096+0' "$output_file"
 grep -Fq 'virtual-1-4096x2160.edid' "$output_file"
@@ -109,7 +109,7 @@ grep -Fq 'virtual-2-1024x2160.edid' "$output_file"
 grep -Fq 'Virtual 8192 2160' "$output_file"
 
 previous_hash=$(sha256sum "$output_file")
-printf '[display]\nvirtual_outputs = three\n' >"$config_file"
+printf '[display]\nstartup_layout = three\n' >"$config_file"
 if run_prepare >/dev/null 2>&1; then
   echo "invalid virtual output count was accepted" >&2
   exit 1
@@ -121,17 +121,17 @@ cat >"${fake_bin}/systemctl" <<'EOF'
 exit 0
 EOF
 chmod 0755 "${fake_bin}/systemctl"
-printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 1920x1080\n' >"$config_file"
+printf '[display]\nstartup_layout = single\nvirtual_mode_1 = 1920x1080\n' >"$config_file"
 if run_prepare >/dev/null 2>&1; then
   echo "an active display manager did not block a topology change" >&2
   exit 1
 fi
 [[ $(sha256sum "$output_file") == "$previous_hash" ]]
 
-printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
+printf '[display]\nstartup_layout = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
 run_prepare >/dev/null
 
-printf '[display]\nvirtual_outputs = dual-horizontal\nvirtual_mode_1 = 5120x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
+printf '[display]\nstartup_layout = dual-horizontal\nvirtual_mode_1 = 5120x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 if run_prepare >/dev/null 2>&1; then
   echo "an unqualified independent virtual mode was accepted" >&2
   exit 1
@@ -142,7 +142,7 @@ cat >"${fake_bin}/systemctl" <<'EOF'
 exit 1
 EOF
 chmod 0755 "${fake_bin}/systemctl"
-printf '[display]\nvirtual_outputs = off\n' >"$config_file"
+printf '[display]\nstartup_layout = physical\n' >"$config_file"
 run_prepare >/dev/null
 [[ ! -e $output_file ]]
 
@@ -155,13 +155,13 @@ fi
 grep -Fxq '# owned by somebody else' "$output_file"
 
 if "$repo_dir/packaging/bin/stationconnect-display-prepare" --cleanup \
-    --output "$output_file" >/dev/null 2>&1; then
+    --config "$config_file" --output "$output_file" >/dev/null 2>&1; then
   echo "uninstall cleanup removed a foreign Xorg configuration" >&2
   exit 1
 fi
 printf '%s\n' '# Generated by StationConnect; do not edit.' >"$output_file"
 "$repo_dir/packaging/bin/stationconnect-display-prepare" --cleanup \
-  --output "$output_file" >/dev/null
+  --config "$config_file" --output "$output_file" >/dev/null
 [[ ! -e $output_file ]]
 
 echo "display_prepare_tests=pass"

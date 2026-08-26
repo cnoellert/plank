@@ -16,6 +16,7 @@ Requires:       systemd-udev
 Requires:       firewalld-filesystem
 Requires:       openssl-libs
 Requires:       xorg-x11-server-Xorg
+Requires:       xorg-x11-server-utils
 Requires(pre):  systemd
 Requires(post): systemd systemd-udev kmod
 Requires(post): openssl

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 4 describes the host desktop after operating-system
+Protocol version 5 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 4` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 4 defines these bits:
+The host returns `schema_version: 5` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 5 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -24,8 +24,9 @@ The host returns `schema_version: 4` and a numeric `feature_flags` field from
 - `0x80` — exact host-layout binding at launch
 - `0x100` — independently selected modes for virtual outputs 1 and 2
 - `0x200` — bounded host-layout activation while GDM owns the active seat
+- `0x400` — temporary physical-display leases with exact disconnect restoration
 
-The client sends `scProtocolVersion=4`, `scFeatureFlags`, `scDisplayMode`,
+The client sends `scProtocolVersion=5`, `scFeatureFlags`, `scDisplayMode`,
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
@@ -41,12 +42,17 @@ desktop rectangle, a `layout` object, and an `outputs` array. `layout.kind` is
 `physical`, `single`, or `dual-horizontal`; `layout.virtual_modes` is empty for
 a physical layout, contains one administrator-qualified mode for `single`, and
 contains the independently ordered primary/secondary modes for
-`dual-horizontal`. The layout also publishes whether it is virtual and its
-output count. Each connected output carries its
+`dual-horizontal`. `layout.startup_kind` reports the administrator's boot
+layout and `layout.allowed_kinds` explicitly lists the layouts a bookmark may
+request. A physical startup lists physical, single, and dual-horizontal; a
+virtual startup lists single and dual-horizontal. The current layout can
+therefore be virtual while its startup remains physical during a session
+lease. The layout also publishes whether the current geometry is virtual and
+its output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`configured_mode` and a `source_rect` in composite-source coordinates. Version 4 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 5 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -59,13 +65,16 @@ Virtual layouts persist one enumerated mode per requested output. The current
 `1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`, `3440x1440`,
 `3840x1600`, `3840x2160`, and `4096x2160`. The host compares the requested
 layout and both modes with the live topology before claiming the one-use PAM
-launch state. If GDM owns the active graphical session, a mismatch returns 425,
-submits only the enumerated layout and modes to the root supervisor, and starts
-a bounded display-manager transition. The client retains credentials only in
-memory, waits for the replacement GDM worker, reauthenticates, refreshes the
-topology generation, and continues launch. If an authenticated user desktop
-owns the active seat, the host returns 423 and does not inspect application
-processes or change Xorg.
+launch state. A mismatch returns 425 and submits only the enumerated layout,
+modes, and authenticated account UID to the root supervisor. Headless virtual
+startup retains its bounded GDM transition. A physical-startup host instead
+captures the exact NVIDIA MetaMode and applies a temporary logical layout over
+the connected native scanouts without restarting the display manager. The
+client retains credentials only in memory, waits for the new topology,
+refreshes its generation, and continues launch. When login replaces GDM, the
+supervisor takes a new snapshot from the authenticated user's X server and
+carries the lease into it. The final stream release restores the exact saved
+MetaMode; an abandoned launch restores after its bounded setup deadline.
 
 The client persists the chosen output ID per host UUID. If it has no valid
 mapping, it selects the primary output, then the first output as a final
@@ -104,10 +113,11 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v4.json` represents the Flame-style
-3840x2160 primary plus 1280x2160 secondary virtual layout. Parsers must preserve order-independent
+`tests/protocol/output-topology-v5.json` represents a physical-startup host
+temporarily presenting the Flame-style 3840x2160 primary plus 1280x2160
+secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout
-binding, independent modes, and the primary fallback. The version-1 and
-version-2 vectors remain historical
+binding, independent modes, allowed-layout capability, startup provenance, and
+the primary fallback. The version-1, version-2, and version-4 vectors remain historical
 evidence only; StationConnect has no deployed legacy clients requiring a
 silent version fallback.

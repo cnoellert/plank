@@ -57,6 +57,7 @@ int main() {
     return 9;
   }
   const session::display_request_t display_request {
+    session::display_request_t::action_t::acquire,
     "dual-horizontal", "4096x2160", "1024x2160", 1000
   };
   const auto display_message = session::display_request_message(display_request);
@@ -68,7 +69,21 @@ int main() {
     std::cerr << "display request did not round trip\n";
     return 11;
   }
-  if (!session::display_request_message({"single", "5120x2160", {}, 1000}).empty() ||
+  const session::runtime_display_state_t runtime_state {
+    "single", "2560x1600", {}, 1000
+  };
+  const auto runtime_message = session::runtime_display_state_message(runtime_state);
+  const auto parsed_runtime = session::parse_runtime_display_state(runtime_message);
+  if (!parsed_runtime || parsed_runtime->layout != runtime_state.layout ||
+      parsed_runtime->mode_1 != runtime_state.mode_1 ||
+      parsed_runtime->lease_uid != runtime_state.lease_uid) {
+    std::cerr << "runtime display state did not round trip\n";
+    return 15;
+  }
+  if (!session::display_request_message({
+        session::display_request_t::action_t::acquire,
+        "single", "5120x2160", {}, 1000
+      }).empty() ||
       session::parse_display_request(display_message.substr(0, display_message.size() - 1))) {
     std::cerr << "malformed display request was accepted\n";
     return 12;
@@ -85,17 +100,17 @@ int main() {
     output << contents;
     return static_cast<bool>(output);
   };
-  if (!write_display_config("[display]\nvirtual_outputs = off\n") ||
-      session::configured_display_policy(display_config_path) !=
-        session::display_policy_t::physical ||
-      !write_display_config("[display]\nvirtual_outputs = dual-horizontal\n") ||
-      session::configured_display_policy(display_config_path) !=
-        session::display_policy_t::virtual_outputs ||
+  if (!write_display_config("[display]\nstartup_layout = physical\n") ||
+      session::configured_startup_layout(display_config_path) !=
+        session::startup_layout_t::physical ||
+      !write_display_config("[display]\nstartup_layout = dual-horizontal\n") ||
+      session::configured_startup_layout(display_config_path) !=
+        session::startup_layout_t::dual_horizontal ||
       !write_display_config(
-        "[display]\nvirtual_outputs = off\nvirtual_outputs = single\n"
+        "[display]\nstartup_layout = physical\nstartup_layout = single\n"
       ) ||
-      session::configured_display_policy(display_config_path) !=
-        session::display_policy_t::invalid) {
+      session::configured_startup_layout(display_config_path) !=
+        session::startup_layout_t::invalid) {
     unlink(display_config_path);
     std::cerr << "administrator display policy was not enforced\n";
     return 14;
