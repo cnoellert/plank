@@ -112,6 +112,10 @@ rg -Fq 'virtual display transitions are disabled by display.virtual_outputs' \
   "$repo_dir/packaging/bin/stationconnect-display-prepare"
 rg -Fq 'layout_arguments(request.mode_1, request.mode_2)' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq '"--fb", std::to_string(canvas_width) + "x" + std::to_string(canvas_height)' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'Virtual ${maximum_canvas_width} ${maximum_canvas_height}' \
+  "$repo_dir/packaging/bin/stationconnect-display-prepare"
 rg -Fq '"--rate", "60"' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '"--set", "non-desktop", "0"' \

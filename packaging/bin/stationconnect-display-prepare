@@ -224,6 +224,15 @@ for edid_name in "${required_edids[@]}"; do
   }
 done
 
+# NVIDIA constrains later RandR MetaModes to the boot-time X screen's virtual
+# dimensions even though xrandr advertises a larger protocol maximum. Reserve
+# enough space for any two qualified 4096-wide outputs so a live transition can
+# move the secondary output immediately after the primary without the driver
+# silently overlapping them. The active MetaMode below still determines the
+# visible desktop size; this is only the maximum canvas available to RandR.
+maximum_canvas_width=8192
+maximum_canvas_height=2160
+
 if [[ $virtual_outputs == single ]]; then
   # Keep the second virtual connector available to Xorg but inactive. The host
   # supervisor marks it non-desktop after Xorg starts, hiding it from GNOME
@@ -231,14 +240,10 @@ if [[ $virtual_outputs == single ]]; then
   connected_monitors="DFP-0, DFP-2"
   custom_edid="DFP-0:${edid_dir}/virtual-1-${virtual_mode_1}.edid; DFP-2:${edid_dir}/virtual-2-${virtual_mode_2}.edid"
   metamodes="DFP-0: ${virtual_mode_1} +0+0, DFP-2: NULL"
-  canvas_width=$output_1_width
-  canvas_height=$output_1_height
 else
   connected_monitors="DFP-0, DFP-2"
   custom_edid="DFP-0:${edid_dir}/virtual-1-${virtual_mode_1}.edid; DFP-2:${edid_dir}/virtual-2-${virtual_mode_2}.edid"
   metamodes="DFP-0: ${virtual_mode_1} +0+0, DFP-2: ${virtual_mode_2} +${output_1_width}+0"
-  canvas_width=$((output_1_width + output_2_width))
-  canvas_height=$((output_1_height > output_2_height ? output_1_height : output_2_height))
 fi
 
 output_directory=${output_file%/*}
@@ -282,7 +287,7 @@ Section "Screen"
     DefaultDepth 30
     SubSection "Display"
         Depth 30
-        Virtual ${canvas_width} ${canvas_height}
+        Virtual ${maximum_canvas_width} ${maximum_canvas_height}
     EndSubSection
 EndSection
 EOF
