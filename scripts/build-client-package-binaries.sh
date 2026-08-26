@@ -508,7 +508,7 @@ for required_bookmark_editor_token in \
   'Edit bookmark…' \
   editComputerBookmark \
   editManualBookmark \
-  editDisplayChoice; do
+  editScalingChoice; do
   rg -Fq "$required_bookmark_editor_token" "$source_dir/app" || {
     echo "workstation bookmark editor invariant is missing: ${required_bookmark_editor_token}" >&2
     exit 1
