@@ -1,0 +1,11 @@
+{
+  "schema": "stationconnect-host-metadata",
+  "version": 1,
+  "serverInfo": {
+    "StationConnectHostMetadataVersion": 1,
+    "StationConnectHostVersion": "0.1.0-0.103"
+  },
+  "expectedOnlineStatus": "Online  ·  0.1.0-0.103",
+  "missingMetadataVersionBehavior": "omit-host-version",
+  "offlineBehavior": "omit-host-version"
+}

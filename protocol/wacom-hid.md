@@ -71,6 +71,22 @@ An ordinary resumable stream disconnect also suspends transport and retains the
 same endpoints. Stale reports from an older or suspended generation are
 discarded.
 
+## Reconnect Barrier
+
+Before replacing a StationConnect control stream, the client suspends raw-HID
+delivery and closes its physical tablet handles while the old reliable channel
+still exists. The raw-tablet worker remains behind a reconnect barrier during
+authentication, host display transitions, and input-stream initialization. It
+may start one fresh attachment only after the replacement connection reports
+success. This ordering prevents an early valid attachment from being discarded
+by reconnect cleanup.
+
+Each attachment waits at most three seconds for `tablet-attach-result`. If that
+reliable acknowledgement is unavailable, the client closes the local
+transaction and retries with a new generation. The retained host endpoints are
+reused when identity and descriptors match, so acknowledgement recovery does
+not change the application-visible XInput device identity.
+
 ## Acceptance
 
 Compare physical-client and virtual-host nodes for VID/PID/version, interface

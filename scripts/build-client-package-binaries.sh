@@ -165,6 +165,25 @@ rg -U -q 'void LinuxRawWacomInput::setActive\(bool active\)(.|\n)*?if \(!active\
 }
 echo "client_raw_hid_focus_suspend_gate=pass"
 
+# A reconnect must prevent the raw-tablet worker from attaching while the
+# replacement control stream is only partially initialized. A bounded attach
+# acknowledgement timeout ensures a lost reply cannot leave reports disabled
+# for the rest of the session.
+for required_raw_hid_reconnect_token in \
+  beginRawHidReconnect \
+  finishRawHidReconnect \
+  'm_Reconnecting.load()' \
+  'Timed out waiting for exact Wacom host attachment; retrying'; do
+  rg -Fq "$required_raw_hid_reconnect_token" \
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/streaming/input/input.cpp" \
+    "$source_dir/app/streaming/input/linuxrawwacom.cpp" || {
+    echo "client raw-HID reconnect barrier is missing: ${required_raw_hid_reconnect_token}" >&2
+    exit 1
+  }
+done
+echo "client_raw_hid_reconnect_gate=pass"
+
 # High-bitrate video recovery uses upstream nanors with runtime-selected SIMD
 # and GFNI implementations. Keep the old scalar Reed-Solomon source out of the
 # client build while preserving StationConnect's extended-FEC queue logic.

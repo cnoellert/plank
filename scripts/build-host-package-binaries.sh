@@ -9,6 +9,7 @@ fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 source_dir="${repo_dir}/host/sunshine-fork"
+package_version=$(<"${repo_dir}/packaging/VERSION")
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 ffmpeg_dir=$(realpath -m -- "${2:-${source_dir}/cmake-build-ffmpeg-x264rgb-install/ffmpeg}")
 build_jobs=${STATIONCONNECT_BUILD_JOBS:-8}
@@ -22,7 +23,7 @@ boost_source_dir=$(realpath -e -- "$STATIONCONNECT_BOOST_SOURCE_DIR")
   exit 1
 }
 
-for command_name in cmake nm realpath rg; do
+for command_name in cmake git nm realpath rg; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -302,7 +303,12 @@ for required_log_rotation_token in \
 done
 echo "host_persistent_logging_gate=pass"
 
-cmake -S "$source_dir" -B "$build_dir" \
+host_source_commit=$(git -C "$source_dir" rev-parse HEAD)
+env \
+  BRANCH=stationconnect-package \
+  BUILD_VERSION="$package_version" \
+  COMMIT="$host_source_commit" \
+  cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \
   -DSUNSHINE_ASSETS_DIR=share/stationconnect \

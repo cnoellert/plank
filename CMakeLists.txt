@@ -252,6 +252,9 @@ if(BUILD_TESTING)
   add_test(NAME av-sync-telemetry-analyzer
     COMMAND bash
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio/test-analyze-av-sync-telemetry.sh)
+  add_test(NAME host-version-discovery
+    COMMAND bash
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/protocol/test-host-version-discovery.sh)
 
   add_executable(session-policy-test tests/session/test-session-policy.cpp)
   target_compile_features(session-policy-test PRIVATE cxx_std_20)
