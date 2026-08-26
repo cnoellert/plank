@@ -692,9 +692,14 @@ for required_mtu_token in \
     exit 1
   }
 done
-rg -U -q 'id: networkSettingsGroupBox\n[[:space:]]+parent: settingsColumn1' \
+if rg -U -q 'id: networkSettingsGroupBox\n[[:space:]]+parent:' \
+  "$source_dir/app/gui/SettingsView.qml"; then
+  echo "Network Settings is explicitly reparented outside the right configuration column" >&2
+  exit 1
+fi
+rg -U -q 'id: settingsColumn2(.|\n)*id: networkSettingsGroupBox' \
   "$source_dir/app/gui/SettingsView.qml" || {
-  echo "Network Settings is not assigned to the left configuration column" >&2
+  echo "Network Settings is not assigned to the right configuration column" >&2
   exit 1
 }
 echo "client_network_mtu_gate=pass"
