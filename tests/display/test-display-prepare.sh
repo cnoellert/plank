@@ -63,7 +63,7 @@ run_prepare >/dev/null
 grep -Fq 'DFP-0: 1920x1080 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'virtual-1-1920x1080.edid' "$output_file"
 grep -Fq 'virtual-2-1920x1080.edid' "$output_file"
-grep -Fq 'Virtual 5120 2160' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
 
 printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
@@ -73,7 +73,7 @@ if grep -Fq 'AllowNonEdidModes' "$output_file"; then
   exit 1
 fi
 grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: NULL' "$output_file"
-grep -Fq 'Virtual 5120 2160' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
 grep -Fq 'virtual-1-3840x2160.edid' "$output_file"
 grep -Fq 'virtual-2-1280x2160.edid' "$output_file"
 
@@ -82,19 +82,19 @@ run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
 grep -Fq 'DFP-0: 3840x2160 +0+0, DFP-2: 1280x2160 +3840+0' "$output_file"
 grep -Fq 'virtual-2-1280x2160.edid' "$output_file"
-grep -Fq 'Virtual 5120 2160' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
 
 run_requested_prepare --layout single --mode-1 2560x1600 >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
 grep -Fq 'DFP-0: 2560x1600 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'virtual-1-2560x1600.edid' "$output_file"
-grep -Fq 'Virtual 5120 2160' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
 grep -Fq 'virtual_outputs = dual-horizontal' "$config_file"
 
 run_requested_prepare --layout single --mode-1 2560x2160 >/dev/null
 grep -Fq 'DFP-0: 2560x2160 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'virtual-1-2560x2160.edid' "$output_file"
-grep -Fq 'Virtual 5120 2160' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
 
 if run_requested_prepare --layout dual-horizontal --mode-1 4096x2160 >/dev/null 2>&1; then
   echo "a dual transition without mode 2 was accepted" >&2
@@ -106,7 +106,7 @@ run_prepare >/dev/null
 grep -Fq 'DFP-0: 4096x2160 +0+0, DFP-2: 1024x2160 +4096+0' "$output_file"
 grep -Fq 'virtual-1-4096x2160.edid' "$output_file"
 grep -Fq 'virtual-2-1024x2160.edid' "$output_file"
-grep -Fq 'Virtual 5120 2160' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
 
 previous_hash=$(sha256sum "$output_file")
 printf '[display]\nvirtual_outputs = three\n' >"$config_file"

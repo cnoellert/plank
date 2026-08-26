@@ -382,7 +382,7 @@ echo "client_rapid_reconnect_wait_gate=pass"
 for required_display_transition_token in \
   'display transition is still pending' \
   'authentication will be refreshed once' \
-  'MaximumVirtualCanvasWidth = 5120' \
+  'MaximumVirtualCanvasWidth = 8192' \
   'matchesRequestedHostLayout'; do
   rg -Fq "$required_display_transition_token" \
     "$source_dir/app/streaming/session.cpp" \

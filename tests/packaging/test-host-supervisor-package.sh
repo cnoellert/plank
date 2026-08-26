@@ -116,7 +116,7 @@ rg -Fq '"--fb", std::to_string(canvas_width) + "x" + std::to_string(canvas_heigh
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'Virtual ${maximum_canvas_width} ${maximum_canvas_height}' \
   "$repo_dir/packaging/bin/stationconnect-display-prepare"
-rg -Fq 'maximum_canvas_width=5120' \
+rg -Fq 'maximum_canvas_width=8192' \
   "$repo_dir/packaging/bin/stationconnect-display-prepare"
 rg -Fq '"--rate", "60"' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
