@@ -27,7 +27,8 @@ for block_offset in 0 128 256; do
     awk '{ for (field = 1; field <= NF; ++field) sum += $field } END { print sum % 256 }')
   [[ $checksum -eq 0 ]]
 done
-[[ $(od -An -j 8 -N 2 -tx1 "${edid_dir}/virtual-1-2560x2160.edid" | tr -d '[:space:]') == '25d3' ]]
+[[ $(od -An -j 8 -N 2 -tx1 "${edid_dir}/virtual-1-2560x2160.edid" | tr -d '[:space:]') == '4c76' ]]
+[[ $(od -An -j 113 -N 13 -tx1 "${edid_dir}/virtual-1-2560x2160.edid" | tr -d '[:space:]') == '446973706c617920310a202020' ]]
 
 run_prepare() {
   PATH="${fake_bin}:${PATH}" \

@@ -252,14 +252,20 @@ qualified Rocky 9 GNOME/Mutter 40 path, which reads at most 400 bytes from the
 XRandR EDID property and rejects a truncated property whose length is not a
 multiple of 128.
 
-The stable monitor identities are manufacturer `INS` and product names
-`SC Virtual 1` and `SC Virtual 2`. Their 160x90 physical-size fields are an
+The stable private monitor identities are manufacturer `SCV` and product names
+`Display 1` and `Display 2`. Their 160x90 physical-size fields are an
 EDID aspect-ratio marker, not a claim about physical dimensions; this lets
 Mutter present the product identity without deriving inappropriate DPI from a
 fictitious virtual-monitor size. NVIDIA validates the full live-switching pool
 when Xorg starts. An authenticated reconnect selects the 60 Hz entry by its
 published RandR mode name and rate; StationConnect does not enable
 `AllowNonEdidModes` or inject runtime modelines with `xrandr --newmode`.
+
+`SCV` is deliberately unregistered and is used only inside the controlled
+StationConnect fleet. It is not represented as an IEEE-assigned identity. If
+the product is distributed beyond that fleet, replace it with the standards-
+defined `CID` marker plus an Instinctual IEEE CID/OUI in a DisplayID 2.1
+Product Identification Data Block.
 
 The two stable NVIDIA outputs remain available to Xorg so an authenticated
 user can switch between single and dual layouts without restarting the

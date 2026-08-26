@@ -226,8 +226,8 @@ def build_edid(index: int, mode: str) -> bytes:
     if sum(edid) & 0xFF:
         raise ValueError("base EDID checksum is invalid")
 
-    # INS is the product-selected short manufacturer identity for Instinctual.
-    edid[8:10] = eisa_manufacturer_id("INS")
+    # SCV is the stable private StationConnect Virtual manufacturer identity.
+    edid[8:10] = eisa_manufacturer_id("SCV")
     edid[10:12] = (0x5300 + index).to_bytes(2, byteorder="little")
     edid[12:16] = index.to_bytes(4, byteorder="little")
     edid[16] = 1
@@ -242,7 +242,7 @@ def build_edid(index: int, mode: str) -> bytes:
     edid[54:72] = timing
     edid[72:90] = detailed_timing(base_modes[1])[0]
     edid[90:108] = detailed_timing(base_modes[2])[0]
-    set_text_descriptor(edid, 108, 0xFC, f"SC Virtual {index}")
+    set_text_descriptor(edid, 108, 0xFC, f"Display {index}")
 
     displayid_modes = [candidate for candidate in MODE_TIMINGS
                        if candidate not in base_modes]
