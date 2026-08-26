@@ -12,6 +12,11 @@ source_dir="${repo_dir}/host/sunshine-fork"
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 ffmpeg_dir=$(realpath -m -- "${2:-${source_dir}/cmake-build-ffmpeg-x264rgb-install/ffmpeg}")
 build_jobs=${STATIONCONNECT_BUILD_JOBS:-8}
+[[ -n ${STATIONCONNECT_BOOST_SOURCE_DIR:-} ]] || {
+  echo "prepared Boost source is required; set STATIONCONNECT_BOOST_SOURCE_DIR" >&2
+  exit 1
+}
+boost_source_dir=$(realpath -e -- "$STATIONCONNECT_BOOST_SOURCE_DIR")
 [[ $build_jobs =~ ^[1-9][0-9]*$ ]] || {
   echo "invalid host build job count: ${build_jobs}" >&2
   exit 1
@@ -36,6 +41,13 @@ done
   echo "prepared host FFmpeg tree is unavailable: ${ffmpeg_dir}" >&2
   exit 1
 }
+[[ -f ${boost_source_dir}/CMakeLists.txt ]] &&
+  rg -Fxq 'project(Boost VERSION 1.89.0 LANGUAGES CXX)' \
+    "$boost_source_dir/CMakeLists.txt" || {
+  echo "prepared Boost source is not exact version 1.89.0: ${boost_source_dir}" >&2
+  exit 1
+}
+echo "host_prepared_boost_gate=pass"
 
 # StationConnect's Rocky host accepts workstation keyboard, mouse, normalized
 # pen, and raw-HID Wacom input only. Keep controller packet routing, feedback,
@@ -274,6 +286,7 @@ cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
   -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
+  -DFETCHCONTENT_SOURCE_DIR_BOOST="$boost_source_dir" \
   -DFFMPEG_PREPARED_BINARIES="$ffmpeg_dir" \
   -DBUILD_DOCS=OFF \
   -DBUILD_TESTS=OFF \

@@ -481,6 +481,29 @@ for required_window_token in \
 done
 echo "client_wayland_window_mode_gate=pass"
 
+# Stream resolution belongs to each bookmark's Scaling policy. Scaled-Span
+# derives its transport canvas from the active client display, while Native
+# uses the selected host canvas exactly. Do not restore the old global
+# resolution preference, saved width/height state, or CLI override path.
+if rg -n \
+  'stationConnectAutoResolution|SER_(WIDTH|HEIGHT)|Q_PROPERTY\(int (width|height)|add(Value|Flag)Option\("(resolution|720|1080|1440|4K)"|Use native client display resolution|Resolution and FPS' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "obsolete global stream-resolution preference is present" >&2
+  exit 1
+fi
+for required_resolution_policy_token in \
+  'text: qsTr("Frame rate")' \
+  'text: qsTr("Window Mode")' \
+  'resolution-policy=%s' \
+  '"host-native" : "client-native"'; do
+  rg -Fq "$required_resolution_policy_token" "$source_dir/app" || {
+    echo "bookmark-owned resolution policy is missing: ${required_resolution_policy_token}" >&2
+    exit 1
+  }
+done
+echo "client_bookmark_resolution_policy_gate=pass"
+
 # Manually entered workstations are persistent bookmarks even while offline.
 # They retain both the entered address and editable nickname, then bind to the
 # first server identity that successfully answers at that address.

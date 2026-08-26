@@ -61,6 +61,14 @@ rg -Fq 'refusing to package a dirty StationConnect source tree' "$builder"
 rg -Fq 'stationconnect-host-supervisor' "$builder"
 rg -Fq 'stationconnect-host-certificate' "$builder"
 rg -Fq 'stationconnect-host-state' "$builder"
+rg -Fq 'STATIONCONNECT_BOOST_SOURCE_DIR' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'project(Boost VERSION 1.89.0 LANGUAGES CXX)' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'FETCHCONTENT_SOURCE_DIR_BOOST' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'client_bookmark_resolution_policy_gate=pass' \
+  "$repo_dir/scripts/build-client-package-binaries.sh"
 rg -Fq 'restrict_worker_capabilities' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stage_pulse_cookie' \
