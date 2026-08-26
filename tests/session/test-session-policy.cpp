@@ -4,7 +4,10 @@
  */
 #include "session/session_context.h"
 
+#include <fstream>
 #include <iostream>
+
+#include <unistd.h>
 
 namespace session = stationconnect::session;
 
@@ -70,6 +73,34 @@ int main() {
     std::cerr << "malformed display request was accepted\n";
     return 12;
   }
+
+  char display_config_path[] = "/tmp/stationconnect-display-policy.XXXXXX";
+  const int display_config_descriptor = mkstemp(display_config_path);
+  if (display_config_descriptor < 0 || close(display_config_descriptor) != 0) {
+    std::cerr << "unable to create display-policy fixture\n";
+    return 13;
+  }
+  const auto write_display_config = [&](std::string_view contents) {
+    std::ofstream output {display_config_path, std::ios::trunc};
+    output << contents;
+    return static_cast<bool>(output);
+  };
+  if (!write_display_config("[display]\nvirtual_outputs = off\n") ||
+      session::configured_display_policy(display_config_path) !=
+        session::display_policy_t::physical ||
+      !write_display_config("[display]\nvirtual_outputs = dual-horizontal\n") ||
+      session::configured_display_policy(display_config_path) !=
+        session::display_policy_t::virtual_outputs ||
+      !write_display_config(
+        "[display]\nvirtual_outputs = off\nvirtual_outputs = single\n"
+      ) ||
+      session::configured_display_policy(display_config_path) !=
+        session::display_policy_t::invalid) {
+    unlink(display_config_path);
+    std::cerr << "administrator display policy was not enforced\n";
+    return 14;
+  }
+  unlink(display_config_path);
 
   descriptor = valid_session();
   descriptor.active = false;

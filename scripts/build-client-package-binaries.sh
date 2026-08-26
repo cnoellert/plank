@@ -590,6 +590,25 @@ for required_match_client_token in \
 done
 echo "client_match_client_layout_gate=pass"
 
+# A reachable host publishes whether its administrator selected physical or
+# virtual outputs. The editor must lock a physical-policy host to Physical
+# Displays, while an offline bookmark remains fully editable. Connection
+# startup normalizes an offline virtual choice only when fresh topology proves
+# that the host permits physical displays exclusively.
+for required_display_policy_token in \
+  'stationConnectHostDisplayPolicy' \
+  'displayPolicyKnown' \
+  'hostDisplayPolicy === 0 ? 1 : hostLayoutIndex' \
+  'enabled: editBookmarkDialog.hostDisplayPolicy !== 0' \
+  "normalized the bookmark to the host's physical-display policy" \
+  'This workstation is configured for virtual displays.'; do
+  rg -Fq "$required_display_policy_token" "$source_dir/app" || {
+    echo "host display-policy invariant is missing: ${required_display_policy_token}" >&2
+    exit 1
+  }
+done
+echo "client_host_display_policy_gate=pass"
+
 # Bookmark scaling applies to the complete host desktop. Native preserves a
 # 1:1 transport canvas; Scaled-Span uses the qualified
 # client-resolution fit. Individual remote-output selection is intentionally

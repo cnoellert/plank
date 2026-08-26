@@ -52,6 +52,11 @@ chmod 0755 "${fake_bin}/systemctl"
 printf '[display]\nvirtual_outputs = off\n' >"$config_file"
 run_prepare >/dev/null
 [[ ! -e $output_file ]]
+if run_requested_prepare --layout single --mode-1 3840x2160 >/dev/null 2>&1; then
+  echo "a virtual transition bypassed the physical-display policy" >&2
+  exit 1
+fi
+[[ ! -e $output_file ]]
 
 printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null

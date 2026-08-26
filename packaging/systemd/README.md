@@ -72,11 +72,21 @@ reboot; the helper refuses to replace its overlay while the display manager is a
 Package removal deletes only an overlay carrying StationConnect's generated
 file marker; it does not alter the currently running X server.
 
+The administrator setting is also the runtime policy boundary. A host with
+`virtual_outputs = off` accepts only the physical bookmark layout and refuses
+all virtual-layout transitions. A host with `single` or `dual-horizontal`
+accepts dynamic changes only within those virtual layouts and refuses a
+physical-layout request. This prevents a remote bookmark from replacing a
+physical workstation's monitors with StationConnect EDIDs. The RPM explicitly
+applies the packaged preset on upgrade so the pre-GDM cleanup cannot remain
+disabled while a stale owned overlay survives a reboot.
+
 Install `stationconnect-client.service` in the system user-unit directory so
 the client inherits its Wayland display. Enable the services with:
 
 ```bash
 sudo systemctl enable --now stationconnect-pam-broker.service \
+  stationconnect-display-prepare.service \
   stationconnect-host.service
 systemctl --user enable --now stationconnect-client.service
 ```

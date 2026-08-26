@@ -45,6 +45,7 @@ rg -Fq '/usr/libexec/stationconnect/stationconnect-host' \
   "$repo_dir/packaging/bin/stationconnect-host"
 rg -Fq '/usr/lib/systemd/system/stationconnect-host.service' "$spec"
 rg -Fq '/usr/lib/systemd/system-preset/90-stationconnect.preset' "$spec"
+rg -Fq 'systemctl preset stationconnect-display-prepare.service' "$spec"
 rg -Fq '%sysusers_create stationconnect.conf' "$spec"
 rg -Fq 'stationconnect-host-certificate' "$spec"
 rg -Fq 'stationconnect-host-state' "$spec"
@@ -89,12 +90,18 @@ rg -Fq 'Scheduled StationConnect display transition from ' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'StationConnect live display transition completed for UID' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'virtual display transition because the host is configured for physical displays' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '/usr/libexec/stationconnect/stationconnect-display-prepare' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fxq 'ReadWritePaths=/etc/X11/xorg.conf.d' \
   "$repo_dir/packaging/systemd/stationconnect-host.service"
 rg -Fq 'Only the active desktop user may change its display layout' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
+rg -Fq 'Host is configured to use its physical displays' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
+rg -Fq 'virtual display transitions are disabled by display.virtual_outputs' \
+  "$repo_dir/packaging/bin/stationconnect-display-prepare"
 rg -Fq 'layout_arguments(request.mode_1, request.mode_2)' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '"--rate", "60"' \

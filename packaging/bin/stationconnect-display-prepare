@@ -109,6 +109,10 @@ if [[ -n $requested_layout || -n $requested_mode_1 || -n $requested_mode_2 ]]; t
     echo "a requested display transition requires --layout and --mode-1" >&2
     exit 2
   }
+  if [[ $virtual_outputs == off ]]; then
+    echo "virtual display transitions are disabled by display.virtual_outputs" >&2
+    exit 1
+  fi
   virtual_outputs=$requested_layout
   virtual_mode_1=$requested_mode_1
   if [[ $virtual_outputs == dual-horizontal ]]; then

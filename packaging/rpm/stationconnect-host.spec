@@ -54,6 +54,7 @@ cp -a payload/. %{buildroot}/
   /var/lib/stationconnect/stationconnect_state.json || exit 1
 /usr/bin/chmod 0600 /var/lib/stationconnect/stationconnect_state.json || exit 1
 %systemd_post stationconnect-pam-broker.service stationconnect-display-prepare.service stationconnect-host.service
+/usr/bin/systemctl preset stationconnect-display-prepare.service >/dev/null 2>&1 || :
 /usr/bin/udevadm control --reload-rules >/dev/null 2>&1 || :
 /usr/sbin/modprobe uhid >/dev/null 2>&1 || :
 /usr/bin/udevadm trigger --action=change --subsystem-match=misc --sysname-match=uhid >/dev/null 2>&1 || :
