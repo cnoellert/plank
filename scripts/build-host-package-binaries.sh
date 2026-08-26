@@ -103,6 +103,23 @@ for required_scroll_test_token in \
 done
 echo "host_mouse_scroll_compat_gate=pass"
 
+# StationConnect numeric keypads are always numeric. The host must set the
+# XKB state explicitly at connection time, reassert it before dependent keypad
+# keys, and consume client Num Lock transitions so local and remote lock state
+# cannot drift into opposite states.
+for required_num_lock_token in \
+  'XkbLockModifiers(display, XkbUseCoreKbd, num_lock_mask, num_lock_mask)' \
+  'if (keyCode == VKEY_NUMLOCK)' \
+  'if (!release && is_numeric_keypad_key(keyCode) && !enable_num_lock())' \
+  ConsumesNumLockWithoutChangingNumericKeypadIdentity; do
+  rg -Fq "$required_num_lock_token" \
+    "$source_dir/src/input.cpp" "$source_dir/tests/unit/test_input.cpp" || {
+    echo "host always-on Num Lock invariant is missing: ${required_num_lock_token}" >&2
+    exit 1
+  }
+done
+echo "host_num_lock_always_on_gate=pass"
+
 if rg -n \
   'enable_sops|SUNSHINE_CLIENT_ENABLE_SOPS|resource\["\^/cancel\$"\]|root\.cancel' \
   "$source_dir/src" \
