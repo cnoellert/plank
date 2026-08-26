@@ -66,7 +66,8 @@ fi
 %systemd_preun stationconnect-pam-broker.service stationconnect-display-prepare.service stationconnect-host.service
 
 %postun
-%systemd_postun_with_restart stationconnect-pam-broker.service stationconnect-display-prepare.service stationconnect-host.service
+%systemd_postun stationconnect-display-prepare.service
+%systemd_postun_with_restart stationconnect-pam-broker.service stationconnect-host.service
 
 %files
 %license /usr/share/licenses/stationconnect-host/LICENSE-Sunshine

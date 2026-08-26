@@ -46,6 +46,12 @@ rg -Fq '/usr/libexec/stationconnect/stationconnect-host' \
 rg -Fq '/usr/lib/systemd/system/stationconnect-host.service' "$spec"
 rg -Fq '/usr/lib/systemd/system-preset/90-stationconnect.preset' "$spec"
 rg -Fq 'systemctl preset stationconnect-display-prepare.service' "$spec"
+rg -Fxq '%systemd_postun stationconnect-display-prepare.service' "$spec"
+rg -Fxq '%systemd_postun_with_restart stationconnect-pam-broker.service stationconnect-host.service' "$spec"
+if rg -n '^%systemd_postun_with_restart .*stationconnect-display-prepare\.service' "$spec"; then
+  echo 'boot-only display preparation is restarted during package upgrades' >&2
+  exit 1
+fi
 rg -Fq '%sysusers_create stationconnect.conf' "$spec"
 rg -Fq 'stationconnect-host-certificate' "$spec"
 rg -Fq 'stationconnect-host-state' "$spec"
