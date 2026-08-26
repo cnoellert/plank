@@ -315,8 +315,7 @@ DisplayID 1.3 extensions. It uses stable manufacturer `INS`, product
 `SC Virtual 1` or `SC Virtual 2`, and the 160x90 EDID aspect-ratio marker so
 GNOME can show the product identity without assigning a fictitious physical
 size. `edid-decode` accepts both ordinary and 4096x2160-preferred generated
-variants with no warnings or failures. Package installation and a fresh Xorg
-start remain required before recording final GNOME hardware evidence.
+variants with no warnings or failures.
 
 The first `.92-c1` hardware attempt loaded the compact EDID after a GDM restart
 but rejected the candidate before acceptance: the host service intentionally
@@ -326,3 +325,14 @@ visibility transaction. Running the same command through a bounded systemd
 transient service as `gdm` succeeded and hid DP-2. `.92-c2` delegates only
 these graphical-owner commands to the system manager, preserving the host
 service capability boundary rather than broadening it.
+
+The clean `.92-c2` RPM is installed after the corrective GDM restart. The host
+log reports `StationConnect secondary virtual monitor is hidden to the
+desktop`, one connected 2560x2160 output, and DP-2 disconnected before the
+persistent worker starts. Mutter DisplayConfig contains only DP-0 and reports
+its raw identity as manufacturer `INS`, product `SC Virtual 1`, serial
+`0x00000001`; it no longer reports `unknown`. GNOME's Rocky hwdata expands the
+already-registered `INS` PNP code, so its final visible display name is
+`Ines GmbH SC Virtual 1`, not `Instinctual`. This expansion is operating-system
+vendor metadata rather than EDID content and is an accepted consequence of the
+product-selected `INS` code.
