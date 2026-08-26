@@ -58,8 +58,8 @@ The current vertical slice already provides:
 - authenticated output topology at `GET /stationconnect/topology`;
 - stable Linux output IDs in the form `x11:<connector>`;
 - a topology generation bound to launch and the active session;
-- per-bookmark `scaled-span` or `single-output` selection;
-- complete-desktop NvFBC capture for scaled span;
+- per-bookmark Native or Scaled-Span transport scaling;
+- complete-desktop NvFBC capture for both scaling modes;
 - host-side, aspect-preserving CUDA scaling into the negotiated transport
   canvas;
 - a shared touch-port geometry for normalized absolute input;
@@ -67,9 +67,8 @@ The current vertical slice already provides:
 - a 3840x2160 qualified client transport ceiling, except for an exact native
   match already proven by the client display resolver.
 
-The missing pieces are virtual-output creation, lifecycle ownership, explicit
-host-layout selection, local dual-display mapping, synchronized presentation,
-and the larger-canvas performance decision.
+The remaining work is production qualification of the virtual-output
+lifecycle, scaling choices, and larger native canvases.
 
 ## Architecture
 
@@ -116,8 +115,8 @@ Bookmarks describe a bounded layout request, not an Xorg implementation:
 - resolved host layout: `physical`, `single`, or `dual-horizontal`;
 - width, height, and refresh rate for each virtual display;
 - primary display;
-- presentation: `scaled-span`, `single-output`, or `separate-displays`;
-- stable local-output mapping when `separate-displays` is selected.
+- scaling: `native` for an exact 1:1 transport canvas or `scaled-span` to fit
+  the complete host desktop into the selected client resolution.
 
 The host returns its actual topology after preparation. The active topology
 continues to use opaque output IDs, rectangles, rotation, refresh, primary
@@ -169,13 +168,13 @@ later feature.
 
 ### 4. Capture and transport
 
-The first implementation retains one composite video stream:
-
-- `single-output` captures one selected host output;
-- `scaled-span` captures the complete host desktop and uses the existing CUDA
-  scaler to fit the requested client canvas;
-- `separate-displays` initially captures the complete host desktop once and
-  sends one composite frame plus stable source rectangles for client cropping.
+The implementation retains one composite video stream and always captures the
+complete host desktop. Native scaling requests a transport canvas exactly
+equal to the resolved host desktop, preserving one host pixel per encoded
+pixel. Scaled-Span uses the existing aspect-preserving CUDA scaler to fit that
+desktop into the client resolution. Both policies use the existing
+`scaled-span` host capture request; `native` is a client-side scaling policy
+and is not sent as a new wire-level display mode.
 
 One composite stream preserves one encoder, one decoder, one FEC timeline, one
 bitrate target, one audio clock, and one set of toolbar statistics. It is the
@@ -193,29 +192,15 @@ cost gates, add synchronized per-output streams as a later protocol feature.
 Do not build multiple streams until measurement demonstrates that they are
 necessary.
 
-### 5. Client presentation
+### 5. Client scaling
 
-The client remains native Wayland/SDL3/Vulkan. It must not depend on one giant
-Wayland window spanning several physical outputs.
-
-For `separate-displays`:
-
-- decode the composite frame once;
-- create one SDL3 fullscreen window and Vulkan swapchain per selected local
-  output;
-- render the corresponding source rectangle from the same decoded Vulkan
-  image into each swapchain;
-- use one presentation clock and measure inter-output presentation skew;
-- fall back clearly if a mapped local output disappears.
-
-For `scaled-span`, one window presents the complete host canvas with
-aspect-preserving scaling and explicit letterbox geometry. For
-`single-output`, one window presents the selected source rectangle.
-
-Persist local display mappings using the most stable SDL3/Wayland identity
-available, plus geometry as a fallback. Enumeration order alone is not stable.
-If a saved local output is absent, prompt or fall back to scaled span; never
-silently exchange left and right displays.
+The client remains native Wayland/SDL3/Vulkan and uses one presentation
+window for the complete remote desktop. Bookmarks expose only Native (1:1
+pixels) and Scaled-Span. They do not expose a remote-monitor selector or
+switch capture between individual host outputs. Native is appropriate when
+the client can present the resolved host canvas pixel-for-pixel. Scaled-Span
+retains aspect-preserving scaling and explicit letterbox geometry for a host
+canvas that is larger than the available client area.
 
 ### 6. Absolute input mapping
 
@@ -303,14 +288,13 @@ family, and runtime limits.
 
 ## Protocol Evolution
 
-Version 4 is the current StationConnect headless-layout protocol. It retains the
-existing physical-output `single-output` and `scaled-span` presentation modes
-and adds:
+Version 4 is the current StationConnect headless-layout protocol. The current
+client always requests the complete-desktop `scaled-span` capture path and
+adds:
 
 - requested host layout and one preset mode per virtual output;
 - virtual versus physical output provenance;
 - stable virtual output identity;
-- separate local-display presentation mapping;
 - source rectangles within a composite stream;
 - source-canvas and transport-canvas dimensions;
 - capability limits and explicit rejection reasons;
@@ -403,7 +387,7 @@ restart preserve or cleanly recreate the requested headless topology.
 ### Phase H4 - Bookmark and protocol integration
 
 - Add per-bookmark Match Client, Physical Displays, one-virtual, and
-  two-virtual host-layout choices plus independent client presentation.
+  two-virtual host-layout choices plus Native and Scaled-Span scaling.
 - Negotiate requested and actual topology before launch.
 - Publish virtual-output provenance and source/transport rectangles.
 - Add explicit unsupported/stale-layout client messages and retry rules.
@@ -412,17 +396,16 @@ restart preserve or cleanly recreate the requested headless topology.
 Exit gate: all bookmark layouts produce the expected host topology or a clear,
 non-consuming rejection.
 
-### Phase H5 - Dual client presentation
+### Phase H5 - Client scaling
 
-- Add SDL3 local-output inventory and stable mapping.
-- Add one Vulkan presentation window per mapped output.
-- Decode once and render cropped source regions without a second CPU upload.
-- Add presentation-skew and per-window failure telemetry.
-- Retain scaled-span as the default when no explicit two-display mapping is
-  valid.
+- Resolve Native to the exact host desktop pixel canvas.
+- Resolve Scaled-Span through the qualified client-resolution limit.
+- Capture and decode the complete desktop once in both cases.
+- Fail clearly when Native requests an unqualified codec dimension or cannot
+  determine the resolved host canvas.
 
-Exit gate: left/right output identity remains correct across application
-restart, reconnect, client reboot, and local monitor reordering.
+Exit gate: Native preserves exact pixels and Scaled-Span preserves the full
+desktop and aspect ratio across restart, reconnect, and client reboot.
 
 ### Phase H6 - Input, performance, and reliability qualification
 
@@ -451,8 +434,8 @@ For every qualified layout, record:
   age, CUDA scale time, and deadline misses;
 - requested profile, actual encoder input format, full/PC range, matrix, output
   bitstream profile, decoder surface, and rendered pixel checks;
-- one-client-display scaled span and two-client-display mapping;
-- local monitor reorder, unplug, and replug behavior;
+- Native and Scaled-Span on one- and two-display host layouts;
+- client monitor reorder, unplug, and replug behavior for Match Client;
 - pointer boundary crossing, letterbox rejection, Wacom tip/eraser/pressure,
   Tablet Margins, ExpressKeys, and reconnect identity;
 - requested/actual source and transport dimensions, target bitrate, packet
@@ -466,9 +449,8 @@ For every qualified layout, record:
 - CUDA scaling and color preparation retain the existing production margin.
 - Client decode plus presentation sustains the negotiated cadence without a
   rising render queue or periodic holds.
-- Separate local windows remain synchronized closely enough that a boundary
-  crossing is not visibly discontinuous; record actual skew before setting the
-  acceptance threshold.
+- Native transport preserves 1:1 pixel geometry without introducing a rising
+  decode or presentation queue.
 - Dual 4K is not advertised merely because Xorg can create the framebuffer.
   It must pass codec dimensions, encoder cadence, software-decoder cost,
   Vulkan presentation, and soak tests.

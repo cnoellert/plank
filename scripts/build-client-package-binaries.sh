@@ -490,6 +490,7 @@ for required_bookmark_token in \
   stationconnect-host-layout \
   stationconnect-virtual-mode-1 \
   stationconnect-virtual-mode-2 \
+  stationconnect-scaling-mode \
   acceptsServerUuid \
   'Address or hostname' \
   Nickname; do
@@ -498,9 +499,9 @@ for required_bookmark_token in \
     exit 1
   }
 done
-rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addHostLayout\.currentIndex,[[:space:]]*addVirtualMode1\.currentIndex,[[:space:]]*addVirtualMode2\.currentIndex,[[:space:]]*addDisplayChoice\.currentIndex,[[:space:]]*addEncodingProfileModel\.get\(' \
+rg -U -q 'addNewHostManually\(addressText\.text\.trim\(\),[[:space:]]*nicknameText\.text\.trim\(\),[[:space:]]*addHostLayout\.currentIndex,[[:space:]]*addVirtualMode1\.currentIndex,[[:space:]]*addVirtualMode2\.currentIndex,[[:space:]]*addScalingChoice\.currentIndex,[[:space:]]*addEncodingProfileModel\.get\(' \
   "$source_dir/app/gui/main.qml" || {
-  echo "manual workstation dialog does not submit address, nickname, host layout, independent virtual modes, presentation, and encoding profile" >&2
+  echo "manual workstation dialog does not submit address, nickname, host layout, independent virtual modes, scaling, and encoding profile" >&2
   exit 1
 }
 for required_bookmark_editor_token in \
@@ -588,6 +589,28 @@ for required_match_client_token in \
   }
 done
 echo "client_match_client_layout_gate=pass"
+
+# Bookmark scaling applies to the complete host desktop. Native preserves a
+# 1:1 transport canvas; Scaled-Span uses the qualified
+# client-resolution fit. Individual remote-output selection is intentionally
+# absent from the headless workflow.
+if rg -n 'stationconnect-selected-output|selectedOutputId|scOutputId|stationConnectDisplayChoices|selectOutput\(|SingleOutputMode|SeparateDisplaysMode|Primary display|specific host monitor|Named host monitors' \
+  "$source_dir/app" --glob '!**/languages/**'; then
+  echo "remote-monitor selection is present in the StationConnect client" >&2
+  exit 1
+fi
+for required_scaling_token in \
+  'NativeScalingMode' \
+  'stationConnectScalingChoice' \
+  'Native (1:1 pixels)' \
+  'Scaled-Span' \
+  'Native scaling requires a valid host desktop pixel size.'; do
+  rg -Fq "$required_scaling_token" "$source_dir/app" || {
+    echo "bookmark scaling invariant is missing: ${required_scaling_token}" >&2
+    exit 1
+  }
+done
+echo "client_bookmark_scaling_gate=pass"
 
 # Workstation diagnostics belong in the bounded persistent log rather than a
 # user-facing context-menu dump of internal addresses and identifiers.
