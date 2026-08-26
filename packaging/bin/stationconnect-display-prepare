@@ -97,8 +97,8 @@ display_settings=$(awk '
   }
   END {
     if (!values["virtual_outputs"]) values["virtual_outputs"] = "off"
-    if (!values["virtual_mode_1"]) values["virtual_mode_1"] = "3840x2160"
-    if (!values["virtual_mode_2"]) values["virtual_mode_2"] = "3840x2160"
+    if (!values["virtual_mode_1"]) values["virtual_mode_1"] = "1920x1080"
+    if (!values["virtual_mode_2"]) values["virtual_mode_2"] = "1920x1080"
     print values["virtual_outputs"] "\t" values["virtual_mode_1"] "\t" values["virtual_mode_2"]
   }
 ' "$config_file") || exit 1

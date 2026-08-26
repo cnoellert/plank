@@ -232,8 +232,8 @@ Add one administrator-controlled `[display]` section to
 ```ini
 [display]
 virtual_outputs = off
-virtual_mode_1 = 3840x2160
-virtual_mode_2 = 3840x2160
+virtual_mode_1 = 1920x1080
+virtual_mode_2 = 1920x1080
 ```
 
 `virtual_outputs` accepts only `off`, `single`, or `dual-horizontal` and

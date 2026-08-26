@@ -58,6 +58,13 @@ if run_requested_prepare --layout single --mode-1 3840x2160 >/dev/null 2>&1; the
 fi
 [[ ! -e $output_file ]]
 
+printf '[display]\nvirtual_outputs = single\n' >"$config_file"
+run_prepare >/dev/null
+grep -Fq 'DFP-0: 1920x1080 +0+0, DFP-2: NULL' "$output_file"
+grep -Fq 'virtual-1-1920x1080.edid' "$output_file"
+grep -Fq 'virtual-2-1920x1080.edid' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
+
 printf '[display]\nvirtual_outputs = single\nvirtual_mode_1 = 3840x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
 run_prepare >/dev/null
 grep -Fq 'Option "ConnectedMonitor" "DFP-0, DFP-2"' "$output_file"
