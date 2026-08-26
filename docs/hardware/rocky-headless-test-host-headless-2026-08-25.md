@@ -336,3 +336,27 @@ already-registered `INS` PNP code, so its final visible display name is
 `Ines GmbH SC Virtual 1`, not `Instinctual`. This expansion is operating-system
 vendor metadata rather than EDID content and is an accepted consequence of the
 product-selected `INS` code.
+
+## Private Internal Monitor Identity
+
+The `.93-c1` package replaces the collision-prone `INS` identity with the
+private internal manufacturer code `SCV` and product names `Display 1` and
+`Display 2`. `SCV` is intentionally unregistered and is suitable only for the
+controlled StationConnect fleet. A future externally distributed product
+should instead use the standards-compliant literal PNP code `CID` and a
+registered IEEE CID in a DisplayID 2.1 Product Identification block.
+
+The exact package source is root
+`a446e54832f8894da1c1ba705740f08d6abc7881` and unchanged Sunshine
+`1328a9208abf60e8f22fa5474d5b707a77866018`. The clean RPM is 5,857,854
+bytes with SHA-256
+`3b4b04d6fe5143b87a247f52dbe201574cbf1e0385e807de63e3af2c7b2df8db`.
+It is installed on headless-test-host as `stationconnect-host-0.1.0-0.93.el9.x86_64`.
+
+After a fresh GDM/Xorg start, XRandR reported DP-0 connected at exact
+2560x2160p60 and DP-2 disconnected. Mutter DisplayConfig exposed only DP-0
+with raw identity manufacturer `SCV`, product `Display 1`, serial
+`0x00000001`, and visible name `SCV Display 1`. The host log recorded
+`StationConnect secondary virtual monitor is hidden to the desktop` before
+the persistent worker enumerated DP-0 connected and DP-2 disconnected. This
+validates both the private identity and the single-layout hot-plug boundary.
