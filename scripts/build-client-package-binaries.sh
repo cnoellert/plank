@@ -381,9 +381,12 @@ echo "client_rapid_reconnect_wait_gate=pass"
 
 for required_display_transition_token in \
   'display transition is still pending' \
-  'authentication will be refreshed once'; do
+  'authentication will be refreshed once' \
+  'MaximumVirtualCanvasWidth = 5120' \
+  'matchesRequestedHostLayout'; do
   rg -Fq "$required_display_transition_token" \
-    "$source_dir/app/streaming/session.cpp" || {
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/backend/outputtopology.h" || {
     echo "display-transition retry invariant is missing: ${required_display_transition_token}" >&2
     exit 1
   }

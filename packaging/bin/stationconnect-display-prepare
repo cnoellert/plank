@@ -226,11 +226,10 @@ done
 
 # NVIDIA constrains later RandR MetaModes to the boot-time X screen's virtual
 # dimensions even though xrandr advertises a larger protocol maximum. Reserve
-# enough space for any two qualified 4096-wide outputs so a live transition can
-# move the secondary output immediately after the primary without the driver
-# silently overlapping them. The active MetaMode below still determines the
-# visible desktop size; this is only the maximum canvas available to RandR.
-maximum_canvas_width=8192
+# enough space for the two qualified StationConnect asymmetric layouts
+# (3840+1280 or 4096+1024) so a live transition can move the secondary output
+# immediately after the primary without the driver silently overlapping them.
+maximum_canvas_width=5120
 maximum_canvas_height=2160
 
 if [[ $virtual_outputs == single ]]; then
