@@ -569,6 +569,26 @@ for required_virtual_mode_token in \
 done
 echo "client_bookmark_resolution_list_gate=pass"
 
+# Match Client is a client-side bookmark policy that resolves the active SDL3
+# monitor inventory into an exact one- or two-output host request. The former
+# inherited-host policy is intentionally absent because it made bookmark
+# behavior depend on stale host state.
+if rg -n 'ConfiguredHostLayout|Use the host.s configured layout' \
+  "$source_dir/app" --glob '!**/languages/**'; then
+  echo "inherited configured-host bookmark policy is present" >&2
+  exit 1
+fi
+for required_match_client_token in \
+  'MatchClientHostLayout' \
+  'resolveClientDisplayLayout' \
+  'Match client displays'; do
+  rg -Fq "$required_match_client_token" "$source_dir/app" || {
+    echo "match-client bookmark invariant is missing: ${required_match_client_token}" >&2
+    exit 1
+  }
+done
+echo "client_match_client_layout_gate=pass"
+
 # Workstation diagnostics belong in the bounded persistent log rather than a
 # user-facing context-menu dump of internal addresses and identifiers.
 if rg -n 'DetailsRole|showPcDetailsDialog|View Details|Running Game ID|MAC Address:' \

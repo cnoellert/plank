@@ -111,7 +111,9 @@ regions. Merely creating a large framebuffer does not qualify as two monitors.
 
 Bookmarks describe a bounded layout request, not an Xorg implementation:
 
-- layout: `single`, `dual-horizontal`, or `dual-vertical`;
+- layout policy: match the active client displays, use physical host displays,
+  use one virtual display, or use two horizontal virtual displays;
+- resolved host layout: `physical`, `single`, or `dual-horizontal`;
 - width, height, and refresh rate for each virtual display;
 - primary display;
 - presentation: `scaled-span`, `single-output`, or `separate-displays`;
@@ -127,6 +129,24 @@ probe presets are one 3840x2160p60 output, two 1920x1080p60 outputs, two
 2560x1440p60 outputs, and two 3840x2160p60 outputs. A preset becomes a product
 option only after Xorg, Flame, NvFBC, encoder, decoder, render, and input gates
 pass.
+
+`Match client displays` is resolved entirely by the client before launch. One
+active client monitor becomes one virtual host display at its native pixel
+resolution. Two active client monitors become two virtual host displays,
+ordered left to right, at their respective native pixel resolutions. The
+resolved request uses the existing bounded `single` or `dual-horizontal` host
+protocol; `match-client` is never sent over the wire. More than two monitors,
+a non-horizontal arrangement, failed native-mode detection, or a resolution
+outside the qualified preset list fails with a clear client error rather than
+silently choosing a different topology. The resolved monitor inventory is held
+constant through launch retries and transport reconnects so display hot-plug
+cannot silently change the active input/video mapping.
+
+The former `Use the host's configured layout` bookmark policy is removed. It
+made a bookmark depend on whichever topology happened to be active on the host
+and provided no deterministic deployment behavior. `Physical displays`
+remains an explicit choice for workstations that should use real attached host
+monitors.
 
 ### 3. Session lifecycle
 
@@ -382,7 +402,8 @@ restart preserve or cleanly recreate the requested headless topology.
 
 ### Phase H4 - Bookmark and protocol integration
 
-- Add per-bookmark host-layout and client-presentation choices.
+- Add per-bookmark Match Client, Physical Displays, one-virtual, and
+  two-virtual host-layout choices plus independent client presentation.
 - Negotiate requested and actual topology before launch.
 - Publish virtual-output provenance and source/transport rectangles.
 - Add explicit unsupported/stale-layout client messages and retry rules.
