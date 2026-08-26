@@ -103,6 +103,10 @@ rg -Fq '"--set", "non-desktop", "0"' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '"--off", "--set", "non-desktop", "1"' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'visibility_session_id != selected->id' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'visibility_session_id = selected->id' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'constexpr std::string_view systemd_run_path = "/usr/bin/systemd-run"' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '"--uid=" + account.name' \
