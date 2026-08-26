@@ -103,6 +103,17 @@ rg -Fq '"--set", "non-desktop", "0"' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '"--off", "--set", "non-desktop", "1"' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq 'constexpr std::string_view systemd_run_path = "/usr/bin/systemd-run"' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq '"--uid=" + account.name' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+rg -Fq '"--property=NoNewPrivileges=yes"' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+if rg -q 'set(uid|gid|groups)\(' \
+  "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"; then
+  echo "host supervisor must delegate user-command identity to systemd" >&2
+  exit 1
+fi
 if rg -q 'AllowNonEdidModes|--newmode|--addmode|StationConnect-' \
   "$repo_dir/packaging/bin/stationconnect-display-prepare" \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"; then

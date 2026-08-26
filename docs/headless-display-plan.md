@@ -269,6 +269,11 @@ hides it from GNOME Displays instead of showing a connected but inactive
 monitor. A dual-output transition first clears `non-desktop` to `0`, then
 activates and positions the secondary output. This is the virtual-monitor
 hot-plug boundary; it does not modify the immutable EDID or inject a connector.
+XRandR transactions run in a short-lived, bounded systemd transient service as
+the owning graphical-session account. The root supervisor does not retain
+`CAP_SETUID` or `CAP_SETGID`; the system manager establishes the transient
+unit's user identity and applies its `NoNewPrivileges`, filesystem, address-
+family, and runtime limits.
 
 ## Protocol Evolution
 

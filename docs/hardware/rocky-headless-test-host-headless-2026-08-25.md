@@ -317,3 +317,12 @@ GNOME can show the product identity without assigning a fictitious physical
 size. `edid-decode` accepts both ordinary and 4096x2160-preferred generated
 variants with no warnings or failures. Package installation and a fresh Xorg
 start remain required before recording final GNOME hardware evidence.
+
+The first `.92-c1` hardware attempt loaded the compact EDID after a GDM restart
+but rejected the candidate before acceptance: the host service intentionally
+does not retain `CAP_SETUID` or `CAP_SETGID`, so the supervisor's direct
+`setuid`/`setgid` child path could not execute the initial GDM-owned XRandR
+visibility transaction. Running the same command through a bounded systemd
+transient service as `gdm` succeeded and hid DP-2. `.92-c2` delegates only
+these graphical-owner commands to the system manager, preserving the host
+service capability boundary rather than broadening it.
