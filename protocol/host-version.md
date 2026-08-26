@@ -6,7 +6,7 @@ authenticated HTTPS `/serverinfo` responses:
 
 ```xml
 <StationConnectHostMetadataVersion>1</StationConnectHostMetadataVersion>
-<StationConnectHostVersion>0.1.0-0.103</StationConnectHostVersion>
+<StationConnectHostVersion>0.1.0-0.104</StationConnectHostVersion>
 ```
 
 Metadata schema version 1 defines the host-version element. Its value is the

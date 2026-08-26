@@ -76,6 +76,33 @@ fi
 }
 echo "host_gamepad_absence_gate=pass"
 
+# Linux consumers such as Xorg/libinput may ignore REL_WHEEL_HI_RES unless the
+# corresponding accumulated legacy detent is emitted in the same report.
+virtualhid_linux_backend="${source_dir}/third-party/libvirtualhid/src/platform/linux/uhid_backend.cpp"
+virtualhid_linux_tests="${source_dir}/third-party/libvirtualhid/tests/unit/test_linux_backend.cpp"
+for required_scroll_token in \
+  vertical_scroll_remainder_ \
+  horizontal_scroll_remainder_ \
+  'enable_evdev_code(device, EV_REL, REL_WHEEL, "vertical scroll")' \
+  'enable_evdev_code(device, EV_REL, REL_HWHEEL, "horizontal scroll")' \
+  'emit_event(EV_REL, REL_WHEEL, static_cast<std::int32_t>(legacy_steps))' \
+  'emit_event(EV_REL, REL_HWHEEL, static_cast<std::int32_t>(legacy_steps))'; do
+  rg -Fq "$required_scroll_token" "$virtualhid_linux_backend" || {
+    echo "host compatible wheel-scroll invariant is missing: ${required_scroll_token}" >&2
+    exit 1
+  }
+done
+for required_scroll_test_token in \
+  UinputMouseAccumulatesLegacyScrollDetents \
+  'EXPECT_NE(find_code(mouse, EV_REL, REL_WHEEL), nullptr)' \
+  'EXPECT_NE(find_code(mouse, EV_REL, REL_HWHEEL), nullptr)'; do
+  rg -Fq "$required_scroll_test_token" "$virtualhid_linux_tests" || {
+    echo "host compatible wheel-scroll regression test is missing: ${required_scroll_test_token}" >&2
+    exit 1
+  }
+done
+echo "host_mouse_scroll_compat_gate=pass"
+
 if rg -n \
   'enable_sops|SUNSHINE_CLIENT_ENABLE_SOPS|resource\["\^/cancel\$"\]|root\.cancel' \
   "$source_dir/src" \

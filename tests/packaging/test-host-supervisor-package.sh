@@ -73,6 +73,8 @@ rg -Fq 'project(Boost VERSION 1.89.0 LANGUAGES CXX)' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'FETCHCONTENT_SOURCE_DIR_BOOST' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_mouse_scroll_compat_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'client_bookmark_resolution_policy_gate=pass' \
   "$repo_dir/scripts/build-client-package-binaries.sh"
 rg -Fq 'restrict_worker_capabilities' \
