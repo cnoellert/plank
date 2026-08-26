@@ -360,3 +360,40 @@ with raw identity manufacturer `SCV`, product `Display 1`, serial
 `StationConnect secondary virtual monitor is hidden to the desktop` before
 the persistent worker enumerated DP-0 connected and DP-2 disconnected. This
 validates both the private identity and the single-layout hot-plug boundary.
+
+## GDM-to-User Visibility and Neutral Bootstrap
+
+The `.93` greeter validation was incomplete. It proved DP-2 hidden in GDM's
+X server, but login created a separate user-owned X server where NVIDIA
+recreated DP-2 as connected. The supervisor had discarded the requested
+single-display state after applying it to GDM, so GNOME Displays again offered
+the secondary monitor after authentication.
+
+`.94` associates the desired secondary-monitor visibility with the X11 session
+where it has been applied and reapplies it whenever GDM changes to a new user
+X server. Exact package source is root
+`0b7a0288b8872dd18174ffb136666d826998fab4` and Sunshine
+`e852977346cb9d7b57d43f6b06615005b0f5b838`. The clean RPM is 5,858,170
+bytes with SHA-256
+`858ab979eeabf18b481722535c531fa79a2c3712eec210f621aa0d52ab36e565`.
+
+The accepted live test started from an asymmetric dual greeter. A single
+2560x2160 bookmark caused the expected GDM topology transaction. DP-2 was
+hidden in the replacement greeter and then hidden again after login created
+`operator`'s user X server. The user saw one 2560x2160 monitor, while host worker
+enumeration independently reported DP-0 connected and DP-2 disconnected.
+
+The administrator configuration on headless-test-host now defines only a neutral
+1920x1080 single-display bootstrap. A subsequent cold reboot generated that
+overlay before GDM, logged the secondary monitor hidden before worker launch,
+and produced this XRandR state:
+
+```text
+Screen 0: 1920x1080
+DP-0: connected primary 1920x1080+0+0
+DP-2: disconnected
+```
+
+Mutter exposed only `SCV / Display 1 / 0x00000001`. The bootstrap exists only
+to provide GDM and NvFBC with a valid headless desktop; each bookmark remains
+the source of truth for the connected session's final topology and resolution.
