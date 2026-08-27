@@ -119,6 +119,8 @@ rg -Fq 'config.m_device_id = session.output_name' \
   "$repo_dir/host/sunshine-fork/src/display_device.cpp"
 rg -Fq 'host_static_capture_selector_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_legacy_x11_capture_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \

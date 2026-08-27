@@ -320,6 +320,36 @@ for required_capture_token in \
 done
 echo "host_static_capture_selector_absence_gate=pass"
 
+# StationConnect exposes exactly two Linux capture paths: qualified NvFBC
+# 8-bit capture and the experimental owner-restricted Native X11/XShm 10-bit
+# path. Keep Sunshine's dormant generic X11 SHM/XGetImage fallbacks out of the
+# first-party host source, including their world-accessible SysV SHM mode.
+x11_capture_source="${source_dir}/src/platform/linux/x11grab.cpp"
+linux_platform_source="${source_dir}/src/platform/linux/misc.cpp"
+if rg -n \
+  'struct[[:space:]]+shm_attr_t|IPC_CREAT[[:space:]]*\|[[:space:]]*0777|"XGetImage"|xcb_shm_attach"' \
+  "$x11_capture_source" ||
+  rg -n 'Screencasting with X11"' "$linux_platform_source"; then
+  echo "legacy generic X11 capture remains in first-party StationConnect host source" >&2
+  exit 1
+fi
+for required_native_x11_token in \
+  'config.capture_source != ::video::capture_source_e::x11_native10' \
+  'Rejecting unsupported generic X11 capture source' \
+  'IPC_CREAT | 0600' \
+  'segment_info.shm_perm.mode = 0600' \
+  'xcb::shm_attach_checked' \
+  'shmctl(img->shm_id, IPC_RMID, nullptr)' \
+  'config_max_ref_frames.capture_source = capture_source_e::nvfbc_8bit' \
+  'config_autoselect.capture_source = capture_source_e::nvfbc_8bit'; do
+  rg -Fq "$required_native_x11_token" \
+    "$x11_capture_source" "$source_dir/src/video.cpp" || {
+    echo "explicit StationConnect capture-source invariant is missing: ${required_native_x11_token}" >&2
+    exit 1
+  }
+done
+echo "host_legacy_x11_capture_absence_gate=pass"
+
 # Virtual-display preparation augments the Autodesk Xorg baseline before GDM.
 # It is opt-in, bounded to qualified layouts, and may not reconfigure a live
 # display manager.
