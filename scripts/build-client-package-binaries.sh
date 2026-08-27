@@ -418,16 +418,17 @@ if rg -n 'stationConnectVideoProfile|Encoding profile' \
   exit 1
 fi
 
-# The startup encoder target belongs to each bookmark. The toolbar owns only a
-# session-local copy, and no global or command-line bitrate source may compete
-# with the bookmark value.
+# Every encoding profile owns an independent startup encoder target within each
+# bookmark. The toolbar owns only a session-local copy, and no global or
+# command-line bitrate source may compete with the bookmark/profile value.
 for required_bookmark_bitrate_token in \
-  '#define SER_STATIONCONNECT_BITRATE "stationconnect-bitrate-kbps"' \
-  'int stationConnectBitrateKbps =' \
-  'settings.value(' \
-  'settings.setValue(SER_STATIONCONNECT_BITRATE, stationConnectBitrateKbps);' \
-  'stationConnectBitrateKbps == that.stationConnectBitrateKbps' \
-  'stationConnectBitrateKbps(int computerIndex) const' \
+  '#define SER_STATIONCONNECT_PROFILE_BITRATES "stationconnect-profile-bitrates-kbps"' \
+  'QVector<int> stationConnectProfileBitratesKbps =' \
+  'stationConnectProfileBitratesFromVariantList(' \
+  'stationConnectProfileBitratesToVariantList(' \
+  'stationConnectProfileBitratesKbps ==' \
+  'stationConnectProfileBitratesKbps(' \
+  'stationConnectBitrateForProfile(' \
   'm_StationConnectBitrateKbps' \
   'm_StreamConfig.bitrate = m_StationConnectBitrateKbps;' \
   'StationConnectH264DefaultBitrateKbps = 80000' \
@@ -448,8 +449,9 @@ for required_bookmark_bitrate_ui_token in \
   addBitrateSlider \
   editBitrateSlider \
   'Startup encoder target:' \
-  'Toolbar adjustments apply only to the active session.' \
-  'computerModel.stationConnectBitrateKbps(index)'; do
+  'Saved independently for each encoding profile. Toolbar adjustments apply only to the active session.' \
+  'rememberProfileBitrate' \
+  'computerModel.stationConnectProfileBitratesKbps(index)'; do
   rg -Fq "$required_bookmark_bitrate_ui_token" \
     "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
     echo "StationConnect bookmark bitrate UI is missing: ${required_bookmark_bitrate_ui_token}" >&2
@@ -457,12 +459,25 @@ for required_bookmark_bitrate_ui_token in \
   }
 done
 if rg -n \
-  'Q_PROPERTY\(int bitrateKbps|\bbitrateKbps MEMBER|#define SER_BITRATE "bitrate"|getDefaultBitrate|StreamingPreferences\.bitrateKbps|m_Preferences\.bitrateKbps|preferences->bitrateKbps|addValueOption\("bitrate"' \
+  'Q_PROPERTY\(int bitrateKbps|\bbitrateKbps MEMBER|#define SER_BITRATE "bitrate"|stationconnect-bitrate-kbps|getDefaultBitrate|StreamingPreferences\.bitrateKbps|m_Preferences\.bitrateKbps|preferences->bitrateKbps|addValueOption\("bitrate"' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
   echo "global or command-line bitrate configuration remains in StationConnect client" >&2
   exit 1
 fi
+if rg -n 'NVENC \(Experimental\)' \
+  "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml"; then
+  echo "NVENC encoding profiles must not be labeled Experimental" >&2
+  exit 1
+fi
+for native_capture_label in \
+  'Native X11/XShm — 10-bit (Experimental)'; do
+  rg -Fq "$native_capture_label" \
+    "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
+    echo "native X11 capture must retain its Experimental label" >&2
+    exit 1
+  }
+done
 echo "client_bookmark_bitrate_gate=pass"
 
 for required_reconnect_wait_token in \

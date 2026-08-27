@@ -14,12 +14,15 @@ FEC. It uses the same 500 through 500000 Kbps validation range. Providing the
 target during setup ensures the first encoder starts at the selected bookmark
 value, before the live control stream is ready.
 
-The client persists one startup encoder target in each workstation bookmark.
-H.264 profiles default to 80000 Kbps and HEVC profiles default to 50000 Kbps;
-the bookmark editor permits 10000 through 150000 Kbps in 500 Kbps steps. The
-session snapshots that value during connection setup. Toolbar changes affect
-only the active session and are never written to the bookmark or a global
-client preference, so reconnecting starts from the bookmark target again.
+The client persists one startup encoder target for every encoding profile in
+each workstation bookmark. Each H.264 profile initially defaults to 80000 Kbps
+and each HEVC profile initially defaults to 50000 Kbps, but the values remain
+independent after initialization. Switching profiles in the bookmark editor
+restores that exact profile's saved value. The editor permits 10000 through
+150000 Kbps in 500 Kbps steps. The session snapshots the selected profile's
+value during connection setup. Toolbar changes affect only the active session
+and are never written to the bookmark or a global client preference, so
+reconnecting starts from the bookmark/profile target again.
 
 The client sends reliable encrypted control type `0x5505` with one unsigned
 32-bit little-endian bitrate in kilobits per second. The valid protocol range
