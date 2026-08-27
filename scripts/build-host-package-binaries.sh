@@ -214,6 +214,10 @@ for required_cursor_token in \
   localCursorThread \
   send_cursor_shape_control \
   XFixesGetCursorImage \
+  XFixesSelectCursorInput \
+  XQueryPointer \
+  consume_shape_change \
+  "16'666'667ns" \
   'Rejecting client without required StationConnect local cursor transport' \
   'bool capture_cursor = false'; do
   rg -Fq "$required_cursor_token" \
@@ -225,6 +229,14 @@ for required_cursor_token in \
     exit 1
   }
 done
+if rg -n \
+  'subscribe_position_events|wait_position|std::this_thread::sleep_for\(16ms\)' \
+  "$source_dir/src/stream.cpp" \
+  "$source_dir/src/platform/linux/x11grab.cpp" \
+  "$source_dir/src/platform/linux/x11grab.h"; then
+  echo "rejected event-driven or query-time-relative cursor scheduler is present" >&2
+  exit 1
+fi
 if rg -Fq 'display_cursor' "$source_dir/src"; then
   echo "host still contains the legacy global captured-cursor toggle" >&2
   exit 1
