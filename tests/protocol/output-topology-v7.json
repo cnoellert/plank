@@ -1,6 +1,6 @@
 {
-  "schema_version": 6,
-  "feature_flags": 4095,
+  "schema_version": 7,
+  "feature_flags": 8191,
   "generation": "x11:flame-5120x2160",
   "layout": {
     "kind": "dual-horizontal",

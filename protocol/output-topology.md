@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 6 describes the host desktop after operating-system
+Protocol version 7 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 6` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 6 defines these bits:
+The host returns `schema_version: 7` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 7 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -26,8 +26,9 @@ The host returns `schema_version: 6` and a numeric `feature_flags` field from
 - `0x200` — bounded host-layout activation while GDM owns the active seat
 - `0x400` — temporary physical-display leases with exact disconnect restoration
 - `0x800` — exact per-session capture-source selection and acknowledgement
+- `0x1000` — exact per-session encoder-backend and encoding-mode selection
 
-The client sends `scProtocolVersion=6`, `scFeatureFlags`, `scDisplayMode`,
+The client sends `scProtocolVersion=7`, `scFeatureFlags`, `scDisplayMode`,
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
@@ -53,7 +54,7 @@ its output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`configured_mode` and a `source_rect` in composite-source coordinates. Version 6 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 7 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -61,8 +62,13 @@ encoded frame.
 Each bookmark also sends `scCaptureSource=nvfbc` or
 `scCaptureSource=x11-native10`. The host echoes the accepted value as
 `StationConnectCaptureSource`; the client fails the launch if it is absent or
-different. `x11-native10` is experimental and accepts exactly H.264 High 10
-4:4:4 identity. It never falls back to NvFBC or accepts an 8-bit profile.
+different. The client also sends `scEncoderBackend=software-cuda` or
+`nvenc-direct` and an exact `scEncodingMode`. The host echoes both values as
+`StationConnectEncoderBackend` and `StationConnectEncodingMode`; a missing or
+different acknowledgement fails the launch. `x11-native10` is experimental
+and accepts only a 10-bit 4:4:4 identity profile. It never falls back to NvFBC
+or accepts an 8-bit profile. See `protocol/encoding-profiles.md` for the exact
+allowed tuples.
 
 Bookmarks persist `configured`, `physical`, `single`, or `dual-horizontal` as
 their host-layout requirement. `configured` is resolved to the authenticated
@@ -120,7 +126,7 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v6.json` represents a physical-startup host
+`tests/protocol/output-topology-v7.json` represents a physical-startup host
 temporarily presenting the Flame-style 3840x2160 primary plus 1280x2160
 secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout

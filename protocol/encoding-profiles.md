@@ -1,0 +1,42 @@
+# StationConnect encoding profile negotiation
+
+Each StationConnect workstation bookmark stores one capture source and one
+complete encoding profile. The profile fixes the encoder backend, codec,
+precision, chroma sampling, range, and color transform. The client advertises
+exactly the saved format and the host must either acknowledge and produce that
+same tuple or reject the launch. Neither side silently substitutes a different
+backend or format.
+
+| Capture source | Bookmark profile | Backend | Video format | Chroma | Depth | Color transform |
+| --- | --- | --- | --- | ---: | ---: | --- |
+| NvFBC 8-bit | H.264 8-bit 4:2:2 | `software-cuda` | `0x0002` | 4:2:2 | 8 | Full-range BT.709 YCbCr |
+| NvFBC 8-bit | H.264 8-bit 4:4:4 | `software-cuda` | `0x0004` | 4:4:4 | 8 | Identity GBR |
+| NvFBC 8-bit | H.264 10-bit 4:2:2 | `software-cuda` | `0x0010` | 4:2:2 | 10 | Full-range BT.709 YCbCr; 8-bit source up-converted |
+| NvFBC 8-bit | H.264 10-bit 4:4:4 | `software-cuda` | `0x0008` | 4:4:4 | 10 | Identity GBR; 8-bit source up-converted |
+| NvFBC 8-bit | H.264 8-bit 4:4:4 NVENC (Experimental) | `nvenc-direct` | `0x0004` | 4:4:4 | 8 | Identity GBR |
+| NvFBC 8-bit | H.265 8-bit 4:4:4 NVENC (Experimental) | `nvenc-direct` | `0x0400` | 4:4:4 | 8 | Identity GBR |
+| Native X11/XShm 10-bit (Experimental) | H.264 10-bit 4:4:4 | `software-cuda` | `0x0008` | 4:4:4 | 10 | Identity GBR |
+| Native X11/XShm 10-bit (Experimental) | H.265 10-bit 4:4:4 NVENC (Experimental) | `nvenc-direct` | `0x0800` | 4:4:4 | 10 | Identity GBR |
+
+Identity GBR is full range with `matrix_coefficients=0`, `Y=G`, `U=B`, and
+`V=R`; no YCbCr matrix conversion is applied. Native X11/XShm 10-bit capture
+never offers an 8-bit profile. The qualified H.264 10-bit 4:4:4 software path
+remains the default; all `nvenc-direct` choices remain experimental until their
+image, latency, sustained-frame-rate, reconnect, and long-session gates pass.
+
+Decoder choice is internal and profile-specific. The client attempts a real
+exact-format hardware test frame first, validates decoded bit depth, chroma
+geometry, full-range identity metadata, and renderer import, then falls back to
+FFmpeg software decoding of the same bookmark format. It never changes codec,
+depth, or chroma to make a hardware probe succeed. On the qualified Intel NUC:
+
+- H.264 4:4:4 profiles use software decode because the iHD VA-API driver does
+  not expose an H.264 4:4:4 decode profile.
+- H.265 8-bit 4:4:4 may use VA-API Main 4:4:4 with an AYUV surface imported as
+  packed RGB and identity-channel reordered in the presentation shader.
+- H.265 10-bit 4:4:4 may use VA-API Main 4:4:4 10 with a Y410 surface imported
+  as XR30.
+
+If an exact hardware path fails its test frame or import gate, the client uses
+the exact software decoder. If both exact paths fail, the connection fails
+with a clear unsupported-profile error.

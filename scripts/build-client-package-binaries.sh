@@ -331,11 +331,9 @@ rg -U -q 'settings\.value\(SER_CAPTURESYSKEYS,\n[[:space:]]+static_cast<int>\(Ca
 }
 echo "client_system_shortcut_default_gate=pass"
 
-# StationConnect currently has four explicit SDR H.264 profiles. The bookmark
-# owns the complete profile choice, including codec family, bit depth, and
-# chroma. The client advertises only that selected profile and decodes through
-# the proven FFmpeg software path. Future codec families must be introduced as
-# new bookmark profiles rather than as a conflicting global codec preference.
+# The bookmark owns the complete profile choice, including capture source,
+# encoder backend, codec family, bit depth, and chroma. The client advertises
+# only that selected format and selects an exact-format decoder internally.
 if rg -n \
   'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"|GUI display mode|uiDisplayMode|UIDisplayMode|UI_(WINDOWED|MAXIMIZED|FULLSCREEN)|uidisplaymode|startwindowed' \
   "$source_dir/app" \
@@ -362,9 +360,14 @@ for required_profile_token in \
   'SCVP_H264_8BIT_444' \
   'SCVP_H264_10BIT_422' \
   'SCVP_H264_10BIT_444' \
+  'SCVP_NVENC_H264_8BIT_444' \
+  'SCVP_NVENC_HEVC_8BIT_444' \
+  'SCVP_NVENC_HEVC_10BIT_444' \
   'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH8_422;' \
   'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH8_444;' \
   'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH10_422;' \
+  'selectedVideoFormat = VIDEO_FORMAT_H265_REXT8_444;' \
+  'selectedVideoFormat = VIDEO_FORMAT_H265_REXT10_444;' \
   'int selectedVideoFormat = VIDEO_FORMAT_H264_HIGH10_444;' \
   'm_SupportedVideoFormats.append(selectedVideoFormat);'; do
   rg -Fq "$required_profile_token" \
@@ -376,7 +379,7 @@ for required_profile_token in \
 done
 if rg -n 'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_' \
   "$source_dir/app/streaming/session.cpp"; then
-  echo "StationConnect must advertise the one selected H.264 profile, not fixed fallback formats" >&2
+  echo "StationConnect must advertise the one selected bookmark format, not fixed fallback formats" >&2
   exit 1
 fi
 for required_bookmark_profile_token in \
