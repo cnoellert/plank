@@ -418,6 +418,53 @@ if rg -n 'stationConnectVideoProfile|Encoding profile' \
   exit 1
 fi
 
+# The startup encoder target belongs to each bookmark. The toolbar owns only a
+# session-local copy, and no global or command-line bitrate source may compete
+# with the bookmark value.
+for required_bookmark_bitrate_token in \
+  '#define SER_STATIONCONNECT_BITRATE "stationconnect-bitrate-kbps"' \
+  'int stationConnectBitrateKbps =' \
+  'settings.value(' \
+  'settings.setValue(SER_STATIONCONNECT_BITRATE, stationConnectBitrateKbps);' \
+  'stationConnectBitrateKbps == that.stationConnectBitrateKbps' \
+  'stationConnectBitrateKbps(int computerIndex) const' \
+  'm_StationConnectBitrateKbps' \
+  'm_StreamConfig.bitrate = m_StationConnectBitrateKbps;' \
+  'StationConnectH264DefaultBitrateKbps = 80000' \
+  'StationConnectHevcDefaultBitrateKbps = 50000'; do
+  rg -Fq "$required_bookmark_bitrate_token" \
+    "$source_dir/app/backend/nvcomputer.h" \
+    "$source_dir/app/backend/nvcomputer.cpp" \
+    "$source_dir/app/gui/computermodel.h" \
+    "$source_dir/app/gui/computermodel.cpp" \
+    "$source_dir/app/streaming/session.h" \
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/settings/streamingpreferences.h" || {
+    echo "StationConnect bookmark bitrate invariant is missing: ${required_bookmark_bitrate_token}" >&2
+    exit 1
+  }
+done
+for required_bookmark_bitrate_ui_token in \
+  addBitrateSlider \
+  editBitrateSlider \
+  'Startup encoder target:' \
+  'Toolbar adjustments apply only to the active session.' \
+  'computerModel.stationConnectBitrateKbps(index)'; do
+  rg -Fq "$required_bookmark_bitrate_ui_token" \
+    "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
+    echo "StationConnect bookmark bitrate UI is missing: ${required_bookmark_bitrate_ui_token}" >&2
+    exit 1
+  }
+done
+if rg -n \
+  'Q_PROPERTY\(int bitrateKbps|\bbitrateKbps MEMBER|#define SER_BITRATE "bitrate"|getDefaultBitrate|StreamingPreferences\.bitrateKbps|m_Preferences\.bitrateKbps|preferences->bitrateKbps|addValueOption\("bitrate"' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "global or command-line bitrate configuration remains in StationConnect client" >&2
+  exit 1
+fi
+echo "client_bookmark_bitrate_gate=pass"
+
 for required_reconnect_wait_token in \
   'Waiting for previous workstation session to finish...' \
   'constexpr int RetryIntervalMs = 500;' \
