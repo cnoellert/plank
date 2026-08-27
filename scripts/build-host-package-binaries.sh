@@ -219,7 +219,8 @@ for required_cursor_token in \
   rg -Fq "$required_cursor_token" \
     "$source_dir/src/stream.cpp" \
     "$source_dir/src/platform/linux/x11grab.cpp" \
-    "$source_dir/src/rtsp.cpp" || {
+    "$source_dir/src/rtsp.cpp" \
+    "$source_dir/src/video.cpp" || {
     echo "host local-cursor implementation invariant is missing: ${required_cursor_token}" >&2
     exit 1
   }
