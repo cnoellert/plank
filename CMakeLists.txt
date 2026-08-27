@@ -5,6 +5,8 @@ project(stationconnect_qualification VERSION 0.1.0 LANGUAGES C CXX)
 include(CTest)
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
+find_package(X11 QUIET)
+find_library(XCOMPOSITE_LIBRARY Xcomposite)
 pkg_check_modules(LIBDRM REQUIRED IMPORTED_TARGET libdrm)
 pkg_check_modules(SYSTEMD REQUIRED IMPORTED_TARGET libsystemd)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl)
@@ -33,6 +35,18 @@ find_path(X264_INCLUDE_DIR x264.h
 find_library(X264_LIBRARY x264
   HINTS "${X264_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/build/third-party/prefix"
   PATH_SUFFIXES lib lib64)
+
+if(X11_FOUND AND X11_Xext_FOUND AND XCOMPOSITE_LIBRARY)
+  add_executable(connect-probe-x11-native10
+    probes/x11/connect-probe-x11-native10.cpp)
+  target_compile_features(connect-probe-x11-native10 PRIVATE cxx_std_17)
+  target_compile_options(connect-probe-x11-native10 PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(connect-probe-x11-native10 PRIVATE
+    ${X11_INCLUDE_DIR})
+  target_link_libraries(connect-probe-x11-native10 PRIVATE
+    ${X11_LIBRARIES} ${X11_Xext_LIB} ${XCOMPOSITE_LIBRARY})
+endif()
 
 add_executable(connect-probe-kms probes/kms/connect-probe-kms.cpp)
 target_compile_features(connect-probe-kms PRIVATE cxx_std_17)
