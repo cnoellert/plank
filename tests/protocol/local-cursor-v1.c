@@ -16,6 +16,12 @@ int main(void) {
                 sizeof(SC_CURSOR_WIRE_HEADER));
         return 1;
     }
+    if (SC_CURSOR_POSITION_WIRE_MAGIC != UINT32_C(0x53434350) ||
+            SC_CURSOR_POSITION_WIRE_VERSION != 1U ||
+            sizeof(SC_CURSOR_POSITION_WIRE_MESSAGE) != 32U) {
+        fprintf(stderr, "local cursor position wire identity mismatch\n");
+        return 1;
+    }
     if (SC_CURSOR_MAX_DIMENSION != 512U ||
             SC_CURSOR_MAX_IMAGE_SIZE != 1048576U ||
             SC_CURSOR_MAX_CHUNK_SIZE != 49152U) {
@@ -23,7 +29,9 @@ int main(void) {
         return 1;
     }
     if (LI_FF_LOCAL_CURSOR != UINT32_C(0x40) ||
-            SC_CURSOR_CLIENT_FEATURE_FLAG != UINT32_C(0x10)) {
+            SC_CURSOR_CLIENT_FEATURE_FLAG != UINT32_C(0x10) ||
+            LI_FF_CURSOR_POSITION != UINT32_C(0x80) ||
+            SC_CURSOR_POSITION_CLIENT_FEATURE_FLAG != UINT32_C(0x20)) {
         fprintf(stderr, "local cursor feature flags mismatch\n");
         return 1;
     }
