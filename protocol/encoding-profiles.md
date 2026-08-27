@@ -13,16 +13,17 @@ backend or format.
 | NvFBC 8-bit | H.264 8-bit 4:4:4 | `software-cuda` | `0x0004` | 4:4:4 | 8 | Identity GBR |
 | NvFBC 8-bit | H.264 10-bit 4:2:2 | `software-cuda` | `0x0010` | 4:2:2 | 10 | Full-range BT.709 YCbCr; 8-bit source up-converted |
 | NvFBC 8-bit | H.264 10-bit 4:4:4 | `software-cuda` | `0x0008` | 4:4:4 | 10 | Identity GBR; 8-bit source up-converted |
-| NvFBC 8-bit | H.264 8-bit 4:4:4 NVENC (Experimental) | `nvenc-direct` | `0x0004` | 4:4:4 | 8 | Identity GBR |
-| NvFBC 8-bit | H.265 8-bit 4:4:4 NVENC (Experimental) | `nvenc-direct` | `0x0400` | 4:4:4 | 8 | Identity GBR |
+| NvFBC 8-bit | H.264 8-bit 4:4:4 NVENC | `nvenc-direct` | `0x0004` | 4:4:4 | 8 | Identity GBR |
+| NvFBC 8-bit | H.265 8-bit 4:4:4 NVENC | `nvenc-direct` | `0x0400` | 4:4:4 | 8 | Identity GBR |
 | Native X11/XShm 10-bit (Experimental) | H.264 10-bit 4:4:4 | `software-cuda` | `0x0008` | 4:4:4 | 10 | Identity GBR |
-| Native X11/XShm 10-bit (Experimental) | H.265 10-bit 4:4:4 NVENC (Experimental) | `nvenc-direct` | `0x0800` | 4:4:4 | 10 | Identity GBR |
+| Native X11/XShm 10-bit (Experimental) | H.265 10-bit 4:4:4 NVENC | `nvenc-direct` | `0x0800` | 4:4:4 | 10 | Identity GBR |
 
 Identity GBR is full range with `matrix_coefficients=0`, `Y=G`, `U=B`, and
 `V=R`; no YCbCr matrix conversion is applied. Native X11/XShm 10-bit capture
 never offers an 8-bit profile. The qualified H.264 10-bit 4:4:4 software path
-remains the default; all `nvenc-direct` choices remain experimental until their
-image, latency, sustained-frame-rate, reconnect, and long-session gates pass.
+remains the default. Native X11/XShm 10-bit capture retains its Experimental
+designation; NVENC is identified as the encoder backend rather than labeled as
+an experimental encoding profile.
 
 Decoder choice is internal and profile-specific. The client attempts a real
 exact-format hardware test frame first, validates decoded bit depth, chroma

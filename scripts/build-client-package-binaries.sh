@@ -466,7 +466,8 @@ if rg -n \
   exit 1
 fi
 if rg -n 'NVENC \(Experimental\)' \
-  "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml"; then
+  "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" \
+  "$source_dir/../../protocol/encoding-profiles.md"; then
   echo "NVENC encoding profiles must not be labeled Experimental" >&2
   exit 1
 fi
@@ -478,6 +479,22 @@ for native_capture_label in \
     exit 1
   }
 done
+for bookmark_layout_token in \
+  'height: Math.min(900, parent.height - 20)' \
+  'id: unreachableActionComboBox' \
+  'width: parent.width'; do
+  rg -Fq "$bookmark_layout_token" \
+    "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" \
+    "$source_dir/app/gui/SettingsView.qml" || {
+    echo "StationConnect bookmark/settings layout invariant is missing: ${bookmark_layout_token}" >&2
+    exit 1
+  }
+done
+if rg -n -U 'id: uiSettingsGroupBox\n[[:space:]]+parent: settingsColumn2' \
+  "$source_dir/app/gui/SettingsView.qml"; then
+  echo "UI Settings must remain in the left preference column" >&2
+  exit 1
+fi
 echo "client_bookmark_bitrate_gate=pass"
 
 for required_reconnect_wait_token in \
