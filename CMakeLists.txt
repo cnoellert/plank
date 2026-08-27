@@ -249,6 +249,25 @@ target_compile_options(connect-wacom-raw-bridge PRIVATE
   -Wall -Wextra -Wpedantic -Werror)
 
 if(BUILD_TESTING)
+  set(STATIONCONNECT_CLIENT_COMMON_INCLUDE
+    "${CMAKE_CURRENT_SOURCE_DIR}/client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src")
+  set(STATIONCONNECT_CLIENT_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/client/moonlight-qt-fork")
+  foreach(required_client_qualification_file IN ITEMS
+      "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}/Limelight.h"
+      "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}/StationConnect.h"
+      "${STATIONCONNECT_CLIENT_SOURCE}/app/streaming/videopacketlosswindow.h")
+    if(NOT EXISTS "${required_client_qualification_file}")
+      message(FATAL_ERROR
+        "Root qualification requires the initialized client source tree; "
+        "missing ${required_client_qualification_file}. For a host RPM "
+        "candidate, keep its clean worktree host-only and run root "
+        "qualification from the complete canonical checkout with a "
+        "workstation-local build directory as documented in "
+        "docs/release-build-runbook.md.")
+    endif()
+  endforeach()
+
   add_test(NAME packaging-launchers
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-launchers.sh)
   add_test(NAME host-supervisor-package
@@ -282,7 +301,7 @@ if(BUILD_TESTING)
   target_compile_options(extended-fec-block-indices-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(extended-fec-block-indices-test PRIVATE
-    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
   add_test(NAME extended-fec-block-indices
     COMMAND extended-fec-block-indices-test)
 
@@ -291,7 +310,7 @@ if(BUILD_TESTING)
   target_compile_options(video-packet-loss-telemetry-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(video-packet-loss-telemetry-test PRIVATE
-    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
   add_test(NAME video-packet-loss-telemetry
     COMMAND video-packet-loss-telemetry-test)
 
@@ -301,7 +320,7 @@ if(BUILD_TESTING)
   target_compile_options(video-packet-loss-window-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(video-packet-loss-window-test PRIVATE
-    client/moonlight-qt-fork)
+    "${STATIONCONNECT_CLIENT_SOURCE}")
   add_test(NAME video-packet-loss-window
     COMMAND video-packet-loss-window-test)
 
@@ -309,14 +328,14 @@ if(BUILD_TESTING)
   target_compile_options(wacom-hid-v2-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(wacom-hid-v2-test PRIVATE
-    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
   add_test(NAME wacom-hid-v2 COMMAND wacom-hid-v2-test)
 
   add_executable(local-cursor-v1-test tests/protocol/local-cursor-v1.c)
   target_compile_options(local-cursor-v1-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(local-cursor-v1-test PRIVATE
-    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
   add_test(NAME local-cursor-v1 COMMAND local-cursor-v1-test)
 
   add_test(NAME kms-probe-self-test COMMAND connect-probe-kms --self-test)
