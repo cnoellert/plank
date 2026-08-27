@@ -28,7 +28,9 @@ The host obtains the exact cursor bitmap and hotspot from XFixes, including
 custom and animated application cursors. It sends an initial image after the
 control peer is ready and sends a replacement whenever the X cursor serial
 changes. A fully transparent cursor is sent with visibility cleared. Cursor
-position remains client-authoritative for ordinary absolute mouse input; raw
+hotspots on transparent Xorg placeholder images are normalized into the image
+bounds because they have no visible semantic meaning. Cursor position remains
+client-authoritative for ordinary absolute mouse input; raw
 HID Wacom input retains its independent qualified path.
 
 The client assembles and validates a complete generation before replacing the
