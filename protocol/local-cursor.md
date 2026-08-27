@@ -5,12 +5,12 @@ client. The host cursor is never composited into negotiated StationConnect
 video frames. This gives the streamed desktop and the native toolbar one local
 pointer and removes any remote/local cursor handoff at the toolbar boundary.
 
-The host advertises `LI_FF_LOCAL_CURSOR` (`0x40`) and
-`LI_FF_CURSOR_POSITION` (`0x80`). The client advertises `ML_FF_LOCAL_CURSOR`
-(`0x10`) and `ML_FF_CURSOR_POSITION` (`0x20`). All four bits are mandatory
-StationConnect protocol requirements. A missing bit is a connection error;
-there is no embedded-video cursor fallback, compatibility mode, configuration
-switch, or migration path.
+The host advertises `LI_FF_LOCAL_CURSOR` (`0x40`) and the client advertises
+`ML_FF_LOCAL_CURSOR` (`0x10`). Both bits mean support for the complete
+StationConnect cursor protocol: shape, hotspot, and host-authoritative tablet
+position. Both are mandatory. A missing bit is a connection error; there is no
+embedded-video cursor fallback, compatibility mode, configuration switch, or
+migration path.
 
 Cursor images travel on the encrypted, reliable control stream as message
 `0x5507`. Each payload begins with `SC_CURSOR_WIRE_HEADER` from
