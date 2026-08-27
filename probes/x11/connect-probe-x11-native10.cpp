@@ -1,5 +1,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/Xatom.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/XShm.h>
 
@@ -16,6 +17,8 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -234,6 +237,19 @@ void analyze_capture_image(XImage *image, const std::array<channel_t, 3> &channe
               << "capture_" << channels[index].name
               << "_samples_outside_8_to_10_expansion=" << non_eight_bit_codes[index] << '\n';
   }
+}
+
+std::uint64_t sample_fingerprint(XImage *image) {
+  std::uint64_t hash = 1469598103934665603ULL;
+  const int x_step = std::max(1, image->width / 128);
+  const int y_step = std::max(1, image->height / 72);
+  for (int y = 0; y < image->height; y += y_step) {
+    for (int x = 0; x < image->width; x += x_step) {
+      hash ^= static_cast<std::uint64_t>(XGetPixel(image, x, y));
+      hash *= 1099511628211ULL;
+    }
+  }
+  return hash;
 }
 
 #if defined(__GNUC__)
@@ -575,12 +591,38 @@ int parse_frames(int argc, char **argv, const char *name, int default_value) {
   return default_value;
 }
 
+std::optional<Drawable> parse_drawable(int argc, char **argv) {
+  for (int index = 1; index + 1 < argc; ++index) {
+    if (std::string(argv[index]) == "--drawable") {
+      std::size_t consumed = 0;
+      const auto value = std::stoul(argv[index + 1], &consumed, 0);
+      if (consumed != std::strlen(argv[index + 1]) || value == 0) {
+        throw std::runtime_error("--drawable must be a nonzero X11 window ID");
+      }
+      return static_cast<Drawable>(value);
+    }
+  }
+  return std::nullopt;
+}
+
+bool has_flag(int argc, char **argv, const char *name) {
+  for (int index = 1; index < argc; ++index) {
+    if (std::string(argv[index]) == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
   try {
     const int shm_frames = parse_frames(argc, argv, "--shm-frames", 20);
     const int get_frames = parse_frames(argc, argv, "--get-frames", 3);
+    const int capture_fps = parse_frames(argc, argv, "--fps", 0);
+    const auto requested_drawable = parse_drawable(argc, argv);
+    const bool force_composite = has_flag(argc, argv, "--force-composite");
     std::unique_ptr<Display, decltype(&XCloseDisplay)> display_handle(
       XOpenDisplay(nullptr), &XCloseDisplay);
     if (!display_handle) {
@@ -669,40 +711,111 @@ int main(int argc, char **argv) {
       std::cerr << "result=fail (XComposite overlay is not a matching depth-30 canvas)\n";
       return 2;
     }
+    Window compositor_keepalive = 0;
+    if (force_composite) {
+      compositor_keepalive = XCreateSimpleWindow(
+        display, root, 0, 0, 2, 2, 0, 0, 0xffffffffUL);
+      if (compositor_keepalive == 0) {
+        throw std::runtime_error("compositor keepalive window creation failed");
+      }
+      XSetWindowAttributes keepalive_attributes {};
+      keepalive_attributes.override_redirect = True;
+      XChangeWindowAttributes(display, compositor_keepalive,
+                              CWOverrideRedirect, &keepalive_attributes);
+      const Atom opacity_atom = XInternAtom(
+        display, "_NET_WM_WINDOW_OPACITY", False);
+      const unsigned long opacity = 0;
+      XChangeProperty(display, compositor_keepalive, opacity_atom,
+                      XA_CARDINAL, 32, PropModeReplace,
+                      reinterpret_cast<const unsigned char *>(&opacity), 1);
+      XMapRaised(display, compositor_keepalive);
+      XSync(display, False);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    const Drawable capture_drawable = requested_drawable.value_or(overlay);
+    XWindowAttributes capture_attributes = overlay_attributes;
+    if (requested_drawable &&
+        !XGetWindowAttributes(display, capture_drawable, &capture_attributes)) {
+      throw std::runtime_error("explicit capture drawable attributes failed");
+    }
+    const std::array<channel_t, 3> capture_channels {
+      make_channel("red", capture_attributes.visual->red_mask),
+      make_channel("green", capture_attributes.visual->green_mask),
+      make_channel("blue", capture_attributes.visual->blue_mask),
+    };
+    const bool capture_is_native_10_bit = capture_attributes.depth == 30 &&
+      std::equal(channels.begin(), channels.end(), capture_channels.begin(),
+                 [](const channel_t &left, const channel_t &right) {
+                   return left.mask == right.mask && left.bits == right.bits;
+                 });
+    std::cout << "capture_target="
+              << (requested_drawable ? "explicit-window" : "xcomposite-overlay") << '\n'
+              << "capture_drawable=0x" << std::hex << capture_drawable << std::dec << '\n'
+              << "capture_width=" << capture_attributes.width << '\n'
+              << "capture_height=" << capture_attributes.height << '\n'
+              << "capture_depth=" << capture_attributes.depth << '\n';
+    std::cout << "compositor_keepalive="
+              << (force_composite ? "mapped" : "disabled") << '\n';
+    if (!capture_is_native_10_bit) {
+      std::cerr << "result=fail (capture drawable is not native RGB 10:10:10)\n";
+      return 2;
+    }
 
     const bool get_round_trip = controlled_round_trip(
       display, root, attributes.visual, attributes.depth, channels, false);
     const bool shm_round_trip = controlled_round_trip(
       display, root, attributes.visual, attributes.depth, channels, true);
-    const auto visible_root_round_trip = visible_drawable_round_trip(
-      display, root, root, attributes.visual, attributes.depth, channels);
-    const auto visible_overlay_round_trip = visible_drawable_round_trip(
-      display, root, overlay, overlay_attributes.visual,
-      overlay_attributes.depth, overlay_channels);
+    visible_round_trip_t visible_root_round_trip {false, false};
+    visible_round_trip_t visible_overlay_round_trip {false, false};
+    if (!requested_drawable) {
+      visible_root_round_trip = visible_drawable_round_trip(
+        display, root, root, attributes.visual, attributes.depth, channels);
+      visible_overlay_round_trip = visible_drawable_round_trip(
+        display, root, overlay, overlay_attributes.visual,
+        overlay_attributes.depth, overlay_channels);
+    }
     std::cout << "xgetimage_1024_code_round_trip=" << (get_round_trip ? "exact" : "failed") << '\n'
               << "xshm_1024_code_round_trip=" << (shm_round_trip ? "exact" : "failed") << '\n'
               << "visible_root_xgetimage_1024_code_round_trip="
-              << (visible_root_round_trip.xgetimage_exact ? "exact" : "altered") << '\n'
+              << (requested_drawable ? "skipped" :
+                  visible_root_round_trip.xgetimage_exact ? "exact" : "altered") << '\n'
               << "visible_root_xshm_1024_code_round_trip="
-              << (visible_root_round_trip.xshm_exact ? "exact" : "altered") << '\n'
+              << (requested_drawable ? "skipped" :
+                  visible_root_round_trip.xshm_exact ? "exact" : "altered") << '\n'
               << "visible_overlay_xgetimage_1024_code_round_trip="
-              << (visible_overlay_round_trip.xgetimage_exact ? "exact" : "altered") << '\n'
+              << (requested_drawable ? "skipped" :
+                  visible_overlay_round_trip.xgetimage_exact ? "exact" : "altered") << '\n'
               << "visible_overlay_xshm_1024_code_round_trip="
-              << (visible_overlay_round_trip.xshm_exact ? "exact" : "altered") << '\n';
+              << (requested_drawable ? "skipped" :
+                  visible_overlay_round_trip.xshm_exact ? "exact" : "altered") << '\n';
 
-    shm_image_t root_shm(display, overlay_attributes.visual,
-                         overlay_attributes.depth,
-                         static_cast<unsigned int>(overlay_attributes.width),
-                         static_cast<unsigned int>(overlay_attributes.height));
+    shm_image_t root_shm(display, capture_attributes.visual,
+                         capture_attributes.depth,
+                         static_cast<unsigned int>(capture_attributes.width),
+                         static_cast<unsigned int>(capture_attributes.height));
     std::vector<double> shm_times;
+    std::set<std::uint64_t> frame_fingerprints;
+    std::uint64_t previous_fingerprint = 0;
+    int changed_frames = 0;
     shm_times.reserve(static_cast<std::size_t>(shm_frames));
+    auto next_capture = clock_type::now();
     for (int frame = 0; frame < shm_frames; ++frame) {
+      if (capture_fps > 0) {
+        std::this_thread::sleep_until(next_capture);
+        next_capture += std::chrono::nanoseconds(1000000000LL / capture_fps);
+      }
       const auto start = clock_type::now();
-      if (!root_shm.capture(overlay, 0, 0)) {
-        throw std::runtime_error("overlay XShmGetImage failed");
+      if (!root_shm.capture(capture_drawable, 0, 0)) {
+        throw std::runtime_error("capture drawable XShmGetImage failed");
       }
       const auto stop = clock_type::now();
       shm_times.push_back(std::chrono::duration<double, std::milli>(stop - start).count());
+      const auto fingerprint = sample_fingerprint(root_shm.get());
+      frame_fingerprints.insert(fingerprint);
+      if (frame != 0 && fingerprint != previous_fingerprint) {
+        ++changed_frames;
+      }
+      previous_fingerprint = fingerprint;
     }
 
     XImage *root_get_image = nullptr;
@@ -710,13 +823,13 @@ int main(int argc, char **argv) {
     get_times.reserve(static_cast<std::size_t>(get_frames));
     for (int frame = 0; frame < get_frames; ++frame) {
       const auto start = clock_type::now();
-      XImage *image = XGetImage(display, overlay, 0, 0,
-                               static_cast<unsigned int>(overlay_attributes.width),
-                               static_cast<unsigned int>(overlay_attributes.height),
+      XImage *image = XGetImage(display, capture_drawable, 0, 0,
+                               static_cast<unsigned int>(capture_attributes.width),
+                               static_cast<unsigned int>(capture_attributes.height),
                                AllPlanes, ZPixmap);
       const auto stop = clock_type::now();
       if (image == nullptr) {
-        throw std::runtime_error("overlay XGetImage failed");
+        throw std::runtime_error("capture drawable XGetImage failed");
       }
       if (root_get_image != nullptr) {
         XDestroyImage(root_get_image);
@@ -734,16 +847,24 @@ int main(int argc, char **argv) {
               << "captured_frame_bytes=" << frame_bytes << '\n'
               << "captured_byte_order=" << byte_order_name(shm_image->byte_order) << '\n';
     print_timing("xshm", summarize(shm_times), frame_bytes, shm_frames);
+    std::cout << "xshm_requested_fps=" << capture_fps << '\n';
+    std::cout << "xshm_distinct_sampled_frames=" << frame_fingerprints.size() << '\n'
+              << "xshm_sampled_frame_transitions=" << changed_frames << '\n';
     print_timing("xgetimage", summarize(get_times), frame_bytes, get_frames);
-    analyze_capture_image(shm_image, overlay_channels);
-    benchmark_host_processing(shm_image, overlay_channels);
+    analyze_capture_image(shm_image, capture_channels);
+    benchmark_host_processing(shm_image, capture_channels);
 
     if (root_get_image != nullptr) {
       XDestroyImage(root_get_image);
     }
-    const bool pass = get_round_trip && shm_round_trip &&
-                      visible_overlay_round_trip.xgetimage_exact &&
-                      visible_overlay_round_trip.xshm_exact &&
+    if (compositor_keepalive != 0) {
+      XDestroyWindow(display, compositor_keepalive);
+      XSync(display, False);
+    }
+    const bool visible_gate = requested_drawable ||
+      (visible_overlay_round_trip.xgetimage_exact &&
+       visible_overlay_round_trip.xshm_exact);
+    const bool pass = get_round_trip && shm_round_trip && visible_gate &&
                       shm_image->depth == 30 && shm_image->bits_per_pixel == 32;
     std::cout << "result=" << (pass ? "pass" : "fail") << '\n';
     return pass ? 0 : 2;

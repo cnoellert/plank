@@ -15,6 +15,8 @@ Requires:       systemd
 Requires:       systemd-udev
 Requires:       firewalld-filesystem
 Requires:       openssl-libs
+Requires:       libXcomposite
+Requires:       libXext
 Requires:       xorg-x11-server-Xorg
 Requires:       xorg-x11-server-utils
 Requires(pre):  systemd
