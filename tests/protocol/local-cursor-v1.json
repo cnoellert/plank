@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "host_feature_flag": 64,
+  "client_feature_flag": 16,
+  "control_message_type": 21767,
+  "wire_magic": 1396917074,
+  "pixel_format": "premultiplied-argb8888",
+  "max_dimension": 512,
+  "max_chunk_size": 49152,
+  "required_fields": [
+    "generation",
+    "width",
+    "height",
+    "hotspot_x",
+    "hotspot_y",
+    "visible",
+    "image_size",
+    "chunk_offset",
+    "chunk_size"
+  ]
+}

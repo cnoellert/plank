@@ -198,6 +198,38 @@ for required_raw_hid_token in \
 done
 echo "host_raw_hid_focus_suspend_gate=pass"
 
+# The qualified X11 host sends exact XFixes cursor images out of band and
+# unconditionally excludes the cursor from StationConnect video. There is no
+# embedded-cursor compatibility mode.
+for required_cursor_token in \
+  'SC_CURSOR_WIRE_VERSION 1U' \
+  'SC_CURSOR_MAX_CHUNK_SIZE (48U * 1024U)'; do
+  rg -Fq "$required_cursor_token" "$host_common_dir" || {
+    echo "host local-cursor protocol invariant is missing: ${required_cursor_token}" >&2
+    exit 1
+  }
+done
+for required_cursor_token in \
+  '0x5507,  // Local cursor shape' \
+  localCursorThread \
+  send_cursor_shape_control \
+  XFixesGetCursorImage \
+  'Rejecting client without required StationConnect local cursor transport' \
+  'bool capture_cursor = false'; do
+  rg -Fq "$required_cursor_token" \
+    "$source_dir/src/stream.cpp" \
+    "$source_dir/src/platform/linux/x11grab.cpp" \
+    "$source_dir/src/rtsp.cpp" || {
+    echo "host local-cursor implementation invariant is missing: ${required_cursor_token}" >&2
+    exit 1
+  }
+done
+if rg -Fq 'display_cursor' "$source_dir/src"; then
+  echo "host still contains the legacy global captured-cursor toggle" >&2
+  exit 1
+fi
+echo "host_local_cursor_gate=pass"
+
 # Exact raw-HID and normalized pen-tablet backends must never coexist after a
 # raw group attaches. Flame otherwise applies Tablet Margins to the inactive
 # generic device while pressure arrives from the exact Wacom endpoint.

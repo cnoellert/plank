@@ -184,6 +184,39 @@ for required_raw_hid_reconnect_token in \
 done
 echo "client_raw_hid_reconnect_gate=pass"
 
+# StationConnect uses one compositor-owned local cursor across the stream and
+# toolbar. Exact host cursor images arrive on the encrypted control stream;
+# the client must not fall back to synchronizing a cursor embedded in video.
+for required_cursor_token in \
+  'SC_CURSOR_WIRE_VERSION 1U' \
+  'SC_CURSOR_MAX_CHUNK_SIZE (48U * 1024U)' \
+  '0x5507, // Local cursor shape' \
+  'ML_FF_LOCAL_CURSOR' \
+  'LI_FF_LOCAL_CURSOR'; do
+  rg -Fq "$required_cursor_token" "$client_common_dir" || {
+    echo "client local-cursor protocol invariant is missing: ${required_cursor_token}" >&2
+    exit 1
+  }
+done
+for required_cursor_token in \
+  handleRemoteCursorChunk \
+  applyPendingRemoteCursor \
+  SDL_CreateColorCursor \
+  SDL_CODE_STATIONCONNECT_CURSOR; do
+  rg -Fq "$required_cursor_token" \
+    "$source_dir/app/streaming/input/input.cpp" \
+    "$source_dir/app/streaming/input/input.h" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "client local-cursor renderer invariant is missing: ${required_cursor_token}" >&2
+    exit 1
+  }
+done
+if rg -Fq 'forwardNativePointerPosition' "$source_dir/app/streaming"; then
+  echo "client still forwards toolbar motion to synchronize a video cursor" >&2
+  exit 1
+fi
+echo "client_local_cursor_gate=pass"
+
 # High-bitrate video recovery uses upstream nanors with runtime-selected SIMD
 # and GFNI implementations. Keep the old scalar Reed-Solomon source out of the
 # client build while preserving StationConnect's extended-FEC queue logic.

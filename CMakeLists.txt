@@ -298,6 +298,13 @@ if(BUILD_TESTING)
     client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
   add_test(NAME wacom-hid-v2 COMMAND wacom-hid-v2-test)
 
+  add_executable(local-cursor-v1-test tests/protocol/local-cursor-v1.c)
+  target_compile_options(local-cursor-v1-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(local-cursor-v1-test PRIVATE
+    client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src)
+  add_test(NAME local-cursor-v1 COMMAND local-cursor-v1-test)
+
   add_test(NAME kms-probe-self-test COMMAND connect-probe-kms --self-test)
   if(TARGET connect-probe-nvfbc)
     add_test(NAME nvfbc-probe-self-test COMMAND connect-probe-nvfbc --self-test)
