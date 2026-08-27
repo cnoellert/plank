@@ -228,6 +228,11 @@ for required_cursor_token in \
     exit 1
   }
 done
+rg -Fq 'wl_surface_commit(m_ParentSurface)' \
+  "$source_dir/app/streaming/stationconnectwaylandcursor.cpp" || {
+  echo "client visible Wacom cursor position is not committed through its Wayland parent" >&2
+  exit 1
+}
 echo "client_local_cursor_gate=pass"
 
 # High-bitrate video recovery uses upstream nanors with runtime-selected SIMD
