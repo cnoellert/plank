@@ -215,6 +215,19 @@ if rg -Fq 'forwardNativePointerPosition' "$source_dir/app/streaming"; then
   echo "client still forwards toolbar motion to synchronize a video cursor" >&2
   exit 1
 fi
+for required_cursor_token in \
+  SDL_HINT_PEN_MOUSE_EVENTS \
+  SDL_PEN_MOUSEID \
+  isSyntheticMouseDevice; do
+  rg -Fq "$required_cursor_token" \
+    "$source_dir/app/main.cpp" \
+    "$source_dir/app/streaming/input" \
+    "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/streaming/stationconnecttoolbar.cpp" || {
+    echo "client synthetic pen-mouse exclusion is missing: ${required_cursor_token}" >&2
+    exit 1
+  }
+done
 echo "client_local_cursor_gate=pass"
 
 # High-bitrate video recovery uses upstream nanors with runtime-selected SIMD
