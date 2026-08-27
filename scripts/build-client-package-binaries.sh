@@ -467,7 +467,7 @@ if rg -n \
 fi
 if rg -n 'NVENC \(Experimental\)' \
   "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" \
-  "$source_dir/../../protocol/encoding-profiles.md"; then
+  "$repo_dir/protocol/encoding-profiles.md"; then
   echo "NVENC encoding profiles must not be labeled Experimental" >&2
   exit 1
 fi
