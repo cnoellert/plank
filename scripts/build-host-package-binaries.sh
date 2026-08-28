@@ -439,6 +439,43 @@ rg -Fq 'RuntimeOptionsMatchStationConnectProductPolicy' \
   echo "host exact configuration-key policy test is missing" >&2
   exit 1
 }
+# Keep every retained administrator setting visible in the canonical template.
+# Optional automatic selectors may be commented out, but each accepted parser
+# key must have exactly one assignment-shaped entry so the package never hides
+# a supported override.
+mapfile -t retained_config_options < <(
+  awk '
+    /TEST\(ConfigConsistencyTest, RuntimeOptionsMatchStationConnectProductPolicy\)/ {
+      in_test = 1
+    }
+    in_test && /const std::set<.*> expected \{/ {
+      in_set = 1
+      next
+    }
+    in_set && /};/ {
+      exit
+    }
+    in_set && match($0, /"[a-z0-9_]+"/) {
+      print substr($0, RSTART + 1, RLENGTH - 2)
+    }
+  ' "$source_dir/tests/integration/test_config_consistency.cpp"
+)
+[[ ${#retained_config_options[@]} -gt 0 ]] || {
+  echo "could not extract the retained host configuration-key policy" >&2
+  exit 1
+}
+for retained_config_option in "${retained_config_options[@]}"; do
+  retained_config_count=$(
+    rg -c \
+      "^[[:space:]]*(#[[:space:]]*)?${retained_config_option}[[:space:]]*=" \
+      "$repo_dir/packaging/config/stationconnect.conf" || true
+  )
+  if [[ $retained_config_count != 1 ]]; then
+    echo "canonical host configuration must contain exactly one entry for ${retained_config_option}" >&2
+    exit 1
+  fi
+done
+echo "host_complete_config_template_gate=pass"
 for removed_config_option in \
   qp \
   qsv_preset qsv_coder qsv_slow_hevc \
