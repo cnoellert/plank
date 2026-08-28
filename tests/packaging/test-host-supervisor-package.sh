@@ -161,6 +161,32 @@ rg -Fq 'host_upnp_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'host_auth_group_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_fixed_desktop_reservation_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_rpm_fixed_desktop_gate=pass' \
+  "$repo_dir/scripts/build-host-rpm.sh"
+rg -Fq 'inline constexpr int desktop_app_id = 881448767' \
+  "$repo_dir/host/sunshine-fork/src/process.h"
+rg -Fq 'std::atomic<int> _app_id {0}' \
+  "$repo_dir/host/sunshine-fork/src/process.h"
+rg -Fq 'if(WIN32 OR APPLE)' \
+  "$repo_dir/host/sunshine-fork/cmake/dependencies/Boost_Sunshine.cmake"
+if rg -n 'apps\.json|file_apps|global_prep_cmd|Steam Big Picture|Low Res Desktop' \
+  "$repo_dir/host/sunshine-fork/src" \
+  "$repo_dir/host/sunshine-fork/src_assets" \
+  "$repo_dir/host/sunshine-fork/cmake" \
+  "$repo_dir/host/sunshine-fork/packaging" \
+  "$repo_dir/host/sunshine-fork/docs"; then
+  echo 'legacy host application catalog remains' >&2
+  exit 1
+fi
+if rg -n 'run_command|request_process_group_exit|process_group_running|open_url' \
+  "$repo_dir/host/sunshine-fork/src/platform/common.h" \
+  "$repo_dir/host/sunshine-fork/src/platform/linux" \
+  "$repo_dir/host/sunshine-fork/tests/integration"; then
+  echo 'legacy Linux external-command launcher remains' >&2
+  exit 1
+fi
 if [[ -e $repo_dir/host/sunshine-fork/src/upnp.cpp || \
       -e $repo_dir/host/sunshine-fork/src/upnp.h ]]; then
   echo 'UPnP implementation files remain' >&2
