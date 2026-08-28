@@ -74,6 +74,17 @@ if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
   exit 1
 fi
 echo "host_rpm_global_video_selector_absence_gate=pass"
+rg -Fxq '[x264-encoder]' \
+  "$payload_dir/etc/stationconnect/stationconnect.conf" || {
+  echo "host RPM payload is missing the x264-specific encoder section" >&2
+  exit 1
+}
+if rg -Fxq '[software-encoder]' \
+  "$payload_dir/etc/stationconnect/stationconnect.conf"; then
+  echo "host RPM payload retains the obsolete generic software-encoder section" >&2
+  exit 1
+fi
+echo "host_rpm_x264_config_section_gate=pass"
 install -d -m 0700 "$payload_dir/etc/stationconnect/tls"
 install -d -m 0750 "$payload_dir/var/lib/stationconnect"
 install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-host-wacom.rules" \

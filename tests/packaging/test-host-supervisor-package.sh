@@ -175,6 +175,17 @@ rg -Fq 'host_global_video_selector_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'host_rpm_global_video_selector_absence_gate=pass' \
   "$repo_dir/scripts/build-host-rpm.sh"
+rg -Fq 'host_x264_config_section_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_rpm_x264_config_section_gate=pass' \
+  "$repo_dir/scripts/build-host-rpm.sh"
+rg -Fxq '[x264-encoder]' \
+  "$repo_dir/packaging/config/stationconnect.conf"
+if rg -Fxq '[software-encoder]' \
+  "$repo_dir/packaging/config/stationconnect.conf"; then
+  echo 'packaged host configuration retains the obsolete software-encoder section' >&2
+  exit 1
+fi
 if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
   "$repo_dir/packaging/config/stationconnect.conf"; then
   echo 'packaged host configuration still exposes global video selectors' >&2

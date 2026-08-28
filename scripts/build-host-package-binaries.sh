@@ -394,6 +394,16 @@ rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
 
+rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/stationconnect.conf" || {
+  echo "host configuration is missing the x264-specific encoder section" >&2
+  exit 1
+}
+if rg -Fxq '[software-encoder]' "$repo_dir/packaging/config/stationconnect.conf"; then
+  echo "host configuration retains the obsolete generic software-encoder section" >&2
+  exit 1
+fi
+echo "host_x264_config_section_gate=pass"
+
 # Capture output is negotiated from the authenticated bookmark session. Keep
 # the old machine-specific global selector out of both the packaged config and
 # Sunshine's static video configuration while retaining session.output_name.
