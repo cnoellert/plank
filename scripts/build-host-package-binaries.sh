@@ -430,6 +430,54 @@ for required_network_token in \
 done
 echo "host_network_config_gate=pass"
 
+# StationConnect accepts a deliberately small host configuration surface.
+# Reject reintroduction of inherited Sunshine options for unsupported encoder
+# platforms, consumer features, legacy display control, or product behaviors
+# that are fixed by the client/bookmark protocol.
+rg -Fq 'RuntimeOptionsMatchStationConnectProductPolicy' \
+  "$source_dir/tests/integration/test_config_consistency.cpp" || {
+  echo "host exact configuration-key policy test is missing" >&2
+  exit 1
+}
+for removed_config_option in \
+  qp \
+  qsv_preset qsv_coder qsv_slow_hevc \
+  amd_quality amd_rc amd_coder amd_usage amd_preanalysis amd_vbaq amd_enforce_hrd \
+  vt_coder vt_software vt_realtime \
+  vaapi_quality vaapi_rc vaapi_blbrc vaapi_strict_rc_buffer \
+  vk_tune vk_rc_mode \
+  dd_configuration_option dd_resolution_option dd_manual_resolution \
+  dd_refresh_rate_option dd_manual_refresh_rate dd_hdr_option \
+  dd_config_revert_delay dd_config_revert_on_disconnect dd_mode_remapping \
+  dd_wa_hdr_toggle_delay \
+  nvenc_realtime_hags nvenc_opengl_vulkan_on_dxgi nvenc_latency_over_power \
+  external_ip install_steam_audio_drivers virtual_sink \
+  max_bitrate packetsize stream_audio \
+  mouse keyboard always_send_scancodes high_resolution_scrolling \
+  key_rightalt_to_key_win notify_pre_releases locale flags; do
+  if rg -Fq "\"${removed_config_option}\"" "$source_dir/src/config.cpp" ||
+    rg -Fxq "### ${removed_config_option}" "$source_dir/docs/configuration.md"; then
+    echo "removed inherited host configuration option returned: ${removed_config_option}" >&2
+    exit 1
+  fi
+done
+if rg -n \
+  'config::video\.max_bitrate|config::stream\.packetsize|config::nvhttp\.external_ip' \
+  "$source_dir/src" "$source_dir/tests" --glob '*.{cpp,h}'; then
+  echo "removed global bitrate, packet-size, or external-IP state remains" >&2
+  exit 1
+fi
+for required_session_authority in \
+  'const int applied_kbps = requested_kbps;' \
+  'const std::int64_t bitrate = config.bitrate * 1000LL;' \
+  'config.packetsize = (int) util::from_view(args.at("x-nv-video[0].packetSize"sv));'; do
+  rg -Fq "$required_session_authority" "$source_dir/src" || {
+    echo "session bitrate/packet-size authority is missing: ${required_session_authority}" >&2
+    exit 1
+  }
+done
+echo "host_config_surface_cleanup_gate=pass"
+
 rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/stationconnect.conf" || {
   echo "host configuration is missing the x264-specific encoder section" >&2
   exit 1
