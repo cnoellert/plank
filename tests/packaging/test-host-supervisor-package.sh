@@ -169,6 +169,8 @@ rg -Fq 'inline constexpr int desktop_app_id = 881448767' \
   "$repo_dir/host/sunshine-fork/src/process.h"
 rg -Fq 'std::atomic<int> _app_id {0}' \
   "$repo_dir/host/sunshine-fork/src/process.h"
+rg -Fq 'if(WIN32 OR APPLE)' \
+  "$repo_dir/host/sunshine-fork/cmake/dependencies/Boost_Sunshine.cmake"
 if rg -n 'apps\.json|file_apps|global_prep_cmd|Steam Big Picture|Low Res Desktop' \
   "$repo_dir/host/sunshine-fork/src" \
   "$repo_dir/host/sunshine-fork/src_assets" \

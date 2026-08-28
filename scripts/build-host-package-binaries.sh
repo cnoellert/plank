@@ -556,6 +556,11 @@ for required_desktop_token in \
     exit 1
   }
 done
+rg -Fq 'if(WIN32 OR APPLE)' \
+  "$source_dir/cmake/dependencies/Boost_Sunshine.cmake" || {
+  echo "Boost.Process is not gated away from the Linux host build" >&2
+  exit 1
+}
 if rg -n 'apps\.json|file_apps|global_prep_cmd|Steam Big Picture|Low Res Desktop' \
   "$source_dir/src" "$source_dir/src_assets" "$source_dir/cmake" \
   "$source_dir/packaging" "$source_dir/docs"; then
