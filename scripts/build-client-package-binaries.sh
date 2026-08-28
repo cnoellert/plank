@@ -563,6 +563,20 @@ for required_retained_renderer_token in \
 done
 echo "client_retained_reconnect_renderer_gate=pass"
 
+for required_reconnect_local_event_token in \
+  'handleStationConnectLocalUserEvent' \
+  'applyPendingRemoteCursor();' \
+  'applyPendingTabletCursorActivation();' \
+  'applyPendingRemoteCursorPosition();' \
+  'one-shot pending latches'; do
+  rg -Fq "$required_reconnect_local_event_token" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "responsive reconnect local-event invariant is missing: ${required_reconnect_local_event_token}" >&2
+    exit 1
+  }
+done
+echo "client_reconnect_local_event_gate=pass"
+
 for required_client_identity_token in \
   'QGuiApplication::setApplicationDisplayName("StationConnect Client");' \
   'SDL_SetHint("SDL_APP_NAME", "StationConnect Client");' \
