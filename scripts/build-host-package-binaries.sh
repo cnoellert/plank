@@ -138,6 +138,28 @@ if rg -n \
 fi
 echo "host_wake_on_lan_absence_gate=pass"
 
+# StationConnect relies on administrator-managed routing and firewall policy.
+# Keep inherited Sunshine UPnP discovery, automatic gateway port mappings,
+# IPv6 pinholes, configuration/CLI toggles, and miniupnpc build inputs out of
+# every first-party host target.
+if [[ -e ${source_dir}/src/upnp.cpp || -e ${source_dir}/src/upnp.h ]]; then
+  echo "UPnP implementation files remain in StationConnect host source" >&2
+  exit 1
+fi
+if rg -n -i 'miniupnp|upnp' \
+  "$source_dir/src" \
+  "$source_dir/cmake" \
+  "$source_dir/scripts" \
+  "$source_dir/packaging" \
+  "$source_dir/docs" \
+  "$source_dir/.github" \
+  "$source_dir/docker" \
+  --glob '!**/third-party/**'; then
+  echo "UPnP or miniupnpc capability remains in first-party StationConnect host source" >&2
+  exit 1
+fi
+echo "host_upnp_absence_gate=pass"
+
 for required_pc_range_token in \
   'av_color_range_from_name(' \
   'sunshine_colorspace.full_range ? "pc" : "tv"' \

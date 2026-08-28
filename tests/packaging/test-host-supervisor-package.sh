@@ -123,6 +123,25 @@ rg -Fq 'host_static_capture_selector_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'host_legacy_x11_capture_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_upnp_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+if [[ -e $repo_dir/host/sunshine-fork/src/upnp.cpp || \
+      -e $repo_dir/host/sunshine-fork/src/upnp.h ]]; then
+  echo 'UPnP implementation files remain' >&2
+  exit 1
+fi
+if rg -n -i 'miniupnp|upnp' \
+  "$repo_dir/host/sunshine-fork/src" \
+  "$repo_dir/host/sunshine-fork/cmake" \
+  "$repo_dir/host/sunshine-fork/scripts" \
+  "$repo_dir/host/sunshine-fork/packaging" \
+  "$repo_dir/host/sunshine-fork/docs" \
+  "$repo_dir/host/sunshine-fork/.github" \
+  "$repo_dir/host/sunshine-fork/docker" \
+  --glob '!**/third-party/**'; then
+  echo 'UPnP or miniupnpc capability remains' >&2
+  exit 1
+fi
 rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \
