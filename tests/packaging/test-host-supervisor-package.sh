@@ -171,6 +171,23 @@ rg -Fq 'config.m_device_id = session.output_name' \
   "$repo_dir/host/sunshine-fork/src/display_device.cpp"
 rg -Fq 'host_static_capture_selector_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_global_video_selector_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_rpm_global_video_selector_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-rpm.sh"
+if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
+  "$repo_dir/packaging/config/stationconnect.conf"; then
+  echo 'packaged host configuration still exposes global video selectors' >&2
+  exit 1
+fi
+if rg -n \
+  'config::video\.(capture|encoder)|std::string[[:space:]]+(capture|encoder);|string_f\(vars,[[:space:]]*"(capture|encoder)"' \
+  "$repo_dir/host/sunshine-fork/src" \
+  "$repo_dir/host/sunshine-fork/tests" \
+  --glob '*.{cpp,h}'; then
+  echo 'host source still contains global video selectors' >&2
+  exit 1
+fi
 rg -Fq 'host_legacy_x11_capture_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'host_upnp_absence_gate=pass' \

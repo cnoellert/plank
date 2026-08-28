@@ -68,6 +68,12 @@ install -D -m 0644 "$repo_dir/packaging/pam/stationconnect-host" \
   "$payload_dir/etc/pam.d/stationconnect-host"
 install -D -m 0644 "$repo_dir/packaging/config/stationconnect.conf" \
   "$payload_dir/etc/stationconnect/stationconnect.conf"
+if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
+  "$payload_dir/etc/stationconnect/stationconnect.conf"; then
+  echo "host RPM payload still contains global capture or encoder selectors" >&2
+  exit 1
+fi
+echo "host_rpm_global_video_selector_absence_gate=pass"
 install -d -m 0700 "$payload_dir/etc/stationconnect/tls"
 install -d -m 0750 "$payload_dir/var/lib/stationconnect"
 install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-host-wacom.rules" \

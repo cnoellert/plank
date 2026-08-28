@@ -417,6 +417,37 @@ for required_capture_token in \
 done
 echo "host_static_capture_selector_absence_gate=pass"
 
+# Capture source and encoder backend are exact per-bookmark protocol choices.
+# A host-global [video] selector could hide a qualified backend at startup and
+# contradict the accepted session, so it must not exist in configuration,
+# parser state, documentation, or platform selection code.
+if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
+  "$repo_dir/packaging/config/stationconnect.conf" ||
+  rg -n \
+    'config::video\.(capture|encoder)|std::string[[:space:]]+(capture|encoder);|string_f\(vars,[[:space:]]*"(capture|encoder)"' \
+    "$source_dir/src" "$source_dir/tests" --glob '*.{cpp,h}' ||
+  rg -n '^###[[:space:]]+(capture|encoder)$' \
+    "$source_dir/docs/configuration.md"; then
+  echo "legacy global capture or encoder selector remains" >&2
+  exit 1
+fi
+for required_backend_invariant in \
+  'if (verify_nvfbc())' \
+  'if (verify_x11())' \
+  'validate_encoder(software_cuda' \
+  'validate_encoder(nvenc_direct' \
+  'No exact StationConnect encoder backend is available.' \
+  'Requested StationConnect capture source is unavailable' \
+  'config.monitor.encoder_backend = session.encoder_backend' \
+  'config.monitor.capture_source = video::capture_source_e::nvfbc_8bit' \
+  'config.monitor.capture_source = video::capture_source_e::x11_native10'; do
+  rg -Fq "$required_backend_invariant" "$source_dir/src" || {
+    echo "StationConnect per-session backend invariant is missing: ${required_backend_invariant}" >&2
+    exit 1
+  }
+done
+echo "host_global_video_selector_absence_gate=pass"
+
 # StationConnect exposes exactly two Linux capture paths: qualified NvFBC
 # 8-bit capture and the experimental owner-restricted Native X11/XShm 10-bit
 # path. Keep Sunshine's dormant generic X11 SHM/XGetImage fallbacks out of the
