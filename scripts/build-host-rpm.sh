@@ -70,8 +70,8 @@ install -D -m 0644 "$repo_dir/packaging/config/stationconnect.conf" \
   "$payload_dir/etc/stationconnect/stationconnect.conf"
 install -d -m 0700 "$payload_dir/etc/stationconnect/tls"
 install -d -m 0750 "$payload_dir/var/lib/stationconnect"
-install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-wacom.rules" \
-  "$payload_dir/usr/lib/udev/rules.d/70-stationconnect-wacom.rules"
+install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-host-wacom.rules" \
+  "$payload_dir/usr/lib/udev/rules.d/70-stationconnect-host-wacom.rules"
 install -D -m 0644 "$repo_dir/packaging/modules-load.d/stationconnect.conf" \
   "$payload_dir/usr/lib/modules-load.d/stationconnect.conf"
 install -D -m 0644 "$repo_dir/packaging/firewalld/stationconnect.xml" \
@@ -115,6 +115,14 @@ rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.servi
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-display-prepare\.service$'
 rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'
 rpm -qpl "$rpm_file" | rg -q '/etc/pam\.d/stationconnect-host$'
+rpm -qpl "$rpm_file" | rg -q \
+  '/usr/lib/udev/rules\.d/70-stationconnect-host-wacom\.rules$'
+if rpm -qpl "$rpm_file" | rg -q \
+  '/usr/lib/udev/rules\.d/70-stationconnect-wacom\.rules$'; then
+  echo "host RPM still contains the ambiguously named Wacom udev rule" >&2
+  exit 1
+fi
+echo "host_rpm_wacom_udev_identity_gate=pass"
 if rpm -qpl "$rpm_file" | rg -q '/etc/pam\.d/remote-desktop$|/usr/lib/sysusers\.d/stationconnect\.conf$'; then
   echo "host RPM still contains obsolete authentication-group packaging" >&2
   exit 1

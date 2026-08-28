@@ -195,7 +195,14 @@ rg -Fq 'bool_f(vars, "allow_root_login", broker_allow_root_login)' \
 rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
   "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
+rg -Fxq 'auth       substack     system-auth' "$pam_policy"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
+rg -Fxq 'session    optional     pam_keyinit.so force revoke' "$pam_policy"
+rg -Fxq 'session    include      system-auth' "$pam_policy"
+if rg -q '^[[:space:]]*(password|auth[[:space:]]+include[[:space:]]+postlogin|session[[:space:]]+include[[:space:]]+postlogin)' "$pam_policy"; then
+  echo "PAM service retained an unused password or postlogin stack" >&2
+  exit 1
+fi
 if rg -q 'pam_succeed_if|ingroup' "$pam_policy"; then
   echo "PAM service retained product-specific account authorization" >&2
   exit 1
@@ -206,6 +213,24 @@ rg -Fxq '/etc/pam.d/stationconnect-host' "$host_spec"
 rg -Fq 'packaging/pam/stationconnect-host' \
   "${repo_dir}/scripts/build-host-rpm.sh"
 echo "host_auth_group_absence_gate=pass"
+
+host_wacom_rule="${repo_dir}/packaging/udev/70-stationconnect-host-wacom.rules"
+[[ -f $host_wacom_rule &&
+   ! -e ${repo_dir}/packaging/udev/70-stationconnect-wacom.rules ]] || {
+  echo "host Wacom udev rule identity is stale or ambiguous" >&2
+  exit 1
+}
+for required_wacom_rule_token in \
+  'SUBSYSTEM=="input"' \
+  'SUBSYSTEM=="hidraw"' \
+  'SUBSYSTEM=="misc", KERNEL=="uhid"' \
+  'TAG+="uaccess"'; do
+  rg -Fq "$required_wacom_rule_token" "$host_wacom_rule" || {
+    echo "host Wacom udev rule is missing: ${required_wacom_rule_token}" >&2
+    exit 1
+  }
+done
+echo "host_wacom_udev_identity_gate=pass"
 
 for required_pc_range_token in \
   'av_color_range_from_name(' \

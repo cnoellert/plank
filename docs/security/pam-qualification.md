@@ -2,9 +2,9 @@
 
 The StationConnect PAM policy is installed as `/etc/pam.d/stationconnect-host`.
 The broker denies root by default through `security.allow_root_login = false`
-before delegating authentication, account, password, and session handling to
-Rocky's authselect-managed `system-auth` stack. SSSD and FreeIPA
-HBAC remain the administrator-owned account-authorization layer;
+before delegating authentication, account authorization, credential, and
+session handling to Rocky's authselect-managed `system-auth` stack. SSSD and
+FreeIPA HBAC remain the administrator-owned account-authorization layer;
 StationConnect has no application-specific user allowlist. Do not edit
 `system-auth` directly.
 
