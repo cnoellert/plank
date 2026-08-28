@@ -119,8 +119,13 @@ rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-3840x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1280x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-4096x2160\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-5120x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1024x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-2560x2160\.edid$'
+if rpm -qpl "$rpm_file" | rg -q '/virtual-[12]-1280x(720|1024)\.edid$'; then
+  echo "host RPM still contains removed virtual modes" >&2
+  exit 1
+fi
 if rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/host\.env$|/usr/share/stationconnect/web/'; then
   echo "host RPM still contains legacy environment configuration or Web UI assets" >&2
   exit 1

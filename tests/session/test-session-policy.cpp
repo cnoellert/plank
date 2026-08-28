@@ -82,7 +82,7 @@ int main() {
   }
   if (!session::display_request_message({
         session::display_request_t::action_t::acquire,
-        "single", "5120x2160", {}, 1000
+        "single", "1280x720", {}, 1000
       }).empty() ||
       session::parse_display_request(display_message.substr(0, display_message.size() - 1))) {
     std::cerr << "malformed display request was accepted\n";

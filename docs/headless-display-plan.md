@@ -238,9 +238,9 @@ virtual_mode_2 = 1920x1080
 
 `startup_layout` accepts only `physical`, `single`, or `dual-horizontal` and
 defaults to `physical`. `virtual_mode_1` and `virtual_mode_2` independently select
-one of the qualified 60 Hz modes: `1024x2160`, `1280x720`, `1280x1024`,
-`1280x2160`, `1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`,
-`3440x1440`, `3840x1600`, `3840x2160`, or `4096x2160`. The preset boundary
+one of the qualified 60 Hz modes: `1024x2160`, `1280x2160`, `1920x1080`,
+`1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`, `3440x1440`,
+`3840x1600`, `3840x2160`, `4096x2160`, or `5120x2160`. The preset boundary
 keeps arbitrary modelines out of the privileged display-preparation path while
 supporting asymmetric Flame layouts such as `3840x2160 + 1280x2160` and
 `4096x2160 + 1024x2160`. The packaged defaults do not alter an existing
@@ -248,11 +248,11 @@ physical-display workstation.
 
 Every packaged virtual-monitor EDID is exactly 384 bytes: one base block and
 two DisplayID 1.3 extension blocks. Three qualified modes occupy the base
-detailed-timing slots and the remaining ten occupy the DisplayID blocks, so
+detailed-timing slots and the remaining nine occupy the DisplayID blocks, so
 the complete pool is advertised exactly once at 60.000 Hz. The selected mode
-is preferred in a base detailed timing except for 4096x2160, whose preferred
-timing is carried by DisplayID because EDID 1.x cannot represent 4096 active
-horizontal pixels. Keeping the EDID at or below 384 bytes is required by the
+is preferred in a base detailed timing except for modes wider than 4095 pixels,
+whose preferred timing is carried by DisplayID because EDID 1.x cannot represent
+their horizontal active width. Keeping the EDID at or below 384 bytes is required by the
 qualified Rocky 9 GNOME/Mutter 40 path, which reads at most 400 bytes from the
 XRandR EDID property and rejects a truncated property whose length is not a
 multiple of 128.

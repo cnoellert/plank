@@ -735,9 +735,12 @@ done
 for required_virtual_mode_token in \
   'Q_INVOKABLE QStringList stationConnectVirtualModeChoices() const;' \
   'QStringList choices = NvOutputTopology::qualifiedVirtualModes();' \
-  'int hostLayout = 0, int virtualMode1 = 11' \
-  'addVirtualMode1.currentIndex = 11' \
-  'property int virtualMode1Index: 11' \
+  'int hostLayout = 0, int virtualMode1 = 9' \
+  'int virtualMode2 = 1' \
+  'addVirtualMode1.currentIndex = 9' \
+  'addVirtualMode2.currentIndex = 1' \
+  'property int virtualMode1Index: 9' \
+  'property int virtualMode2Index: 1' \
   'height: 820' \
   'minimumHeight: 720'; do
   rg -Fq "$required_virtual_mode_token" \
@@ -749,6 +752,15 @@ for required_virtual_mode_token in \
     exit 1
   }
 done
+rg -Fq 'QStringLiteral("5120x2160")' "$source_dir/app/backend/outputtopology.cpp" || {
+  echo "5120x2160 is missing from the canonical bookmark mode list" >&2
+  exit 1
+}
+if rg -Fq 'QStringLiteral("1280x720")' "$source_dir/app/backend/outputtopology.cpp" ||
+   rg -Fq 'QStringLiteral("1280x1024")' "$source_dir/app/backend/outputtopology.cpp"; then
+  echo "the canonical bookmark mode list still contains a removed mode" >&2
+  exit 1
+fi
 echo "client_bookmark_resolution_list_gate=pass"
 
 # Match Client is a client-side bookmark policy that resolves the active SDL3

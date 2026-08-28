@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 7 describes the host desktop after operating-system
+Protocol version 8 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 7` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 7 defines these bits:
+The host returns `schema_version: 8` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 8 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -28,7 +28,7 @@ The host returns `schema_version: 7` and a numeric `feature_flags` field from
 - `0x800` — exact per-session capture-source selection and acknowledgement
 - `0x1000` — exact per-session encoder-backend and encoding-mode selection
 
-The client sends `scProtocolVersion=7`, `scFeatureFlags`, `scDisplayMode`,
+The client sends `scProtocolVersion=8`, `scFeatureFlags`, `scDisplayMode`,
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
@@ -54,7 +54,7 @@ its output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`configured_mode` and a `source_rect` in composite-source coordinates. Version 7 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 8 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -74,9 +74,9 @@ Bookmarks persist `configured`, `physical`, `single`, or `dual-horizontal` as
 their host-layout requirement. `configured` is resolved to the authenticated
 topology's exact current layout before launch; it is not sent as a wildcard.
 Virtual layouts persist one enumerated mode per requested output. The current
-60 Hz allowlist is `1024x2160`, `1280x720`, `1280x1024`, `1280x2160`,
-`1920x1080`, `1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`, `3440x1440`,
-`3840x1600`, `3840x2160`, and `4096x2160`. The host compares the requested
+60 Hz allowlist is `1024x2160`, `1280x2160`, `1920x1080`, `1920x1200`,
+`2560x1440`, `2560x1600`, `2560x2160`, `3440x1440`, `3840x1600`,
+`3840x2160`, `4096x2160`, and `5120x2160`. The host compares the requested
 layout and both modes with the live topology before claiming the one-use PAM
 launch state. A mismatch returns 425 and submits only the enumerated layout,
 modes, and authenticated account UID to the root supervisor. Headless virtual
@@ -126,11 +126,11 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v7.json` represents a physical-startup host
+`tests/protocol/output-topology-v8.json` represents a physical-startup host
 temporarily presenting the Flame-style 3840x2160 primary plus 1280x2160
 secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout
 binding, independent modes, allowed-layout capability, startup provenance, and
-the primary fallback. The version-1, version-2, and version-4 vectors remain historical
+the primary fallback. The version-1, version-2, version-4, and version-7 vectors remain historical
 evidence only; StationConnect has no deployed legacy clients requiring a
 silent version fallback.

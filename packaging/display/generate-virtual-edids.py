@@ -39,8 +39,6 @@ a02950302035008b882100001a023a80
 # pixel clock MHz, h active/start/end/total, v active/start/end/total.
 MODE_TIMINGS = {
     "1024x2160": (157.53, 1024, 1072, 1104, 1180, 2160, 2163, 2173, 2225),
-    "1280x720": (64.38, 1280, 1328, 1360, 1450, 720, 723, 728, 740),
-    "1280x1024": (90.72, 1280, 1328, 1360, 1440, 1024, 1027, 1034, 1050),
     "1280x2160": (192.24, 1280, 1328, 1360, 1440, 2160, 2163, 2173, 2225),
     "1920x1080": (139.86, 1920, 1968, 2000, 2100, 1080, 1083, 1088, 1110),
     "1920x1200": (155.61, 1920, 1968, 2000, 2100, 1200, 1203, 1209, 1235),
@@ -53,6 +51,7 @@ MODE_TIMINGS = {
     # CTA-861 VIC 102. EDID 1.x detailed timings are limited to 4095 active
     # pixels, so this mode is advertised through the CTA video data block.
     "4096x2160": (594.00, 4096, 4184, 4272, 4400, 2160, 2168, 2178, 2250),
+    "5120x2160": (742.50, 5120, 5280, 5376, 5500, 2160, 2168, 2178, 2250),
 }
 
 def eisa_manufacturer_id(name: str) -> bytes:
@@ -73,8 +72,8 @@ def set_text_descriptor(edid: bytearray, offset: int, tag: int, text: str) -> No
 
 def detailed_timing(mode: str) -> tuple[bytes, int, int]:
     """Encode one CVT-RB mode as an EDID detailed-timing descriptor."""
-    if mode == "4096x2160":
-        # The CTA extension below carries the requested cinema mode. Retain a
+    if MODE_TIMINGS[mode][1] > 4095:
+        # DisplayID below carries the requested wide mode. Retain a
         # valid 3840x2160 base-block fallback instead of overflowing the
         # 12-bit EDID 1.x horizontal-active field.
         mode = "3840x2160"
@@ -134,13 +133,13 @@ def displayid_timing(mode: str, preferred: bool) -> bytes:
 
 def base_timing_modes(preferred_mode: str) -> list[str]:
     """Choose three exact timings for the base block, preferred first."""
-    if preferred_mode == "4096x2160":
-        # EDID 1.x cannot represent 4096 active pixels. DisplayID marks it
+    if MODE_TIMINGS[preferred_mode][1] > 4095:
+        # EDID 1.x cannot represent more than 4095 active pixels. DisplayID marks it
         # preferred; these are conservative exact-60 base fallbacks.
-        return ["3840x2160", "1920x1080", "1280x720"]
+        return ["3840x2160", "1920x1080", "1280x2160"]
 
     modes = [preferred_mode]
-    for fallback in ("1920x1080", "1280x720", "3840x2160"):
+    for fallback in ("1920x1080", "1280x2160", "3840x2160"):
         if fallback not in modes:
             modes.append(fallback)
         if len(modes) == 3:
@@ -149,9 +148,9 @@ def base_timing_modes(preferred_mode: str) -> list[str]:
 
 
 def displayid_timing_extensions(modes: list[str], preferred_mode: str) -> list[bytes]:
-    """Encode ten remaining exact timings in two DisplayID sections."""
-    if len(modes) != 10:
-        raise ValueError("exactly ten DisplayID timings are required")
+    """Encode the remaining exact timings in two DisplayID sections."""
+    if not 6 <= len(modes) <= 10:
+        raise ValueError("six to ten DisplayID timings are required")
     chunks = [modes[offset : offset + 5] for offset in range(0, len(modes), 5)]
     extensions = []
     for section_index, chunk in enumerate(chunks):
@@ -236,7 +235,7 @@ def build_edid(index: int, mode: str) -> bytes:
     timing, h_size_mm, v_size_mm = detailed_timing(base_modes[0])
     edid[21] = min(255, round(h_size_mm / 10))
     edid[22] = min(255, round(v_size_mm / 10))
-    if mode == "4096x2160":
+    if MODE_TIMINGS[mode][1] > 4095:
         # The preferred Type I DisplayID timing is authoritative.
         edid[24] &= ~0x02
     edid[54:72] = timing

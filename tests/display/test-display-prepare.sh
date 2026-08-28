@@ -18,10 +18,13 @@ python3 "$repo_dir/packaging/display/generate-virtual-edids.py" "$edid_dir" >/de
 [[ $(wc -c <"${edid_dir}/virtual-1-3840x2160.edid") -eq 384 ]]
 [[ $(wc -c <"${edid_dir}/virtual-1-2560x2160.edid") -eq 384 ]]
 [[ $(wc -c <"${edid_dir}/virtual-1-4096x2160.edid") -eq 384 ]]
+[[ $(wc -c <"${edid_dir}/virtual-1-5120x2160.edid") -eq 384 ]]
+[[ ! -e ${edid_dir}/virtual-1-1280x720.edid ]]
+[[ ! -e ${edid_dir}/virtual-1-1280x1024.edid ]]
 displayid_headers=$(for block_offset in 128 256; do
   od -An -j "$block_offset" -N 8 -tx1 "${edid_dir}/virtual-1-2560x2160.edid" | tr -d '[:space:]'
 done)
-[[ $displayid_headers == '70136703010300647013670000030064' ]]
+[[ $displayid_headers == '70136703010300647013530000030050' ]]
 for block_offset in 0 128 256; do
   checksum=$(od -An -j "$block_offset" -N 128 -tu1 "${edid_dir}/virtual-1-4096x2160.edid" |
     awk '{ for (field = 1; field <= NF; ++field) sum += $field } END { print sum % 256 }')
@@ -96,6 +99,11 @@ grep -Fq 'DFP-0: 2560x2160 +0+0, DFP-2: NULL' "$output_file"
 grep -Fq 'virtual-1-2560x2160.edid' "$output_file"
 grep -Fq 'Virtual 8192 2160' "$output_file"
 
+run_requested_prepare --layout single --mode-1 5120x2160 >/dev/null
+grep -Fq 'DFP-0: 5120x2160 +0+0, DFP-2: NULL' "$output_file"
+grep -Fq 'virtual-1-5120x2160.edid' "$output_file"
+grep -Fq 'Virtual 8192 2160' "$output_file"
+
 if run_requested_prepare --layout dual-horizontal --mode-1 4096x2160 >/dev/null 2>&1; then
   echo "a dual transition without mode 2 was accepted" >&2
   exit 1
@@ -131,9 +139,9 @@ fi
 printf '[display]\nstartup_layout = dual-horizontal\nvirtual_mode_1 = 4096x2160\nvirtual_mode_2 = 1024x2160\n' >"$config_file"
 run_prepare >/dev/null
 
-printf '[display]\nstartup_layout = dual-horizontal\nvirtual_mode_1 = 5120x2160\nvirtual_mode_2 = 1280x2160\n' >"$config_file"
+printf '[display]\nstartup_layout = single\nvirtual_mode_1 = 1280x720\n' >"$config_file"
 if run_prepare >/dev/null 2>&1; then
-  echo "an unqualified independent virtual mode was accepted" >&2
+  echo "a removed virtual mode was accepted" >&2
   exit 1
 fi
 
