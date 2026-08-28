@@ -11,7 +11,7 @@ spec=${repo_dir}/packaging/rpm/stationconnect-host.spec
 builder=${repo_dir}/scripts/build-host-rpm.sh
 firewalld_service=${repo_dir}/packaging/firewalld/stationconnect.xml
 
-rg -Fxq 'ExecStart=/usr/bin/stationconnect-host-supervisor' "$unit"
+rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-host-supervisor' "$unit"
 rg -Fxq 'WantedBy=multi-user.target' "$unit"
 if rg -q '^EnvironmentFile=' "$unit"; then
   echo 'host service still loads a second environment configuration file' >&2
@@ -28,7 +28,7 @@ if rg -q '47990' "$firewalld_service"; then
 fi
 rg -Fxq 'RuntimeDirectory=stationconnect/pam' "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
-rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' "$pam_unit"
+rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' "$pam_unit"
 rg -Fq '/run/stationconnect/pam/auth.sock' \
   "$repo_dir/packaging/bin/stationconnect-host"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
@@ -52,7 +52,13 @@ if rg -q '%h|graphical-session.target' "$unit"; then
   exit 1
 fi
 
-rg -Fq '/usr/bin/stationconnect-host-supervisor' "$spec"
+rg -Fq '/usr/libexec/stationconnect/stationconnect-host-supervisor' "$spec"
+rg -Fq '/usr/libexec/stationconnect/stationconnect-pam-broker' "$spec"
+if rg -q '/usr/bin/stationconnect-(host-supervisor|pam-broker)' \
+  "$unit" "$pam_unit" "$spec" "$builder"; then
+  echo 'internal host service binaries remain exposed in /usr/bin' >&2
+  exit 1
+fi
 rg -Fxq 'Requires:       xorg-x11-server-utils' "$spec"
 rg -Fq '/usr/libexec/stationconnect/stationconnect-host' "$spec"
 rg -Fq 'OUTPUT_NAME "stationconnect-host"' \

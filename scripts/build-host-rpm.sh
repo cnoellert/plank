@@ -45,9 +45,9 @@ mkdir -p "$payload_dir" "$rpm_topdir/SOURCES" "$rpm_topdir/SPECS" \
 install -D -m 0755 "$build_dir/stationconnect-host" \
   "$payload_dir/usr/libexec/stationconnect/stationconnect-host"
 install -D -m 0755 "$build_dir/stationconnect-pam-broker" \
-  "$payload_dir/usr/bin/stationconnect-pam-broker"
+  "$payload_dir/usr/libexec/stationconnect/stationconnect-pam-broker"
 install -D -m 0755 "$build_dir/stationconnect-host-supervisor" \
-  "$payload_dir/usr/bin/stationconnect-host-supervisor"
+  "$payload_dir/usr/libexec/stationconnect/stationconnect-host-supervisor"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host" \
   "$payload_dir/usr/bin/stationconnect-host"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-host-certificate" \
@@ -74,6 +74,19 @@ if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
   exit 1
 fi
 echo "host_rpm_global_video_selector_absence_gate=pass"
+for required_network_token in \
+  'lan_encryption_mode = 0' \
+  'wan_encryption_mode = 1' \
+  'ping_timeout = 10000' \
+  'fec_percentage = 20' \
+  'Scope uses the remote socket source address, not the route or physical path.'; do
+  rg -Fq "$required_network_token" \
+    "$payload_dir/etc/stationconnect/stationconnect.conf" || {
+    echo "host RPM payload is missing network configuration: ${required_network_token}" >&2
+    exit 1
+  }
+done
+echo "host_rpm_network_config_gate=pass"
 rg -Fxq '[x264-encoder]' \
   "$payload_dir/etc/stationconnect/stationconnect.conf" || {
   echo "host RPM payload is missing the x264-specific encoder section" >&2
@@ -124,7 +137,14 @@ rpm_file=$(find "$output_dir" -maxdepth 1 -type f \
 rpm -qpl "$rpm_file" >/dev/null
 rpm -qpR "$rpm_file" | rg -q 'libX11\.so\.6'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/modules-load\.d/stationconnect\.conf$'
-rpm -qpl "$rpm_file" | rg -q '/usr/bin/stationconnect-host-supervisor$'
+rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-supervisor$'
+rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-pam-broker$'
+if rpm -qpl "$rpm_file" | rg -q \
+  '/usr/bin/stationconnect-(host-supervisor|pam-broker)$'; then
+  echo "host RPM exposes internal service binaries in /usr/bin" >&2
+  exit 1
+fi
+echo "host_rpm_private_service_binary_gate=pass"
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-certificate$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-state$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-display-prepare$'

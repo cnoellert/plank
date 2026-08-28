@@ -121,8 +121,6 @@ install -D -m 0755 "$moonlight_binary" \
   "$stage_dir/usr/libexec/stationconnect/stationconnect-client"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-client" \
   "$stage_dir/usr/bin/stationconnect-client"
-install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-client.service" \
-  "$stage_dir/usr/lib/systemd/user/stationconnect-client.service"
 install -D -m 0644 "$repo_dir/packaging/systemd/client.env.example" \
   "$stage_dir/usr/share/doc/stationconnect-client/client.env.example"
 install -D -m 0644 \
@@ -247,6 +245,13 @@ for required_package in \
   }
 done
 package_manifest=$(dpkg-deb --contents "$deb_file")
+if grep -Eq \
+    '\./(etc/xdg/autostart|usr/lib/systemd/user|usr/share/systemd/user)/.*stationconnect' \
+    <<<"$package_manifest"; then
+  echo "client DEB contains a StationConnect autostart entry or user service" >&2
+  exit 1
+fi
+echo "client_autostart_absence_gate=pass"
 grep -Fq './usr/share/applications/la.instinctual.StationConnect.Client.desktop' \
   <<<"$package_manifest" || {
   echo "client DEB is missing the canonical StationConnect desktop entry" >&2
@@ -313,6 +318,11 @@ for maintainer_script in postinst postrm; do
   }
   sh -n "${control_audit_dir}/${maintainer_script}"
 done
+if rg -n 'stationconnect-client\.service|deb-systemd-helper|systemctl[[:space:]]+--user' \
+    "$control_audit_dir/postinst" "$control_audit_dir/postrm"; then
+  echo "client maintainer scripts retain user-service or autostart handling" >&2
+  exit 1
+fi
 rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
   "$stage_dir/usr/libexec/stationconnect/stationconnect-client" "$private_lib_dir"

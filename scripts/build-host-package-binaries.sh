@@ -192,7 +192,7 @@ for required_auth_token in \
 done
 rg -Fq 'bool_f(vars, "allow_root_login", broker_allow_root_login)' \
   "$source_dir/src/config.cpp"
-rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
+rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
   "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
 rg -Fxq 'auth       substack     system-auth' "$pam_policy"
@@ -384,6 +384,16 @@ rg -Fxq 'stationconnect_mdns_discovery = false' \
   echo "host mDNS configuration does not default to disabled" >&2
   exit 1
 }
+for required_mdns_config_doc in \
+  'Accepted values: true or false.' \
+  'The default is false; manually configured hostname/IP bookmarks continue to' \
+  'work when discovery is disabled. Enabling this affects advertisement only'; do
+  rg -Fq "$required_mdns_config_doc" \
+    "$repo_dir/packaging/config/stationconnect.conf" || {
+    echo "host mDNS configuration documentation is incomplete: ${required_mdns_config_doc}" >&2
+    exit 1
+  }
+done
 echo "host_mdns_default_off_gate=pass"
 
 [[ ! -e ${repo_dir}/packaging/config/host.env ]] || {
@@ -393,6 +403,32 @@ echo "host_mdns_default_off_gate=pass"
 rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
+
+for required_network_token in \
+  'lan_encryption_mode = 0' \
+  'wan_encryption_mode = 1' \
+  'ping_timeout = 10000' \
+  'fec_percentage = 20' \
+  'Scope uses the remote socket source address, not the route or physical path.'; do
+  rg -Fq "$required_network_token" \
+    "$repo_dir/packaging/config/stationconnect.conf" || {
+    echo "host network configuration is missing: ${required_network_token}" >&2
+    exit 1
+  }
+done
+for required_network_token in \
+  '"lan_encryption_mode"' \
+  '"wan_encryption_mode"' \
+  '"ping_timeout"' \
+  '"fec_percentage"' \
+  'encryption_mode_for_address'; do
+  rg -Fq "$required_network_token" \
+    "$source_dir/src/config.cpp" "$source_dir/src/network.cpp" || {
+    echo "host network runtime is missing: ${required_network_token}" >&2
+    exit 1
+  }
+done
+echo "host_network_config_gate=pass"
 
 rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/stationconnect.conf" || {
   echo "host configuration is missing the x264-specific encoder section" >&2

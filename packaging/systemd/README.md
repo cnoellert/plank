@@ -2,8 +2,9 @@
 
 ## PAM Broker
 
-Install `stationconnect-pam-broker` as `/usr/bin/stationconnect-pam-broker`,
-install the service in the system unit directory, and install
+Install the systemd-only broker as
+`/usr/libexec/stationconnect/stationconnect-pam-broker`, install its service in
+the system unit directory, and install
 `packaging/pam/stationconnect-host` as `/etc/pam.d/stationconnect-host`.
 StationConnect denies root remote login by default and delegates account
 authorization to the host's PAM/SSSD policy, including FreeIPA HBAC. The
@@ -36,10 +37,12 @@ socket; the service limits itself to 40 total tasks.
 
 ## Host Supervisor and Client Service
 
-Install the launchers from `packaging/bin/` as `/usr/bin/stationconnect-host`
-and `/usr/bin/stationconnect-client`. Production packages place their Sunshine
-and Moonlight binaries under `/usr/libexec/stationconnect/`; a development
-environment can override the binary path while invoking the launcher.
+Install the public launchers from `packaging/bin/` as
+`/usr/bin/stationconnect-host` and `/usr/bin/stationconnect-client`.
+Production packages place their Sunshine and Moonlight workers under
+`/usr/libexec/stationconnect/`; the systemd-only host supervisor and PAM broker
+also live there. A development environment can override the media-worker binary
+path while invoking a public launcher.
 
 Build and bundle the pinned FFmpeg 9 client runtime next to Moonlight before
 packaging it:
@@ -90,14 +93,14 @@ headless workflow and does not advertise a physical bookmark layout. The RPM exp
 applies the packaged preset on upgrade so the pre-GDM cleanup cannot remain
 disabled while a stale owned overlay survives a reboot.
 
-Install `stationconnect-client.service` in the system user-unit directory so
-the client inherits its Wayland display. Enable the services with:
+The client is interactive and ships no systemd user service or desktop
+autostart entry. Launch it explicitly from the desktop application icon or the
+`stationconnect-client` command. Enable only the host services:
 
 ```bash
 sudo systemctl enable --now stationconnect-pam-broker.service \
   stationconnect-display-prepare.service \
   stationconnect-host.service
-systemctl --user enable --now stationconnect-client.service
 ```
 
 Configure every host runtime option in the single root-managed
@@ -125,7 +128,8 @@ persistent per-user files under `$XDG_STATE_HOME/stationconnect/logs/`, or
 absolute path. The directory is mode `0700`; each timestamped
 `stationconnect-client-*.log` is mode `0600`, capped at 10 MiB, and only the
 newest 10 files are retained. Continue using
-`journalctl --user -u stationconnect-client.service` for live service output.
+Use these files as the primary client diagnostic record; an explicitly launched
+process may also be visible in the desktop session's user journal.
 
 The host writes its streaming runtime diagnostics to
 `/var/log/stationconnect/stationconnect-host.log` while continuing to mirror

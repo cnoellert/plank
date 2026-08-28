@@ -2,13 +2,8 @@
 
 set -e
 
-if [ "$1" = purge ] && [ -z "${DPKG_ROOT:-}" ] && \
-   [ -x /usr/bin/deb-systemd-helper ]; then
-  deb-systemd-helper --user purge stationconnect-client.service \
-    >/dev/null || true
-fi
-
-if [ "$1" = purge ] && [ -z "${DPKG_ROOT:-}" ] && \
+if { [ "$1" = remove ] || [ "$1" = purge ]; } && \
+   [ -z "${DPKG_ROOT:-}" ] && \
    [ -x /usr/bin/udevadm ]; then
   /usr/bin/udevadm control --reload-rules || true
   /usr/bin/udevadm trigger --action=change \

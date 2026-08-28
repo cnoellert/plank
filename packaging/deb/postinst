@@ -13,16 +13,5 @@ if [ "$1" = configure ] || [ "$1" = abort-upgrade ] || \
         --subsystem-match=input || true
     fi
 
-    deb-systemd-helper --user unmask stationconnect-client.service \
-      >/dev/null || true
-
-    if deb-systemd-helper --quiet --user \
-      was-enabled stationconnect-client.service; then
-      deb-systemd-helper --user enable stationconnect-client.service \
-        >/dev/null || true
-    else
-      deb-systemd-helper --user update-state stationconnect-client.service \
-        >/dev/null || true
-    fi
   fi
 fi

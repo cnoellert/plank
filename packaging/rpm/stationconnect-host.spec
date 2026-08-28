@@ -80,9 +80,9 @@ fi
 %dir %attr(0750,root,root) /var/lib/stationconnect
 %ghost %attr(0600,root,root) /var/lib/stationconnect/stationconnect_state.json
 /usr/bin/stationconnect-host
-/usr/bin/stationconnect-host-supervisor
-/usr/bin/stationconnect-pam-broker
 /usr/libexec/stationconnect/stationconnect-host
+/usr/libexec/stationconnect/stationconnect-host-supervisor
+/usr/libexec/stationconnect/stationconnect-pam-broker
 /usr/libexec/stationconnect/stationconnect-host-certificate
 /usr/libexec/stationconnect/stationconnect-host-state
 /usr/libexec/stationconnect/stationconnect-display-prepare
@@ -96,6 +96,10 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.174
+- Expose and document LAN and WAN media-encryption policies
+- Keep systemd-only host service binaries private under libexec
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.173
 - Reduce display startup configuration to physical or virtual policy
 - Use one complete canonical EDID per virtual output
