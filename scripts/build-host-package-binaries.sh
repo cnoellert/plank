@@ -384,6 +384,16 @@ rg -Fxq 'stationconnect_mdns_discovery = false' \
   echo "host mDNS configuration does not default to disabled" >&2
   exit 1
 }
+for required_mdns_config_doc in \
+  'Accepted values: true or false.' \
+  'The default is false; manually configured hostname/IP bookmarks continue to' \
+  'work when discovery is disabled. Enabling this affects advertisement only'; do
+  rg -Fq "$required_mdns_config_doc" \
+    "$repo_dir/packaging/config/stationconnect.conf" || {
+    echo "host mDNS configuration documentation is incomplete: ${required_mdns_config_doc}" >&2
+    exit 1
+  }
+done
 echo "host_mdns_default_off_gate=pass"
 
 [[ ! -e ${repo_dir}/packaging/config/host.env ]] || {
