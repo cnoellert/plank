@@ -103,11 +103,11 @@ int main() {
   if (!write_display_config("[display]\nstartup_layout = physical\n") ||
       session::configured_startup_layout(display_config_path) !=
         session::startup_layout_t::physical ||
-      !write_display_config("[display]\nstartup_layout = dual-horizontal\n") ||
+      !write_display_config("[display]\nstartup_layout = virtual\n") ||
       session::configured_startup_layout(display_config_path) !=
-        session::startup_layout_t::dual_horizontal ||
+        session::startup_layout_t::virtual_display ||
       !write_display_config(
-        "[display]\nstartup_layout = physical\nstartup_layout = single\n"
+        "[display]\nstartup_layout = physical\nstartup_layout = virtual\n"
       ) ||
       session::configured_startup_layout(display_config_path) !=
         session::startup_layout_t::invalid) {

@@ -493,8 +493,8 @@ echo "host_legacy_x11_capture_absence_gate=pass"
 # display manager.
 for required_display_token in \
   'startup_layout = physical' \
-  'virtual_mode_1 = 1920x1080' \
-  'virtual_mode_2 = 1920x1080'; do
+  'physical = preserve connected monitors' \
+  'virtual = initialize one internal 1920x1080 output'; do
   rg -Fq "$required_display_token" \
     "$repo_dir/packaging/config/stationconnect.conf" || {
     echo "host display default is missing: ${required_display_token}" >&2
@@ -512,8 +512,9 @@ for required_display_token in \
   }
 done
 for required_display_token in \
-  'physical|single|dual-horizontal' \
-  'startup_layout == single' \
+  'physical|virtual' \
+  'active_layout=single' \
+  'virtual-1.edid' \
   'refusing to change the display topology while the display manager is active'; do
   rg -Fq "$required_display_token" \
     "$repo_dir/packaging/bin/stationconnect-display-prepare" || {
@@ -521,6 +522,12 @@ for required_display_token in \
     exit 1
   }
 done
+if rg -q 'virtual_mode_[12]' "$repo_dir/packaging/config/stationconnect.conf" ||
+   rg -q 'key != "virtual_mode_[12]"|values\["virtual_mode_[12]"\]' \
+     "$repo_dir/packaging/bin/stationconnect-display-prepare"; then
+  echo "removed administrator virtual-mode settings remain in display packaging" >&2
+  exit 1
+fi
 echo "host_display_startup_layout_gate=pass"
 
 rg -Fxq \

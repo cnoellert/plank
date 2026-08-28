@@ -259,18 +259,17 @@ def build_edid(index: int, mode: str) -> bytes:
 
 
 def main() -> int:
-    """Write every head/mode EDID and print its SHA-256 provenance."""
+    """Write one complete, canonical EDID per virtual output."""
     parser = argparse.ArgumentParser()
     parser.add_argument("output_directory", type=Path)
     args = parser.parse_args()
     args.output_directory.mkdir(parents=True, exist_ok=True)
 
     for index in (1, 2):
-        for mode in MODE_TIMINGS:
-            data = build_edid(index, mode)
-            output = args.output_directory / f"virtual-{index}-{mode}.edid"
-            output.write_bytes(data)
-            print(f"{hashlib.sha256(data).hexdigest()}  {output}")
+        data = build_edid(index, "1920x1080")
+        output = args.output_directory / f"virtual-{index}.edid"
+        output.write_bytes(data)
+        print(f"{hashlib.sha256(data).hexdigest()}  {output}")
     return 0
 
 

@@ -10,19 +10,18 @@ enables one known connected physical output at a safe native mode. Recovery
 never reboots the workstation and never restarts the display manager merely to
 repair a live user desktop.
 
-The administrator configuration describes only the boot layout:
+The administrator configuration describes only the boot display policy:
 
 ```ini
 [display]
 startup_layout = physical
-virtual_mode_1 = 1920x1080
-virtual_mode_2 = 1920x1080
 ```
 
-`startup_layout` accepts `physical`, `single`, or `dual-horizontal`.
+`startup_layout` accepts `physical` or `virtual`.
 `physical` removes the StationConnect Xorg overlay at boot but permits a
 temporary `single` or `dual-horizontal` bookmark layout. The two virtual
-startup values retain the packaged EDID workflow for truly headless machines.
+outputs are initialized only when the policy is `virtual`; one internal
+1920x1080 output is active for login and the bookmark chooses the live layout.
 
 ## Protocol
 

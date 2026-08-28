@@ -45,9 +45,10 @@ desktop rectangle, a `layout` object, and an `outputs` array. `layout.kind` is
 `physical`, `single`, or `dual-horizontal`; `layout.virtual_modes` is empty for
 a physical layout, contains one administrator-qualified mode for `single`, and
 contains the independently ordered primary/secondary modes for
-`dual-horizontal`. `layout.startup_kind` reports the administrator's boot
-layout and `layout.allowed_kinds` explicitly lists the layouts a bookmark may
-request. A physical startup lists physical, single, and dual-horizontal; a
+`dual-horizontal`. `layout.startup_kind` reports the concrete boot topology:
+`physical`, or `single` for the safe 1920x1080 baseline created by the
+administrator's `virtual` policy. `layout.allowed_kinds` explicitly lists the
+layouts a bookmark may request. A physical startup lists physical, single, and dual-horizontal; a
 virtual startup lists single and dual-horizontal. The current layout can
 therefore be virtual while its startup remains physical during a session
 lease. The layout also publishes whether the current geometry is virtual and
