@@ -154,6 +154,7 @@ if rg -n -i 'miniupnp|upnp' \
   "$source_dir/docs" \
   "$source_dir/.github" \
   "$source_dir/docker" \
+  "$repo_dir/packaging" \
   --glob '!**/third-party/**'; then
   echo "UPnP or miniupnpc capability remains in first-party StationConnect host source" >&2
   exit 1

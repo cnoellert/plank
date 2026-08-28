@@ -138,10 +138,13 @@ if rg -n -i 'miniupnp|upnp' \
   "$repo_dir/host/sunshine-fork/docs" \
   "$repo_dir/host/sunshine-fork/.github" \
   "$repo_dir/host/sunshine-fork/docker" \
+  "$repo_dir/packaging" \
   --glob '!**/third-party/**'; then
   echo 'UPnP or miniupnpc capability remains' >&2
   exit 1
 fi
+rg -Fq 'host_rpm_upnp_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-rpm.sh"
 rg -Fq 'restarting the StationConnect media worker for fresh X11/NvFBC state' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'stop_worker(worker);' \

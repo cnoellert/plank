@@ -23,7 +23,7 @@ if [[ -n $(git -C "$repo_dir" status --porcelain --untracked-files=normal) ]]; t
   exit 1
 fi
 
-for command_name in cmake install python3 rpmbuild tar; do
+for command_name in cmake install python3 readelf rg rpm rpmbuild tar; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -122,6 +122,19 @@ rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-4096x2
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-5120x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1024x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-2560x2160\.edid$'
+if rpm -qpR "$rpm_file" | rg -qi 'miniupnp|upnp'; then
+  echo "host RPM still requires UPnP or miniupnpc" >&2
+  exit 1
+fi
+if rpm -qpl "$rpm_file" | rg -qi 'miniupnp|upnp'; then
+  echo "host RPM still contains an UPnP or miniupnpc payload path" >&2
+  exit 1
+fi
+if readelf -d "$build_dir/stationconnect-host" | rg -qi 'miniupnp|upnp'; then
+  echo "StationConnect host still has an UPnP or miniupnpc ELF dependency" >&2
+  exit 1
+fi
+echo "host_rpm_upnp_absence_gate=pass"
 if rpm -qpl "$rpm_file" | rg -q '/virtual-[12]-1280x(720|1024)\.edid$'; then
   echo "host RPM still contains removed virtual modes" >&2
   exit 1
