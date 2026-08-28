@@ -3,18 +3,23 @@
 ## PAM Broker
 
 Install `stationconnect-pam-broker` as `/usr/bin/stationconnect-pam-broker`,
-install the service in the system unit directory, and create the
-`stationconnect-auth` system group through the supplied sysusers file. Add only
-the unprivileged worker to that group. The supervisor supplies this one
-supplementary group while dropping to the selected session UID; interactive
-desktop accounts do not need permanent membership.
+install the service in the system unit directory, and install
+`packaging/pam/stationconnect-host` as `/etc/pam.d/stationconnect-host`.
+StationConnect denies root remote login and delegates all other account
+authorization to the host's PAM/SSSD policy, including FreeIPA HBAC. It has no
+application-specific user allowlist.
 
-Install `packaging/pam/remote-desktop` as `/etc/pam.d/remote-desktop` and create
-the `remote-desktop-users` allow group before starting the broker. Do not add
-root to either group. After package installation, run:
+FreeIPA deployments use the exact PAM service identifier
+`stationconnect-host` in their HBAC service and rules. Directory-policy changes
+then require no StationConnect host or client update. Local service accounts
+must retain locked passwords because IPA HBAC does not govern local identities.
+
+The root media worker is the broker's only local client. The broker runtime
+directory and socket are therefore `root:root` mode `0700` and `0600` instead
+of being exposed through a supplementary group. After package installation,
+run:
 
 ```bash
-systemd-sysusers
 systemctl enable --now stationconnect-pam-broker.service
 systemctl status stationconnect-pam-broker.service
 ```

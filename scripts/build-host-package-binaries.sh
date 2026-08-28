@@ -161,6 +161,42 @@ if rg -n -i 'miniupnp|upnp' \
 fi
 echo "host_upnp_absence_gate=pass"
 
+# StationConnect delegates human-account authorization to the branded PAM
+# service and the host's PAM/SSSD/HBAC policy. The root media worker is the
+# broker's only client, so no service-access or user-allowlist group belongs in
+# the product.
+pam_broker_source="${source_dir}/src/auth/pam_broker.cpp"
+pam_policy="${repo_dir}/packaging/pam/stationconnect-host"
+pam_unit="${repo_dir}/packaging/systemd/stationconnect-pam-broker.service"
+host_spec="${repo_dir}/packaging/rpm/stationconnect-host.spec"
+[[ -f $pam_policy && ! -e ${repo_dir}/packaging/pam/remote-desktop &&
+   ! -e ${repo_dir}/packaging/sysusers.d/stationconnect.conf ]] || {
+  echo "obsolete StationConnect PAM or sysusers payload remains" >&2
+  exit 1
+}
+if rg -n 'stationconnect-auth|remote-desktop-users|--group' \
+  "$pam_broker_source" "$pam_policy" "$pam_unit" "$host_spec"; then
+  echo "obsolete StationConnect authentication-group policy remains" >&2
+  exit 1
+fi
+for required_auth_token in \
+  'constexpr std::string_view pam_service = "stationconnect-host"' \
+  'chmod(path.parent_path().c_str(), 0700)' \
+  'chmod(path.c_str(), 0600)'; do
+  rg -Fq "$required_auth_token" "$pam_broker_source" || {
+    echo "root-only PAM broker invariant is missing: ${required_auth_token}" >&2
+    exit 1
+  }
+done
+rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock' \
+  "$pam_unit"
+rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
+rg -Fxq 'account    include      system-auth' "$pam_policy"
+rg -Fxq '/etc/pam.d/stationconnect-host' "$host_spec"
+rg -Fq 'packaging/pam/stationconnect-host' \
+  "${repo_dir}/scripts/build-host-rpm.sh"
+echo "host_auth_group_absence_gate=pass"
+
 for required_pc_range_token in \
   'av_color_range_from_name(' \
   'sunshine_colorspace.full_range ? "pc" : "tv"' \

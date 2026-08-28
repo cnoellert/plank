@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
 
   const pam_conv conversation{converse, &state};
   pam_handle_t* handle = nullptr;
-  int status = pam_start("remote-desktop", user, &conversation, &handle);
+  int status = pam_start("stationconnect-host", user, &conversation, &handle);
   print_result("pam_start", status, handle);
   if (status != PAM_SUCCESS) {
     if (state.terminal != nullptr) {
@@ -174,4 +174,3 @@ int main(int argc, char** argv) {
   }
   return status == PAM_SUCCESS && end_status == PAM_SUCCESS ? 0 : 5;
 }
-

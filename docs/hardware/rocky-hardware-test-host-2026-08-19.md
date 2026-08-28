@@ -208,9 +208,8 @@ dual-stack wildcard listeners and the qualified NvFBC/software-x264 backend;
 the client marked hardware-test-host offline during recovery and rediscovered it ten seconds
 later without intervention.
 
-operator's current graphical login predates membership in
-`stationconnect-auth`, so the development host unit temporarily enters that
-group through `sg`. This override is ignored by Git and is not part of the
+An early development unit temporarily used a supplementary-group override for
+the PAM broker. That override was ignored by Git and was never part of the
 production units. A subsequent logout/login activated
 `graphical-session.target` and `stationconnect-host.service` together at
 17:29:05 without a terminal process. Sunshine selected the 3840x2160 output,

@@ -19,7 +19,6 @@ Requires:       libXcomposite
 Requires:       libXext
 Requires:       xorg-x11-server-Xorg
 Requires:       xorg-x11-server-utils
-Requires(pre):  systemd
 Requires(post): systemd systemd-udev kmod
 Requires(post): openssl
 Requires(post): hostname
@@ -41,15 +40,12 @@ tar -xzf %{SOURCE0}
 mkdir -p %{buildroot}
 cp -a payload/. %{buildroot}/
 
-%pre
-%sysusers_create stationconnect.conf
-
 %post
 /usr/libexec/stationconnect/stationconnect-host-certificate \
   /etc/stationconnect/tls/cert.pem /etc/stationconnect/tls/key.pem || exit 1
-/usr/bin/chown root:stationconnect-auth \
+/usr/bin/chown root:root \
   /etc/stationconnect/tls/key.pem /etc/stationconnect/tls/cert.pem || exit 1
-/usr/bin/chmod 0640 /etc/stationconnect/tls/key.pem || exit 1
+/usr/bin/chmod 0600 /etc/stationconnect/tls/key.pem || exit 1
 /usr/bin/chmod 0644 /etc/stationconnect/tls/cert.pem || exit 1
 /usr/libexec/stationconnect/stationconnect-host-state \
   /var/lib/stationconnect/stationconnect_state.json || exit 1
@@ -75,12 +71,12 @@ fi
 %files
 %license /usr/share/licenses/stationconnect-host/LICENSE-Sunshine
 %doc /usr/share/doc/stationconnect-host/README.md
-%config(noreplace) /etc/pam.d/remote-desktop
+/etc/pam.d/stationconnect-host
 %config(noreplace) /etc/stationconnect/stationconnect.conf
 %dir %attr(0755,root,root) /etc/stationconnect
-%dir %attr(0750,root,stationconnect-auth) /etc/stationconnect/tls
-%ghost %config(noreplace) %attr(0644,root,stationconnect-auth) /etc/stationconnect/tls/cert.pem
-%ghost %config(noreplace) %attr(0640,root,stationconnect-auth) /etc/stationconnect/tls/key.pem
+%dir %attr(0700,root,root) /etc/stationconnect/tls
+%ghost %config(noreplace) %attr(0644,root,root) /etc/stationconnect/tls/cert.pem
+%ghost %config(noreplace) %attr(0600,root,root) /etc/stationconnect/tls/key.pem
 %dir %attr(0750,root,root) /var/lib/stationconnect
 %ghost %attr(0600,root,root) /var/lib/stationconnect/stationconnect_state.json
 /usr/bin/stationconnect-host
@@ -94,13 +90,16 @@ fi
 /usr/lib/systemd/system/stationconnect-display-prepare.service
 /usr/lib/systemd/system/stationconnect-host.service
 /usr/lib/systemd/system-preset/90-stationconnect.preset
-/usr/lib/sysusers.d/stationconnect.conf
 /usr/lib/modules-load.d/stationconnect.conf
 /usr/lib/udev/rules.d/70-stationconnect-wacom.rules
 /usr/lib/firewalld/services/stationconnect.xml
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.166
+- Delegate account authorization to the branded PAM/SSSD service.
+- Restrict the PAM broker socket and TLS private key to root.
+
 * Sat Aug 22 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.22
 - Organize PAM and media runtime files under isolated StationConnect subdirectories.
 

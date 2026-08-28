@@ -5,6 +5,7 @@ set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 unit=${repo_dir}/packaging/systemd/stationconnect-host.service
 pam_unit=${repo_dir}/packaging/systemd/stationconnect-pam-broker.service
+pam_policy=${repo_dir}/packaging/pam/stationconnect-host
 spec=${repo_dir}/packaging/rpm/stationconnect-host.spec
 builder=${repo_dir}/scripts/build-host-rpm.sh
 firewalld_service=${repo_dir}/packaging/firewalld/stationconnect.xml
@@ -25,9 +26,17 @@ if rg -q '47990' "$firewalld_service"; then
   exit 1
 fi
 rg -Fxq 'RuntimeDirectory=stationconnect/pam' "$pam_unit"
-rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --group stationconnect-auth' "$pam_unit"
+rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
+rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock' "$pam_unit"
 rg -Fq '/run/stationconnect/pam/auth.sock' \
   "$repo_dir/packaging/bin/stationconnect-host"
+rg -Fxq 'auth       requisite    pam_succeed_if.so quiet user != root' "$pam_policy"
+rg -Fxq 'account    required     pam_succeed_if.so quiet user != root' "$pam_policy"
+rg -Fxq 'account    include      system-auth' "$pam_policy"
+if rg -q 'ingroup|remote-desktop-users' "$pam_policy"; then
+  echo 'StationConnect PAM policy still contains an application-specific allowlist' >&2
+  exit 1
+fi
 if rg -q '^CapabilityBoundingSet=.*CAP_(SETUID|SETGID|KILL)' "$unit"; then
   echo 'machine Sender retained obsolete identity-switching capabilities' >&2
   exit 1
@@ -53,12 +62,31 @@ if rg -n '^%systemd_postun_with_restart .*stationconnect-display-prepare\.servic
   echo 'boot-only display preparation is restarted during package upgrades' >&2
   exit 1
 fi
-rg -Fq '%sysusers_create stationconnect.conf' "$spec"
 rg -Fq 'stationconnect-host-certificate' "$spec"
 rg -Fq 'stationconnect-host-state' "$spec"
 rg -Fq '/var/lib/stationconnect/stationconnect_state.json' "$spec"
 rg -Fxq 'file_state = /var/lib/stationconnect/stationconnect_state.json' \
   "$repo_dir/packaging/config/stationconnect.conf"
+rg -Fxq '/etc/pam.d/stationconnect-host' "$spec"
+rg -Fxq '%dir %attr(0700,root,root) /etc/stationconnect/tls' "$spec"
+rg -Fxq '%ghost %config(noreplace) %attr(0600,root,root) /etc/stationconnect/tls/key.pem' "$spec"
+if rg -q 'stationconnect-auth|remote-desktop-users|/etc/pam\.d/remote-desktop|sysusers' \
+  "$pam_unit" "$pam_policy" "$spec" \
+  "$repo_dir/host/sunshine-fork/src/auth/pam_broker.cpp"; then
+  echo 'obsolete StationConnect authentication-group policy remains' >&2
+  exit 1
+fi
+rg -Fq 'packaging/pam/stationconnect-host' "$builder"
+if rg -q 'packaging/pam/remote-desktop|packaging/sysusers\.d' "$builder"; then
+  echo 'host package builder still installs obsolete authentication-group files' >&2
+  exit 1
+fi
+rg -Fq 'constexpr std::string_view pam_service = "stationconnect-host"' \
+  "$repo_dir/host/sunshine-fork/src/auth/pam_broker.cpp"
+rg -Fq 'chmod(path.parent_path().c_str(), 0700)' \
+  "$repo_dir/host/sunshine-fork/src/auth/pam_broker.cpp"
+rg -Fq 'chmod(path.c_str(), 0600)' \
+  "$repo_dir/host/sunshine-fork/src/auth/pam_broker.cpp"
 if rg -Fq '/usr/lib/systemd/user/stationconnect-host.service' "$spec"; then
   echo 'RPM manifest still contains the obsolete host user unit' >&2
   exit 1
@@ -124,6 +152,8 @@ rg -Fq 'host_static_capture_selector_absence_gate=pass' \
 rg -Fq 'host_legacy_x11_capture_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'host_upnp_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_auth_group_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 if [[ -e $repo_dir/host/sunshine-fork/src/upnp.cpp || \
       -e $repo_dir/host/sunshine-fork/src/upnp.h ]]; then

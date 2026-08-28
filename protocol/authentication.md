@@ -6,13 +6,14 @@ StationConnect replaces persistent GameStream pairing with authentication for
 every new connection. The network-facing Sunshine process never links to PAM,
 runs PAM modules, or stores a password. A root-owned
 `stationconnect-pam-broker` performs PAM operations through the dedicated
-`remote-desktop` service and exposes only a Unix socket at
-`/run/stationconnect/pam/auth.sock`. The socket is mode `0660`, owned by root and
-the `stationconnect-auth` group.
+`stationconnect-host` service and exposes only a Unix socket at
+`/run/stationconnect/pam/auth.sock`. The socket and its parent directory are
+owned by root and use modes `0600` and `0700`, respectively.
 
 The broker accepts only local `AF_UNIX` peers, records their kernel-supplied
-UID, denies root login in code, and relies on the PAM service for the
-`remote-desktop-users` allow group and host account policy. Prompt responses
+UID, denies root login in code, and relies on the host's PAM, authselect, and
+SSSD policy for account authorization, including FreeIPA HBAC. StationConnect
+has no application-specific user allowlist. Prompt responses
 must never appear in logs, process arguments, environment variables, URLs, or
 crash reports.
 

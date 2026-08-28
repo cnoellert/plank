@@ -68,8 +68,8 @@ likewise machine-scoped.
 
 Worker options are system-wide in the sectioned INI file
 `/etc/stationconnect/stationconnect.conf`. The package generates a stable TLS
-keypair under `/etc/stationconnect/tls/`; the private key is mode `0640`, owned
-by `root:stationconnect-auth`.
+keypair under `/etc/stationconnect/tls/`; its directory and private key are
+`root:root` with modes `0700` and `0600`.
 
 Stage B—creating a correctly registered graphical session directly after PAM
 authentication—remains separate work. The supervisor does not replay a

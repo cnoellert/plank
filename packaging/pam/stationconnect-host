@@ -1,13 +1,11 @@
 #%PAM-1.0
-# Keep authorization rules before password verification to reject ineligible
-# accounts without invoking the host authentication stack.
+# StationConnect delegates account authorization to the host's standard
+# PAM/SSSD policy. Root remote login remains a product-level prohibition.
 auth       requisite    pam_succeed_if.so quiet user != root
-auth       requisite    pam_succeed_if.so quiet user ingroup remote-desktop-users
 auth       substack     system-auth
 auth       include      postlogin
 
 account    required     pam_succeed_if.so quiet user != root
-account    required     pam_succeed_if.so quiet user ingroup remote-desktop-users
 account    include      system-auth
 
 password   include      system-auth

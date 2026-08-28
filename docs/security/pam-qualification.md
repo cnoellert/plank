@@ -1,9 +1,11 @@
 # PAM Qualification
 
-The candidate PAM policy is installed as `/etc/pam.d/remote-desktop`. It denies
-root and users outside `remote-desktop-users` before delegating authentication,
-account, password, and session handling to Rocky's authselect-managed
-`system-auth` stack. Do not edit `system-auth` directly.
+The StationConnect PAM policy is installed as `/etc/pam.d/stationconnect-host`.
+It denies root before delegating authentication, account, password, and session
+handling to Rocky's authselect-managed `system-auth` stack. SSSD and FreeIPA
+HBAC remain the administrator-owned account-authorization layer;
+StationConnect has no application-specific user allowlist. Do not edit
+`system-auth` directly.
 
 Run the full probe from a local or SSH terminal so PAM can perform challenge and
 response without exposing credentials in process arguments or logs:
@@ -31,15 +33,14 @@ failure test for one local account and one SSSD/FreeIPA account.
 ## Phase 2 Live Integration Status
 
 On 2026-08-20, the PAM broker ran as the sandboxed system service on hardware-test-host with
-an exposure score of 3.9 (`OK`). Its socket was `root:stationconnect-auth` mode
-`0660`; Sunshine ran unprivileged. TLS 1.2, pairing, root authentication, and
+an exposure score of 3.9 (`OK`). TLS 1.2, pairing, root authentication, and
 unauthenticated application-list access were rejected. Restarting the broker
 during a live password challenge returned a protocol denial, completed PAM
 cleanup, and left Sunshine running. The focused authentication suite passed 10
 tests; the broader non-hardware host suite passed 391 with two expected skips.
 
-The live lifecycle gate passed on the dedicated NUC. A manual login created
-logind session `c5` with service `remote-desktop`; its leader was the broker's
+The live lifecycle gate passed on the dedicated NUC. A manual login created a
+logind session whose leader was the broker's
 short-lived worker rather than the persistent broker. Moonlight consumed its
 one-use token immediately after the successful Desktop launch. Ending the
 stream removed the worker and `c5` within two seconds, and restarting Moonlight
@@ -64,7 +65,7 @@ platform skips. This user-service check must be replaced by explicit selected
 logind-session ownership before the Phase 8 system-service design is enabled.
 
 The live post-restart gate passed on 2026-08-21. Sunshine, the authenticated
-`operator` account, and active `remote-desktop` logind session `c9` all resolved to
+`operator` account, and active StationConnect PAM session `c9` all resolved to
 UID `540600009` before the scaled-span stream started. Sunshine then recorded
 the matching session's stereo loopback source, and the NUC passed the decoded
 audio delivery gate. A cross-user live attempt remains prohibited on the
@@ -72,7 +73,7 @@ shared qualification workstation; the mismatch path is covered by the focused
 host tests.
 
 The packaged 0.3 A/V baseline ended through a controlled client-service stop
-after 22 minutes. The `c10` `remote-desktop` logind session, broker child, and
+after 22 minutes. The `c10` StationConnect PAM session, broker child, and
 Sunshine audio source-output all disappeared; the persistent Sunshine user
 service and PAM broker remained active. Both machines were then upgraded to
 matching 0.4 packages and their stale development unit overrides were retired,

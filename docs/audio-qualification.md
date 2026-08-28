@@ -35,8 +35,8 @@ The NUC opened a 720-sample stereo output buffer at 48 kHz, corresponding to
 15 ms of audio per callback.
 
 The restarted stream also passed the Stage A same-user ownership gate:
-Sunshine, authenticated account `operator`, and the selected `remote-desktop`
-logind session all resolved to UID `540600009`. This proves the permitted live
+Sunshine, authenticated account `operator`, and the selected StationConnect PAM
+session all resolved to UID `540600009`. This proves the permitted live
 path; automated host tests cover rejection and cleanup for a UID mismatch.
 
 ## Clock-Drift Telemetry

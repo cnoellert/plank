@@ -64,14 +64,12 @@ install -D -m 0644 "$repo_dir/packaging/systemd/stationconnect-display-prepare.s
   "$payload_dir/usr/lib/systemd/system/stationconnect-display-prepare.service"
 install -D -m 0644 "$repo_dir/packaging/systemd/90-stationconnect.preset" \
   "$payload_dir/usr/lib/systemd/system-preset/90-stationconnect.preset"
-install -D -m 0644 "$repo_dir/packaging/pam/remote-desktop" \
-  "$payload_dir/etc/pam.d/remote-desktop"
+install -D -m 0644 "$repo_dir/packaging/pam/stationconnect-host" \
+  "$payload_dir/etc/pam.d/stationconnect-host"
 install -D -m 0644 "$repo_dir/packaging/config/stationconnect.conf" \
   "$payload_dir/etc/stationconnect/stationconnect.conf"
-install -d -m 0750 "$payload_dir/etc/stationconnect/tls"
+install -d -m 0700 "$payload_dir/etc/stationconnect/tls"
 install -d -m 0750 "$payload_dir/var/lib/stationconnect"
-install -D -m 0644 "$repo_dir/packaging/sysusers.d/stationconnect.conf" \
-  "$payload_dir/usr/lib/sysusers.d/stationconnect.conf"
 install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-wacom.rules" \
   "$payload_dir/usr/lib/udev/rules.d/70-stationconnect-wacom.rules"
 install -D -m 0644 "$repo_dir/packaging/modules-load.d/stationconnect.conf" \
@@ -116,6 +114,11 @@ rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-display
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-display-prepare\.service$'
 rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'
+rpm -qpl "$rpm_file" | rg -q '/etc/pam\.d/stationconnect-host$'
+if rpm -qpl "$rpm_file" | rg -q '/etc/pam\.d/remote-desktop$|/usr/lib/sysusers\.d/stationconnect\.conf$'; then
+  echo "host RPM still contains obsolete authentication-group packaging" >&2
+  exit 1
+fi
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-3840x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1280x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-4096x2160\.edid$'
