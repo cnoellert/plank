@@ -1,14 +1,10 @@
 #%PAM-1.0
-# StationConnect delegates authentication and account authorization to the
-# host's standard PAM/SSSD policy. The broker enforces the administrator's
-# security.allow_root_login setting before entering this stack.
+# StationConnect delegates authentication, account authorization, credentials,
+# and session lifecycle to the host's standard PAM/SSSD policy. The broker
+# enforces security.allow_root_login before entering this stack.
 auth       substack     system-auth
-auth       include      postlogin
 
 account    include      system-auth
 
-password   include      system-auth
-
 session    optional     pam_keyinit.so force revoke
 session    include      system-auth
-session    include      postlogin

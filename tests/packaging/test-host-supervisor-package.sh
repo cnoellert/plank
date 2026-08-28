@@ -6,6 +6,7 @@ repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 unit=${repo_dir}/packaging/systemd/stationconnect-host.service
 pam_unit=${repo_dir}/packaging/systemd/stationconnect-pam-broker.service
 pam_policy=${repo_dir}/packaging/pam/stationconnect-host
+host_wacom_rule=${repo_dir}/packaging/udev/70-stationconnect-host-wacom.rules
 spec=${repo_dir}/packaging/rpm/stationconnect-host.spec
 builder=${repo_dir}/scripts/build-host-rpm.sh
 firewalld_service=${repo_dir}/packaging/firewalld/stationconnect.xml
@@ -31,6 +32,13 @@ rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconne
 rg -Fq '/run/stationconnect/pam/auth.sock' \
   "$repo_dir/packaging/bin/stationconnect-host"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
+rg -Fxq 'auth       substack     system-auth' "$pam_policy"
+rg -Fxq 'session    optional     pam_keyinit.so force revoke' "$pam_policy"
+rg -Fxq 'session    include      system-auth' "$pam_policy"
+if rg -q '^[[:space:]]*(password|auth[[:space:]]+include[[:space:]]+postlogin|session[[:space:]]+include[[:space:]]+postlogin)' "$pam_policy"; then
+  echo 'StationConnect PAM policy retains an unused password or postlogin stack' >&2
+  exit 1
+fi
 if rg -q 'pam_succeed_if|ingroup|remote-desktop-users' "$pam_policy"; then
   echo 'StationConnect PAM policy still contains product-specific account authorization' >&2
   exit 1
@@ -68,6 +76,13 @@ rg -Fxq 'file_state = /var/lib/stationconnect/stationconnect_state.json' \
 rg -Fxq 'allow_root_login = false' \
   "$repo_dir/packaging/config/stationconnect.conf"
 rg -Fxq '/etc/pam.d/stationconnect-host' "$spec"
+test -f "$host_wacom_rule"
+test ! -e "$repo_dir/packaging/udev/70-stationconnect-wacom.rules"
+rg -Fq '/usr/lib/udev/rules.d/70-stationconnect-host-wacom.rules' "$spec"
+if rg -Fq '/usr/lib/udev/rules.d/70-stationconnect-wacom.rules' "$spec"; then
+  echo 'host RPM spec retains the ambiguous Wacom rule filename' >&2
+  exit 1
+fi
 rg -Fxq '%dir %attr(0700,root,root) /etc/stationconnect/tls' "$spec"
 rg -Fxq '%ghost %config(noreplace) %attr(0600,root,root) /etc/stationconnect/tls/key.pem' "$spec"
 if rg -q 'stationconnect-auth|remote-desktop-users|/etc/pam\.d/remote-desktop|sysusers' \
@@ -77,6 +92,7 @@ if rg -q 'stationconnect-auth|remote-desktop-users|/etc/pam\.d/remote-desktop|sy
   exit 1
 fi
 rg -Fq 'packaging/pam/stationconnect-host' "$builder"
+rg -Fq 'packaging/udev/70-stationconnect-host-wacom.rules' "$builder"
 if rg -q 'packaging/pam/remote-desktop|packaging/sysusers\.d' "$builder"; then
   echo 'host package builder still installs obsolete authentication-group files' >&2
   exit 1
@@ -155,6 +171,23 @@ rg -Fq 'config.m_device_id = session.output_name' \
   "$repo_dir/host/sunshine-fork/src/display_device.cpp"
 rg -Fq 'host_static_capture_selector_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_global_video_selector_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_rpm_global_video_selector_absence_gate=pass' \
+  "$repo_dir/scripts/build-host-rpm.sh"
+if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
+  "$repo_dir/packaging/config/stationconnect.conf"; then
+  echo 'packaged host configuration still exposes global video selectors' >&2
+  exit 1
+fi
+if rg -n \
+  'config::video\.(capture|encoder)|std::string[[:space:]]+(capture|encoder);|string_f\(vars,[[:space:]]*"(capture|encoder)"' \
+  "$repo_dir/host/sunshine-fork/src" \
+  "$repo_dir/host/sunshine-fork/tests" \
+  --glob '*.{cpp,h}'; then
+  echo 'host source still contains global video selectors' >&2
+  exit 1
+fi
 rg -Fq 'host_legacy_x11_capture_absence_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'host_upnp_absence_gate=pass' \

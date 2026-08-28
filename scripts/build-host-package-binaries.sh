@@ -195,7 +195,14 @@ rg -Fq 'bool_f(vars, "allow_root_login", broker_allow_root_login)' \
 rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
   "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
+rg -Fxq 'auth       substack     system-auth' "$pam_policy"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
+rg -Fxq 'session    optional     pam_keyinit.so force revoke' "$pam_policy"
+rg -Fxq 'session    include      system-auth' "$pam_policy"
+if rg -q '^[[:space:]]*(password|auth[[:space:]]+include[[:space:]]+postlogin|session[[:space:]]+include[[:space:]]+postlogin)' "$pam_policy"; then
+  echo "PAM service retained an unused password or postlogin stack" >&2
+  exit 1
+fi
 if rg -q 'pam_succeed_if|ingroup' "$pam_policy"; then
   echo "PAM service retained product-specific account authorization" >&2
   exit 1
@@ -206,6 +213,24 @@ rg -Fxq '/etc/pam.d/stationconnect-host' "$host_spec"
 rg -Fq 'packaging/pam/stationconnect-host' \
   "${repo_dir}/scripts/build-host-rpm.sh"
 echo "host_auth_group_absence_gate=pass"
+
+host_wacom_rule="${repo_dir}/packaging/udev/70-stationconnect-host-wacom.rules"
+[[ -f $host_wacom_rule &&
+   ! -e ${repo_dir}/packaging/udev/70-stationconnect-wacom.rules ]] || {
+  echo "host Wacom udev rule identity is stale or ambiguous" >&2
+  exit 1
+}
+for required_wacom_rule_token in \
+  'SUBSYSTEM=="input"' \
+  'SUBSYSTEM=="hidraw"' \
+  'SUBSYSTEM=="misc", KERNEL=="uhid"' \
+  'TAG+="uaccess"'; do
+  rg -Fq "$required_wacom_rule_token" "$host_wacom_rule" || {
+    echo "host Wacom udev rule is missing: ${required_wacom_rule_token}" >&2
+    exit 1
+  }
+done
+echo "host_wacom_udev_identity_gate=pass"
 
 for required_pc_range_token in \
   'av_color_range_from_name(' \
@@ -391,6 +416,37 @@ for required_capture_token in \
   }
 done
 echo "host_static_capture_selector_absence_gate=pass"
+
+# Capture source and encoder backend are exact per-bookmark protocol choices.
+# A host-global [video] selector could hide a qualified backend at startup and
+# contradict the accepted session, so it must not exist in configuration,
+# parser state, documentation, or platform selection code.
+if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
+  "$repo_dir/packaging/config/stationconnect.conf" ||
+  rg -n \
+    'config::video\.(capture|encoder)|std::string[[:space:]]+(capture|encoder);|string_f\(vars,[[:space:]]*"(capture|encoder)"' \
+    "$source_dir/src" "$source_dir/tests" --glob '*.{cpp,h}' ||
+  rg -n '^###[[:space:]]+(capture|encoder)$' \
+    "$source_dir/docs/configuration.md"; then
+  echo "legacy global capture or encoder selector remains" >&2
+  exit 1
+fi
+for required_backend_invariant in \
+  'if (verify_nvfbc())' \
+  'if (verify_x11())' \
+  'validate_encoder(software_cuda' \
+  'validate_encoder(nvenc_direct' \
+  'No exact StationConnect encoder backend is available.' \
+  'Requested StationConnect capture source is unavailable' \
+  'config.monitor.encoder_backend = session.encoder_backend' \
+  'config.monitor.capture_source = video::capture_source_e::nvfbc_8bit' \
+  'config.monitor.capture_source = video::capture_source_e::x11_native10'; do
+  rg -Fq "$required_backend_invariant" "$source_dir/src" || {
+    echo "StationConnect per-session backend invariant is missing: ${required_backend_invariant}" >&2
+    exit 1
+  }
+done
+echo "host_global_video_selector_absence_gate=pass"
 
 # StationConnect exposes exactly two Linux capture paths: qualified NvFBC
 # 8-bit capture and the experimental owner-restricted Native X11/XShm 10-bit

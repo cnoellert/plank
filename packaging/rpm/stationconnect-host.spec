@@ -91,11 +91,17 @@ fi
 /usr/lib/systemd/system/stationconnect-host.service
 /usr/lib/systemd/system-preset/90-stationconnect.preset
 /usr/lib/modules-load.d/stationconnect.conf
-/usr/lib/udev/rules.d/70-stationconnect-wacom.rules
+/usr/lib/udev/rules.d/70-stationconnect-host-wacom.rules
 /usr/lib/firewalld/services/stationconnect.xml
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.171
+- Make bookmark negotiation the sole capture-source and encoder-backend authority.
+
+* Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.170
+- Minimize the branded PAM stack and clarify the host Wacom udev rule name.
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.168
 - Replace the inherited application catalog with one internal Desktop stream.
 

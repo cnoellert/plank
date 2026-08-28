@@ -7,6 +7,7 @@ ACTION!="remove", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_VENDOR_ID}=="056a
 # local session and Wacom's USB vendor ID.
 ACTION!="remove", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="056a", TAG+="uaccess"
 
-# Sunshine creates the mirrored Wacom interfaces through UHID. Limit access to
-# the active local desktop session instead of making /dev/uhid world-writable.
+# StationConnect Host creates mirrored Wacom interfaces through UHID. Limit
+# access to the active local desktop session instead of making /dev/uhid
+# world-writable.
 ACTION!="remove", SUBSYSTEM=="misc", KERNEL=="uhid", TAG+="uaccess"
