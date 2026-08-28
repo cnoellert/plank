@@ -14,6 +14,8 @@ output_dir=$(realpath -m -- "${3:-${repo_dir}/artifacts/packages}")
 moonlight_source_dir=$(realpath -- "${4:-${repo_dir}/client/moonlight-qt-fork}")
 common_source_dir="${moonlight_source_dir}/moonlight-common-c/moonlight-common-c"
 nanors_source_dir="${common_source_dir}/nanors"
+approved_client_logo="${repo_dir}/branding/assets/stationconnect_logo_circle.png"
+runtime_client_logo="${moonlight_source_dir}/app/res/stationconnect-logo.png"
 ffmpeg_version=9.0.1
 ffmpeg_sha256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
 ffmpeg_lib_dir="${ffmpeg_work_dir}/install/lib"
@@ -56,6 +58,15 @@ done
   echo "nanors source tree is unavailable: ${nanors_source_dir}" >&2
   exit 1
 }
+[[ -f ${approved_client_logo} ]] || {
+  echo "approved StationConnect client logo is unavailable: ${approved_client_logo}" >&2
+  exit 1
+}
+cmp --silent "${approved_client_logo}" "${runtime_client_logo}" || {
+  echo "runtime client logo differs from the approved StationConnect artwork" >&2
+  exit 1
+}
+echo "client_approved_logo_gate=pass"
 if [[ -n $(git -C "$moonlight_source_dir" status --porcelain) ]]; then
   echo "Moonlight source tree is dirty; refusing to create a release package" >&2
   exit 1
