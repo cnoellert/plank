@@ -74,6 +74,17 @@ if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
   exit 1
 fi
 echo "host_rpm_global_video_selector_absence_gate=pass"
+rg -Fxq '[x264-encoder]' \
+  "$payload_dir/etc/stationconnect/stationconnect.conf" || {
+  echo "host RPM payload is missing the x264-specific encoder section" >&2
+  exit 1
+}
+if rg -Fxq '[software-encoder]' \
+  "$payload_dir/etc/stationconnect/stationconnect.conf"; then
+  echo "host RPM payload retains the obsolete generic software-encoder section" >&2
+  exit 1
+fi
+echo "host_rpm_x264_config_section_gate=pass"
 install -d -m 0700 "$payload_dir/etc/stationconnect/tls"
 install -d -m 0750 "$payload_dir/var/lib/stationconnect"
 install -D -m 0644 "$repo_dir/packaging/udev/70-stationconnect-host-wacom.rules" \
@@ -140,12 +151,12 @@ if rpm -qpl "$rpm_file" | rg -q \
 fi
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/desktop\.png$'
 echo "host_rpm_fixed_desktop_gate=pass"
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-3840x2160\.edid$'
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1280x2160\.edid$'
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-4096x2160\.edid$'
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-5120x2160\.edid$'
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1024x2160\.edid$'
-rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-2560x2160\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1\.edid$'
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2\.edid$'
+if [[ $(rpm -qpl "$rpm_file" | rg -c '/usr/share/stationconnect/display/.*\.edid$') -ne 2 ]]; then
+  echo "host RPM does not contain exactly two canonical virtual-display EDIDs" >&2
+  exit 1
+fi
 if rpm -qpR "$rpm_file" | rg -qi 'miniupnp|upnp'; then
   echo "host RPM still requires UPnP or miniupnpc" >&2
   exit 1
@@ -159,8 +170,8 @@ if readelf -d "$build_dir/stationconnect-host" | rg -qi 'miniupnp|upnp'; then
   exit 1
 fi
 echo "host_rpm_upnp_absence_gate=pass"
-if rpm -qpl "$rpm_file" | rg -q '/virtual-[12]-1280x(720|1024)\.edid$'; then
-  echo "host RPM still contains removed virtual modes" >&2
+if rpm -qpl "$rpm_file" | rg -q '/virtual-[12]-.+\.edid$'; then
+  echo "host RPM still contains preferred-mode-specific virtual EDIDs" >&2
   exit 1
 fi
 if rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/host\.env$|/usr/share/stationconnect/web/'; then

@@ -70,22 +70,22 @@ input into GDM or create a new graphical session.
 keeps the workstation's Autodesk-derived `/etc/X11/xorg.conf` as the baseline
 and atomically adds or removes only
 `/etc/X11/xorg.conf.d/99-stationconnect-headless.conf`. Configure `[display]`
-in `stationconnect.conf` with `startup_layout = physical`, `single`, or
-`dual-horizontal`. `virtual_mode_1` and `virtual_mode_2` independently select
-one of the package-documented 60 Hz monitor presets. A single-head Xorg overlay
+in `stationconnect.conf` with `startup_layout = physical` or `virtual`. The
+virtual policy initializes one internal 1920x1080 login output. A single-head Xorg overlay
 keeps the second virtual connector present but inactive so the same
 PAM-authenticated desktop owner can later switch resolutions or enable the
-second head through the supervisor's allowlisted live-XRandR path. Other users
+second head from bookmark-selected 60 Hz modes through the supervisor's
+allowlisted live-XRandR path. Other users
 are refused. The default is `physical`. A changed static topology is applied on
 reboot; the helper refuses to replace its overlay while the display manager is active.
 Package removal deletes only an overlay carrying StationConnect's generated
 file marker; it does not alter the currently running X server.
 
-The administrator setting describes the boot layout. A host with
+The administrator setting describes the boot policy. A host with
 `startup_layout = physical` removes the headless overlay but may lease a
 bookmark-selected logical layout over connected native scanouts for one remote
 session. The supervisor restores the exact pre-session NVIDIA MetaMode at
-disconnect. A host with `single` or `dual-horizontal` retains the packaged-EDID
+disconnect. A host with `startup_layout = virtual` uses the packaged-EDID
 headless workflow and does not advertise a physical bookmark layout. The RPM explicitly
 applies the packaged preset on upgrade so the pre-GDM cleanup cannot remain
 disabled while a stale owned overlay survives a reboot.

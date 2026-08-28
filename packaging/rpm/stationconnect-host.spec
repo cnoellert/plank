@@ -96,6 +96,13 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.173
+- Reduce display startup configuration to physical or virtual policy
+- Use one complete canonical EDID per virtual output
+
+* Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.172
+- Name the packaged x264 encoder section precisely
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.171
 - Make bookmark negotiation the sole capture-source and encoder-backend authority.
 

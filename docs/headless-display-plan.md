@@ -232,27 +232,23 @@ Add one administrator-controlled `[display]` section to
 ```ini
 [display]
 startup_layout = physical
-virtual_mode_1 = 1920x1080
-virtual_mode_2 = 1920x1080
 ```
 
-`startup_layout` accepts only `physical`, `single`, or `dual-horizontal` and
-defaults to `physical`. `virtual_mode_1` and `virtual_mode_2` independently select
-one of the qualified 60 Hz modes: `1024x2160`, `1280x2160`, `1920x1080`,
-`1920x1200`, `2560x1440`, `2560x1600`, `2560x2160`, `3440x1440`,
-`3840x1600`, `3840x2160`, `4096x2160`, or `5120x2160`. The preset boundary
+`startup_layout` accepts only `physical` or `virtual` and defaults to
+`physical`. `physical` preserves connected monitors. `virtual` initializes a
+safe single 1920x1080 output before GDM and leaves the second packaged output
+available but inactive. After authentication, the bookmark independently
+selects each output from the qualified 60 Hz mode pool. The preset boundary
 keeps arbitrary modelines out of the privileged display-preparation path while
 supporting asymmetric Flame layouts such as `3840x2160 + 1280x2160` and
-`4096x2160 + 1024x2160`. The packaged defaults do not alter an existing
-physical-display workstation.
+`4096x2160 + 1024x2160`.
 
-Every packaged virtual-monitor EDID is exactly 384 bytes: one base block and
+Each of the two packaged virtual-monitor EDIDs is exactly 384 bytes: one base block and
 two DisplayID 1.3 extension blocks. Three qualified modes occupy the base
 detailed-timing slots and the remaining nine occupy the DisplayID blocks, so
-the complete pool is advertised exactly once at 60.000 Hz. The selected mode
-is preferred in a base detailed timing except for modes wider than 4095 pixels,
-whose preferred timing is carried by DisplayID because EDID 1.x cannot represent
-their horizontal active width. Keeping the EDID at or below 384 bytes is required by the
+the complete pool is advertised exactly once at 60.000 Hz. The canonical EDIDs
+prefer the internal 1920x1080 login mode; a bookmark selects another published
+mode without replacing the EDID. Keeping the EDID at or below 384 bytes is required by the
 qualified Rocky 9 GNOME/Mutter 40 path, which reads at most 400 bytes from the
 XRandR EDID property and rejects a truncated property whose length is not a
 multiple of 128.
