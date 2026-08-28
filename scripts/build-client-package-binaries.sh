@@ -519,7 +519,7 @@ for native_capture_label in \
   }
 done
 for bookmark_layout_token in \
-  'height: Math.min(900, parent.height - 20)' \
+  'height: Math.min(1100, parent.height - 20)' \
   'id: unreachableActionComboBox' \
   'width: parent.width'; do
   rg -Fq "$bookmark_layout_token" \
@@ -529,6 +529,20 @@ for bookmark_layout_token in \
     exit 1
   }
 done
+for audio_settings_token in \
+  'Mute audio stream when the client is not the active window' \
+  'Mutes streamed audio when you Alt+Tab out of the stream or click on a different window.'; do
+  rg -Fq "$audio_settings_token" \
+    "$source_dir/app/gui/SettingsView.qml" || {
+    echo "StationConnect Audio Settings wording is missing: ${audio_settings_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'Mute audio stream when Moonlight|Mutes Moonlight.s audio' \
+  "$source_dir/app/gui/SettingsView.qml"; then
+  echo "Moonlight branding remains in StationConnect Audio Settings" >&2
+  exit 1
+fi
 if rg -n -U 'id: uiSettingsGroupBox\n[[:space:]]+parent: settingsColumn2' \
   "$source_dir/app/gui/SettingsView.qml"; then
   echo "UI Settings must remain in the left preference column" >&2
@@ -784,8 +798,8 @@ for required_virtual_mode_token in \
   'addVirtualMode2.currentIndex = 1' \
   'property int virtualMode1Index: 9' \
   'property int virtualMode2Index: 1' \
-  'height: 820' \
-  'minimumHeight: 720'; do
+  'height: 1200' \
+  'minimumHeight: 900'; do
   rg -Fq "$required_virtual_mode_token" \
     "$source_dir/app/backend/computermanager.h" \
     "$source_dir/app/backend/computermanager.cpp" \
