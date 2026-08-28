@@ -251,7 +251,10 @@ for required_tablet_ownership_token in \
   set_normalized_pen_enabled \
   has_endpoints \
   'Exact raw HID tablet active; removed normalized pen fallback' \
-  ExactRawTabletSuppressesNormalizedFallbackUntilDetach; do
+  ExactRawTabletSuppressesNormalizedFallbackUntilDetach \
+  select_normalized_pen_backend \
+  'Normalized pen transport selected; released retained exact raw HID tablet endpoints' \
+  NormalizedPenReleasesRetainedRawTabletEndpoints; do
   rg -Fq "$required_tablet_ownership_token" \
     "$source_dir/src/input.cpp" \
     "$source_dir/src/platform/virtualhid_input.cpp" \

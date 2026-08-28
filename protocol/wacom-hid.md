@@ -54,6 +54,18 @@ the corresponding input/output-report ioctl on the original `hidraw` node.
 Errors and returned lengths must be preserved. The host must never synthesize a
 successful feature reply.
 
+## First-generation Intuos Pro fallback
+
+Linux UHID cannot reproduce the USB-interface type required by `hid-wacom` for
+the first-generation Intuos Pro S/M/L family. The client therefore recognizes
+the complete PTH-x51 USB product family (`056a:0314`, `056a:0315`, and
+`056a:0317`) and selects the normalized core-pen path instead of attempting an
+unusable raw attachment. That fallback carries absolute position, tip,
+pressure, tilt, eraser, and up to three pen buttons. It intentionally does not
+represent ExpressKeys, the ring, or touch. Other in-scope Wacom product IDs are
+treated as newer descriptor-driven devices and continue through exact raw-HID
+forwarding; pre-Intuos-Pro devices are outside the product scope.
+
 ## Ownership and Cleanup
 
 Raw access is granted only to the active local session. Once attach succeeds,

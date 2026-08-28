@@ -184,6 +184,27 @@ for required_raw_hid_reconnect_token in \
 done
 echo "client_raw_hid_reconnect_gate=pass"
 
+# First-generation Intuos Pro S/M/L USB interfaces require hid-wacom's real
+# USB interface type, which Linux UHID cannot reproduce. Keep the complete
+# PTH-x51 family on the existing normalized core-pen path while all newer
+# in-scope Wacoms continue to use descriptor-driven exact raw-HID forwarding.
+for required_wacom_generation_token in \
+  'case 0x0314: // PTH-451' \
+  'case 0x0315: // PTH-651' \
+  'case 0x0317: // PTH-851' \
+  'return StationConnectWacomTransport::NormalizedPen;' \
+  'return StationConnectWacomTransport::ExactRawHid;' \
+  'Using normalized pen transport for first-generation Intuos Pro'; do
+  rg -Fq "$required_wacom_generation_token" \
+    "$source_dir/app/streaming/input/input.cpp" \
+    "$source_dir/app/streaming/input/linuxrawwacom.cpp" \
+    "$source_dir/app/streaming/input/linuxrawwacom.h" || {
+    echo "client Wacom generation transport invariant is missing: ${required_wacom_generation_token}" >&2
+    exit 1
+  }
+done
+echo "client_wacom_generation_transport_gate=pass"
+
 # StationConnect uses one compositor-owned local cursor across the stream and
 # toolbar. Exact host cursor images arrive on the encrypted control stream;
 # the client must not fall back to synchronizing a cursor embedded in video.
