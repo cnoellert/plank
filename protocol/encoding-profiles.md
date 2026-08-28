@@ -15,6 +15,7 @@ backend or format.
 | NvFBC 8-bit | H.264 10-bit 4:4:4 | `software-cuda` | `0x0008` | 4:4:4 | 10 | Identity GBR; 8-bit source up-converted |
 | NvFBC 8-bit | H.264 8-bit 4:4:4 NVENC | `nvenc-direct` | `0x0004` | 4:4:4 | 8 | Identity GBR |
 | NvFBC 8-bit | H.265 8-bit 4:4:4 NVENC | `nvenc-direct` | `0x0400` | 4:4:4 | 8 | Identity GBR |
+| NvFBC 8-bit | H.265 10-bit 4:4:4 NVENC | `nvenc-direct` | `0x0800` | 4:4:4 | 10 | Identity GBR; 8-bit source up-converted |
 | Native X11/XShm 10-bit (Experimental) | H.264 10-bit 4:4:4 | `software-cuda` | `0x0008` | 4:4:4 | 10 | Identity GBR |
 | Native X11/XShm 10-bit (Experimental) | H.265 10-bit 4:4:4 NVENC | `nvenc-direct` | `0x0800` | 4:4:4 | 10 | Identity GBR |
 
@@ -24,6 +25,17 @@ never offers an 8-bit profile. The qualified H.264 10-bit 4:4:4 software path
 remains the default. Native X11/XShm 10-bit capture retains its Experimental
 designation; NVENC is identified as the encoder backend rather than labeled as
 an experimental encoding profile.
+
+For the NvFBC HEVC 10-bit NVENC tuple, CUDA expands each 8-bit BGRA component
+to the MSB-aligned 10-bit identity plane before NVENC. This preserves all 256
+source code values and gives the 10-bit transform/quantization pipeline more
+headroom, but it does not claim native 10-bit capture precision. H.264 10-bit
+NVENC is not offered because the qualified Ampere and Turing hosts do not
+support it.
+
+`tests/protocol/nvfbc-hevc10-nvenc-v1.json` is the exact negotiation and
+pipeline test vector for this tuple. Hosts must reject it when feature `0x2000`
+is absent or when the direct NVENC HEVC Rext 10-bit 4:4:4 probe fails.
 
 Decoder choice is internal and profile-specific. The client attempts a real
 exact-format hardware test frame first, validates decoded bit depth, chroma

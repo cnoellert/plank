@@ -1,0 +1,25 @@
+{
+  "stationconnect_protocol_version": 9,
+  "required_feature_flag": "0x2000",
+  "capture_source": "nvfbc",
+  "source_precision_bits": 8,
+  "source_format": "BGRA8888",
+  "encoder_backend": "nvenc-direct",
+  "encoding_mode": "hevc-10-444-nvenc",
+  "video_format": "0x0800",
+  "codec": "H.265/HEVC Range Extensions",
+  "encoded_precision_bits": 10,
+  "chroma_sampling": "4:4:4",
+  "full_range": true,
+  "matrix_coefficients": 0,
+  "identity_mapping": {
+    "Y": "G",
+    "U": "B",
+    "V": "R"
+  },
+  "source_expansion": "round(component8 * 1023 / 255) << 6",
+  "source_label": "8-bit-source/up-converted",
+  "cpu_readback": false,
+  "hardware_encode_required": true,
+  "silent_fallback_allowed": false
+}
