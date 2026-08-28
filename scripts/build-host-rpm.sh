@@ -74,6 +74,19 @@ if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
   exit 1
 fi
 echo "host_rpm_global_video_selector_absence_gate=pass"
+for required_network_token in \
+  'lan_encryption_mode = 0' \
+  'wan_encryption_mode = 1' \
+  'ping_timeout = 10000' \
+  'fec_percentage = 20' \
+  'Scope uses the remote socket source address, not the route or physical path.'; do
+  rg -Fq "$required_network_token" \
+    "$payload_dir/etc/stationconnect/stationconnect.conf" || {
+    echo "host RPM payload is missing network configuration: ${required_network_token}" >&2
+    exit 1
+  }
+done
+echo "host_rpm_network_config_gate=pass"
 rg -Fxq '[x264-encoder]' \
   "$payload_dir/etc/stationconnect/stationconnect.conf" || {
   echo "host RPM payload is missing the x264-specific encoder section" >&2

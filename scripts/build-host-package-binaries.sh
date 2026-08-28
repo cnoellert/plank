@@ -394,6 +394,32 @@ rg -Fq '/etc/stationconnect/stationconnect.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
 echo "host_single_config_gate=pass"
 
+for required_network_token in \
+  'lan_encryption_mode = 0' \
+  'wan_encryption_mode = 1' \
+  'ping_timeout = 10000' \
+  'fec_percentage = 20' \
+  'Scope uses the remote socket source address, not the route or physical path.'; do
+  rg -Fq "$required_network_token" \
+    "$repo_dir/packaging/config/stationconnect.conf" || {
+    echo "host network configuration is missing: ${required_network_token}" >&2
+    exit 1
+  }
+done
+for required_network_token in \
+  '"lan_encryption_mode"' \
+  '"wan_encryption_mode"' \
+  '"ping_timeout"' \
+  '"fec_percentage"' \
+  'encryption_mode_for_address'; do
+  rg -Fq "$required_network_token" \
+    "$source_dir/src/config.cpp" "$source_dir/src/network.cpp" || {
+    echo "host network runtime is missing: ${required_network_token}" >&2
+    exit 1
+  }
+done
+echo "host_network_config_gate=pass"
+
 rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/stationconnect.conf" || {
   echo "host configuration is missing the x264-specific encoder section" >&2
   exit 1
