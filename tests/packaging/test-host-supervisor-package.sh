@@ -183,6 +183,8 @@ rg -Fq 'host_rpm_global_video_selector_absence_gate=pass' \
   "$repo_dir/scripts/build-host-rpm.sh"
 rg -Fq 'host_x264_config_section_gate=pass' \
   "$repo_dir/scripts/build-host-package-binaries.sh"
+rg -Fq 'host_complete_config_template_gate=pass' \
+  "$repo_dir/scripts/build-host-package-binaries.sh"
 rg -Fq 'host_rpm_x264_config_section_gate=pass' \
   "$repo_dir/scripts/build-host-rpm.sh"
 rg -Fxq '[x264-encoder]' \
