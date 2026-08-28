@@ -93,14 +93,14 @@ headless workflow and does not advertise a physical bookmark layout. The RPM exp
 applies the packaged preset on upgrade so the pre-GDM cleanup cannot remain
 disabled while a stale owned overlay survives a reboot.
 
-Install `stationconnect-client.service` in the system user-unit directory so
-the client inherits its Wayland display. Enable the services with:
+The client is interactive and ships no systemd user service or desktop
+autostart entry. Launch it explicitly from the desktop application icon or the
+`stationconnect-client` command. Enable only the host services:
 
 ```bash
 sudo systemctl enable --now stationconnect-pam-broker.service \
   stationconnect-display-prepare.service \
   stationconnect-host.service
-systemctl --user enable --now stationconnect-client.service
 ```
 
 Configure every host runtime option in the single root-managed
@@ -128,7 +128,8 @@ persistent per-user files under `$XDG_STATE_HOME/stationconnect/logs/`, or
 absolute path. The directory is mode `0700`; each timestamped
 `stationconnect-client-*.log` is mode `0600`, capped at 10 MiB, and only the
 newest 10 files are retained. Continue using
-`journalctl --user -u stationconnect-client.service` for live service output.
+Use these files as the primary client diagnostic record; an explicitly launched
+process may also be visible in the desktop session's user journal.
 
 The host writes its streaming runtime diagnostics to
 `/var/log/stationconnect/stationconnect-host.log` while continuing to mirror

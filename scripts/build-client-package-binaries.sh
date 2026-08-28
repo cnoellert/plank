@@ -106,6 +106,24 @@ if rg -n \
 fi
 echo "client_vpn_route_check_absence_gate=pass"
 
+# StationConnect Client is launched explicitly from its desktop entry or
+# command. It must not ship or manage a background user service or autostart
+# entry.
+[[ ! -e ${repo_dir}/packaging/systemd/stationconnect-client.service ]] || {
+  echo "client systemd user service remains in package source" >&2
+  exit 1
+}
+if find "$repo_dir/packaging" -path '*/autostart/*' -print -quit | rg -q .; then
+  echo "client desktop autostart entry remains in package source" >&2
+  exit 1
+fi
+if rg -n 'stationconnect-client\.service|deb-systemd-helper|systemctl[[:space:]]+--user' \
+  "$repo_dir/packaging/deb/postinst" "$repo_dir/packaging/deb/postrm"; then
+  echo "client maintainer scripts retain user-service or autostart handling" >&2
+  exit 1
+fi
+echo "client_autostart_absence_gate=pass"
+
 # StationConnect disconnects streams without changing the physical workstation
 # display or terminating the workstation application. Keep Moonlight's legacy
 # SOPS and remote app-cancel controls out of the product.
