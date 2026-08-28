@@ -192,7 +192,7 @@ for required_auth_token in \
 done
 rg -Fq 'bool_f(vars, "allow_root_login", broker_allow_root_login)' \
   "$source_dir/src/config.cpp"
-rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
+rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
   "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
 rg -Fxq 'auth       substack     system-auth' "$pam_policy"

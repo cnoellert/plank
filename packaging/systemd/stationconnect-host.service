@@ -8,7 +8,7 @@ After=stationconnect-pam-broker.service display-manager.service network-online.t
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/stationconnect-host-supervisor
+ExecStart=/usr/libexec/stationconnect/stationconnect-host-supervisor
 Restart=on-failure
 RestartSec=2s
 TimeoutStopSec=15s

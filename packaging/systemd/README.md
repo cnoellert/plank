@@ -2,8 +2,9 @@
 
 ## PAM Broker
 
-Install `stationconnect-pam-broker` as `/usr/bin/stationconnect-pam-broker`,
-install the service in the system unit directory, and install
+Install the systemd-only broker as
+`/usr/libexec/stationconnect/stationconnect-pam-broker`, install its service in
+the system unit directory, and install
 `packaging/pam/stationconnect-host` as `/etc/pam.d/stationconnect-host`.
 StationConnect denies root remote login by default and delegates account
 authorization to the host's PAM/SSSD policy, including FreeIPA HBAC. The
@@ -36,10 +37,12 @@ socket; the service limits itself to 40 total tasks.
 
 ## Host Supervisor and Client Service
 
-Install the launchers from `packaging/bin/` as `/usr/bin/stationconnect-host`
-and `/usr/bin/stationconnect-client`. Production packages place their Sunshine
-and Moonlight binaries under `/usr/libexec/stationconnect/`; a development
-environment can override the binary path while invoking the launcher.
+Install the public launchers from `packaging/bin/` as
+`/usr/bin/stationconnect-host` and `/usr/bin/stationconnect-client`.
+Production packages place their Sunshine and Moonlight workers under
+`/usr/libexec/stationconnect/`; the systemd-only host supervisor and PAM broker
+also live there. A development environment can override the media-worker binary
+path while invoking a public launcher.
 
 Build and bundle the pinned FFmpeg 9 client runtime next to Moonlight before
 packaging it:
