@@ -181,6 +181,8 @@ if rg -n 'stationconnect-auth|remote-desktop-users|--group' \
 fi
 for required_auth_token in \
   'constexpr std::string_view pam_service = "stationconnect-host"' \
+  'auth::load_broker_policy(config_path, policy_error)' \
+  'if (username == "root" && !allow_root_login)' \
   'chmod(path.parent_path().c_str(), 0700)' \
   'chmod(path.c_str(), 0600)'; do
   rg -Fq "$required_auth_token" "$pam_broker_source" || {
@@ -188,10 +190,18 @@ for required_auth_token in \
     exit 1
   }
 done
-rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock' \
+rg -Fq 'bool_f(vars, "allow_root_login", broker_allow_root_login)' \
+  "$source_dir/src/config.cpp"
+rg -Fxq 'ExecStart=/usr/bin/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
   "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
+if rg -q 'pam_succeed_if|ingroup' "$pam_policy"; then
+  echo "PAM service retained product-specific account authorization" >&2
+  exit 1
+fi
+rg -Fxq 'allow_root_login = false' \
+  "$repo_dir/packaging/config/stationconnect.conf"
 rg -Fxq '/etc/pam.d/stationconnect-host' "$host_spec"
 rg -Fq 'packaging/pam/stationconnect-host' \
   "${repo_dir}/scripts/build-host-rpm.sh"

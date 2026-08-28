@@ -11,9 +11,10 @@ runs PAM modules, or stores a password. A root-owned
 owned by root and use modes `0600` and `0700`, respectively.
 
 The broker accepts only local `AF_UNIX` peers, records their kernel-supplied
-UID, denies root login in code, and relies on the host's PAM, authselect, and
-SSSD policy for account authorization, including FreeIPA HBAC. StationConnect
-has no application-specific user allowlist. Prompt responses
+UID, and reads `security.allow_root_login` from the root-owned host config.
+Root is denied when the option is absent or false. Enabling it still requires
+the host's PAM, authselect, and SSSD policy, including FreeIPA HBAC, and does
+not bypass active-desktop ownership. StationConnect has no application-specific user allowlist. Prompt responses
 must never appear in logs, process arguments, environment variables, URLs, or
 crash reports.
 

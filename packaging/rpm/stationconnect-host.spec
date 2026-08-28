@@ -96,6 +96,9 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.167
+- Make root authentication an explicit, secure-default host setting.
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.166
 - Delegate account authorization to the branded PAM/SSSD service.
 - Restrict the PAM broker socket and TLS private key to root.

@@ -1,11 +1,10 @@
 #%PAM-1.0
-# StationConnect delegates account authorization to the host's standard
-# PAM/SSSD policy. Root remote login remains a product-level prohibition.
-auth       requisite    pam_succeed_if.so quiet user != root
+# StationConnect delegates authentication and account authorization to the
+# host's standard PAM/SSSD policy. The broker enforces the administrator's
+# security.allow_root_login setting before entering this stack.
 auth       substack     system-auth
 auth       include      postlogin
 
-account    required     pam_succeed_if.so quiet user != root
 account    include      system-auth
 
 password   include      system-auth

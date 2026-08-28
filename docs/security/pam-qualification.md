@@ -1,8 +1,9 @@
 # PAM Qualification
 
 The StationConnect PAM policy is installed as `/etc/pam.d/stationconnect-host`.
-It denies root before delegating authentication, account, password, and session
-handling to Rocky's authselect-managed `system-auth` stack. SSSD and FreeIPA
+The broker denies root by default through `security.allow_root_login = false`
+before delegating authentication, account, password, and session handling to
+Rocky's authselect-managed `system-auth` stack. SSSD and FreeIPA
 HBAC remain the administrator-owned account-authorization layer;
 StationConnect has no application-specific user allowlist. Do not edit
 `system-auth` directly.
@@ -22,13 +23,32 @@ through chat, shell redirection, an environment variable, or automation.
 Account-policy checks do not require a password:
 
 ```bash
-sudo ./build/qualification/connect-probe-pam --account-only root
 sudo ./build/qualification/connect-probe-pam --account-only operator
+./scripts/probe-pam-policy.sh
 ```
 
-Expected results are rejection for root and success for an authorized active
-account. A complete Phase 0 result also requires an interactive success and
-failure test for one local account and one SSSD/FreeIPA account.
+Expected results are a valid configured root policy and success for an
+authorized active account. Root is denied when the setting is absent or false;
+`true` is reported as an administrator override rather than a failed gate.
+StationConnect does not invent an unauthorized account: that decision
+belongs to the administrator's PAM/SSSD/FreeIPA HBAC policy. To qualify a host
+whose external policy has a known denied identity, name it explicitly:
+
+```bash
+CONNECT_PAM_EXPECTED_DENIED_USER=denied-user \
+  ./scripts/probe-pam-policy.sh
+```
+
+Without that variable, the external-policy denial line is reported as
+non-blocking rather than assuming a service account such as `gdm` must be
+denied. A complete Phase 0 result also requires an interactive success and
+failure test for one local account and one SSSD/FreeIPA account. Local service
+accounts should keep locked passwords; FreeIPA HBAC does not govern local
+identities.
+
+The broker reads the setting once at startup. After changing it, run
+`sudo systemctl restart stationconnect-pam-broker.service`; an invalid value or
+an unsafe configuration-file owner/mode prevents the broker from starting.
 
 ## Phase 2 Live Integration Status
 

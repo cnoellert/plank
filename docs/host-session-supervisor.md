@@ -78,8 +78,10 @@ desktop owned by another user. The client may briefly show its reconnect overlay
 while logind and Xorg publish the replacement desktop.
 
 The Sunshine Sender still combines network, capture, media, and input functions
-and therefore runs privileged. PAM remains a separate minimal broker,
-root remote login is denied, and systemd limits the supervisor to
+and therefore runs privileged. PAM remains a separate minimal broker. Root
+remote login is denied by default and may be enabled only through the
+root-owned `security.allow_root_login` setting; active-desktop ownership still
+applies. Systemd limits the supervisor to
 `CAP_DAC_READ_SEARCH` and `CAP_SYS_PTRACE`. Before `exec`, the child drops
 `CAP_SYS_PTRACE`, leaving only `CAP_DAC_READ_SEARCH` for the selected user's
 protected runtime and cookie paths. Read-only user homes, required address

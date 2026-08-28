@@ -5,9 +5,13 @@
 Install `stationconnect-pam-broker` as `/usr/bin/stationconnect-pam-broker`,
 install the service in the system unit directory, and install
 `packaging/pam/stationconnect-host` as `/etc/pam.d/stationconnect-host`.
-StationConnect denies root remote login and delegates all other account
-authorization to the host's PAM/SSSD policy, including FreeIPA HBAC. It has no
-application-specific user allowlist.
+StationConnect denies root remote login by default and delegates account
+authorization to the host's PAM/SSSD policy, including FreeIPA HBAC. The
+administrator may set `security.allow_root_login = true` in
+`stationconnect.conf`; this does not bypass PAM or active-desktop ownership.
+StationConnect has no application-specific user allowlist.
+Restart `stationconnect-pam-broker.service` after changing this setting; the
+broker loads and validates it once at startup.
 
 FreeIPA deployments use the exact PAM service identifier
 `stationconnect-host` in their HBAC service and rules. Directory-policy changes
