@@ -117,10 +117,11 @@ configuration.
 
 mDNS is disabled by default on both sides. Set
 `stationconnect_mdns_discovery = true` in the host `stationconnect.conf` to publish
-the host with Avahi, or set `STATIONCONNECT_MDNS_DISCOVERY=1` in the client env
-file to browse for advertised workstations. The client launcher loads its env
-file for app-icon launches as well as user-service launches. Saved and manually
-entered workstations continue to connect when mDNS is disabled.
+the host with Avahi. The client preference defaults off but remains editable when
+`STATIONCONNECT_MDNS_DISCOVERY` is absent. Set that variable explicitly to `0` or
+`1` in the client env file only to impose an administrator-managed value. The
+client launcher loads its env file for app-icon and command launches. Saved and
+manually entered workstations continue to connect when mDNS is disabled.
 
 The Linux client mirrors its already-redacted stderr/journal output to private,
 persistent per-user files under `$XDG_STATE_HOME/stationconnect/logs/`, or

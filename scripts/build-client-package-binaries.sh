@@ -955,14 +955,14 @@ rg -Fq 'source "${client_env}"' "$repo_dir/packaging/bin/stationconnect-client" 
   echo "client launcher does not load its deployment env file" >&2
   exit 1
 }
-rg -Fq 'STATIONCONNECT_MDNS_DISCOVERY=${STATIONCONNECT_MDNS_DISCOVERY:-0}' \
-  "$repo_dir/packaging/bin/stationconnect-client" || {
-  echo "client launcher does not default mDNS discovery to disabled" >&2
+if rg -n 'export STATIONCONNECT_MDNS_DISCOVERY=.*:-0' \
+  "$repo_dir/packaging/bin/stationconnect-client"; then
+  echo "client launcher turns the default-off mDNS preference into a managed override" >&2
   exit 1
-}
-rg -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' \
+fi
+rg -Fxq '# STATIONCONNECT_MDNS_DISCOVERY=0' \
   "$repo_dir/packaging/systemd/client.env.example" || {
-  echo "client mDNS example does not default to disabled" >&2
+  echo "client mDNS example does not document the optional managed override" >&2
   exit 1
 }
 echo "client_mdns_default_off_gate=pass"

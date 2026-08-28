@@ -39,7 +39,8 @@ expect_status 1 env -u DISPLAY -u WAYLAND_DISPLAY \
 expect_status 0 env STATIONCONNECT_CLIENT_BINARY=/bin/true \
   DISPLAY=:99 "${client_launcher}" forwarded-argument
 
-client_environment=$(env STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
+client_environment=$(env -u STATIONCONNECT_MDNS_DISCOVERY \
+  STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
   STATIONCONNECT_CLIENT_LIBDIR="${repo_dir}/packaging" \
   XDG_CONFIG_HOME=/does/not/exist \
   LD_LIBRARY_PATH=/system/lib DISPLAY=:99 "${client_launcher}")
@@ -48,7 +49,10 @@ if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
   echo 'Client launcher did not prefer the private library directory' >&2
   exit 1
 fi
-grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' <<<"${client_environment}"
+if grep -q '^STATIONCONNECT_MDNS_DISCOVERY=' <<<"${client_environment}"; then
+  echo 'Client launcher turned the default-off mDNS preference into a managed override' >&2
+  exit 1
+fi
 
 client_config_root=$(mktemp -d)
 trap 'rm -rf -- "${client_config_root}"' EXIT
@@ -61,6 +65,15 @@ client_environment=$(env -u STATIONCONNECT_MDNS_DISCOVERY \
   STATIONCONNECT_CLIENT_LIBDIR=/does/not/exist \
   DISPLAY=:99 "${client_launcher}")
 grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=1' <<<"${client_environment}"
+
+printf '%s\n' 'STATIONCONNECT_MDNS_DISCOVERY=0' \
+  >"${client_config_root}/stationconnect/client.env"
+client_environment=$(env -u STATIONCONNECT_MDNS_DISCOVERY \
+  XDG_CONFIG_HOME="${client_config_root}" \
+  STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
+  STATIONCONNECT_CLIENT_LIBDIR=/does/not/exist \
+  DISPLAY=:99 "${client_launcher}")
+grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' <<<"${client_environment}"
 
 grep -Fxq 'sw_vbv_maxrate_percentage = 150' "${host_profile}"
 grep -Fxq 'sw_vbv_buffer_frames = 4' "${host_profile}"
@@ -100,7 +113,7 @@ if rg -q '^[[:space:]]*[A-Z][A-Z0-9_]*=' "${host_profile}"; then
   echo 'host profile contains shell environment syntax instead of INI syntax' >&2
   exit 1
 fi
-grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' "${client_profile}"
+grep -Fxq '# STATIONCONNECT_MDNS_DISCOVERY=0' "${client_profile}"
 
 for required_log_token in XDG_STATE_HOME '.local/state' 'stationconnect/logs'; do
   rg -Fq "${required_log_token}" "${client_path}"
