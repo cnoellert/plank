@@ -545,6 +545,47 @@ if nm -C "$build_dir/stationconnect-host" | rg -q 'nvhttp::(pair|pin|unpair_clie
   exit 1
 fi
 
+for required_desktop_token in \
+  'inline constexpr int desktop_app_id = 881448767' \
+  'inline constexpr std::string_view desktop_app_name = "Desktop"' \
+  'std::atomic<int> _app_id {0}' \
+  'Reserving StationConnect Desktop stream'; do
+  rg -Fq "$required_desktop_token" \
+    "$source_dir/src/process.h" "$source_dir/src/process.cpp" || {
+    echo "fixed Desktop reservation invariant is missing: ${required_desktop_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'apps\.json|file_apps|global_prep_cmd|Steam Big Picture|Low Res Desktop' \
+  "$source_dir/src" "$source_dir/src_assets" "$source_dir/cmake" \
+  "$source_dir/packaging" "$source_dir/docs"; then
+  echo "legacy application catalog or command-launch configuration remains" >&2
+  exit 1
+fi
+if rg -n 'run_command|request_process_group_exit|process_group_running|open_url' \
+  "$source_dir/src/platform/common.h" "$source_dir/src/platform/linux" \
+  "$source_dir/tests/integration"; then
+  echo "legacy Linux external-command launcher remains" >&2
+  exit 1
+fi
+for removed_app_asset in box.png desktop-alt.png steam.png; do
+  if find "$source_dir/src_assets" -type f -name "$removed_app_asset" -print -quit | rg -q .; then
+    echo "legacy application artwork remains: ${removed_app_asset}" >&2
+    exit 1
+  fi
+done
+if rg -a -q 'apps\.json|Steam Big Picture|Low Res Desktop|SUNSHINE_APP_ID|SUNSHINE_APP_NAME' \
+  "$build_dir/stationconnect-host"; then
+  echo "host binary still contains the legacy application catalog or launcher" >&2
+  exit 1
+fi
+if nm -C "$build_dir/stationconnect-host" | \
+    rg -q 'platf::(run_command|request_process_group_exit|process_group_running|open_url)'; then
+  echo "host binary still contains the legacy external-command launcher" >&2
+  exit 1
+fi
+echo "host_fixed_desktop_reservation_gate=pass"
+
 for required_reconnect_token in \
   'std::mutex session_start_mutex' \
   'rtsp_stream::session_count() == 0' \

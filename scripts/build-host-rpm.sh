@@ -119,6 +119,13 @@ if rpm -qpl "$rpm_file" | rg -q '/etc/pam\.d/remote-desktop$|/usr/lib/sysusers\.
   echo "host RPM still contains obsolete authentication-group packaging" >&2
   exit 1
 fi
+if rpm -qpl "$rpm_file" | rg -q \
+  '/usr/share/stationconnect/(apps\.json|box\.png|desktop-alt\.png|steam\.png)$'; then
+  echo "host RPM still contains the removed application catalog or legacy artwork" >&2
+  exit 1
+fi
+rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/desktop\.png$'
+echo "host_rpm_fixed_desktop_gate=pass"
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-3840x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-2-1280x2160\.edid$'
 rpm -qpl "$rpm_file" | rg -q '/usr/share/stationconnect/display/virtual-1-4096x2160\.edid$'

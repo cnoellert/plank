@@ -96,6 +96,9 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.168
+- Replace the inherited application catalog with one internal Desktop stream.
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@stationconnect.invalid> - 0.1.0-0.167
 - Make root authentication an explicit, secure-default host setting.
 
