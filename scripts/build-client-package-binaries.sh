@@ -13,7 +13,7 @@ ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
 
-for command_name in find git make mktemp pkg-config qmake6 readelf realpath rg stat timeout; do
+for command_name in cmp find git make mktemp pkg-config qmake6 readelf realpath rg stat timeout; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -590,6 +590,17 @@ rg -Fq 'TARGET = stationconnect-client' "$source_dir/app/app.pro" || {
   echo "client build target is not branded stationconnect-client" >&2
   exit 1
 }
+approved_client_logo="$repo_dir/branding/assets/stationconnect_logo_circle.png"
+runtime_client_logo="$source_dir/app/res/stationconnect-logo.png"
+[[ -f $approved_client_logo ]] || {
+  echo "approved StationConnect client logo is unavailable: ${approved_client_logo}" >&2
+  exit 1
+}
+cmp --silent "$approved_client_logo" "$runtime_client_logo" || {
+  echo "runtime client logo differs from the approved StationConnect artwork" >&2
+  exit 1
+}
+echo "client_approved_logo_source_gate=pass"
 client_desktop="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.desktop"
 client_appstream="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.appdata.xml"
 rg -Fxq 'Name=StationConnect Client' "$client_desktop" || {
