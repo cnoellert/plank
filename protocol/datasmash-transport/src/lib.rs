@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use anyhow::{Context, Result, anyhow, bail};
+use bytes::{BufMut, Bytes, BytesMut};
 use kynet::{Connection, Server};
+use std::collections::VecDeque;
 use std::ffi::{CStr, c_char};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::ptr;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex, Once};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
 pub const PROTOCOL_VERSION: u16 = 2;
-pub const ABI_VERSION: u32 = 1;
+pub const ABI_VERSION: u32 = 2;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -24,13 +26,19 @@ const MAX_ADDRESS_LENGTH: usize = 512;
 const MAX_SERVER_NAME_LENGTH: usize = 253;
 const MAX_PATH_LENGTH: usize = 4_096;
 const MAX_TOKEN_LENGTH: usize = 1_024;
+const DATAGRAM_HEADER_SIZE: usize = 16;
+const VIDEO_LANE: u8 = 1;
+const VIDEO_SEND_QUEUE_CAPACITY: usize = 64;
+const VIDEO_RECEIVE_QUEUE_CAPACITY: usize = 2_048;
 
 pub const SC_DATASMASH_OK: i32 = 0;
 pub const SC_DATASMASH_TIMEOUT: i32 = 1;
+pub const SC_DATASMASH_DROPPED: i32 = 2;
 pub const SC_DATASMASH_ERROR_INVALID_ARGUMENT: i32 = -1;
 pub const SC_DATASMASH_ERROR_INVALID_STATE: i32 = -2;
 pub const SC_DATASMASH_ERROR_RUNTIME: i32 = -3;
 pub const SC_DATASMASH_ERROR_PANIC: i32 = -4;
+pub const SC_DATASMASH_ERROR_BUFFER_TOO_SMALL: i32 = -5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -214,11 +222,39 @@ struct SharedStatus {
     error: String,
 }
 
+#[derive(Default)]
+struct VideoQueues {
+    send: VecDeque<Bytes>,
+    receive: VecDeque<Bytes>,
+}
+
+#[derive(Default)]
+struct TransportStats {
+    video_packets_sent: AtomicU64,
+    video_bytes_sent: AtomicU64,
+    video_packets_received: AtomicU64,
+    video_bytes_received: AtomicU64,
+    video_send_queue_drops: AtomicU64,
+    video_receive_queue_drops: AtomicU64,
+    video_transport_send_drops: AtomicU64,
+    malformed_datagrams: AtomicU64,
+    video_send_queue_high_water: AtomicU64,
+    video_receive_queue_high_water: AtomicU64,
+    media_quic_rtt_us: AtomicU64,
+    media_quic_packets_lost: AtomicU64,
+}
+
 struct Shared {
     status: Mutex<SharedStatus>,
     changed: Condvar,
     stop: AtomicBool,
     stop_notify: tokio::sync::Notify,
+    video_queues: Mutex<VideoQueues>,
+    video_send_notify: tokio::sync::Notify,
+    video_receive_changed: Condvar,
+    video_sequence: AtomicU64,
+    max_video_packet_size: AtomicUsize,
+    stats: TransportStats,
 }
 
 impl Shared {
@@ -231,6 +267,12 @@ impl Shared {
             changed: Condvar::new(),
             stop: AtomicBool::new(false),
             stop_notify: tokio::sync::Notify::new(),
+            video_queues: Mutex::new(VideoQueues::default()),
+            video_send_notify: tokio::sync::Notify::new(),
+            video_receive_changed: Condvar::new(),
+            video_sequence: AtomicU64::new(0),
+            max_video_packet_size: AtomicUsize::new(0),
+            stats: TransportStats::default(),
         }
     }
 
@@ -249,6 +291,7 @@ impl Shared {
         status.error = error.to_string();
         status.state = EndpointState::Failed;
         self.changed.notify_all();
+        self.video_receive_changed.notify_all();
     }
 }
 
@@ -269,8 +312,27 @@ pub struct ScDatasmashConfig {
     pub session_token: *const c_char,
 }
 
+#[repr(C)]
+pub struct ScDatasmashStats {
+    pub struct_size: u32,
+    pub abi_version: u32,
+    pub video_packets_sent: u64,
+    pub video_bytes_sent: u64,
+    pub video_packets_received: u64,
+    pub video_bytes_received: u64,
+    pub video_send_queue_drops: u64,
+    pub video_receive_queue_drops: u64,
+    pub video_transport_send_drops: u64,
+    pub malformed_datagrams: u64,
+    pub video_send_queue_high_water: u64,
+    pub video_receive_queue_high_water: u64,
+    pub media_quic_rtt_us: u64,
+    pub media_quic_packets_lost: u64,
+}
+
 pub struct ScDatasmashEndpoint {
     config: EndpointConfig,
+    mode: u32,
     shared: Arc<Shared>,
     worker: Mutex<Option<JoinHandle<()>>>,
 }
@@ -387,26 +449,187 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
 
 type RoleConnection = (Connection, kynet::SendStream, kynet::RecvStream);
 
+fn frame_video_datagram(sequence: u64, prefix: &[u8], payload: &[u8]) -> Bytes {
+    let mut packet = BytesMut::with_capacity(DATAGRAM_HEADER_SIZE + prefix.len() + payload.len());
+    packet.extend_from_slice(&PROTOCOL_MAGIC);
+    packet.put_u8(VIDEO_LANE);
+    packet.put_u8(0);
+    packet.put_u16(DATAGRAM_HEADER_SIZE as u16);
+    packet.put_u64(sequence);
+    packet.extend_from_slice(prefix);
+    packet.extend_from_slice(payload);
+    packet.freeze()
+}
+
+fn parse_video_datagram(packet: Bytes) -> Option<Bytes> {
+    if packet.len() <= DATAGRAM_HEADER_SIZE || packet[..4] != PROTOCOL_MAGIC {
+        return None;
+    }
+    if packet[4] != VIDEO_LANE || packet[5] != 0 {
+        return None;
+    }
+    let header_size = u16::from_be_bytes([packet[6], packet[7]]) as usize;
+    if header_size != DATAGRAM_HEADER_SIZE || header_size >= packet.len() {
+        return None;
+    }
+    Some(packet.slice(header_size..))
+}
+
+async fn send_video_datagrams(shared: Arc<Shared>, connection: Connection) -> Result<()> {
+    loop {
+        let notified = shared.video_send_notify.notified();
+        let packet = shared.video_queues.lock().unwrap().send.pop_front();
+        if let Some(packet) = packet {
+            let payload_size = packet.len().saturating_sub(DATAGRAM_HEADER_SIZE) as u64;
+            match connection.send_datagram(packet).await {
+                Ok(()) => {
+                    shared
+                        .stats
+                        .video_packets_sent
+                        .fetch_add(1, Ordering::Relaxed);
+                    shared
+                        .stats
+                        .video_bytes_sent
+                        .fetch_add(payload_size, Ordering::Relaxed);
+                }
+                Err(_) => {
+                    shared
+                        .stats
+                        .video_transport_send_drops
+                        .fetch_add(1, Ordering::Relaxed);
+                }
+            }
+            continue;
+        }
+        if shared.stop.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        notified.await;
+    }
+}
+
+async fn receive_video_datagrams(shared: Arc<Shared>, connection: Connection) -> Result<()> {
+    loop {
+        let packet = tokio::select! {
+            _ = shared.stop_notify.notified() => return Ok(()),
+            result = connection.read_datagram() => result?,
+        };
+        let Some(payload) = parse_video_datagram(packet) else {
+            shared
+                .stats
+                .malformed_datagrams
+                .fetch_add(1, Ordering::Relaxed);
+            continue;
+        };
+        let payload_size = payload.len() as u64;
+        let (dropped, depth) = {
+            let mut queues = shared.video_queues.lock().unwrap();
+            let dropped = if queues.receive.len() == VIDEO_RECEIVE_QUEUE_CAPACITY {
+                queues.receive.pop_front();
+                true
+            } else {
+                false
+            };
+            queues.receive.push_back(payload);
+            (dropped, queues.receive.len())
+        };
+        if dropped {
+            shared
+                .stats
+                .video_receive_queue_drops
+                .fetch_add(1, Ordering::Relaxed);
+        }
+        shared
+            .stats
+            .video_receive_queue_high_water
+            .fetch_max(depth as u64, Ordering::Relaxed);
+        shared
+            .stats
+            .video_packets_received
+            .fetch_add(1, Ordering::Relaxed);
+        shared
+            .stats
+            .video_bytes_received
+            .fetch_add(payload_size, Ordering::Relaxed);
+        shared.video_receive_changed.notify_one();
+    }
+}
+
+async fn sample_media_stats(shared: Arc<Shared>, connection: Connection) {
+    let mut interval = tokio::time::interval(Duration::from_secs(1));
+    loop {
+        interval.tick().await;
+        if shared.stop.load(Ordering::Acquire) {
+            return;
+        }
+        let stats = connection.stats().await;
+        shared.stats.media_quic_rtt_us.store(
+            stats.rtt.map(|value| value.as_micros() as u64).unwrap_or(0),
+            Ordering::Relaxed,
+        );
+        shared
+            .stats
+            .media_quic_packets_lost
+            .store(stats.packets_lost.unwrap_or(0), Ordering::Relaxed);
+    }
+}
+
 async fn hold_connections(
-    shared: &Shared,
+    shared: Arc<Shared>,
     media: RoleConnection,
     interaction: RoleConnection,
+    server_mode: bool,
 ) -> Result<()> {
+    let max_datagram_size = media
+        .0
+        .max_datagram_size()
+        .ok_or_else(|| anyhow!("peer did not negotiate QUIC DATAGRAM support"))?;
+    if max_datagram_size <= DATAGRAM_HEADER_SIZE {
+        bail!("negotiated QUIC DATAGRAM size {max_datagram_size} is too small");
+    }
+    shared
+        .max_video_packet_size
+        .store(max_datagram_size - DATAGRAM_HEADER_SIZE, Ordering::Release);
     shared.set_state(EndpointState::Ready);
     let media_connection = media.0.clone();
     let interaction_connection = interaction.0.clone();
-    tokio::select! {
-        _ = shared.stop_notify.notified() => {},
+    let payload_shared = shared.clone();
+    let payload_connection = media_connection.clone();
+    let mut payload_task = tokio::spawn(async move {
+        if server_mode {
+            send_video_datagrams(payload_shared, payload_connection).await
+        } else {
+            receive_video_datagrams(payload_shared, payload_connection).await
+        }
+    });
+    let mut stats_task = tokio::spawn(sample_media_stats(shared.clone(), media_connection.clone()));
+    let mut payload_finished = false;
+    let result = tokio::select! {
+        _ = shared.stop_notify.notified() => Ok(()),
         result = media_connection.closed() => {
-            result.context("media connection closed")?;
+            result.context("media connection closed")
         },
         result = interaction_connection.closed() => {
-            result.context("interaction connection closed")?;
+            result.context("interaction connection closed")
         },
+        result = &mut payload_task => {
+            payload_finished = true;
+            match result {
+                Ok(result) => result.context("video payload task failed"),
+                Err(error) => Err(anyhow!("video payload task failed: {error}")),
+            }
+        },
+    };
+    if !payload_finished {
+        payload_task.abort();
+        let _ = (&mut payload_task).await;
     }
+    stats_task.abort();
+    let _ = (&mut stats_task).await;
     media.0.close(0, "StationConnect endpoint stopping");
     interaction.0.close(0, "StationConnect endpoint stopping");
-    Ok(())
+    shared.video_receive_changed.notify_all();
+    result
 }
 
 async fn run_server(
@@ -464,9 +687,10 @@ async fn run_server(
     }
 
     let result = hold_connections(
-        &shared,
+        shared.clone(),
         media.expect("media role checked"),
         interaction.expect("interaction role checked"),
+        true,
     )
     .await;
     server.close(0, "StationConnect endpoint stopping");
@@ -511,7 +735,7 @@ async fn run_client(
             result.context("timed out establishing authenticated QUIC roles")??
         },
     };
-    hold_connections(&shared, media, interaction).await
+    hold_connections(shared, media, interaction, false).await
 }
 
 fn endpoint_worker(config: EndpointConfig, shared: Arc<Shared>) {
@@ -600,12 +824,18 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_create(
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         }
         unsafe { *endpoint_out = ptr::null_mut() };
-        let config = match unsafe { parse_config(config) } {
+        let mode = if config.is_null() {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        } else {
+            unsafe { (*config).mode }
+        };
+        let parsed_config = match unsafe { parse_config(config) } {
             Ok(config) => config,
             Err(_) => return SC_DATASMASH_ERROR_INVALID_ARGUMENT,
         };
         let endpoint = Box::new(ScDatasmashEndpoint {
-            config,
+            config: parsed_config,
+            mode,
             shared: Arc::new(Shared::new()),
             worker: Mutex::new(None),
         });
@@ -696,6 +926,256 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_state(endpoint: *const ScDatasmas
 }
 
 #[unsafe(no_mangle)]
+/// Returns the negotiated maximum legacy-video packet payload.
+///
+/// # Safety
+/// `endpoint` must be null or a live, non-destroyed endpoint.
+pub unsafe extern "C" fn sc_datasmash_video_max_packet_size(
+    endpoint: *const ScDatasmashEndpoint,
+) -> usize {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        unsafe { endpoint.as_ref() }
+            .filter(|endpoint| endpoint.shared.state() == EndpointState::Ready)
+            .map(|endpoint| {
+                endpoint
+                    .shared
+                    .max_video_packet_size
+                    .load(Ordering::Acquire)
+            })
+            .unwrap_or(0)
+    }))
+    .unwrap_or(0)
+}
+
+#[unsafe(no_mangle)]
+/// Copies one video packet into the bounded server send queue.
+///
+/// # Safety
+/// Byte ranges must be readable for their supplied lengths. `endpoint` must
+/// be a live, non-destroyed server endpoint.
+pub unsafe extern "C" fn sc_datasmash_video_send(
+    endpoint: *mut ScDatasmashEndpoint,
+    prefix: *const u8,
+    prefix_size: usize,
+    payload: *const u8,
+    payload_size: usize,
+) -> i32 {
+    catch_result(|| {
+        let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        };
+        if endpoint.mode != 1 || endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
+        }
+        if (prefix_size != 0 && prefix.is_null()) || (payload_size != 0 && payload.is_null()) {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        let packet_size = match prefix_size.checked_add(payload_size) {
+            Some(size) if size > 0 => size,
+            _ => return SC_DATASMASH_ERROR_INVALID_ARGUMENT,
+        };
+        if packet_size
+            > endpoint
+                .shared
+                .max_video_packet_size
+                .load(Ordering::Acquire)
+        {
+            return SC_DATASMASH_ERROR_BUFFER_TOO_SMALL;
+        }
+        let prefix = if prefix_size == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(prefix, prefix_size) }
+        };
+        let payload = if payload_size == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(payload, payload_size) }
+        };
+        let sequence = endpoint
+            .shared
+            .video_sequence
+            .fetch_add(1, Ordering::Relaxed);
+        let packet = frame_video_datagram(sequence, prefix, payload);
+        let (dropped, depth) = {
+            let mut queues = endpoint.shared.video_queues.lock().unwrap();
+            let dropped = if queues.send.len() == VIDEO_SEND_QUEUE_CAPACITY {
+                queues.send.pop_front();
+                true
+            } else {
+                false
+            };
+            queues.send.push_back(packet);
+            (dropped, queues.send.len())
+        };
+        if dropped {
+            endpoint
+                .shared
+                .stats
+                .video_send_queue_drops
+                .fetch_add(1, Ordering::Relaxed);
+        }
+        endpoint
+            .shared
+            .stats
+            .video_send_queue_high_water
+            .fetch_max(depth as u64, Ordering::Relaxed);
+        endpoint.shared.video_send_notify.notify_one();
+        if dropped {
+            SC_DATASMASH_DROPPED
+        } else {
+            SC_DATASMASH_OK
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+/// Waits for and copies one received video packet from the client queue.
+///
+/// # Safety
+/// `packet_size_out` must be writable. When `packet_capacity` is nonzero,
+/// `packet` must point to that many writable bytes. `endpoint` must be live.
+pub unsafe extern "C" fn sc_datasmash_video_receive(
+    endpoint: *mut ScDatasmashEndpoint,
+    packet: *mut u8,
+    packet_capacity: usize,
+    packet_size_out: *mut usize,
+    timeout_ms: u32,
+) -> i32 {
+    catch_result(|| {
+        let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        };
+        if endpoint.mode != 2 || packet_size_out.is_null() {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        if packet_capacity != 0 && packet.is_null() {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        unsafe { *packet_size_out = 0 };
+        if endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
+        }
+        let deadline = Instant::now() + Duration::from_millis(u64::from(timeout_ms));
+        let mut queues = endpoint.shared.video_queues.lock().unwrap();
+        loop {
+            if let Some(front) = queues.receive.front() {
+                unsafe { *packet_size_out = front.len() };
+                if packet_capacity < front.len() {
+                    return SC_DATASMASH_ERROR_BUFFER_TOO_SMALL;
+                }
+                let packet_data = queues.receive.pop_front().expect("front checked");
+                unsafe {
+                    ptr::copy_nonoverlapping(packet_data.as_ptr(), packet, packet_data.len());
+                }
+                return SC_DATASMASH_OK;
+            }
+            if endpoint.shared.state() != EndpointState::Ready {
+                return SC_DATASMASH_ERROR_RUNTIME;
+            }
+            let now = Instant::now();
+            if now >= deadline {
+                return SC_DATASMASH_TIMEOUT;
+            }
+            let (next_queues, wait) = endpoint
+                .shared
+                .video_receive_changed
+                .wait_timeout(queues, deadline - now)
+                .unwrap();
+            queues = next_queues;
+            if wait.timed_out() && queues.receive.is_empty() {
+                return SC_DATASMASH_TIMEOUT;
+            }
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+/// Copies a consistent snapshot of endpoint transport counters.
+///
+/// # Safety
+/// `endpoint` must be live and `stats` must point to a writable structure with
+/// the exact current size and ABI version initialized by the caller.
+pub unsafe extern "C" fn sc_datasmash_endpoint_stats(
+    endpoint: *const ScDatasmashEndpoint,
+    stats: *mut ScDatasmashStats,
+) -> i32 {
+    catch_result(|| {
+        let (Some(endpoint), Some(stats)) =
+            (unsafe { endpoint.as_ref() }, unsafe { stats.as_mut() })
+        else {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        };
+        if stats.struct_size as usize != std::mem::size_of::<ScDatasmashStats>()
+            || stats.abi_version != ABI_VERSION
+        {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        stats.video_packets_sent = endpoint
+            .shared
+            .stats
+            .video_packets_sent
+            .load(Ordering::Relaxed);
+        stats.video_bytes_sent = endpoint
+            .shared
+            .stats
+            .video_bytes_sent
+            .load(Ordering::Relaxed);
+        stats.video_packets_received = endpoint
+            .shared
+            .stats
+            .video_packets_received
+            .load(Ordering::Relaxed);
+        stats.video_bytes_received = endpoint
+            .shared
+            .stats
+            .video_bytes_received
+            .load(Ordering::Relaxed);
+        stats.video_send_queue_drops = endpoint
+            .shared
+            .stats
+            .video_send_queue_drops
+            .load(Ordering::Relaxed);
+        stats.video_receive_queue_drops = endpoint
+            .shared
+            .stats
+            .video_receive_queue_drops
+            .load(Ordering::Relaxed);
+        stats.video_transport_send_drops = endpoint
+            .shared
+            .stats
+            .video_transport_send_drops
+            .load(Ordering::Relaxed);
+        stats.malformed_datagrams = endpoint
+            .shared
+            .stats
+            .malformed_datagrams
+            .load(Ordering::Relaxed);
+        stats.video_send_queue_high_water = endpoint
+            .shared
+            .stats
+            .video_send_queue_high_water
+            .load(Ordering::Relaxed);
+        stats.video_receive_queue_high_water = endpoint
+            .shared
+            .stats
+            .video_receive_queue_high_water
+            .load(Ordering::Relaxed);
+        stats.media_quic_rtt_us = endpoint
+            .shared
+            .stats
+            .media_quic_rtt_us
+            .load(Ordering::Relaxed);
+        stats.media_quic_packets_lost = endpoint
+            .shared
+            .stats
+            .media_quic_packets_lost
+            .load(Ordering::Relaxed);
+        SC_DATASMASH_OK
+    })
+}
+
+#[unsafe(no_mangle)]
 /// Stops the worker and waits for it to exit.
 ///
 /// # Safety
@@ -717,6 +1197,8 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_stop(endpoint: *mut ScDatasmashEn
         }
         endpoint.shared.stop.store(true, Ordering::Release);
         endpoint.shared.stop_notify.notify_waiters();
+        endpoint.shared.video_send_notify.notify_waiters();
+        endpoint.shared.video_receive_changed.notify_all();
         if let Some(worker) = endpoint.worker.lock().unwrap().take()
             && worker.join().is_err()
         {
@@ -747,6 +1229,8 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_destroy(endpoint: *mut ScDatasmas
         let endpoint = unsafe { Box::from_raw(endpoint) };
         endpoint.shared.stop.store(true, Ordering::Release);
         endpoint.shared.stop_notify.notify_waiters();
+        endpoint.shared.video_send_notify.notify_waiters();
+        endpoint.shared.video_receive_changed.notify_all();
         if let Some(worker) = endpoint.worker.lock().unwrap().take() {
             let _ = worker.join();
         }
@@ -807,9 +1291,40 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 1);
+        assert_eq!(sc_datasmash_abi_version(), 2);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::Failed as u32, 6);
+        assert_eq!(SC_DATASMASH_DROPPED, 2);
+        assert_eq!(SC_DATASMASH_ERROR_BUFFER_TOO_SMALL, -5);
+    }
+
+    #[test]
+    fn video_datagram_preserves_the_existing_packet_bytes() {
+        let prefix = [0x10, 0x20, 0x30];
+        let payload = [0x40, 0x50, 0x60, 0x70];
+        let packet = frame_video_datagram(0x0123_4567_89ab_cdef, &prefix, &payload);
+        assert_eq!(
+            packet.len(),
+            DATAGRAM_HEADER_SIZE + prefix.len() + payload.len()
+        );
+        assert_eq!(packet[..4], PROTOCOL_MAGIC);
+        assert_eq!(packet[4], VIDEO_LANE);
+        assert_eq!(
+            u64::from_be_bytes(packet[8..16].try_into().unwrap()),
+            0x0123_4567_89ab_cdef
+        );
+        assert_eq!(
+            parse_video_datagram(packet).unwrap().as_ref(),
+            &[0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70]
+        );
+    }
+
+    #[test]
+    fn malformed_video_datagrams_are_rejected() {
+        assert!(parse_video_datagram(Bytes::from_static(b"short")).is_none());
+        let mut packet = frame_video_datagram(1, &[], b"payload").to_vec();
+        packet[4] = 99;
+        assert!(parse_video_datagram(Bytes::from(packet)).is_none());
     }
 
     #[test]

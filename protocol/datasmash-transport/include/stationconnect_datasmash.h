@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 1u
+#define SC_DATASMASH_ABI_VERSION 2u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 
@@ -32,11 +32,30 @@ typedef enum ScDatasmashState {
 typedef enum ScDatasmashResult {
     SC_DATASMASH_OK = 0,
     SC_DATASMASH_TIMEOUT = 1,
+    SC_DATASMASH_DROPPED = 2,
     SC_DATASMASH_ERROR_INVALID_ARGUMENT = -1,
     SC_DATASMASH_ERROR_INVALID_STATE = -2,
     SC_DATASMASH_ERROR_RUNTIME = -3,
     SC_DATASMASH_ERROR_PANIC = -4,
+    SC_DATASMASH_ERROR_BUFFER_TOO_SMALL = -5,
 } ScDatasmashResult;
+
+typedef struct ScDatasmashStats {
+    uint32_t struct_size;
+    uint32_t abi_version;
+    uint64_t video_packets_sent;
+    uint64_t video_bytes_sent;
+    uint64_t video_packets_received;
+    uint64_t video_bytes_received;
+    uint64_t video_send_queue_drops;
+    uint64_t video_receive_queue_drops;
+    uint64_t video_transport_send_drops;
+    uint64_t malformed_datagrams;
+    uint64_t video_send_queue_high_water;
+    uint64_t video_receive_queue_high_water;
+    uint64_t media_quic_rtt_us;
+    uint64_t media_quic_packets_lost;
+} ScDatasmashStats;
 
 /*
  * Strings are copied during sc_datasmash_endpoint_create() and need only
@@ -68,6 +87,39 @@ int32_t sc_datasmash_endpoint_start(ScDatasmashEndpoint *endpoint);
 int32_t sc_datasmash_endpoint_wait_ready(ScDatasmashEndpoint *endpoint,
                                          uint32_t timeout_ms);
 uint32_t sc_datasmash_endpoint_state(const ScDatasmashEndpoint *endpoint);
+
+/*
+ * Returns the largest complete legacy video packet that can be carried inside
+ * one negotiated QUIC DATAGRAM after StationConnect framing. Zero means the
+ * endpoint is invalid or has not reached READY.
+ */
+size_t sc_datasmash_video_max_packet_size(const ScDatasmashEndpoint *endpoint);
+
+/*
+ * Server-only, nonblocking video submission. Both byte ranges are copied
+ * before this function returns. SC_DATASMASH_DROPPED means the new packet was
+ * accepted after evicting the oldest queued video packet to preserve latency.
+ */
+int32_t sc_datasmash_video_send(ScDatasmashEndpoint *endpoint,
+                                const uint8_t *prefix,
+                                size_t prefix_size,
+                                const uint8_t *payload,
+                                size_t payload_size);
+
+/*
+ * Client-only bounded wait for one received legacy video packet. On success,
+ * packet_size_out is the copied byte count. When the destination is too small,
+ * packet_size_out reports the required count and the packet remains queued.
+ */
+int32_t sc_datasmash_video_receive(ScDatasmashEndpoint *endpoint,
+                                   uint8_t *packet,
+                                   size_t packet_capacity,
+                                   size_t *packet_size_out,
+                                   uint32_t timeout_ms);
+
+int32_t sc_datasmash_endpoint_stats(const ScDatasmashEndpoint *endpoint,
+                                    ScDatasmashStats *stats);
+
 int32_t sc_datasmash_endpoint_stop(ScDatasmashEndpoint *endpoint);
 void sc_datasmash_endpoint_destroy(ScDatasmashEndpoint *endpoint);
 
