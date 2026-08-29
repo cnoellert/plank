@@ -70,6 +70,8 @@ fi
 
 %files
 %license /usr/share/licenses/stationconnect-host/LICENSE-Sunshine
+%license /usr/share/licenses/stationconnect-host/LICENSE-Kyber-AGPLv3
+%license /usr/share/licenses/stationconnect-host/LICENSE-Kyber-Notice
 %doc /usr/share/doc/stationconnect-host/README.md
 /etc/pam.d/stationconnect-host
 %config(noreplace) /etc/stationconnect/stationconnect-host.conf
@@ -96,8 +98,8 @@ fi
 /usr/share/stationconnect/
 
 %changelog
-* Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.182
-- Persist GNOME shortcut-inhibitor approval under the canonical client identity
+* Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.183.datasmash
+- Add the isolated experimental single-port transport handshake
 
 * Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.181
 - Harden and scale the Native X11 10-bit x264 identity path

@@ -14,6 +14,7 @@ output_dir=$(realpath -m -- "${3:-${repo_dir}/artifacts/packages}")
 moonlight_source_dir=$(realpath -- "${4:-${repo_dir}/client/moonlight-qt-fork}")
 common_source_dir="${moonlight_source_dir}/moonlight-common-c/moonlight-common-c"
 nanors_source_dir="${common_source_dir}/nanors"
+kyber_source_dir="${repo_dir}/third_party/kyber-kymux"
 approved_client_logo="${repo_dir}/branding/assets/stationconnect_logo_circle.png"
 runtime_client_logo="${moonlight_source_dir}/app/res/stationconnect-logo.png"
 ffmpeg_version=9.0.1
@@ -34,7 +35,7 @@ for archive_candidate in \
   fi
 done
 package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {
   echo "invalid shared package version: ${package_version}" >&2
   exit 1
 }
@@ -58,6 +59,12 @@ done
   echo "nanors source tree is unavailable: ${nanors_source_dir}" >&2
   exit 1
 }
+for kyber_license in COPYING.AGPLv3 COPYING.md; do
+  [[ -f ${kyber_source_dir}/${kyber_license} ]] || {
+    echo "Kyber license file is unavailable: ${kyber_license}" >&2
+    exit 1
+  }
+done
 [[ -f ${approved_client_logo} ]] || {
   echo "approved StationConnect client logo is unavailable: ${approved_client_logo}" >&2
   exit 1
@@ -107,6 +114,7 @@ fi
 moonlight_commit=$(git -C "$moonlight_source_dir" rev-parse HEAD)
 common_commit=$(git -C "$common_source_dir" rev-parse HEAD)
 nanors_commit=$(git -C "$nanors_source_dir" rev-parse HEAD)
+kyber_commit=$(git -C "$kyber_source_dir" rev-parse HEAD)
 source_epoch=$(git -C "$moonlight_source_dir" log -1 --format=%ct)
 work_dir=$(mktemp -d --tmpdir stationconnect-client-deb.XXXXXX)
 cleanup() {
@@ -144,6 +152,10 @@ install -D -m 0644 "$moonlight_source_dir/LICENSE" \
   "$stage_dir/usr/share/doc/stationconnect-client/copyright"
 install -D -m 0644 "$nanors_source_dir/LICENSE" \
   "$stage_dir/usr/share/doc/stationconnect-client/COPYING.nanors"
+install -D -m 0644 "$kyber_source_dir/COPYING.AGPLv3" \
+  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.Kyber.AGPLv3"
+install -D -m 0644 "$kyber_source_dir/COPYING.md" \
+  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.Kyber.md"
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv2.1" \
   "$stage_dir/usr/share/doc/stationconnect-client/COPYING.FFmpeg.LGPLv2.1"
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv3" \
@@ -207,6 +219,7 @@ cat >"$stage_dir/usr/share/doc/stationconnect-client/BUILD-INFO" <<EOF
 Moonlight-Qt commit: ${moonlight_commit}
 moonlight-common-c commit: ${common_commit}
 nanors commit: ${nanors_commit}
+Kyber kymux commit: ${kyber_commit}
 FFmpeg version: ${ffmpeg_version}
 FFmpeg source SHA-256: ${ffmpeg_sha256}
 Moonlight binary SHA-256: $(sha256sum "$moonlight_binary" | awk '{print $1}')
@@ -338,6 +351,13 @@ grep -Fq './usr/share/doc/stationconnect-client/COPYING.nanors' \
   echo "client DEB is missing the nanors license" >&2
   exit 1
 }
+for kyber_license in COPYING.Kyber.AGPLv3 COPYING.Kyber.md; do
+  grep -Fq "./usr/share/doc/stationconnect-client/${kyber_license}" \
+    <<<"$package_manifest" || {
+    echo "client DEB is missing the Kyber license file: ${kyber_license}" >&2
+    exit 1
+  }
+done
 for maintainer_script in postinst postrm; do
   [[ -x ${control_audit_dir}/${maintainer_script} ]] || {
     echo "client DEB is missing executable ${maintainer_script}" >&2

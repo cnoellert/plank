@@ -42,9 +42,23 @@ cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
 echo "client_datasmash_rust_input_gate=pass"
+for required_datasmash_token in \
+  'stationconnect-data-plane' \
+  'Datasmash single-port transport (Experimental)' \
+  '"&scDataPlane="' \
+  'StationConnectDatasmashCertificateSha256' \
+  'isCanonicalSha256Hex' \
+  'startDatasmashDataPlane'; do
+  rg -Fq "$required_datasmash_token" \
+    "$source_dir/app" || {
+    echo "client datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2
+    exit 1
+  }
+done
+echo "client_datasmash_negotiation_gate=pass"
 
 package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {
   echo "invalid shared package version: ${package_version}" >&2
   exit 1
 }

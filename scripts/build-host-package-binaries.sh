@@ -52,6 +52,20 @@ cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
 echo "host_datasmash_rust_input_gate=pass"
+for required_datasmash_token in \
+  'scDataPlane' \
+  'legacy,datasmash' \
+  'StationConnectDatasmashCertificateSha256' \
+  'StationConnectDatasmashToken' \
+  'start_datasmash_data_plane' \
+  'session.datasmash_endpoint'; do
+  rg -Fq "$required_datasmash_token" \
+    "$source_dir/src" || {
+    echo "host datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2
+    exit 1
+  }
+done
+echo "host_datasmash_negotiation_gate=pass"
 for compiler in \
   /opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   /opt/rh/gcc-toolset-14/root/usr/bin/g++ \

@@ -11,7 +11,7 @@ repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 output_dir=$(realpath -m -- "${2:-${repo_dir}/artifacts/packages}")
 package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {
   echo "invalid shared package version: ${package_version}" >&2
   exit 1
 }
@@ -110,6 +110,10 @@ python3 "$repo_dir/packaging/display/generate-virtual-edids.py" \
   "$payload_dir/usr/share/stationconnect/display"
 install -D -m 0644 "$repo_dir/host/sunshine-fork/LICENSE" \
   "$payload_dir/usr/share/licenses/stationconnect-host/LICENSE-Sunshine"
+install -D -m 0644 "$repo_dir/third_party/kyber-kymux/COPYING.AGPLv3" \
+  "$payload_dir/usr/share/licenses/stationconnect-host/LICENSE-Kyber-AGPLv3"
+install -D -m 0644 "$repo_dir/third_party/kyber-kymux/COPYING.md" \
+  "$payload_dir/usr/share/licenses/stationconnect-host/LICENSE-Kyber-Notice"
 install -D -m 0644 "$repo_dir/packaging/README.md" \
   "$payload_dir/usr/share/doc/stationconnect-host/README.md"
 mkdir -p "$payload_dir/usr/share/stationconnect"
@@ -147,6 +151,10 @@ fi
 echo "host_rpm_private_service_binary_gate=pass"
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-certificate$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-state$'
+rpm -qpl "$rpm_file" | rg -q \
+  '/usr/share/licenses/stationconnect-host/LICENSE-Kyber-AGPLv3$'
+rpm -qpl "$rpm_file" | rg -q \
+  '/usr/share/licenses/stationconnect-host/LICENSE-Kyber-Notice$'
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-display-prepare$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-display-prepare\.service$'
