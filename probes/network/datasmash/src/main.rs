@@ -17,7 +17,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 
 const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
-const PROTOCOL_VERSION: u16 = 1;
+const PROTOCOL_VERSION: u16 = 2;
 const DATAGRAM_HEADER_SIZE: usize = 16;
 const INPUT_RECORD_SIZE: usize = 16;
 const DEFAULT_VIDEO_BITRATE_BPS: u64 = 150_000_000;
@@ -25,6 +25,8 @@ const DEFAULT_DURATION_SECS: u64 = 3;
 const VIDEO_LANE: u8 = 1;
 const AUDIO_LANE: u8 = 2;
 const MOTION_LANE: u8 = 3;
+const MEDIA_ROLE: &str = "media";
+const INTERACTION_ROLE: &str = "interaction";
 #[cfg(feature = "quinn-bbr")]
 const CONGESTION_CONTROL: &str = "bbr";
 #[cfg(not(feature = "quinn-bbr"))]
@@ -154,6 +156,48 @@ async fn read_auth(stream: &mut kynet::RecvStream, expected_token: &str) -> Resu
         bail!("authentication token mismatch");
     }
     Ok(())
+}
+
+fn role_token(token: &str, role: &str) -> String {
+    format!("{token}:{role}")
+}
+
+async fn accept_authenticated(
+    server: &kynet::common::CommonServer,
+    expected_token: &str,
+    role: &str,
+) -> Result<(Connection, kynet::SendStream, kynet::RecvStream)> {
+    let connection = server
+        .accept()
+        .await?
+        .ok_or_else(|| anyhow!("QUIC listener closed"))?;
+    let (mut send, mut recv) = connection.accept_bi().await?;
+    if let Err(error) = read_auth(&mut recv, &role_token(expected_token, role)).await {
+        connection.close(1, "authentication failed");
+        return Err(error);
+    }
+    send.write_all(&[0]).await?;
+    send.flush().await?;
+    Ok((connection, send, recv))
+}
+
+async fn connect_authenticated(
+    server_address: SocketAddr,
+    server_name: &str,
+    options: &kynet::quinn::QuinnClientOptions,
+    token: &str,
+    role: &str,
+) -> Result<(Connection, kynet::SendStream, kynet::RecvStream)> {
+    let connection = Connection::quinn_connect(server_address, server_name, None, options).await?;
+    let (mut send, mut recv) = connection.open_bi().await?;
+    write_auth(&mut send, &role_token(token, role)).await?;
+    let mut auth_status = [1_u8; 1];
+    recv.read_exact(&mut auth_status).await?;
+    if auth_status[0] != 0 {
+        connection.close(1, "authentication rejected");
+        bail!("server rejected {role} authentication");
+    }
+    Ok((connection, send, recv))
 }
 
 async fn send_video(
@@ -304,41 +348,40 @@ async fn run_server(args: &[String]) -> Result<()> {
         Connection::start_server_on_addr(bind_address, vec![certificate], private_key, &options)?;
     println!("status=listening address={bind_address}");
 
-    let connection = server
-        .accept()
-        .await?
-        .ok_or_else(|| anyhow!("QUIC listener closed"))?;
-    let (mut input_send, mut input_recv) = connection.accept_bi().await?;
-    if let Err(error) = read_auth(&mut input_recv, expected_token).await {
-        connection.close(1, "authentication failed");
-        return Err(error);
-    }
-    input_send.write_all(&[0]).await?;
-    input_send.flush().await?;
+    let (media_connection, _media_auth_send, _media_auth_recv) =
+        accept_authenticated(&server, expected_token, MEDIA_ROLE).await?;
+    let (interaction_connection, input_send, input_recv) =
+        accept_authenticated(&server, expected_token, INTERACTION_ROLE).await?;
 
     let counters = Arc::new(DatagramCounters::default());
     let stop = Arc::new(AtomicBool::new(false));
     let receive_task = tokio::spawn(receive_server_datagrams(
-        connection.clone(),
+        interaction_connection.clone(),
         stop.clone(),
         counters.clone(),
     ));
     let echo_task = tokio::spawn(echo_critical_input(input_send, input_recv));
     let video_task = tokio::spawn(send_video(
-        connection.clone(),
+        media_connection.clone(),
         duration,
         bitrate_bps,
         counters.clone(),
     ));
-    let audio_task = tokio::spawn(send_audio(connection.clone(), duration, counters.clone()));
+    let audio_task = tokio::spawn(send_audio(
+        media_connection.clone(),
+        duration,
+        counters.clone(),
+    ));
 
     video_task.await??;
     audio_task.await?;
     tokio::time::sleep(Duration::from_millis(200)).await;
     stop.store(true, Ordering::Relaxed);
     receive_task.await?;
-    let stats = connection.stats().await;
-    connection.close(0, "probe complete");
+    let media_stats = media_connection.stats().await;
+    let interaction_stats = interaction_connection.stats().await;
+    media_connection.close(0, "probe complete");
+    interaction_connection.close(0, "probe complete");
     let critical_input = tokio::time::timeout(Duration::from_secs(1), echo_task)
         .await
         .ok()
@@ -347,7 +390,7 @@ async fn run_server(args: &[String]) -> Result<()> {
         .unwrap_or(0);
 
     println!(
-        "status=complete role=server congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
+        "status=complete role=server connections=2 congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} media_quic_rtt_us={} media_quic_packets_lost={} interaction_quic_rtt_us={} interaction_quic_packets_lost={} media_max_datagram_size={} interaction_max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
@@ -359,9 +402,15 @@ async fn run_server(args: &[String]) -> Result<()> {
         counters.audio_sequence_gaps.load(Ordering::Relaxed),
         counters.motion_sequence_gaps.load(Ordering::Relaxed),
         counters.stale_datagrams.load(Ordering::Relaxed),
-        stats.rtt.map(|value| value.as_micros()).unwrap_or(0),
-        stats.packets_lost.unwrap_or(0),
-        connection.max_datagram_size().unwrap_or(0),
+        media_stats.rtt.map(|value| value.as_micros()).unwrap_or(0),
+        media_stats.packets_lost.unwrap_or(0),
+        interaction_stats
+            .rtt
+            .map(|value| value.as_micros())
+            .unwrap_or(0),
+        interaction_stats.packets_lost.unwrap_or(0),
+        media_connection.max_datagram_size().unwrap_or(0),
+        interaction_connection.max_datagram_size().unwrap_or(0),
     );
     Ok(())
 }
@@ -510,35 +559,43 @@ async fn run_client(args: &[String]) -> Result<()> {
         keep_alive_interval: Some(Duration::from_secs(2)),
         certificate_hash: Some(certificate_hash.clone()),
     };
-    let connection = Connection::quinn_connect(server_address, server_name, None, &options).await?;
-    let (mut input_send, mut input_recv) = connection.open_bi().await?;
-    write_auth(&mut input_send, token).await?;
-    let mut auth_status = [1_u8; 1];
-    input_recv.read_exact(&mut auth_status).await?;
-    if auth_status[0] != 0 {
-        bail!("server rejected authentication");
-    }
+    let (media_connection, _media_auth_send, _media_auth_recv) =
+        connect_authenticated(server_address, server_name, &options, token, MEDIA_ROLE).await?;
+    let (interaction_connection, input_send, input_recv) = connect_authenticated(
+        server_address,
+        server_name,
+        &options,
+        token,
+        INTERACTION_ROLE,
+    )
+    .await?;
 
     let counters = Arc::new(DatagramCounters::default());
     let receive_task = tokio::spawn(receive_client_datagrams(
-        connection.clone(),
+        media_connection.clone(),
         duration,
         counters.clone(),
     ));
-    let motion_task = tokio::spawn(send_motion(connection.clone(), duration, counters.clone()));
+    let motion_task = tokio::spawn(send_motion(
+        interaction_connection.clone(),
+        duration,
+        counters.clone(),
+    ));
     let input_task = tokio::spawn(run_input_rtt(input_send, input_recv, duration));
 
     motion_task.await?;
     let (input_samples, input_rtt_p50_ns, input_rtt_p99_ns) = input_task.await??;
     receive_task.await?;
-    let stats = connection.stats().await;
-    connection.close(0, "probe complete");
+    let media_stats = media_connection.stats().await;
+    let interaction_stats = interaction_connection.stats().await;
+    media_connection.close(0, "probe complete");
+    interaction_connection.close(0, "probe complete");
 
     let elapsed_seconds = duration.as_secs_f64();
     let received_bitrate =
         counters.video_bytes.load(Ordering::Relaxed) as f64 * 8.0 / elapsed_seconds;
     println!(
-        "status=complete role=client congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
+        "status=complete role=client connections=2 congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} media_quic_rtt_us={} media_quic_packets_lost={} interaction_quic_rtt_us={} interaction_quic_packets_lost={} media_max_datagram_size={} interaction_max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
@@ -552,9 +609,15 @@ async fn run_client(args: &[String]) -> Result<()> {
         counters.audio_sequence_gaps.load(Ordering::Relaxed),
         counters.motion_sequence_gaps.load(Ordering::Relaxed),
         counters.stale_datagrams.load(Ordering::Relaxed),
-        stats.rtt.map(|value| value.as_micros()).unwrap_or(0),
-        stats.packets_lost.unwrap_or(0),
-        connection.max_datagram_size().unwrap_or(0),
+        media_stats.rtt.map(|value| value.as_micros()).unwrap_or(0),
+        media_stats.packets_lost.unwrap_or(0),
+        interaction_stats
+            .rtt
+            .map(|value| value.as_micros())
+            .unwrap_or(0),
+        interaction_stats.packets_lost.unwrap_or(0),
+        media_connection.max_datagram_size().unwrap_or(0),
+        interaction_connection.max_datagram_size().unwrap_or(0),
     );
     Ok(())
 }
