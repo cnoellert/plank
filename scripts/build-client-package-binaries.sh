@@ -618,13 +618,19 @@ echo "client_reconnect_local_event_gate=pass"
 
 for required_client_identity_token in \
   'QGuiApplication::setApplicationDisplayName("StationConnect Client");' \
-  'SDL_SetHint("SDL_APP_NAME", "StationConnect Client");' \
+  'SDL_SetAppMetadata("StationConnect Client",' \
+  '"la.instinctual.StationConnect.Client");' \
   'app.setDesktopFileName("la.instinctual.StationConnect.Client");'; do
   rg -Fq "$required_client_identity_token" "$source_dir/app/main.cpp" || {
     echo "client application identity is missing: ${required_client_identity_token}" >&2
     exit 1
   }
 done
+if rg -n 'SDL_(AUDIO_DEVICE_APP_NAME|VIDEO_(WAYLAND|X11)_WMCLASS)' \
+    "$source_dir/app/main.cpp"; then
+  echo "client source still uses removed SDL2 application identity variables" >&2
+  exit 1
+fi
 rg -Fq 'TARGET = stationconnect-client' "$source_dir/app/app.pro" || {
   echo "client build target is not branded stationconnect-client" >&2
   exit 1

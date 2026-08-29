@@ -96,6 +96,9 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.182
+- Persist GNOME shortcut-inhibitor approval under the canonical client identity
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.181
 - Harden and scale the Native X11 10-bit x264 identity path
 
