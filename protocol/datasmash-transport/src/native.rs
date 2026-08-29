@@ -48,11 +48,47 @@ impl NativeServerProtocols {
     pub fn connection(&self) -> &Connection {
         &self.connection
     }
+
+    pub(crate) fn into_parts(
+        self,
+    ) -> (
+        Connection,
+        VideoServerProtocol,
+        AudioServerProtocol,
+        InputProtocol,
+        DataProtocol,
+    ) {
+        (
+            self.connection,
+            self.video,
+            self.audio,
+            self.input,
+            self.data,
+        )
+    }
 }
 
 impl NativeClientProtocols {
     pub fn connection(&self) -> &Connection {
         &self.connection
+    }
+
+    pub(crate) fn into_parts(
+        self,
+    ) -> (
+        Connection,
+        VideoClientProtocol,
+        AudioClientProtocol,
+        InputProtocol,
+        DataProtocol,
+    ) {
+        (
+            self.connection,
+            self.video,
+            self.audio,
+            self.input,
+            self.data,
+        )
     }
 }
 

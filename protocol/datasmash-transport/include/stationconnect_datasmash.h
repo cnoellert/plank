@@ -13,6 +13,7 @@ extern "C" {
 #define SC_DATASMASH_ABI_VERSION 5u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
+typedef struct ScDatasmashNativeEndpoint ScDatasmashNativeEndpoint;
 
 typedef enum ScDatasmashMode {
     SC_DATASMASH_MODE_SERVER = 1,
@@ -97,6 +98,53 @@ typedef struct ScDatasmashConfig {
     const char *certificate_sha256;
     const char *session_token;
 } ScDatasmashConfig;
+
+#define SC_DATASMASH_NATIVE_VIDEO_CODEC_H264 0x48323634u
+#define SC_DATASMASH_NATIVE_VIDEO_CODEC_HEVC 0x48455643u
+#define SC_DATASMASH_NATIVE_VIDEO_FLAG_KEY 0x00000001u
+
+typedef struct ScDatasmashNativeVideoFrameInfo {
+    uint32_t struct_size;
+    uint32_t codec;
+    uint32_t flags;
+    uint32_t reserved;
+    uint64_t frame_number;
+    uint64_t pts;
+    uint16_t host_processing_latency;
+    uint8_t reserved2[6];
+} ScDatasmashNativeVideoFrameInfo;
+
+typedef struct ScDatasmashNativeAudioPacketInfo {
+    uint32_t struct_size;
+    uint16_t frame_samples;
+    uint16_t reserved;
+    uint32_t missing_samples;
+    uint32_t reserved2;
+    uint64_t pts;
+} ScDatasmashNativeAudioPacketInfo;
+
+typedef struct ScDatasmashNativeStats {
+    uint32_t struct_size;
+    uint64_t video_frames_sent;
+    uint64_t video_bytes_sent;
+    uint64_t video_frames_received;
+    uint64_t video_bytes_received;
+    uint64_t video_send_drops;
+    uint64_t video_receive_drops;
+    uint64_t audio_packets_sent;
+    uint64_t audio_bytes_sent;
+    uint64_t audio_packets_received;
+    uint64_t audio_bytes_received;
+    uint64_t audio_send_drops;
+    uint64_t audio_receive_drops;
+    uint64_t input_packets_sent;
+    uint64_t input_packets_received;
+    uint64_t data_packets_sent;
+    uint64_t data_packets_received;
+    uint64_t quic_rtt_us;
+    uint64_t quic_packets_lost;
+    uint64_t kyproto_packets_dropped;
+} ScDatasmashNativeStats;
 
 uint32_t sc_datasmash_abi_version(void);
 
@@ -191,6 +239,69 @@ void sc_datasmash_endpoint_destroy(ScDatasmashEndpoint *endpoint);
 size_t sc_datasmash_endpoint_last_error(const ScDatasmashEndpoint *endpoint,
                                         char *buffer,
                                         size_t buffer_size);
+
+/*
+ * KyProto-native complete-frame API. This deliberately bypasses the legacy
+ * GameStream RTP, AES, Reed-Solomon, packetization, and depacketization path.
+ * The Host submits complete encoded Annex-B frames and raw Opus packets;
+ * KyProto owns packetization, RaptorQ, ordering, and reconstruction.
+ */
+int32_t sc_datasmash_native_endpoint_create(
+        const ScDatasmashConfig *config,
+        ScDatasmashNativeEndpoint **endpoint_out);
+int32_t sc_datasmash_native_endpoint_start(
+        ScDatasmashNativeEndpoint *endpoint);
+int32_t sc_datasmash_native_endpoint_wait_ready(
+        ScDatasmashNativeEndpoint *endpoint, uint32_t timeout_ms);
+uint32_t sc_datasmash_native_endpoint_state(
+        const ScDatasmashNativeEndpoint *endpoint);
+
+int32_t sc_datasmash_native_video_send(
+        ScDatasmashNativeEndpoint *endpoint,
+        const ScDatasmashNativeVideoFrameInfo *info,
+        const uint8_t *payload, size_t payload_size);
+int32_t sc_datasmash_native_video_receive(
+        ScDatasmashNativeEndpoint *endpoint,
+        ScDatasmashNativeVideoFrameInfo *info,
+        uint8_t *payload, size_t payload_capacity,
+        size_t *payload_size_out, uint32_t timeout_ms);
+
+int32_t sc_datasmash_native_audio_send(
+        ScDatasmashNativeEndpoint *endpoint,
+        const ScDatasmashNativeAudioPacketInfo *info,
+        const uint8_t *payload, size_t payload_size);
+int32_t sc_datasmash_native_audio_receive(
+        ScDatasmashNativeEndpoint *endpoint,
+        ScDatasmashNativeAudioPacketInfo *info,
+        uint8_t *payload, size_t payload_capacity,
+        size_t *payload_size_out, uint32_t timeout_ms);
+
+int32_t sc_datasmash_native_input_send(
+        ScDatasmashNativeEndpoint *endpoint, uint8_t type,
+        const uint8_t *payload, size_t payload_size);
+int32_t sc_datasmash_native_input_receive(
+        ScDatasmashNativeEndpoint *endpoint, uint8_t *type_out,
+        uint8_t *payload, size_t payload_capacity,
+        size_t *payload_size_out, uint32_t timeout_ms);
+
+int32_t sc_datasmash_native_data_send(
+        ScDatasmashNativeEndpoint *endpoint,
+        const uint8_t *payload, size_t payload_size);
+int32_t sc_datasmash_native_data_receive(
+        ScDatasmashNativeEndpoint *endpoint,
+        uint8_t *payload, size_t payload_capacity,
+        size_t *payload_size_out, uint32_t timeout_ms);
+
+int32_t sc_datasmash_native_endpoint_stats(
+        const ScDatasmashNativeEndpoint *endpoint,
+        ScDatasmashNativeStats *stats);
+int32_t sc_datasmash_native_endpoint_stop(
+        ScDatasmashNativeEndpoint *endpoint);
+void sc_datasmash_native_endpoint_destroy(
+        ScDatasmashNativeEndpoint *endpoint);
+size_t sc_datasmash_native_endpoint_last_error(
+        const ScDatasmashNativeEndpoint *endpoint,
+        char *buffer, size_t buffer_size);
 
 #ifdef __cplusplus
 }
