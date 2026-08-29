@@ -7,7 +7,10 @@ publish = false
 
 [features]
 default = ["quinn-bbr"]
-quinn-bbr = ["quinn-proto/stationconnect-bbr-default"]
+quinn-bbr = [
+    "quinn-proto/stationconnect-bbr-default",
+    "stationconnect-datasmash-transport/quinn-bbr",
+]
 
 [dependencies]
 anyhow = "1.0"
@@ -15,7 +18,7 @@ bytes = "1.10"
 hex = "0.4"
 kynet = { path = "../../../third_party/kyber-kymux/kynet", features = ["kynet-quinn"] }
 quinn-proto = { version = "=0.11.17", default-features = false }
-subtle = "2.6"
+stationconnect-datasmash-transport = { path = "../../../protocol/datasmash-transport", default-features = false }
 tokio = { version = "1.47", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 
 [workspace]

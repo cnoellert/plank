@@ -15,6 +15,7 @@
 /scripts/__pycache__/
 /probes/network/datasmash/target/
 /probes/network/datasmash/vendor/**/target/
+/protocol/datasmash-transport/target/
 /test_sunshine.log*
 /sunshine_state.json
 /write_file_test_*.txt

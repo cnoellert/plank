@@ -1,0 +1,26 @@
+[package]
+name = "stationconnect-datasmash-transport"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = ["quinn-bbr"]
+quinn-bbr = ["quinn-proto/stationconnect-bbr-default"]
+
+[dependencies]
+anyhow = "1.0"
+hex = "0.4"
+kynet = { path = "../../third_party/kyber-kymux/kynet", features = ["kynet-quinn"] }
+quinn-proto = { version = "=0.11.17", default-features = false }
+subtle = "2.6"
+tokio = { version = "1.47", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+
+[patch.crates-io]
+# Keep the same narrowly repaired Quinn release qualified by the standalone
+# probe. See probes/network/datasmash/vendor/README.md.
+quinn-proto = { path = "../../probes/network/datasmash/vendor/quinn-proto-0.11.17" }

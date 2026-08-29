@@ -4,7 +4,11 @@
 
 use anyhow::{Context, Result, anyhow, bail};
 use bytes::{BufMut, Bytes, BytesMut};
-use kynet::{Connection, Server};
+use kynet::Connection;
+use stationconnect_datasmash_transport::{
+    ConnectionRole, PROTOCOL_MAGIC, accept_authenticated_candidate as accept_auth_candidate,
+    connect_authenticated, connect_with_role_code,
+};
 use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::net::SocketAddr;
@@ -12,12 +16,9 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::{Mutex, Notify};
 
-const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
-const PROTOCOL_VERSION: u16 = 2;
 const DATAGRAM_HEADER_SIZE: usize = 16;
 const INPUT_RECORD_SIZE: usize = 16;
 const DEFAULT_VIDEO_BITRATE_BPS: u64 = 150_000_000;
@@ -25,42 +26,12 @@ const DEFAULT_DURATION_SECS: u64 = 3;
 const VIDEO_LANE: u8 = 1;
 const AUDIO_LANE: u8 = 2;
 const MOTION_LANE: u8 = 3;
-const MEDIA_ROLE: &str = "media";
-const INTERACTION_ROLE: &str = "interaction";
 const VIDEO_QUEUE_CAPACITY: usize = 64;
 const AUDIO_QUEUE_CAPACITY: usize = 8;
 #[cfg(feature = "quinn-bbr")]
 const CONGESTION_CONTROL: &str = "bbr";
 #[cfg(not(feature = "quinn-bbr"))]
 const CONGESTION_CONTROL: &str = "cubic";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-enum ConnectionRole {
-    Media = 1,
-    Interaction = 2,
-}
-
-impl ConnectionRole {
-    fn name(self) -> &'static str {
-        match self {
-            Self::Media => MEDIA_ROLE,
-            Self::Interaction => INTERACTION_ROLE,
-        }
-    }
-}
-
-impl TryFrom<u8> for ConnectionRole {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        match value {
-            value if value == Self::Media as u8 => Ok(Self::Media),
-            value if value == Self::Interaction as u8 => Ok(Self::Interaction),
-            _ => bail!("unknown connection role {value}"),
-        }
-    }
-}
 
 #[derive(Default)]
 struct DatagramCounters {
@@ -190,110 +161,6 @@ fn parse_datagram(packet: &Bytes) -> Result<DatagramHeader> {
         lane: packet[4],
         sequence: u64::from_be_bytes(packet[8..16].try_into().unwrap()),
     })
-}
-
-async fn write_auth(stream: &mut kynet::SendStream, token: &str, role: u8) -> Result<()> {
-    let token_len: u16 = token
-        .len()
-        .try_into()
-        .context("authentication token is too long")?;
-    stream.write_all(&PROTOCOL_MAGIC).await?;
-    stream.write_all(&PROTOCOL_VERSION.to_be_bytes()).await?;
-    stream.write_all(&[role]).await?;
-    stream.write_all(&token_len.to_be_bytes()).await?;
-    stream.write_all(token.as_bytes()).await?;
-    stream.flush().await?;
-    Ok(())
-}
-
-async fn read_auth(stream: &mut kynet::RecvStream, expected_token: &str) -> Result<ConnectionRole> {
-    let mut header = [0_u8; 9];
-    stream.read_exact(&mut header).await?;
-    if header[..4] != PROTOCOL_MAGIC {
-        bail!("authentication magic mismatch");
-    }
-    let version = u16::from_be_bytes([header[4], header[5]]);
-    if version != PROTOCOL_VERSION {
-        bail!("unsupported protocol version {version}");
-    }
-    let role = ConnectionRole::try_from(header[6])?;
-    let token_len = u16::from_be_bytes([header[7], header[8]]) as usize;
-    if token_len == 0 || token_len > 1024 {
-        bail!("invalid authentication token length");
-    }
-    let mut token = vec![0_u8; token_len];
-    stream.read_exact(&mut token).await?;
-    if token
-        .as_slice()
-        .ct_eq(expected_token.as_bytes())
-        .unwrap_u8()
-        != 1
-    {
-        bail!("authentication token mismatch");
-    }
-    Ok(role)
-}
-
-async fn accept_auth_candidate(
-    server: &kynet::common::CommonServer,
-    expected_token: &str,
-) -> Result<(
-    ConnectionRole,
-    Connection,
-    kynet::SendStream,
-    kynet::RecvStream,
-)> {
-    let connection = server
-        .accept()
-        .await?
-        .ok_or_else(|| anyhow!("QUIC listener closed"))?;
-    let (send, mut recv) = connection.accept_bi().await?;
-    let role = match read_auth(&mut recv, expected_token).await {
-        Ok(role) => role,
-        Err(error) => {
-            connection.close(1, "authentication failed");
-            return Err(error);
-        }
-    };
-    Ok((role, connection, send, recv))
-}
-
-async fn connect_with_role_code(
-    server_address: SocketAddr,
-    server_name: &str,
-    options: &kynet::quinn::QuinnClientOptions,
-    token: &str,
-    role: u8,
-    role_name: &str,
-) -> Result<(Connection, kynet::SendStream, kynet::RecvStream)> {
-    let connection = Connection::quinn_connect(server_address, server_name, None, options).await?;
-    let (mut send, mut recv) = connection.open_bi().await?;
-    write_auth(&mut send, token, role).await?;
-    let mut auth_status = [1_u8; 1];
-    recv.read_exact(&mut auth_status).await?;
-    if auth_status[0] != 0 {
-        connection.close(1, "authentication rejected");
-        bail!("server rejected {role_name} authentication");
-    }
-    Ok((connection, send, recv))
-}
-
-async fn connect_authenticated(
-    server_address: SocketAddr,
-    server_name: &str,
-    options: &kynet::quinn::QuinnClientOptions,
-    token: &str,
-    role: ConnectionRole,
-) -> Result<(Connection, kynet::SendStream, kynet::RecvStream)> {
-    connect_with_role_code(
-        server_address,
-        server_name,
-        options,
-        token,
-        role as u8,
-        role.name(),
-    )
-    .await
 }
 
 async fn produce_video(
