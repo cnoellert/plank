@@ -15,6 +15,8 @@ use std::time::{Duration, Instant};
 use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+pub mod native;
+
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
 pub const PROTOCOL_VERSION: u16 = 5;
 pub const ABI_VERSION: u32 = 5;
