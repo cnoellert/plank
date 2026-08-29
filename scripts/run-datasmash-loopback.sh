@@ -39,6 +39,40 @@ wait_for_server() {
   return 1
 }
 
+start_server() {
+  local log_file=$1
+  local token=$2
+  local duration=$3
+  local bitrate=$4
+  "$probe_binary" server "127.0.0.1:$probe_port" \
+    "$probe_tmp/cert.pem" "$probe_tmp/key.pem" "$token" \
+    "$duration" "$bitrate" >"$log_file" 2>&1 &
+  server_pid=$!
+  wait_for_server "$log_file"
+}
+
+expect_role_rejection() {
+  local mode=$1
+  local expected_error=$2
+  local server_log="$probe_tmp/server-$mode.log"
+  local client_log="$probe_tmp/client-$mode.log"
+
+  start_server "$server_log" "$probe_token" 1 1000000
+  if "$probe_binary" client "127.0.0.1:$probe_port" localhost \
+    "$certificate_hash" "$probe_token" 1 "$mode" \
+    >"$client_log" 2>&1; then
+    echo "datasmash client unexpectedly accepted role test: $mode" >&2
+    exit 1
+  fi
+  if wait "$server_pid"; then
+    echo "datasmash server unexpectedly accepted role test: $mode" >&2
+    exit 1
+  fi
+  server_pid=
+  grep -q "$expected_error" "$server_log"
+  echo "status=complete test=$mode-rejected"
+}
+
 openssl req -x509 -newkey rsa:2048 -nodes \
   -keyout "$probe_tmp/key.pem" \
   -out "$probe_tmp/cert.pem" \
@@ -48,11 +82,7 @@ certificate_hash=$(sha256sum "$probe_tmp/cert.der" | awk '{print $1}')
 
 cargo build --locked --release --manifest-path "$probe_dir/Cargo.toml"
 
-"$probe_binary" server "127.0.0.1:$probe_port" \
-  "$probe_tmp/cert.pem" "$probe_tmp/key.pem" "$probe_token" \
-  "$probe_duration" "$probe_bitrate" >"$probe_tmp/server.log" 2>&1 &
-server_pid=$!
-wait_for_server "$probe_tmp/server.log"
+start_server "$probe_tmp/server.log" "$probe_token" "$probe_duration" "$probe_bitrate"
 
 "$probe_binary" client "127.0.0.1:$probe_port" localhost \
   "$certificate_hash" "$probe_token" "$probe_duration" | tee "$probe_tmp/client.log"
@@ -65,11 +95,7 @@ grep -q '^status=complete role=server ' "$probe_tmp/server.log"
 
 # A QUIC connection with an invalid data-plane bearer token must be rejected
 # before any logical lane becomes active.
-"$probe_binary" server "127.0.0.1:$probe_port" \
-  "$probe_tmp/cert.pem" "$probe_tmp/key.pem" "$probe_token" 1 1000000 \
-  >"$probe_tmp/server-negative.log" 2>&1 &
-server_pid=$!
-wait_for_server "$probe_tmp/server-negative.log"
+start_server "$probe_tmp/server-negative.log" "$probe_token" 1 1000000
 if "$probe_binary" client "127.0.0.1:$probe_port" localhost \
   "$certificate_hash" "${probe_token}-invalid" 1 \
   >"$probe_tmp/client-negative.log" 2>&1; then
@@ -83,3 +109,20 @@ fi
 server_pid=
 grep -q 'authentication token mismatch' "$probe_tmp/server-negative.log"
 echo 'status=complete test=invalid-token-rejected'
+
+# Connection roles are explicit authenticated protocol fields. Either arrival
+# order is valid, while duplicate and unknown roles fail before lane startup.
+start_server "$probe_tmp/server-interaction-first.log" "$probe_token" 1 1000000
+"$probe_binary" client "127.0.0.1:$probe_port" localhost \
+  "$certificate_hash" "$probe_token" 1 interaction-first \
+  >"$probe_tmp/client-interaction-first.log"
+wait "$server_pid"
+server_pid=
+grep -q '^status=complete role=client ' "$probe_tmp/client-interaction-first.log"
+grep -q '^status=complete role=server ' "$probe_tmp/server-interaction-first.log"
+echo 'status=complete test=interaction-first-accepted'
+
+expect_role_rejection duplicate-media 'duplicate media connection role'
+expect_role_rejection duplicate-interaction 'duplicate interaction connection role'
+expect_role_rejection unknown-role 'unknown connection role 255'
+expect_role_rejection mismatched-token 'authentication token mismatch'

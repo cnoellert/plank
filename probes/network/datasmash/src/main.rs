@@ -32,6 +32,34 @@ const CONGESTION_CONTROL: &str = "bbr";
 #[cfg(not(feature = "quinn-bbr"))]
 const CONGESTION_CONTROL: &str = "cubic";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+enum ConnectionRole {
+    Media = 1,
+    Interaction = 2,
+}
+
+impl ConnectionRole {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Media => MEDIA_ROLE,
+            Self::Interaction => INTERACTION_ROLE,
+        }
+    }
+}
+
+impl TryFrom<u8> for ConnectionRole {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        match value {
+            value if value == Self::Media as u8 => Ok(Self::Media),
+            value if value == Self::Interaction as u8 => Ok(Self::Interaction),
+            _ => bail!("unknown connection role {value}"),
+        }
+    }
+}
+
 #[derive(Default)]
 struct DatagramCounters {
     video_packets: AtomicU64,
@@ -78,7 +106,7 @@ impl SequenceTracker {
 }
 
 fn usage() -> &'static str {
-    "usage:\n  connect-probe-datasmash server <bind-address> <certificate.pem> <key.pem> <token> [duration-seconds] [video-bitrate-bps]\n  connect-probe-datasmash client <server-address> <server-name> <certificate-sha256> <token> [duration-seconds]"
+    "usage:\n  connect-probe-datasmash server <bind-address> <certificate.pem> <key.pem> <token> [duration-seconds] [video-bitrate-bps]\n  connect-probe-datasmash client <server-address> <server-name> <certificate-sha256> <token> [duration-seconds] [role-order]"
 }
 
 fn now_ns() -> u64 {
@@ -118,21 +146,22 @@ fn parse_datagram(packet: &Bytes) -> Result<DatagramHeader> {
     })
 }
 
-async fn write_auth(stream: &mut kynet::SendStream, token: &str) -> Result<()> {
+async fn write_auth(stream: &mut kynet::SendStream, token: &str, role: u8) -> Result<()> {
     let token_len: u16 = token
         .len()
         .try_into()
         .context("authentication token is too long")?;
     stream.write_all(&PROTOCOL_MAGIC).await?;
     stream.write_all(&PROTOCOL_VERSION.to_be_bytes()).await?;
+    stream.write_all(&[role]).await?;
     stream.write_all(&token_len.to_be_bytes()).await?;
     stream.write_all(token.as_bytes()).await?;
     stream.flush().await?;
     Ok(())
 }
 
-async fn read_auth(stream: &mut kynet::RecvStream, expected_token: &str) -> Result<()> {
-    let mut header = [0_u8; 8];
+async fn read_auth(stream: &mut kynet::RecvStream, expected_token: &str) -> Result<ConnectionRole> {
+    let mut header = [0_u8; 9];
     stream.read_exact(&mut header).await?;
     if header[..4] != PROTOCOL_MAGIC {
         bail!("authentication magic mismatch");
@@ -141,7 +170,8 @@ async fn read_auth(stream: &mut kynet::RecvStream, expected_token: &str) -> Resu
     if version != PROTOCOL_VERSION {
         bail!("unsupported protocol version {version}");
     }
-    let token_len = u16::from_be_bytes([header[6], header[7]]) as usize;
+    let role = ConnectionRole::try_from(header[6])?;
+    let token_len = u16::from_be_bytes([header[7], header[8]]) as usize;
     if token_len == 0 || token_len > 1024 {
         bail!("invalid authentication token length");
     }
@@ -155,29 +185,50 @@ async fn read_auth(stream: &mut kynet::RecvStream, expected_token: &str) -> Resu
     {
         bail!("authentication token mismatch");
     }
-    Ok(())
+    Ok(role)
 }
 
-fn role_token(token: &str, role: &str) -> String {
-    format!("{token}:{role}")
-}
-
-async fn accept_authenticated(
+async fn accept_auth_candidate(
     server: &kynet::common::CommonServer,
     expected_token: &str,
-    role: &str,
-) -> Result<(Connection, kynet::SendStream, kynet::RecvStream)> {
+) -> Result<(
+    ConnectionRole,
+    Connection,
+    kynet::SendStream,
+    kynet::RecvStream,
+)> {
     let connection = server
         .accept()
         .await?
         .ok_or_else(|| anyhow!("QUIC listener closed"))?;
-    let (mut send, mut recv) = connection.accept_bi().await?;
-    if let Err(error) = read_auth(&mut recv, &role_token(expected_token, role)).await {
-        connection.close(1, "authentication failed");
-        return Err(error);
+    let (send, mut recv) = connection.accept_bi().await?;
+    let role = match read_auth(&mut recv, expected_token).await {
+        Ok(role) => role,
+        Err(error) => {
+            connection.close(1, "authentication failed");
+            return Err(error);
+        }
+    };
+    Ok((role, connection, send, recv))
+}
+
+async fn connect_with_role_code(
+    server_address: SocketAddr,
+    server_name: &str,
+    options: &kynet::quinn::QuinnClientOptions,
+    token: &str,
+    role: u8,
+    role_name: &str,
+) -> Result<(Connection, kynet::SendStream, kynet::RecvStream)> {
+    let connection = Connection::quinn_connect(server_address, server_name, None, options).await?;
+    let (mut send, mut recv) = connection.open_bi().await?;
+    write_auth(&mut send, token, role).await?;
+    let mut auth_status = [1_u8; 1];
+    recv.read_exact(&mut auth_status).await?;
+    if auth_status[0] != 0 {
+        connection.close(1, "authentication rejected");
+        bail!("server rejected {role_name} authentication");
     }
-    send.write_all(&[0]).await?;
-    send.flush().await?;
     Ok((connection, send, recv))
 }
 
@@ -186,18 +237,17 @@ async fn connect_authenticated(
     server_name: &str,
     options: &kynet::quinn::QuinnClientOptions,
     token: &str,
-    role: &str,
+    role: ConnectionRole,
 ) -> Result<(Connection, kynet::SendStream, kynet::RecvStream)> {
-    let connection = Connection::quinn_connect(server_address, server_name, None, options).await?;
-    let (mut send, mut recv) = connection.open_bi().await?;
-    write_auth(&mut send, &role_token(token, role)).await?;
-    let mut auth_status = [1_u8; 1];
-    recv.read_exact(&mut auth_status).await?;
-    if auth_status[0] != 0 {
-        connection.close(1, "authentication rejected");
-        bail!("server rejected {role} authentication");
-    }
-    Ok((connection, send, recv))
+    connect_with_role_code(
+        server_address,
+        server_name,
+        options,
+        token,
+        role as u8,
+        role.name(),
+    )
+    .await
 }
 
 async fn send_video(
@@ -348,10 +398,36 @@ async fn run_server(args: &[String]) -> Result<()> {
         Connection::start_server_on_addr(bind_address, vec![certificate], private_key, &options)?;
     println!("status=listening address={bind_address}");
 
+    let mut media = None;
+    let mut interaction = None;
+    for _ in 0..2 {
+        let (role, connection, mut send, recv) =
+            accept_auth_candidate(&server, expected_token).await?;
+        match role {
+            ConnectionRole::Media if media.is_some() => {
+                connection.close(2, "duplicate connection role");
+                bail!("duplicate media connection role");
+            }
+            ConnectionRole::Interaction if interaction.is_some() => {
+                connection.close(2, "duplicate connection role");
+                bail!("duplicate interaction connection role");
+            }
+            ConnectionRole::Media => {
+                send.write_all(&[0]).await?;
+                send.flush().await?;
+                media = Some((connection, send, recv));
+            }
+            ConnectionRole::Interaction => {
+                send.write_all(&[0]).await?;
+                send.flush().await?;
+                interaction = Some((connection, send, recv));
+            }
+        }
+    }
     let (media_connection, _media_auth_send, _media_auth_recv) =
-        accept_authenticated(&server, expected_token, MEDIA_ROLE).await?;
+        media.ok_or_else(|| anyhow!("missing media connection role"))?;
     let (interaction_connection, input_send, input_recv) =
-        accept_authenticated(&server, expected_token, INTERACTION_ROLE).await?;
+        interaction.ok_or_else(|| anyhow!("missing interaction connection role"))?;
 
     let counters = Arc::new(DatagramCounters::default());
     let stop = Arc::new(AtomicBool::new(false));
@@ -538,7 +614,7 @@ async fn run_input_rtt(
 }
 
 async fn run_client(args: &[String]) -> Result<()> {
-    if args.len() < 4 || args.len() > 5 {
+    if args.len() < 4 || args.len() > 6 {
         bail!(usage());
     }
     let server_address: SocketAddr = args[0].parse().context("invalid server address")?;
@@ -553,22 +629,106 @@ async fn run_client(args: &[String]) -> Result<()> {
             .context("invalid duration")?
             .unwrap_or(DEFAULT_DURATION_SECS),
     );
+    let role_order = args.get(5).map(String::as_str).unwrap_or("media-first");
 
     let options = kynet::quinn::QuinnClientOptions {
         max_idle_timeout: Some(Duration::from_secs(10)),
         keep_alive_interval: Some(Duration::from_secs(2)),
         certificate_hash: Some(certificate_hash.clone()),
     };
-    let (media_connection, _media_auth_send, _media_auth_recv) =
-        connect_authenticated(server_address, server_name, &options, token, MEDIA_ROLE).await?;
-    let (interaction_connection, input_send, input_recv) = connect_authenticated(
-        server_address,
-        server_name,
-        &options,
-        token,
-        INTERACTION_ROLE,
-    )
-    .await?;
+    if role_order == "duplicate-media" || role_order == "duplicate-interaction" {
+        let duplicate_role = if role_order == "duplicate-media" {
+            ConnectionRole::Media
+        } else {
+            ConnectionRole::Interaction
+        };
+        let _first =
+            connect_authenticated(server_address, server_name, &options, token, duplicate_role)
+                .await?;
+        let _duplicate =
+            connect_authenticated(server_address, server_name, &options, token, duplicate_role)
+                .await?;
+        bail!(
+            "server unexpectedly accepted a duplicate {} role",
+            duplicate_role.name()
+        );
+    }
+    if role_order == "mismatched-token" {
+        let _media = connect_authenticated(
+            server_address,
+            server_name,
+            &options,
+            token,
+            ConnectionRole::Media,
+        )
+        .await?;
+        let other_token = format!("{token}-other-session");
+        let _interaction = connect_authenticated(
+            server_address,
+            server_name,
+            &options,
+            &other_token,
+            ConnectionRole::Interaction,
+        )
+        .await?;
+        bail!("server unexpectedly accepted mismatched session tokens");
+    }
+    if role_order == "unknown-role" {
+        let _unknown = connect_with_role_code(
+            server_address,
+            server_name,
+            &options,
+            token,
+            u8::MAX,
+            "unknown",
+        )
+        .await?;
+        bail!("server unexpectedly accepted an unknown role");
+    }
+
+    let (media, interaction) = match role_order {
+        "media-first" => {
+            let media = connect_authenticated(
+                server_address,
+                server_name,
+                &options,
+                token,
+                ConnectionRole::Media,
+            )
+            .await?;
+            let interaction = connect_authenticated(
+                server_address,
+                server_name,
+                &options,
+                token,
+                ConnectionRole::Interaction,
+            )
+            .await?;
+            (media, interaction)
+        }
+        "interaction-first" => {
+            let interaction = connect_authenticated(
+                server_address,
+                server_name,
+                &options,
+                token,
+                ConnectionRole::Interaction,
+            )
+            .await?;
+            let media = connect_authenticated(
+                server_address,
+                server_name,
+                &options,
+                token,
+                ConnectionRole::Media,
+            )
+            .await?;
+            (media, interaction)
+        }
+        _ => bail!("unknown role order {role_order}"),
+    };
+    let (media_connection, _media_auth_send, _media_auth_recv) = media;
+    let (interaction_connection, input_send, input_recv) = interaction;
 
     let counters = Arc::new(DatagramCounters::default());
     let receive_task = tokio::spawn(receive_client_datagrams(
@@ -681,5 +841,16 @@ mod tests {
         assert_eq!(tracker.latest, Some(14));
         assert_eq!(tracker.gaps, 2);
         assert_eq!(tracker.stale, 2);
+    }
+
+    #[test]
+    fn connection_roles_reject_unknown_values() {
+        assert_eq!(ConnectionRole::try_from(1).unwrap(), ConnectionRole::Media);
+        assert_eq!(
+            ConnectionRole::try_from(2).unwrap(),
+            ConnectionRole::Interaction
+        );
+        assert!(ConnectionRole::try_from(0).is_err());
+        assert!(ConnectionRole::try_from(u8::MAX).is_err());
     }
 }
