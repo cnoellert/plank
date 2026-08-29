@@ -4,3 +4,6 @@
 [submodule "client/moonlight-qt-fork"]
 	path = client/moonlight-qt-fork
 	url = https://github.com/instinctual/plank-client.git
+[submodule "third_party/kyber-kymux"]
+	path = third_party/kyber-kymux
+	url = https://github.com/instinctual/plank-kymux.git
