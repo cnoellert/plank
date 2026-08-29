@@ -673,6 +673,7 @@ name = "stationconnect-datasmash-transport"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "hex",
  "kynet",
  "quinn-proto",
