@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-config_file=/etc/stationconnect/stationconnect.conf
+config_file=/etc/stationconnect/stationconnect-host.conf
 output_file=/etc/X11/xorg.conf.d/99-stationconnect-headless.conf
 edid_dir=/usr/share/stationconnect/display
 cleanup_only=false
@@ -270,7 +270,7 @@ trap cleanup EXIT
 
 cat >"$temporary_file" <<EOF
 ${generated_marker}
-# Boot source: /etc/stationconnect/stationconnect.conf [display]
+# Boot source: /etc/stationconnect/stationconnect-host.conf [display]
 # The host supervisor may replace this owned overlay with a validated GDM-only request.
 
 Section "ServerFlags"

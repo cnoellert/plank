@@ -67,7 +67,7 @@ The packaged launcher enforces the machine state path. The TLS identity is
 likewise machine-scoped.
 
 Worker options are system-wide in the sectioned INI file
-`/etc/stationconnect/stationconnect.conf`. The package generates a stable TLS
+`/etc/stationconnect/stationconnect-host.conf`. The package generates a stable TLS
 keypair under `/etc/stationconnect/tls/`; its directory and private key are
 `root:root` with modes `0700` and `0600`.
 

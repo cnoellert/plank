@@ -18,7 +18,7 @@ if [[ ! -r "${auth_socket}" || ! -w "${auth_socket}" ]]; then
   exit 1
 fi
 
-config_file=/etc/stationconnect/stationconnect.conf
+config_file=/etc/stationconnect/stationconnect-host.conf
 if [[ ! -r "${config_file}" ]]; then
   echo "StationConnect host configuration is unavailable: ${config_file}" >&2
   exit 1

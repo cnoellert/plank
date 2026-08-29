@@ -66,10 +66,10 @@ install -D -m 0644 "$repo_dir/packaging/systemd/90-stationconnect.preset" \
   "$payload_dir/usr/lib/systemd/system-preset/90-stationconnect.preset"
 install -D -m 0644 "$repo_dir/packaging/pam/stationconnect-host" \
   "$payload_dir/etc/pam.d/stationconnect-host"
-install -D -m 0644 "$repo_dir/packaging/config/stationconnect.conf" \
-  "$payload_dir/etc/stationconnect/stationconnect.conf"
+install -D -m 0644 "$repo_dir/packaging/config/stationconnect-host.conf" \
+  "$payload_dir/etc/stationconnect/stationconnect-host.conf"
 if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
-  "$payload_dir/etc/stationconnect/stationconnect.conf"; then
+  "$payload_dir/etc/stationconnect/stationconnect-host.conf"; then
   echo "host RPM payload still contains global capture or encoder selectors" >&2
   exit 1
 fi
@@ -81,19 +81,19 @@ for required_network_token in \
   'fec_percentage = 20' \
   'Scope uses the remote socket source address, not the route or physical path.'; do
   rg -Fq "$required_network_token" \
-    "$payload_dir/etc/stationconnect/stationconnect.conf" || {
+    "$payload_dir/etc/stationconnect/stationconnect-host.conf" || {
     echo "host RPM payload is missing network configuration: ${required_network_token}" >&2
     exit 1
   }
 done
 echo "host_rpm_network_config_gate=pass"
 rg -Fxq '[x264-encoder]' \
-  "$payload_dir/etc/stationconnect/stationconnect.conf" || {
+  "$payload_dir/etc/stationconnect/stationconnect-host.conf" || {
   echo "host RPM payload is missing the x264-specific encoder section" >&2
   exit 1
 }
 if rg -Fxq '[software-encoder]' \
-  "$payload_dir/etc/stationconnect/stationconnect.conf"; then
+  "$payload_dir/etc/stationconnect/stationconnect-host.conf"; then
   echo "host RPM payload retains the obsolete generic software-encoder section" >&2
   exit 1
 fi
@@ -150,7 +150,12 @@ rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-host-st
 rpm -qpl "$rpm_file" | rg -q '/usr/libexec/stationconnect/stationconnect-display-prepare$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-host\.service$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/stationconnect-display-prepare\.service$'
-rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'
+rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect-host\.conf$'
+if rpm -qpl "$rpm_file" | rg -q '/etc/stationconnect/stationconnect\.conf$'; then
+  echo "host RPM still contains the ambiguous generic configuration path" >&2
+  exit 1
+fi
+echo "host_rpm_config_identity_gate=pass"
 rpm -qpl "$rpm_file" | rg -q '/etc/pam\.d/stationconnect-host$'
 rpm -qpl "$rpm_file" | rg -q \
   '/usr/lib/udev/rules\.d/70-stationconnect-host-wacom\.rules$'

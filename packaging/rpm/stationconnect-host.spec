@@ -72,7 +72,7 @@ fi
 %license /usr/share/licenses/stationconnect-host/LICENSE-Sunshine
 %doc /usr/share/doc/stationconnect-host/README.md
 /etc/pam.d/stationconnect-host
-%config(noreplace) /etc/stationconnect/stationconnect.conf
+%config(noreplace) /etc/stationconnect/stationconnect-host.conf
 %dir %attr(0755,root,root) /etc/stationconnect
 %dir %attr(0700,root,root) /etc/stationconnect/tls
 %ghost %config(noreplace) %attr(0644,root,root) /etc/stationconnect/tls/cert.pem
@@ -96,6 +96,9 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.180
+- Rename the host configuration for host/client naming parity
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.174
 - Expose and document LAN and WAN media-encryption policies
 - Keep systemd-only host service binaries private under libexec

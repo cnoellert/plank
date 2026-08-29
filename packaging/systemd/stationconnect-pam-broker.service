@@ -5,7 +5,7 @@ Before=stationconnect-host.service
 
 [Service]
 Type=simple
-ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf
+ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect-host.conf
 User=root
 Group=root
 RuntimeDirectory=stationconnect/pam

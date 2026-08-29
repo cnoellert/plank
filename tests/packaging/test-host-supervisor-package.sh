@@ -28,7 +28,7 @@ if rg -q '47990' "$firewalld_service"; then
 fi
 rg -Fxq 'RuntimeDirectory=stationconnect/pam' "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
-rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' "$pam_unit"
+rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect-host.conf' "$pam_unit"
 rg -Fq '/run/stationconnect/pam/auth.sock' \
   "$repo_dir/packaging/bin/stationconnect-host"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
@@ -78,9 +78,9 @@ rg -Fq 'stationconnect-host-certificate' "$spec"
 rg -Fq 'stationconnect-host-state' "$spec"
 rg -Fq '/var/lib/stationconnect/stationconnect_state.json' "$spec"
 rg -Fxq 'file_state = /var/lib/stationconnect/stationconnect_state.json' \
-  "$repo_dir/packaging/config/stationconnect.conf"
+  "$repo_dir/packaging/config/stationconnect-host.conf"
 rg -Fxq 'allow_root_login = false' \
-  "$repo_dir/packaging/config/stationconnect.conf"
+  "$repo_dir/packaging/config/stationconnect-host.conf"
 rg -Fxq '/etc/pam.d/stationconnect-host' "$spec"
 test -f "$host_wacom_rule"
 test ! -e "$repo_dir/packaging/udev/70-stationconnect-wacom.rules"
@@ -156,11 +156,20 @@ fi
 rg -Fq 'stationconnect_mdns_discovery' \
   "$repo_dir/host/sunshine-fork/src/config.cpp"
 rg -Fxq 'stationconnect_mdns_discovery = false' \
-  "$repo_dir/packaging/config/stationconnect.conf"
-rg -Fq '/etc/stationconnect/stationconnect.conf' \
+  "$repo_dir/packaging/config/stationconnect-host.conf"
+rg -Fq '/etc/stationconnect/stationconnect-host.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
+[[ ! -e ${repo_dir}/packaging/config/stationconnect.conf ]]
+if rg -n '/etc/stationconnect/stationconnect\.conf' \
+  "$repo_dir/packaging/bin" \
+  "$repo_dir/packaging/systemd" \
+  "$repo_dir/packaging/rpm/stationconnect-host.spec" \
+  "$repo_dir/host/sunshine-fork/src"; then
+  echo 'ambiguous generic host configuration path remains' >&2
+  exit 1
+fi
 if rg -n '^[[:space:]]*output_name[[:space:]]*=' \
-  "$repo_dir/packaging/config/stationconnect.conf" ||
+  "$repo_dir/packaging/config/stationconnect-host.conf" ||
   rg -n \
     'video_config\.output_name|config::video\.output_name|"output_name",[[:space:]]*video\.output_name' \
     "$repo_dir/host/sunshine-fork/src" \
@@ -188,14 +197,14 @@ rg -Fq 'host_complete_config_template_gate=pass' \
 rg -Fq 'host_rpm_x264_config_section_gate=pass' \
   "$repo_dir/scripts/build-host-rpm.sh"
 rg -Fxq '[x264-encoder]' \
-  "$repo_dir/packaging/config/stationconnect.conf"
+  "$repo_dir/packaging/config/stationconnect-host.conf"
 if rg -Fxq '[software-encoder]' \
-  "$repo_dir/packaging/config/stationconnect.conf"; then
+  "$repo_dir/packaging/config/stationconnect-host.conf"; then
   echo 'packaged host configuration retains the obsolete software-encoder section' >&2
   exit 1
 fi
 if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
-  "$repo_dir/packaging/config/stationconnect.conf"; then
+  "$repo_dir/packaging/config/stationconnect-host.conf"; then
   echo 'packaged host configuration still exposes global video selectors' >&2
   exit 1
 fi

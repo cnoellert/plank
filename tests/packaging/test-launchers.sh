@@ -5,7 +5,7 @@ set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 host_launcher=${repo_dir}/packaging/bin/stationconnect-host
 client_launcher=${repo_dir}/packaging/bin/stationconnect-client
-host_profile=${repo_dir}/packaging/config/stationconnect.conf
+host_profile=${repo_dir}/packaging/config/stationconnect-host.conf
 client_policy=${repo_dir}/packaging/config/stationconnect-client.conf
 client_main=${repo_dir}/client/moonlight-qt-fork/app/main.cpp
 client_path=${repo_dir}/client/moonlight-qt-fork/app/path.cpp

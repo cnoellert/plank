@@ -241,7 +241,7 @@ on headless-test-host. The `.82` client package from root `0853d0a` and Moonligh
 `c221c282` is installed on the Development NUC. The client now persists exact
 host-layout and virtual-mode choices per bookmark, parses topology schema 2,
 and sends the negotiated layout with each launch. The host validates the
-requested layout against both `stationconnect.conf` and the live X11 topology
+requested layout against both `stationconnect-host.conf` and the live X11 topology
 before claiming the PAM launch state.
 
 A 30-second native Wayland run requested protocol 2, feature mask `255`,

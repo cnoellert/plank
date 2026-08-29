@@ -9,7 +9,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-config_file="${work_dir}/stationconnect.conf"
+config_file="${work_dir}/stationconnect-host.conf"
 output_file="${work_dir}/xorg.conf.d/99-stationconnect-headless.conf"
 edid_dir="${work_dir}/display"
 fake_bin="${work_dir}/bin"

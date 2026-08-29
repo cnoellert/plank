@@ -9,7 +9,7 @@ the system unit directory, and install
 StationConnect denies root remote login by default and delegates account
 authorization to the host's PAM/SSSD policy, including FreeIPA HBAC. The
 administrator may set `security.allow_root_login = true` in
-`stationconnect.conf`; this does not bypass PAM or active-desktop ownership.
+`stationconnect-host.conf`; this does not bypass PAM or active-desktop ownership.
 StationConnect has no application-specific user allowlist.
 Restart `stationconnect-pam-broker.service` after changing this setting; the
 broker loads and validates it once at startup.
@@ -73,7 +73,7 @@ input into GDM or create a new graphical session.
 keeps the workstation's Autodesk-derived `/etc/X11/xorg.conf` as the baseline
 and atomically adds or removes only
 `/etc/X11/xorg.conf.d/99-stationconnect-headless.conf`. Configure `[display]`
-in `stationconnect.conf` with `startup_layout = physical` or `virtual`. The
+in `stationconnect-host.conf` with `startup_layout = physical` or `virtual`. The
 virtual policy initializes one internal 1920x1080 login output. A single-head Xorg overlay
 keeps the second virtual connector present but inactive so the same
 PAM-authenticated desktop owner can later switch resolutions or enable the
@@ -104,7 +104,7 @@ sudo systemctl enable --now stationconnect-pam-broker.service \
 ```
 
 Configure every host runtime option in the single root-managed
-`/etc/stationconnect/stationconnect.conf`. Ordinary client preferences remain
+`/etc/stationconnect/stationconnect-host.conf`. Ordinary client preferences remain
 in the user's Qt settings. Root-managed client policy lives separately in
 `/etc/stationconnect/stationconnect-client.conf`; a present policy key overrides
 the saved preference and locks its UI control. The client does not source
@@ -119,7 +119,7 @@ environment file, and shell environment syntax is not accepted in the host
 configuration.
 
 mDNS is disabled by default on both sides. Set
-`stationconnect_mdns_discovery = true` in the host `stationconnect.conf` to publish
+`stationconnect_mdns_discovery = true` in the host `stationconnect-host.conf` to publish
 the host with Avahi. The client preference defaults off but remains editable
 while `network.mdns_discovery` is omitted or commented in
 `stationconnect-client.conf`. Set `mdns_discovery = true` or `false` under its

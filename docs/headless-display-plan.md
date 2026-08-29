@@ -36,7 +36,7 @@ or introduce a second display-configuration source.
   screens such as `:0.0` and `:0.1` for separate monitors.
 - NvFBC remains the production capture path and CUDA remains the span-scaling
   path. NvFBC 1.9 BGRA8888 remains honestly labeled as an 8-bit source.
-- Keep host configuration in `/etc/stationconnect/stationconnect.conf` and
+- Keep host configuration in `/etc/stationconnect/stationconnect-host.conf` and
   mutable identity/state in `/var/lib/stationconnect/`.
 - A client request is constrained by administrator policy. It cannot provide
   arbitrary Xorg options, file paths, modelines, EDID bytes, connector names,
@@ -227,7 +227,7 @@ behavior remain correct with one and two virtual outputs.
 ## Configuration Model
 
 Add one administrator-controlled `[display]` section to
-`stationconnect.conf`. The first qualified implementation uses:
+`stationconnect-host.conf`. The first qualified implementation uses:
 
 ```ini
 [display]

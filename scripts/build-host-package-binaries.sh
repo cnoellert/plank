@@ -192,7 +192,7 @@ for required_auth_token in \
 done
 rg -Fq 'bool_f(vars, "allow_root_login", broker_allow_root_login)' \
   "$source_dir/src/config.cpp"
-rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect.conf' \
+rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect-host.conf' \
   "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
 rg -Fxq 'auth       substack     system-auth' "$pam_policy"
@@ -208,7 +208,7 @@ if rg -q 'pam_succeed_if|ingroup' "$pam_policy"; then
   exit 1
 fi
 rg -Fxq 'allow_root_login = false' \
-  "$repo_dir/packaging/config/stationconnect.conf"
+  "$repo_dir/packaging/config/stationconnect-host.conf"
 rg -Fxq '/etc/pam.d/stationconnect-host' "$host_spec"
 rg -Fq 'packaging/pam/stationconnect-host' \
   "${repo_dir}/scripts/build-host-rpm.sh"
@@ -375,12 +375,12 @@ if rg -q 'STATIONCONNECT_(HOST_OPTIONS|MDNS_DISCOVERY)' \
   "$source_dir/src/session/host_supervisor.cpp" \
   "$repo_dir/packaging/bin/stationconnect-host" \
   "$repo_dir/packaging/systemd/stationconnect-host.service" \
-  "$repo_dir/packaging/config/stationconnect.conf"; then
+  "$repo_dir/packaging/config/stationconnect-host.conf"; then
   echo "legacy host environment configuration is still present" >&2
   exit 1
 fi
 rg -Fxq 'stationconnect_mdns_discovery = false' \
-  "$repo_dir/packaging/config/stationconnect.conf" || {
+  "$repo_dir/packaging/config/stationconnect-host.conf" || {
   echo "host mDNS configuration does not default to disabled" >&2
   exit 1
 }
@@ -389,7 +389,7 @@ for required_mdns_config_doc in \
   'The default is false; manually configured hostname/IP bookmarks continue to' \
   'work when discovery is disabled. Enabling this affects advertisement only'; do
   rg -Fq "$required_mdns_config_doc" \
-    "$repo_dir/packaging/config/stationconnect.conf" || {
+    "$repo_dir/packaging/config/stationconnect-host.conf" || {
     echo "host mDNS configuration documentation is incomplete: ${required_mdns_config_doc}" >&2
     exit 1
   }
@@ -400,8 +400,20 @@ echo "host_mdns_default_off_gate=pass"
   echo "legacy host.env remains in the package source" >&2
   exit 1
 }
-rg -Fq '/etc/stationconnect/stationconnect.conf' \
+[[ ! -e ${repo_dir}/packaging/config/stationconnect.conf ]] || {
+  echo "ambiguous generic host configuration template remains" >&2
+  exit 1
+}
+rg -Fq '/etc/stationconnect/stationconnect-host.conf' \
   "$repo_dir/packaging/bin/stationconnect-host"
+if rg -n '/etc/stationconnect/stationconnect\.conf' \
+  "$source_dir/src" \
+  "$repo_dir/packaging/bin" \
+  "$repo_dir/packaging/systemd" \
+  "$repo_dir/packaging/rpm/stationconnect-host.spec"; then
+  echo "ambiguous generic host configuration path remains" >&2
+  exit 1
+fi
 echo "host_single_config_gate=pass"
 
 for required_network_token in \
@@ -411,7 +423,7 @@ for required_network_token in \
   'fec_percentage = 20' \
   'Scope uses the remote socket source address, not the route or physical path.'; do
   rg -Fq "$required_network_token" \
-    "$repo_dir/packaging/config/stationconnect.conf" || {
+    "$repo_dir/packaging/config/stationconnect-host.conf" || {
     echo "host network configuration is missing: ${required_network_token}" >&2
     exit 1
   }
@@ -468,7 +480,7 @@ for retained_config_option in "${retained_config_options[@]}"; do
   retained_config_count=$(
     rg -c \
       "^[[:space:]]*(#[[:space:]]*)?${retained_config_option}[[:space:]]*=" \
-      "$repo_dir/packaging/config/stationconnect.conf" || true
+      "$repo_dir/packaging/config/stationconnect-host.conf" || true
   )
   if [[ $retained_config_count != 1 ]]; then
     echo "canonical host configuration must contain exactly one entry for ${retained_config_option}" >&2
@@ -515,11 +527,11 @@ for required_session_authority in \
 done
 echo "host_config_surface_cleanup_gate=pass"
 
-rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/stationconnect.conf" || {
+rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/stationconnect-host.conf" || {
   echo "host configuration is missing the x264-specific encoder section" >&2
   exit 1
 }
-if rg -Fxq '[software-encoder]' "$repo_dir/packaging/config/stationconnect.conf"; then
+if rg -Fxq '[software-encoder]' "$repo_dir/packaging/config/stationconnect-host.conf"; then
   echo "host configuration retains the obsolete generic software-encoder section" >&2
   exit 1
 fi
@@ -529,7 +541,7 @@ echo "host_x264_config_section_gate=pass"
 # the old machine-specific global selector out of both the packaged config and
 # Sunshine's static video configuration while retaining session.output_name.
 if rg -n '^[[:space:]]*output_name[[:space:]]*=' \
-  "$repo_dir/packaging/config/stationconnect.conf" ||
+  "$repo_dir/packaging/config/stationconnect-host.conf" ||
   rg -n \
     'video_config\.output_name|config::video\.output_name|"output_name",[[:space:]]*video\.output_name' \
     "$source_dir/src" "$source_dir/tests" \
@@ -553,7 +565,7 @@ echo "host_static_capture_selector_absence_gate=pass"
 # contradict the accepted session, so it must not exist in configuration,
 # parser state, documentation, or platform selection code.
 if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
-  "$repo_dir/packaging/config/stationconnect.conf" ||
+  "$repo_dir/packaging/config/stationconnect-host.conf" ||
   rg -n \
     'config::video\.(capture|encoder)|std::string[[:space:]]+(capture|encoder);|string_f\(vars,[[:space:]]*"(capture|encoder)"' \
     "$source_dir/src" "$source_dir/tests" --glob '*.{cpp,h}' ||
@@ -617,7 +629,7 @@ for required_display_token in \
   'physical = preserve connected monitors' \
   'virtual = initialize one internal 1920x1080 output'; do
   rg -Fq "$required_display_token" \
-    "$repo_dir/packaging/config/stationconnect.conf" || {
+    "$repo_dir/packaging/config/stationconnect-host.conf" || {
     echo "host display default is missing: ${required_display_token}" >&2
     exit 1
   }
@@ -643,7 +655,7 @@ for required_display_token in \
     exit 1
   }
 done
-if rg -q 'virtual_mode_[12]' "$repo_dir/packaging/config/stationconnect.conf" ||
+if rg -q 'virtual_mode_[12]' "$repo_dir/packaging/config/stationconnect-host.conf" ||
    rg -q 'key != "virtual_mode_[12]"|values\["virtual_mode_[12]"\]' \
      "$repo_dir/packaging/bin/stationconnect-display-prepare"; then
   echo "removed administrator virtual-mode settings remain in display packaging" >&2
@@ -663,7 +675,7 @@ echo "host_application_id_gate=pass"
 # while stdout remains attached to journald. systemd owns the writable log
 # directory; the single administrator configuration file owns the log path.
 rg -Fxq 'log_path = /var/log/stationconnect/stationconnect-host.log' \
-  "$repo_dir/packaging/config/stationconnect.conf" || {
+  "$repo_dir/packaging/config/stationconnect-host.conf" || {
   echo "host persistent log path is not configured" >&2
   exit 1
 }

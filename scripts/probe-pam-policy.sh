@@ -7,7 +7,7 @@ build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
 authorized_user=${CONNECT_PAM_AUTHORIZED_USER:?Set STATIONCONNECT_PAM_AUTHORIZED_USER for your test environment}
 expected_denied_user=${CONNECT_PAM_EXPECTED_DENIED_USER:-}
 broker_binary=${CONNECT_PAM_BROKER_BINARY:-/usr/libexec/stationconnect/stationconnect-pam-broker}
-config_file=${CONNECT_HOST_CONFIG:-/etc/stationconnect/stationconnect.conf}
+config_file=${CONNECT_HOST_CONFIG:-/etc/stationconnect/stationconnect-host.conf}
 result=0
 
 echo "sssd=$(systemctl is-active sssd.service 2>&1)"
