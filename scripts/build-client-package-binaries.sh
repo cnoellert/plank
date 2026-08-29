@@ -33,6 +33,7 @@ for datasmash_input in \
   Cargo.lock \
   include/stationconnect_datasmash.h \
   include/stationconnect_datasmash_control.h \
+  include/stationconnect_datasmash_input.h \
   src/lib.rs; do
   [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
     echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
@@ -100,6 +101,21 @@ for required_control_transport_token in \
   }
 done
 echo "client_datasmash_native_control_sender_gate=pass"
+for required_input_transport_token in \
+  'StationConnectNativeInputSender' \
+  'LiSetStationConnectNativeInputSender' \
+  'datasmashNativeInputSender' \
+  'sc_datasmash_native_input_send' \
+  'SC_DATASMASH_INPUT_RAW_HID_WACOM'; do
+  rg -Fq "$required_input_transport_token" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src" \
+    "$source_dir/app/streaming" \
+    "$datasmash_transport_dir/include" || {
+    echo "client native input transport invariant is missing: ${required_input_transport_token}" >&2
+    exit 1
+  }
+done
+echo "client_datasmash_native_input_gate=pass"
 for required_control_receiver_token in \
   'stationconnect_datasmash_control.h' \
   'LiNotifyStationConnectVideoBitrateApplied' \
