@@ -26,6 +26,8 @@ if rg -q '47990' "$firewalld_service"; then
   echo 'firewalld service still exposes the removed Web UI port' >&2
   exit 1
 fi
+rg -Fxq '  <port protocol="tcp" port="47989"/>' "$firewalld_service"
+rg -Fxq '  <port protocol="udp" port="47989"/>' "$firewalld_service"
 rg -Fxq 'RuntimeDirectory=stationconnect/pam' "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
 rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect-host.conf' "$pam_unit"
