@@ -276,6 +276,12 @@ rg -Fq 'Scheduled StationConnect display transition from ' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq 'StationConnect live display transition completed for UID' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
+if ! rg -Uq \
+  '(?s)X509_digest\(certificate, EVP_sha256\(\).*?util::hex_vec\(std::vector<std::uint8_t>\(.*?\), true\);' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"; then
+  echo 'datasmash certificate pin is not emitted in conventional TLS byte order' >&2
+  exit 1
+fi
 rg -Fq 'Temporary StationConnect physical-display lease acquired for UID' \
   "$repo_dir/host/sunshine-fork/src/session/host_supervisor.cpp"
 rg -Fq '/usr/libexec/stationconnect/stationconnect-display-prepare' \

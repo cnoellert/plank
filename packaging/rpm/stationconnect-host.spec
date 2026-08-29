@@ -98,6 +98,9 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 29 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.184.datasmash
+- Fix the experimental data-plane certificate pin byte order
+
 * Fri Aug 28 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.183.datasmash
 - Add the isolated experimental single-port transport handshake
 
