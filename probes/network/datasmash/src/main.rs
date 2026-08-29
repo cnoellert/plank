@@ -25,6 +25,10 @@ const DEFAULT_DURATION_SECS: u64 = 3;
 const VIDEO_LANE: u8 = 1;
 const AUDIO_LANE: u8 = 2;
 const MOTION_LANE: u8 = 3;
+#[cfg(feature = "quinn-bbr")]
+const CONGESTION_CONTROL: &str = "bbr";
+#[cfg(not(feature = "quinn-bbr"))]
+const CONGESTION_CONTROL: &str = "cubic";
 
 #[derive(Default)]
 struct DatagramCounters {
@@ -296,6 +300,7 @@ async fn run_server(args: &[String]) -> Result<()> {
     tokio::time::sleep(Duration::from_millis(200)).await;
     stop.store(true, Ordering::Relaxed);
     receive_task.await?;
+    let stats = connection.stats().await;
     connection.close(0, "probe complete");
     let critical_input = tokio::time::timeout(Duration::from_secs(1), echo_task)
         .await
@@ -305,7 +310,7 @@ async fn run_server(args: &[String]) -> Result<()> {
         .unwrap_or(0);
 
     println!(
-        "status=complete role=server video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} max_datagram_size={}",
+        "status=complete role=server congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
@@ -313,6 +318,8 @@ async fn run_server(args: &[String]) -> Result<()> {
         critical_input,
         counters.blocked_sends.load(Ordering::Relaxed),
         counters.invalid_packets.load(Ordering::Relaxed),
+        stats.rtt.map(|value| value.as_micros()).unwrap_or(0),
+        stats.packets_lost.unwrap_or(0),
         connection.max_datagram_size().unwrap_or(0),
     );
     Ok(())
@@ -476,7 +483,7 @@ async fn run_client(args: &[String]) -> Result<()> {
     let received_bitrate =
         counters.video_bytes.load(Ordering::Relaxed) as f64 * 8.0 / elapsed_seconds;
     println!(
-        "status=complete role=client video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
+        "status=complete role=client congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
