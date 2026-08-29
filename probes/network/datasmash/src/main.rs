@@ -38,12 +38,41 @@ struct DatagramCounters {
     motion_packets: AtomicU64,
     invalid_packets: AtomicU64,
     blocked_sends: AtomicU64,
+    video_sequence_gaps: AtomicU64,
+    audio_sequence_gaps: AtomicU64,
+    motion_sequence_gaps: AtomicU64,
+    stale_datagrams: AtomicU64,
 }
 
 #[derive(Debug)]
 struct DatagramHeader {
     lane: u8,
     sequence: u64,
+}
+
+#[derive(Default)]
+struct SequenceTracker {
+    latest: Option<u64>,
+    gaps: u64,
+    stale: u64,
+}
+
+impl SequenceTracker {
+    fn observe(&mut self, sequence: u64) -> bool {
+        let Some(latest) = self.latest else {
+            self.latest = Some(sequence);
+            return true;
+        };
+        if sequence <= latest {
+            self.stale = self.stale.saturating_add(1);
+            return false;
+        }
+        self.gaps = self
+            .gaps
+            .saturating_add(sequence.saturating_sub(latest).saturating_sub(1));
+        self.latest = Some(sequence);
+        true
+    }
 }
 
 fn usage() -> &'static str {
@@ -197,6 +226,7 @@ async fn receive_server_datagrams(
     stop: Arc<AtomicBool>,
     counters: Arc<DatagramCounters>,
 ) {
+    let mut motion_sequences = SequenceTracker::default();
     while !stop.load(Ordering::Relaxed) {
         let result =
             tokio::time::timeout(Duration::from_millis(100), connection.read_datagram()).await;
@@ -205,14 +235,21 @@ async fn receive_server_datagrams(
         };
         match parse_datagram(&packet) {
             Ok(header) if header.lane == MOTION_LANE => {
-                let _ = header.sequence;
-                counters.motion_packets.fetch_add(1, Ordering::Relaxed);
+                if motion_sequences.observe(header.sequence) {
+                    counters.motion_packets.fetch_add(1, Ordering::Relaxed);
+                }
             }
             _ => {
                 counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
             }
         }
     }
+    counters
+        .motion_sequence_gaps
+        .store(motion_sequences.gaps, Ordering::Relaxed);
+    counters
+        .stale_datagrams
+        .fetch_add(motion_sequences.stale, Ordering::Relaxed);
 }
 
 async fn echo_critical_input(
@@ -310,7 +347,7 @@ async fn run_server(args: &[String]) -> Result<()> {
         .unwrap_or(0);
 
     println!(
-        "status=complete role=server congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
+        "status=complete role=server congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
@@ -318,6 +355,10 @@ async fn run_server(args: &[String]) -> Result<()> {
         critical_input,
         counters.blocked_sends.load(Ordering::Relaxed),
         counters.invalid_packets.load(Ordering::Relaxed),
+        counters.video_sequence_gaps.load(Ordering::Relaxed),
+        counters.audio_sequence_gaps.load(Ordering::Relaxed),
+        counters.motion_sequence_gaps.load(Ordering::Relaxed),
+        counters.stale_datagrams.load(Ordering::Relaxed),
         stats.rtt.map(|value| value.as_micros()).unwrap_or(0),
         stats.packets_lost.unwrap_or(0),
         connection.max_datagram_size().unwrap_or(0),
@@ -331,6 +372,8 @@ async fn receive_client_datagrams(
     counters: Arc<DatagramCounters>,
 ) {
     let deadline = tokio::time::Instant::now() + duration + Duration::from_millis(400);
+    let mut video_sequences = SequenceTracker::default();
+    let mut audio_sequences = SequenceTracker::default();
     while tokio::time::Instant::now() < deadline {
         let result =
             tokio::time::timeout(Duration::from_millis(100), connection.read_datagram()).await;
@@ -339,21 +382,33 @@ async fn receive_client_datagrams(
         };
         match parse_datagram(&packet) {
             Ok(header) if header.lane == VIDEO_LANE => {
-                let _ = header.sequence;
-                counters.video_packets.fetch_add(1, Ordering::Relaxed);
-                counters
-                    .video_bytes
-                    .fetch_add(packet.len() as u64, Ordering::Relaxed);
+                if video_sequences.observe(header.sequence) {
+                    counters.video_packets.fetch_add(1, Ordering::Relaxed);
+                    counters
+                        .video_bytes
+                        .fetch_add(packet.len() as u64, Ordering::Relaxed);
+                }
             }
             Ok(header) if header.lane == AUDIO_LANE => {
-                let _ = header.sequence;
-                counters.audio_packets.fetch_add(1, Ordering::Relaxed);
+                if audio_sequences.observe(header.sequence) {
+                    counters.audio_packets.fetch_add(1, Ordering::Relaxed);
+                }
             }
             _ => {
                 counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
             }
         }
     }
+    counters
+        .video_sequence_gaps
+        .store(video_sequences.gaps, Ordering::Relaxed);
+    counters
+        .audio_sequence_gaps
+        .store(audio_sequences.gaps, Ordering::Relaxed);
+    counters.stale_datagrams.store(
+        video_sequences.stale.saturating_add(audio_sequences.stale),
+        Ordering::Relaxed,
+    );
 }
 
 async fn send_motion(connection: Connection, duration: Duration, counters: Arc<DatagramCounters>) {
@@ -483,7 +538,7 @@ async fn run_client(args: &[String]) -> Result<()> {
     let received_bitrate =
         counters.video_bytes.load(Ordering::Relaxed) as f64 * 8.0 / elapsed_seconds;
     println!(
-        "status=complete role=client congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
+        "status=complete role=client congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} quic_rtt_us={} quic_packets_lost={} max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
@@ -493,6 +548,10 @@ async fn run_client(args: &[String]) -> Result<()> {
         input_rtt_p99_ns as f64 / 1_000.0,
         counters.blocked_sends.load(Ordering::Relaxed),
         counters.invalid_packets.load(Ordering::Relaxed),
+        counters.video_sequence_gaps.load(Ordering::Relaxed),
+        counters.audio_sequence_gaps.load(Ordering::Relaxed),
+        counters.motion_sequence_gaps.load(Ordering::Relaxed),
+        counters.stale_datagrams.load(Ordering::Relaxed),
         stats.rtt.map(|value| value.as_micros()).unwrap_or(0),
         stats.packets_lost.unwrap_or(0),
         connection.max_datagram_size().unwrap_or(0),
@@ -544,5 +603,20 @@ mod tests {
         let mut packet = make_datagram(AUDIO_LANE, 2, 0).to_vec();
         packet[6..8].copy_from_slice(&15_u16.to_be_bytes());
         assert!(parse_datagram(&Bytes::from(packet)).is_err());
+    }
+
+    #[test]
+    fn sequence_tracker_counts_gaps_and_rejects_stale_state() {
+        let mut tracker = SequenceTracker::default();
+
+        assert!(tracker.observe(10));
+        assert!(tracker.observe(13));
+        assert!(!tracker.observe(12));
+        assert!(!tracker.observe(13));
+        assert!(tracker.observe(14));
+
+        assert_eq!(tracker.latest, Some(14));
+        assert_eq!(tracker.gaps, 2);
+        assert_eq!(tracker.stale, 2);
     }
 }
