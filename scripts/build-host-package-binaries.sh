@@ -64,6 +64,7 @@ for required_datasmash_token in \
   'sc_datasmash_native_data_send' \
   'sc_datasmash_native_data_receive' \
   'drain_datasmash_control' \
+  'if (!session->datasmash_endpoint)' \
   'Confirmed StationConnect encoder target over Datasmash' \
   'Datasmash native transport'; do
   rg -Fq "$required_datasmash_token" \
