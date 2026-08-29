@@ -32,6 +32,7 @@ for datasmash_input in \
   Cargo.toml \
   Cargo.lock \
   include/stationconnect_datasmash.h \
+  include/stationconnect_datasmash_control.h \
   src/lib.rs; do
   [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
     echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
@@ -54,8 +55,9 @@ for required_datasmash_token in \
   'sc_datasmash_native_audio_receive' \
   'LiSubmitStationConnectAudioPacket' \
   'LiSetStationConnectNativeMediaEnabled' \
-  'LiSetStationConnectControlPacketSender' \
-  'datasmashControlPacketSender'; do
+  'LiSetStationConnectNativeControlSender' \
+  'datasmashNativeControlSender' \
+  'datasmashDataReceiveLoop'; do
   rg -Fq "$required_datasmash_token" \
     "$source_dir/app" || {
     echo "client datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2
@@ -87,23 +89,23 @@ for removed_media_bridge_token in \
 done
 echo "client_datasmash_legacy_media_bridge_absence_gate=pass"
 for required_control_transport_token in \
-  'StationConnectControlPacketSender' \
-  'externalControlPacketSender' \
-  'ptype == packetTypes[IDX_SET_VIDEO_BITRATE]' \
-  'Failed to send StationConnect bitrate control packet over external transport'; do
+  'StationConnectNativeControlSender' \
+  'LI_SC_NATIVE_CONTROL_REQUEST_IDR' \
+  'LI_SC_NATIVE_CONTROL_INVALIDATE_REFERENCE_FRAMES' \
+  'LI_SC_NATIVE_CONTROL_SET_VIDEO_BITRATE'; do
   rg -Fq "$required_control_transport_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" || {
     echo "client external control transport invariant is missing: ${required_control_transport_token}" >&2
     exit 1
   }
 done
-echo "client_datasmash_control_sender_gate=pass"
+echo "client_datasmash_native_control_sender_gate=pass"
 for required_control_receiver_token in \
-  'StationConnectControlPacketReceiver' \
-  'externalControlPacketReceiver' \
-  'External control packet source failed' \
+  'stationconnect_datasmash_control.h' \
+  'LiNotifyStationConnectVideoBitrateApplied' \
+  'LiNotifyStationConnectHostTermination' \
   'sc_datasmash_native_data_receive' \
-  'datasmashControlPacketReceiver'; do
+  'datasmashDataReceiveLoop'; do
   if ! rg -Fq "$required_control_receiver_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \
     "$source_dir/app/streaming"; then
@@ -111,6 +113,22 @@ for required_control_receiver_token in \
     exit 1
   fi
 done
+echo "client_datasmash_native_control_receiver_gate=pass"
+for removed_control_bridge_token in \
+  'StationConnectControlPacketSender' \
+  'StationConnectControlPacketReceiver' \
+  'externalControlPacketSender' \
+  'externalControlPacketReceiver' \
+  'datasmashControlPacketSender' \
+  'datasmashControlPacketReceiver'; do
+  if rg -Fq "$removed_control_bridge_token" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src" \
+    "$source_dir/app/streaming"; then
+    echo "obsolete encrypted control bridge remains: ${removed_control_bridge_token}" >&2
+    exit 1
+  fi
+done
+echo "client_datasmash_legacy_control_bridge_absence_gate=pass"
 echo "client_datasmash_control_receiver_gate=pass"
 
 package_version=$(<"${repo_dir}/packaging/VERSION")

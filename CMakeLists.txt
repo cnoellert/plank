@@ -338,6 +338,14 @@ if(BUILD_TESTING)
     "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
   add_test(NAME local-cursor-v1 COMMAND local-cursor-v1-test)
 
+  add_executable(datasmash-control-v1-test
+    tests/protocol/datasmash-control-v1.c)
+  target_compile_options(datasmash-control-v1-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(datasmash-control-v1-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/datasmash-transport/include")
+  add_test(NAME datasmash-control-v1 COMMAND datasmash-control-v1-test)
+
   add_test(NAME kms-probe-self-test COMMAND connect-probe-kms --self-test)
   if(TARGET connect-probe-nvfbc)
     add_test(NAME nvfbc-probe-self-test COMMAND connect-probe-nvfbc --self-test)

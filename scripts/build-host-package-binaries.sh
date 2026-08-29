@@ -42,6 +42,7 @@ for datasmash_input in \
   Cargo.toml \
   Cargo.lock \
   include/stationconnect_datasmash.h \
+  include/stationconnect_datasmash_control.h \
   src/lib.rs; do
   [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
     echo "datasmash transport input is unavailable: ${datasmash_input}" >&2

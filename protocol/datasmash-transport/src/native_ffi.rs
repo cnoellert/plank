@@ -988,7 +988,6 @@ pub unsafe extern "C" fn sc_datasmash_native_video_send(
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         };
         if endpoint.mode != 1
-            || endpoint.shared.state() != EndpointState::Ready
             || info.struct_size as usize != std::mem::size_of::<ScDatasmashNativeVideoFrameInfo>()
             || !validate_video_codec(info.codec)
             || info.flags & !VIDEO_FLAG_KEY != 0
@@ -996,6 +995,9 @@ pub unsafe extern "C" fn sc_datasmash_native_video_send(
             || !(1..=MAX_VIDEO_FRAME_SIZE).contains(&payload_size)
         {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        if endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
         }
         let payload =
             Bytes::copy_from_slice(unsafe { std::slice::from_raw_parts(payload, payload_size) });
@@ -1101,7 +1103,6 @@ pub unsafe extern "C" fn sc_datasmash_native_audio_send(
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         };
         if endpoint.mode != 1
-            || endpoint.shared.state() != EndpointState::Ready
             || info.struct_size as usize != std::mem::size_of::<ScDatasmashNativeAudioPacketInfo>()
             || info.frame_samples == 0
             || info.missing_samples != 0
@@ -1109,6 +1110,9 @@ pub unsafe extern "C" fn sc_datasmash_native_audio_send(
             || !(1..=MAX_AUDIO_PACKET_SIZE).contains(&payload_size)
         {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        if endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
         }
         let payload =
             Bytes::copy_from_slice(unsafe { std::slice::from_raw_parts(payload, payload_size) });
@@ -1206,12 +1210,11 @@ pub unsafe extern "C" fn sc_datasmash_native_input_send(
         let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         };
-        if endpoint.mode != 2
-            || endpoint.shared.state() != EndpointState::Ready
-            || payload.is_null()
-            || payload_size > MAX_INPUT_PACKET_SIZE
-        {
+        if endpoint.mode != 2 || payload.is_null() || payload_size > MAX_INPUT_PACKET_SIZE {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        if endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
         }
         let mut queues = endpoint.shared.queues.lock().unwrap();
         if queues.input_send.len() == INPUT_SEND_CAPACITY {
@@ -1287,11 +1290,11 @@ pub unsafe extern "C" fn sc_datasmash_native_data_send(
         let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         };
-        if endpoint.shared.state() != EndpointState::Ready
-            || payload.is_null()
-            || !(1..=MAX_DATA_PACKET_SIZE).contains(&payload_size)
-        {
+        if payload.is_null() || !(1..=MAX_DATA_PACKET_SIZE).contains(&payload_size) {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        if endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
         }
         let mut queues = endpoint.shared.queues.lock().unwrap();
         if queues.data_send.len() == DATA_SEND_CAPACITY {
