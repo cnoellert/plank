@@ -13,7 +13,7 @@ ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
 
-for command_name in cargo cmp find git make mktemp nm pkg-config qmake6 readelf realpath rg rustc stat timeout; do
+for command_name in c++ cargo cmp find git make mktemp nm pkg-config qmake6 readelf realpath rg rustc stat timeout; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -293,6 +293,12 @@ echo "client_remote_host_control_absence_gate=pass"
 # Focus loss must stop local raw-Wacom forwarding without sending the
 # destructive detach that removes and recreates host UHID/XInput endpoints.
 client_common_dir="${source_dir}/moonlight-common-c/moonlight-common-c/src"
+printf '#include "Limelight.h"\nint main() { return 0; }\n' |
+  c++ -std=c++17 -fsyntax-only -I"$client_common_dir" -x c++ - || {
+    echo "Limelight.h is not a self-contained public C++ header" >&2
+    exit 1
+  }
+echo "client_limelight_header_gate=pass"
 for required_raw_hid_token in \
   '#define SC_RAW_HID_WIRE_VERSION 2U' \
   'SC_RAW_HID_SUSPEND = 13'; do
