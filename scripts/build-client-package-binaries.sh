@@ -53,6 +53,7 @@ for required_datasmash_token in \
   'LiSubmitStationConnectVideoFrame' \
   'sc_datasmash_native_audio_receive' \
   'LiSubmitStationConnectAudioPacket' \
+  'LiSetStationConnectNativeMediaEnabled' \
   'LiSetStationConnectControlPacketSender' \
   'datasmashControlPacketSender'; do
   rg -Fq "$required_datasmash_token" \
@@ -65,6 +66,7 @@ echo "client_datasmash_negotiation_gate=pass"
 for required_audio_transport_token in \
   'LiSubmitStationConnectVideoFrame' \
   'LiSubmitStationConnectAudioPacket' \
+  'StationConnectNativeMediaEnabled' \
   'STATIONCONNECT_VIDEO_FRAME_FLAG_KEY'; do
   rg -Fq "$required_audio_transport_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" || {
@@ -73,6 +75,17 @@ for required_audio_transport_token in \
   }
 done
 echo "client_datasmash_native_media_gate=pass"
+for removed_media_bridge_token in \
+  'StationConnectVideoPacketReceiver' \
+  'StationConnectAudioPacketReceiver'; do
+  if rg -Fq "$removed_media_bridge_token" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src" \
+    "$source_dir/app/streaming"; then
+    echo "obsolete tunneled media bridge remains: ${removed_media_bridge_token}" >&2
+    exit 1
+  fi
+done
+echo "client_datasmash_legacy_media_bridge_absence_gate=pass"
 for required_control_transport_token in \
   'StationConnectControlPacketSender' \
   'externalControlPacketSender' \
