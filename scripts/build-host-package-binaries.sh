@@ -781,7 +781,7 @@ cmake --build "$build_dir" --parallel "$build_jobs" \
   --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
 
 nm -C "$build_dir/stationconnect-host" | \
-  rg -q ' [Tt] sc_datasmash_abi_version$' || {
+  rg ' [Tt] sc_datasmash_abi_version$' >/dev/null || {
   echo "host binary does not link the datasmash transport ABI" >&2
   exit 1
 }

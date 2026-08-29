@@ -1100,7 +1100,7 @@ client_binary="${build_dir}/app/stationconnect-client"
   echo "StationConnect client package binary was not produced" >&2
   exit 1
 }
-nm -C "$client_binary" | rg -q ' [Tt] sc_datasmash_abi_version$' || {
+nm -C "$client_binary" | rg ' [Tt] sc_datasmash_abi_version$' >/dev/null || {
   echo "client binary does not link the datasmash transport ABI" >&2
   exit 1
 }
