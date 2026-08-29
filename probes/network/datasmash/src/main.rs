@@ -5,7 +5,7 @@
 use anyhow::{Context, Result, anyhow, bail};
 use bytes::{BufMut, Bytes, BytesMut};
 use kynet::{Connection, Server};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
 
 const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
 const PROTOCOL_VERSION: u16 = 2;
@@ -27,6 +27,8 @@ const AUDIO_LANE: u8 = 2;
 const MOTION_LANE: u8 = 3;
 const MEDIA_ROLE: &str = "media";
 const INTERACTION_ROLE: &str = "interaction";
+const VIDEO_QUEUE_CAPACITY: usize = 64;
+const AUDIO_QUEUE_CAPACITY: usize = 8;
 #[cfg(feature = "quinn-bbr")]
 const CONGESTION_CONTROL: &str = "bbr";
 #[cfg(not(feature = "quinn-bbr"))]
@@ -72,6 +74,9 @@ struct DatagramCounters {
     audio_sequence_gaps: AtomicU64,
     motion_sequence_gaps: AtomicU64,
     stale_datagrams: AtomicU64,
+    app_video_queue_drops: AtomicU64,
+    app_audio_queue_drops: AtomicU64,
+    media_queue_high_water: AtomicU64,
 }
 
 #[derive(Debug)]
@@ -102,6 +107,47 @@ impl SequenceTracker {
             .saturating_add(sequence.saturating_sub(latest).saturating_sub(1));
         self.latest = Some(sequence);
         true
+    }
+}
+
+#[derive(Default)]
+struct MediaQueue {
+    audio: VecDeque<Bytes>,
+    video: VecDeque<Bytes>,
+}
+
+impl MediaQueue {
+    fn push_video(&mut self, packet: Bytes) -> bool {
+        let dropped = if self.video.len() == VIDEO_QUEUE_CAPACITY {
+            self.video.pop_front();
+            true
+        } else {
+            false
+        };
+        self.video.push_back(packet);
+        dropped
+    }
+
+    fn push_audio(&mut self, packet: Bytes) -> bool {
+        let dropped = if self.audio.len() == AUDIO_QUEUE_CAPACITY {
+            self.audio.pop_front();
+            true
+        } else {
+            false
+        };
+        self.audio.push_back(packet);
+        dropped
+    }
+
+    fn pop_next(&mut self) -> Option<(u8, Bytes)> {
+        self.audio
+            .pop_front()
+            .map(|packet| (AUDIO_LANE, packet))
+            .or_else(|| self.video.pop_front().map(|packet| (VIDEO_LANE, packet)))
+    }
+
+    fn len(&self) -> usize {
+        self.audio.len() + self.video.len()
     }
 }
 
@@ -250,20 +296,16 @@ async fn connect_authenticated(
     .await
 }
 
-async fn send_video(
-    connection: Connection,
+async fn produce_video(
+    queue: Arc<Mutex<MediaQueue>>,
+    notify: Arc<Notify>,
+    active_producers: Arc<AtomicU64>,
     duration: Duration,
     bitrate_bps: u64,
+    packet_size: usize,
     counters: Arc<DatagramCounters>,
 ) -> Result<()> {
-    let max_datagram_size = connection
-        .max_datagram_size()
-        .ok_or_else(|| anyhow!("peer did not negotiate QUIC DATAGRAM support"))?;
-    if max_datagram_size <= DATAGRAM_HEADER_SIZE {
-        bail!("negotiated datagram size {max_datagram_size} is too small");
-    }
-    let payload_size = (max_datagram_size - DATAGRAM_HEADER_SIZE).min(1_184);
-    let packet_size = payload_size + DATAGRAM_HEADER_SIZE;
+    let payload_size = packet_size - DATAGRAM_HEADER_SIZE;
     let started = Instant::now();
     let mut sequence = 0_u64;
     let mut attempted_bytes = 0_u64;
@@ -277,42 +319,143 @@ async fn send_video(
         }
 
         let packet = make_datagram(VIDEO_LANE, sequence, payload_size);
-        match connection.send_datagram(packet).await {
-            Ok(()) => {
-                counters.video_packets.fetch_add(1, Ordering::Relaxed);
-                counters
-                    .video_bytes
-                    .fetch_add(packet_size as u64, Ordering::Relaxed);
-            }
-            Err(_) => {
-                counters.blocked_sends.fetch_add(1, Ordering::Relaxed);
-            }
+        let (dropped, depth) = {
+            let mut queue = queue.lock().await;
+            let dropped = queue.push_video(packet);
+            (dropped, queue.len())
+        };
+        if dropped {
+            counters
+                .app_video_queue_drops
+                .fetch_add(1, Ordering::Relaxed);
         }
+        counters
+            .media_queue_high_water
+            .fetch_max(depth as u64, Ordering::Relaxed);
+        notify.notify_one();
         attempted_bytes += packet_size as u64;
         sequence = sequence.wrapping_add(1);
     }
+    active_producers.fetch_sub(1, Ordering::Release);
+    notify.notify_one();
     Ok(())
 }
 
-async fn send_audio(connection: Connection, duration: Duration, counters: Arc<DatagramCounters>) {
+async fn produce_audio(
+    queue: Arc<Mutex<MediaQueue>>,
+    notify: Arc<Notify>,
+    active_producers: Arc<AtomicU64>,
+    duration: Duration,
+    counters: Arc<DatagramCounters>,
+) {
     let started = Instant::now();
     let mut interval = tokio::time::interval(Duration::from_millis(5));
     let mut sequence = 0_u64;
     while started.elapsed() < duration {
         interval.tick().await;
-        match connection
-            .send_datagram(make_datagram(AUDIO_LANE, sequence, 256))
-            .await
-        {
-            Ok(()) => {
-                counters.audio_packets.fetch_add(1, Ordering::Relaxed);
-            }
-            Err(_) => {
-                counters.blocked_sends.fetch_add(1, Ordering::Relaxed);
-            }
+        let (dropped, depth) = {
+            let mut queue = queue.lock().await;
+            let dropped = queue.push_audio(make_datagram(AUDIO_LANE, sequence, 256));
+            (dropped, queue.len())
+        };
+        if dropped {
+            counters
+                .app_audio_queue_drops
+                .fetch_add(1, Ordering::Relaxed);
         }
+        counters
+            .media_queue_high_water
+            .fetch_max(depth as u64, Ordering::Relaxed);
+        notify.notify_one();
         sequence = sequence.wrapping_add(1);
     }
+    active_producers.fetch_sub(1, Ordering::Release);
+    notify.notify_one();
+}
+
+async fn send_queued_media(
+    connection: Connection,
+    queue: Arc<Mutex<MediaQueue>>,
+    notify: Arc<Notify>,
+    active_producers: Arc<AtomicU64>,
+    counters: Arc<DatagramCounters>,
+) {
+    loop {
+        let notified = notify.notified();
+        let next = queue.lock().await.pop_next();
+        if let Some((lane, packet)) = next {
+            let packet_len = packet.len() as u64;
+            match connection.send_datagram(packet).await {
+                Ok(()) if lane == VIDEO_LANE => {
+                    counters.video_packets.fetch_add(1, Ordering::Relaxed);
+                    counters
+                        .video_bytes
+                        .fetch_add(packet_len, Ordering::Relaxed);
+                }
+                Ok(()) if lane == AUDIO_LANE => {
+                    counters.audio_packets.fetch_add(1, Ordering::Relaxed);
+                }
+                Ok(()) => {
+                    counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+                }
+                Err(_) => {
+                    counters.blocked_sends.fetch_add(1, Ordering::Relaxed);
+                }
+            }
+            continue;
+        }
+        if active_producers.load(Ordering::Acquire) == 0 {
+            break;
+        }
+        notified.await;
+    }
+}
+
+async fn run_media_pipeline(
+    connection: Connection,
+    duration: Duration,
+    bitrate_bps: u64,
+    counters: Arc<DatagramCounters>,
+) -> Result<()> {
+    let max_datagram_size = connection
+        .max_datagram_size()
+        .ok_or_else(|| anyhow!("peer did not negotiate QUIC DATAGRAM support"))?;
+    if max_datagram_size <= DATAGRAM_HEADER_SIZE {
+        bail!("negotiated datagram size {max_datagram_size} is too small");
+    }
+    let packet_size = DATAGRAM_HEADER_SIZE + (max_datagram_size - DATAGRAM_HEADER_SIZE).min(1_184);
+    let queue = Arc::new(Mutex::new(MediaQueue::default()));
+    let notify = Arc::new(Notify::new());
+    let active_producers = Arc::new(AtomicU64::new(2));
+
+    let sender = tokio::spawn(send_queued_media(
+        connection,
+        queue.clone(),
+        notify.clone(),
+        active_producers.clone(),
+        counters.clone(),
+    ));
+    let video = tokio::spawn(produce_video(
+        queue.clone(),
+        notify.clone(),
+        active_producers.clone(),
+        duration,
+        bitrate_bps,
+        packet_size,
+        counters.clone(),
+    ));
+    let audio = tokio::spawn(produce_audio(
+        queue,
+        notify,
+        active_producers,
+        duration,
+        counters,
+    ));
+
+    video.await??;
+    audio.await?;
+    sender.await?;
+    Ok(())
 }
 
 async fn receive_server_datagrams(
@@ -437,20 +580,14 @@ async fn run_server(args: &[String]) -> Result<()> {
         counters.clone(),
     ));
     let echo_task = tokio::spawn(echo_critical_input(input_send, input_recv));
-    let video_task = tokio::spawn(send_video(
+    let media_task = tokio::spawn(run_media_pipeline(
         media_connection.clone(),
         duration,
         bitrate_bps,
         counters.clone(),
     ));
-    let audio_task = tokio::spawn(send_audio(
-        media_connection.clone(),
-        duration,
-        counters.clone(),
-    ));
 
-    video_task.await??;
-    audio_task.await?;
+    media_task.await??;
     tokio::time::sleep(Duration::from_millis(200)).await;
     stop.store(true, Ordering::Relaxed);
     receive_task.await?;
@@ -466,7 +603,7 @@ async fn run_server(args: &[String]) -> Result<()> {
         .unwrap_or(0);
 
     println!(
-        "status=complete role=server connections=2 congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} media_quic_rtt_us={} media_quic_packets_lost={} interaction_quic_rtt_us={} interaction_quic_packets_lost={} media_max_datagram_size={} interaction_max_datagram_size={}",
+        "status=complete role=server connections=2 congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} audio_packets={} motion_packets={} critical_input={} blocked_sends={} invalid_packets={} app_video_queue_drops={} app_audio_queue_drops={} media_queue_high_water={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} media_quic_rtt_us={} media_quic_packets_lost={} interaction_quic_rtt_us={} interaction_quic_packets_lost={} media_max_datagram_size={} interaction_max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
@@ -474,6 +611,9 @@ async fn run_server(args: &[String]) -> Result<()> {
         critical_input,
         counters.blocked_sends.load(Ordering::Relaxed),
         counters.invalid_packets.load(Ordering::Relaxed),
+        counters.app_video_queue_drops.load(Ordering::Relaxed),
+        counters.app_audio_queue_drops.load(Ordering::Relaxed),
+        counters.media_queue_high_water.load(Ordering::Relaxed),
         counters.video_sequence_gaps.load(Ordering::Relaxed),
         counters.audio_sequence_gaps.load(Ordering::Relaxed),
         counters.motion_sequence_gaps.load(Ordering::Relaxed),
@@ -755,7 +895,7 @@ async fn run_client(args: &[String]) -> Result<()> {
     let received_bitrate =
         counters.video_bytes.load(Ordering::Relaxed) as f64 * 8.0 / elapsed_seconds;
     println!(
-        "status=complete role=client connections=2 congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} media_quic_rtt_us={} media_quic_packets_lost={} interaction_quic_rtt_us={} interaction_quic_packets_lost={} media_max_datagram_size={} interaction_max_datagram_size={}",
+        "status=complete role=client connections=2 congestion_control={CONGESTION_CONTROL} video_packets={} video_bytes={} received_video_bitrate_bps={received_bitrate:.0} audio_packets={} motion_packets={} input_samples={} input_rtt_p50_us={:.1} input_rtt_p99_us={:.1} blocked_sends={} invalid_packets={} app_video_queue_drops={} app_audio_queue_drops={} media_queue_high_water={} video_sequence_gaps={} audio_sequence_gaps={} motion_sequence_gaps={} stale_datagrams={} media_quic_rtt_us={} media_quic_packets_lost={} interaction_quic_rtt_us={} interaction_quic_packets_lost={} media_max_datagram_size={} interaction_max_datagram_size={}",
         counters.video_packets.load(Ordering::Relaxed),
         counters.video_bytes.load(Ordering::Relaxed),
         counters.audio_packets.load(Ordering::Relaxed),
@@ -765,6 +905,9 @@ async fn run_client(args: &[String]) -> Result<()> {
         input_rtt_p99_ns as f64 / 1_000.0,
         counters.blocked_sends.load(Ordering::Relaxed),
         counters.invalid_packets.load(Ordering::Relaxed),
+        counters.app_video_queue_drops.load(Ordering::Relaxed),
+        counters.app_audio_queue_drops.load(Ordering::Relaxed),
+        counters.media_queue_high_water.load(Ordering::Relaxed),
         counters.video_sequence_gaps.load(Ordering::Relaxed),
         counters.audio_sequence_gaps.load(Ordering::Relaxed),
         counters.motion_sequence_gaps.load(Ordering::Relaxed),
@@ -852,5 +995,32 @@ mod tests {
         );
         assert!(ConnectionRole::try_from(0).is_err());
         assert!(ConnectionRole::try_from(u8::MAX).is_err());
+    }
+
+    #[test]
+    fn media_queue_is_bounded_fresh_and_audio_first() {
+        let mut queue = MediaQueue::default();
+        for sequence in 0..VIDEO_QUEUE_CAPACITY as u64 {
+            assert!(!queue.push_video(make_datagram(VIDEO_LANE, sequence, 1)));
+        }
+        assert!(queue.push_video(make_datagram(VIDEO_LANE, VIDEO_QUEUE_CAPACITY as u64, 1)));
+        assert!(!queue.push_audio(make_datagram(AUDIO_LANE, 77, 1)));
+
+        let (lane, audio) = queue.pop_next().unwrap();
+        assert_eq!(lane, AUDIO_LANE);
+        assert_eq!(parse_datagram(&audio).unwrap().sequence, 77);
+
+        let (lane, video) = queue.pop_next().unwrap();
+        assert_eq!(lane, VIDEO_LANE);
+        assert_eq!(parse_datagram(&video).unwrap().sequence, 1);
+        assert_eq!(queue.len(), VIDEO_QUEUE_CAPACITY - 1);
+
+        let mut audio_queue = MediaQueue::default();
+        for sequence in 0..AUDIO_QUEUE_CAPACITY as u64 {
+            assert!(!audio_queue.push_audio(make_datagram(AUDIO_LANE, sequence, 1)));
+        }
+        assert!(audio_queue.push_audio(make_datagram(AUDIO_LANE, AUDIO_QUEUE_CAPACITY as u64, 1)));
+        let (_, first_audio) = audio_queue.pop_next().unwrap();
+        assert_eq!(parse_datagram(&first_audio).unwrap().sequence, 1);
     }
 }
