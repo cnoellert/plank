@@ -104,10 +104,13 @@ sudo systemctl enable --now stationconnect-pam-broker.service \
 ```
 
 Configure every host runtime option in the single root-managed
-`/etc/stationconnect/stationconnect.conf`. Client options remain in
-`~/.config/stationconnect/client.env`. Capture selection follows the
-authenticated bookmark topology for each session; there is no fixed
-administrator capture-output selector.
+`/etc/stationconnect/stationconnect.conf`. Ordinary client preferences remain
+in the user's Qt settings. Root-managed client policy lives separately in
+`/etc/stationconnect/stationconnect-client.conf`; a present policy key overrides
+the saved preference and locks its UI control. The client does not source
+per-user shell configuration. Capture selection follows the authenticated
+bookmark topology for each session; there is no fixed administrator
+capture-output selector.
 The software profile expands x264 worker affinity to the qualified CPU set and
 uses 16 slices on hardware-test-host; neither the CPU count nor slice count is a universal
 default. The host configuration uses INI-style section headers and one globally
@@ -117,10 +120,10 @@ configuration.
 
 mDNS is disabled by default on both sides. Set
 `stationconnect_mdns_discovery = true` in the host `stationconnect.conf` to publish
-the host with Avahi. The client preference defaults off but remains editable when
-`STATIONCONNECT_MDNS_DISCOVERY` is absent. Set that variable explicitly to `0` or
-`1` in the client env file only to impose an administrator-managed value. The
-client launcher loads its env file for app-icon and command launches. Saved and
+the host with Avahi. The client preference defaults off but remains editable
+while `network.mdns_discovery` is omitted or commented in
+`stationconnect-client.conf`. Set `mdns_discovery = true` or `false` under its
+`[network]` section only to impose an administrator-managed value. Saved and
 manually entered workstations continue to connect when mDNS is disabled.
 
 The Linux client mirrors its already-redacted stderr/journal output to private,

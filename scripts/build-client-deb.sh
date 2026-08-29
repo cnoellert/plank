@@ -121,8 +121,10 @@ install -D -m 0755 "$moonlight_binary" \
   "$stage_dir/usr/libexec/stationconnect/stationconnect-client"
 install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-client" \
   "$stage_dir/usr/bin/stationconnect-client"
-install -D -m 0644 "$repo_dir/packaging/systemd/client.env.example" \
-  "$stage_dir/usr/share/doc/stationconnect-client/client.env.example"
+install -D -m 0644 "$repo_dir/packaging/config/stationconnect-client.conf" \
+  "$stage_dir/etc/stationconnect/stationconnect-client.conf"
+printf '%s\n' '/etc/stationconnect/stationconnect-client.conf' \
+  >"$stage_dir/DEBIAN/conffiles"
 install -D -m 0644 \
   "$repo_dir/packaging/desktop/la.instinctual.StationConnect.Client.desktop" \
   "$stage_dir/usr/share/applications/la.instinctual.StationConnect.Client.desktop"
@@ -245,6 +247,33 @@ for required_package in \
   }
 done
 package_manifest=$(dpkg-deb --contents "$deb_file")
+grep -Eq '^-rw-r--r-- root/root +[0-9]+ .*\./etc/stationconnect/stationconnect-client\.conf$' \
+  <<<"$package_manifest" || {
+  echo "client administrator policy does not have root-owned mode 0644" >&2
+  exit 1
+}
+grep -Fq './etc/stationconnect/stationconnect-client.conf' \
+  <<<"$package_manifest" || {
+  echo "client DEB is missing the root-owned administrator policy" >&2
+  exit 1
+}
+client_policy=$(dpkg-deb --fsys-tarfile "$deb_file" | \
+  tar -xOf - ./etc/stationconnect/stationconnect-client.conf)
+grep -Fxq '[network]' <<<"$client_policy" || {
+  echo "client administrator policy is missing its network section" >&2
+  exit 1
+}
+grep -Fxq '# mdns_discovery = false' <<<"$client_policy" || {
+  echo "client administrator policy does not leave mDNS user-configurable by default" >&2
+  exit 1
+}
+control_audit_dir=$(mktemp -d --tmpdir stationconnect-client-control.XXXXXX)
+dpkg-deb --control "$deb_file" "$control_audit_dir"
+grep -Fxq '/etc/stationconnect/stationconnect-client.conf' \
+  "$control_audit_dir/conffiles" || {
+  echo "client administrator policy is not registered as a Debian conffile" >&2
+  exit 1
+}
 if grep -Eq \
     '\./(etc/xdg/autostart|usr/lib/systemd/user|usr/share/systemd/user)/.*stationconnect' \
     <<<"$package_manifest"; then
@@ -309,8 +338,6 @@ grep -Fq './usr/share/doc/stationconnect-client/COPYING.nanors' \
   echo "client DEB is missing the nanors license" >&2
   exit 1
 }
-control_audit_dir=$(mktemp -d --tmpdir stationconnect-client-control.XXXXXX)
-dpkg-deb --control "$deb_file" "$control_audit_dir"
 for maintainer_script in postinst postrm; do
   [[ -x ${control_audit_dir}/${maintainer_script} ]] || {
     echo "client DEB is missing executable ${maintainer_script}" >&2

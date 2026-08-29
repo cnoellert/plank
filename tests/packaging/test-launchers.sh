@@ -6,7 +6,7 @@ repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 host_launcher=${repo_dir}/packaging/bin/stationconnect-host
 client_launcher=${repo_dir}/packaging/bin/stationconnect-client
 host_profile=${repo_dir}/packaging/config/stationconnect.conf
-client_profile=${repo_dir}/packaging/systemd/client.env.example
+client_policy=${repo_dir}/packaging/config/stationconnect-client.conf
 client_main=${repo_dir}/client/moonlight-qt-fork/app/main.cpp
 client_path=${repo_dir}/client/moonlight-qt-fork/app/path.cpp
 
@@ -50,7 +50,11 @@ if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
   exit 1
 fi
 if grep -q '^STATIONCONNECT_MDNS_DISCOVERY=' <<<"${client_environment}"; then
-  echo 'Client launcher turned the default-off mDNS preference into a managed override' >&2
+  echo 'Client launcher injected a deprecated mDNS environment override' >&2
+  exit 1
+fi
+if rg -n 'client\.env|source[[:space:]]+.*client_env' "${client_launcher}"; then
+  echo 'Client launcher still loads user-controlled shell configuration' >&2
   exit 1
 fi
 
@@ -64,16 +68,10 @@ client_environment=$(env -u STATIONCONNECT_MDNS_DISCOVERY \
   STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
   STATIONCONNECT_CLIENT_LIBDIR=/does/not/exist \
   DISPLAY=:99 "${client_launcher}")
-grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=1' <<<"${client_environment}"
-
-printf '%s\n' 'STATIONCONNECT_MDNS_DISCOVERY=0' \
-  >"${client_config_root}/stationconnect/client.env"
-client_environment=$(env -u STATIONCONNECT_MDNS_DISCOVERY \
-  XDG_CONFIG_HOME="${client_config_root}" \
-  STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
-  STATIONCONNECT_CLIENT_LIBDIR=/does/not/exist \
-  DISPLAY=:99 "${client_launcher}")
-grep -Fxq 'STATIONCONNECT_MDNS_DISCOVERY=0' <<<"${client_environment}"
+if grep -q '^STATIONCONNECT_MDNS_DISCOVERY=' <<<"${client_environment}"; then
+  echo 'Client launcher loaded the obsolete per-user client.env file' >&2
+  exit 1
+fi
 
 grep -Fxq 'sw_vbv_maxrate_percentage = 150' "${host_profile}"
 grep -Fxq 'sw_vbv_buffer_frames = 4' "${host_profile}"
@@ -113,7 +111,12 @@ if rg -q '^[[:space:]]*[A-Z][A-Z0-9_]*=' "${host_profile}"; then
   echo 'host profile contains shell environment syntax instead of INI syntax' >&2
   exit 1
 fi
-grep -Fxq '# STATIONCONNECT_MDNS_DISCOVERY=0' "${client_profile}"
+grep -Fxq '[network]' "${client_policy}"
+grep -Fxq '# mdns_discovery = false' "${client_policy}"
+if rg -q '^[[:space:]]*mdns_discovery[[:space:]]*=' "${client_policy}"; then
+  echo 'Packaged client policy locks mDNS instead of leaving it user-configurable' >&2
+  exit 1
+fi
 
 for required_log_token in XDG_STATE_HOME '.local/state' 'stationconnect/logs'; do
   rg -Fq "${required_log_token}" "${client_path}"

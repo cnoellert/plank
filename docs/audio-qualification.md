@@ -41,11 +41,13 @@ path; automated host tests cover rejection and cleanup for a UID mismatch.
 
 ## Clock-Drift Telemetry
 
-Set `STATIONCONNECT_AV_SYNC_TELEMETRY=1` in the client's
-`~/.config/stationconnect/client.env`, restart the client, and begin a new
-stream. Moonlight then logs audio media time with its SDL queue/device latency
-and video media time at the renderer call about once per second. Collect the
-user-service journal and analyze it from the repository root:
+Launch the client from a terminal with
+`STATIONCONNECT_AV_SYNC_TELEMETRY=1 stationconnect-client`, then begin a new
+stream. This diagnostic-only process environment switch is not an
+administrator policy. StationConnect then logs audio media time with its SDL
+queue/device latency and video media time at the renderer call about once per
+second. Collect the persistent client log and analyze it from the repository
+root:
 
 ```bash
 ./scripts/analyze-av-sync-telemetry.py moonlight.log \

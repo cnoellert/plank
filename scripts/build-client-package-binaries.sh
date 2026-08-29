@@ -99,8 +99,7 @@ echo "client_pairing_absence_gate=pass"
 
 if rg -n \
   'STATIONCONNECT_VPN_INTERFACE|isApprovedStationConnectRoute|approved VPN route' \
-  "$source_dir/app" \
-  "$repo_dir/packaging/systemd/client.env.example"; then
+  "$source_dir/app"; then
   echo "client-side VPN route restriction is present in StationConnect" >&2
   exit 1
 fi
@@ -935,15 +934,17 @@ rg -U -q 'id: settingsColumn2(.|\n)*id: networkSettingsGroupBox' \
 }
 echo "client_network_mtu_gate=pass"
 
-# mDNS discovery is opt-in. A deployment env override takes precedence over
-# the user preference and locks the corresponding UI control.
+# mDNS discovery is opt-in. Only the root-owned client policy may take
+# precedence over the user preference and lock the corresponding UI control.
 rg -Fq 'settings.value(SER_MDNS, false)' \
   "$source_dir/app/settings/streamingpreferences.cpp" || {
   echo "client mDNS discovery does not default to disabled" >&2
   exit 1
 }
 for required_mdns_token in \
-  STATIONCONNECT_MDNS_DISCOVERY \
+  StationConnectClientPolicy \
+  'network/mdns_discovery' \
+  '/etc/stationconnect/stationconnect-client.conf' \
   mdnsDiscoveryManaged \
   '!StreamingPreferences.mdnsDiscoveryManaged'; do
   rg -Fq "$required_mdns_token" "$source_dir/app" || {
@@ -951,20 +952,33 @@ for required_mdns_token in \
     exit 1
   }
 done
-rg -Fq 'source "${client_env}"' "$repo_dir/packaging/bin/stationconnect-client" || {
-  echo "client launcher does not load its deployment env file" >&2
-  exit 1
-}
-if rg -n 'export STATIONCONNECT_MDNS_DISCOVERY=.*:-0' \
+if rg -n 'STATIONCONNECT_MDNS_DISCOVERY|client\.env' \
+  "$source_dir/app" \
   "$repo_dir/packaging/bin/stationconnect-client"; then
-  echo "client launcher turns the default-off mDNS preference into a managed override" >&2
+  echo "client retains the deprecated user-controlled mDNS environment policy" >&2
   exit 1
 fi
-rg -Fxq '# STATIONCONNECT_MDNS_DISCOVERY=0' \
-  "$repo_dir/packaging/systemd/client.env.example" || {
-  echo "client mDNS example does not document the optional managed override" >&2
+client_policy="$repo_dir/packaging/config/stationconnect-client.conf"
+rg -Fxq '[network]' "$client_policy" || {
+  echo "client administrator policy is missing its network section" >&2
   exit 1
 }
+rg -Fxq '# mdns_discovery = false' "$client_policy" || {
+  echo "client administrator policy does not document the optional managed value" >&2
+  exit 1
+}
+if rg -q '^[[:space:]]*mdns_discovery[[:space:]]*=' "$client_policy"; then
+  echo "client administrator policy locks mDNS in the default package" >&2
+  exit 1
+fi
+for policy_test_file in \
+  tests/stationconnectclientpolicy/stationconnectclientpolicy.pro \
+  tests/stationconnectclientpolicy/test_stationconnectclientpolicy.cpp; do
+  [[ -f ${source_dir}/${policy_test_file} ]] || {
+    echo "client administrator policy test is missing: ${policy_test_file}" >&2
+    exit 1
+  }
+done
 echo "client_mdns_default_off_gate=pass"
 
 # Linux client diagnostics must survive a reboot and remain readable without
@@ -993,6 +1007,22 @@ for required_log_token in \
   }
 done
 echo "client_persistent_log_source_gate=pass"
+
+policy_test_build=$(mktemp -d --tmpdir stationconnect-client-policy-test.XXXXXX)
+cleanup_policy_test() {
+  if [[ -d ${policy_test_build} ]]; then
+    find "$policy_test_build" -xdev -depth -mindepth 1 -delete
+    rmdir "$policy_test_build"
+  fi
+}
+trap cleanup_policy_test EXIT
+qmake6 "$source_dir/tests/stationconnectclientpolicy/stationconnectclientpolicy.pro" \
+  -o "$policy_test_build/Makefile"
+make -C "$policy_test_build" -j"$(nproc)"
+QT_QPA_PLATFORM=offscreen "$policy_test_build/stationconnectclientpolicy"
+cleanup_policy_test
+trap - EXIT
+echo "client_administrator_policy_test=pass"
 
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
