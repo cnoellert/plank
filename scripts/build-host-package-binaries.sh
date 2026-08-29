@@ -23,12 +23,35 @@ boost_source_dir=$(realpath -e -- "$STATIONCONNECT_BOOST_SOURCE_DIR")
   exit 1
 }
 
-for command_name in cmake git nm realpath rg; do
+for command_name in cargo cmake git nm realpath rg rustc; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
   }
 done
+[[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
+  echo "StationConnect datasmash requires rustc 1.89.0" >&2
+  exit 1
+}
+[[ $(cargo --version) == "cargo 1.89.0 "* ]] || {
+  echo "StationConnect datasmash requires cargo 1.89.0" >&2
+  exit 1
+}
+datasmash_transport_dir="${repo_dir}/protocol/datasmash-transport"
+for datasmash_input in \
+  Cargo.toml \
+  Cargo.lock \
+  include/stationconnect_datasmash.h \
+  src/lib.rs; do
+  [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
+    echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
+    exit 1
+  }
+done
+cargo metadata --locked --offline --no-deps \
+  --format-version 1 \
+  --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
+echo "host_datasmash_rust_input_gate=pass"
 for compiler in \
   /opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   /opt/rh/gcc-toolset-14/root/usr/bin/g++ \
@@ -737,9 +760,23 @@ env \
   -DSUNSHINE_ENABLE_VULKAN=OFF \
   -DSUNSHINE_ENABLE_WAYLAND=OFF \
   -DSUNSHINE_ENABLE_X11=ON \
-  -DSUNSHINE_ENABLE_XDG_PORTAL=OFF
+  -DSUNSHINE_ENABLE_XDG_PORTAL=OFF \
+  -DSTATIONCONNECT_ENABLE_DATASMASH=ON \
+  -DSTATIONCONNECT_DATASMASH_TRANSPORT_DIR="$datasmash_transport_dir"
 cmake --build "$build_dir" --parallel "$build_jobs" \
   --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
+
+nm -C "$build_dir/stationconnect-host" | \
+  rg -q ' [Tt] sc_datasmash_abi_version$' || {
+  echo "host binary does not link the datasmash transport ABI" >&2
+  exit 1
+}
+rg -a -Fq 'StationConnect datasmash transport ABI ' \
+  "$build_dir/stationconnect-host" || {
+  echo "host binary does not report the inactive datasmash boundary" >&2
+  exit 1
+}
+echo "host_datasmash_link_gate=pass"
 
 if rg -a -q '/usr/local/assets' "$build_dir/stationconnect-host"; then
   echo "package binary contains the development asset path" >&2

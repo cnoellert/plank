@@ -13,12 +13,35 @@ ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
 
-for command_name in cmp find git make mktemp pkg-config qmake6 readelf realpath rg stat timeout; do
+for command_name in cargo cmp find git make mktemp nm pkg-config qmake6 readelf realpath rg rustc stat timeout; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
   }
 done
+[[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
+  echo "StationConnect datasmash requires rustc 1.89.0" >&2
+  exit 1
+}
+[[ $(cargo --version) == "cargo 1.89.0 "* ]] || {
+  echo "StationConnect datasmash requires cargo 1.89.0" >&2
+  exit 1
+}
+datasmash_transport_dir="${repo_dir}/protocol/datasmash-transport"
+for datasmash_input in \
+  Cargo.toml \
+  Cargo.lock \
+  include/stationconnect_datasmash.h \
+  src/lib.rs; do
+  [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
+    echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
+    exit 1
+  }
+done
+cargo metadata --locked --offline --no-deps \
+  --format-version 1 \
+  --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
+echo "client_datasmash_rust_input_gate=pass"
 
 package_version=$(<"${repo_dir}/packaging/VERSION")
 [[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+$ ]] || {
@@ -1048,7 +1071,8 @@ export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PAT
 mkdir -p "$build_dir"
 (
   cd "$build_dir"
-  qmake6 "$source_dir" CONFIG+=release \
+  qmake6 "$source_dir" CONFIG+=release CONFIG+=stationconnect-datasmash \
+    "STATIONCONNECT_DATASMASH_TRANSPORT_DIR=${datasmash_transport_dir}" \
     "STATIONCONNECT_VERSION=${package_version}" \
     "QMAKE_CFLAGS+=-ffile-prefix-map=${build_dir}=." \
     "QMAKE_CFLAGS+=-ffile-prefix-map=${source_dir}=../src" \
@@ -1062,6 +1086,15 @@ client_binary="${build_dir}/app/stationconnect-client"
   echo "StationConnect client package binary was not produced" >&2
   exit 1
 }
+nm -C "$client_binary" | rg -q ' [Tt] sc_datasmash_abi_version$' || {
+  echo "client binary does not link the datasmash transport ABI" >&2
+  exit 1
+}
+rg -a -Fq 'StationConnect datasmash transport ABI' "$client_binary" || {
+  echo "client binary does not report the inactive datasmash boundary" >&2
+  exit 1
+}
+echo "client_datasmash_link_gate=pass"
 if [[ -e ${build_dir}/app/moonlight ]]; then
   echo "client build still produced the superseded Moonlight runtime name" >&2
   exit 1
