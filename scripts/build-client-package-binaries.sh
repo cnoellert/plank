@@ -48,7 +48,9 @@ for required_datasmash_token in \
   '"&scDataPlane="' \
   'StationConnectDatasmashCertificateSha256' \
   'isCanonicalSha256Hex' \
-  'startDatasmashDataPlane'; do
+  'startDatasmashDataPlane' \
+  'LiSetStationConnectAudioPacketReceiver' \
+  'datasmashAudioPacketReceiver'; do
   rg -Fq "$required_datasmash_token" \
     "$source_dir/app" || {
     echo "client datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2
@@ -56,6 +58,17 @@ for required_datasmash_token in \
   }
 done
 echo "client_datasmash_negotiation_gate=pass"
+for required_audio_transport_token in \
+  'StationConnectAudioPacketReceiver' \
+  'externalAudioPacketReceiver' \
+  'Audio Receive: external packet source failed'; do
+  rg -Fq "$required_audio_transport_token" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src" || {
+    echo "client external audio transport invariant is missing: ${required_audio_transport_token}" >&2
+    exit 1
+  }
+done
+echo "client_datasmash_audio_receiver_gate=pass"
 
 package_version=$(<"${repo_dir}/packaging/VERSION")
 [[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {

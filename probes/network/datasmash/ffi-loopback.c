@@ -94,10 +94,14 @@ int main(int argc, char **argv) {
 
     const size_t server_max = sc_datasmash_video_max_packet_size(server);
     const size_t client_max = sc_datasmash_video_max_packet_size(client);
-    if (server_max < 1024 || server_max != client_max) {
+    const size_t server_audio_max = sc_datasmash_audio_max_packet_size(server);
+    const size_t client_audio_max = sc_datasmash_audio_max_packet_size(client);
+    if (server_max < 1024 || server_max != client_max ||
+        server_audio_max != server_max || client_audio_max != client_max) {
         fprintf(stderr,
-                "invalid negotiated video packet maximum: server=%zu client=%zu\n",
-                server_max, client_max);
+                "invalid negotiated media packet maximum: video=%zu/%zu "
+                "audio=%zu/%zu\n",
+                server_max, client_max, server_audio_max, client_audio_max);
         goto failure;
     }
 
@@ -123,6 +127,34 @@ int main(int argc, char **argv) {
         memcmp(received, prefix, sizeof(prefix)) != 0 ||
         memcmp(received + sizeof(prefix), payload, sizeof(payload)) != 0) {
         fprintf(stderr, "video packet did not survive the C ABI round trip\n");
+        goto failure;
+    }
+
+    unsigned char audio_header[24];
+    unsigned char audio_payload[320];
+    unsigned char audio_received[sizeof(audio_header) + sizeof(audio_payload)];
+    for (size_t i = 0; i < sizeof(audio_header); ++i) {
+        audio_header[i] = (unsigned char)(0x30u + i);
+    }
+    for (size_t i = 0; i < sizeof(audio_payload); ++i) {
+        audio_payload[i] = (unsigned char)(0xf0u ^ i);
+    }
+    result = sc_datasmash_audio_send(server, audio_header,
+                                     sizeof(audio_header), audio_payload,
+                                     sizeof(audio_payload));
+    if (result != SC_DATASMASH_OK) {
+        fprintf(stderr, "failed to submit audio packet: %d\n", result);
+        goto failure;
+    }
+    received_size = 0;
+    result = sc_datasmash_audio_receive(client, audio_received,
+                                        sizeof(audio_received), &received_size,
+                                        2000);
+    if (result != SC_DATASMASH_OK || received_size != sizeof(audio_received) ||
+        memcmp(audio_received, audio_header, sizeof(audio_header)) != 0 ||
+        memcmp(audio_received + sizeof(audio_header), audio_payload,
+               sizeof(audio_payload)) != 0) {
+        fprintf(stderr, "audio packet did not survive the C ABI round trip\n");
         goto failure;
     }
 
@@ -167,8 +199,14 @@ int main(int argc, char **argv) {
         server_stats.video_bytes_sent != 2 * sizeof(received) ||
         client_stats.video_bytes_received != 2 * sizeof(received) ||
         server_stats.video_send_queue_drops != 0 ||
-        client_stats.video_receive_queue_drops != 0) {
-        fprintf(stderr, "video transport counters are inconsistent\n");
+        client_stats.video_receive_queue_drops != 0 ||
+        server_stats.audio_packets_sent != 1 ||
+        client_stats.audio_packets_received != 1 ||
+        server_stats.audio_bytes_sent != sizeof(audio_received) ||
+        client_stats.audio_bytes_received != sizeof(audio_received) ||
+        server_stats.audio_send_queue_drops != 0 ||
+        client_stats.audio_receive_queue_drops != 0) {
+        fprintf(stderr, "media transport counters are inconsistent\n");
         goto failure;
     }
 
@@ -183,8 +221,9 @@ int main(int argc, char **argv) {
     sc_datasmash_endpoint_destroy(client);
     sc_datasmash_endpoint_destroy(server);
     printf("status=complete test=datasmash-ffi-loopback connections=2 "
-           "video_packets=2 video_bytes=%zu max_video_packet_size=%zu\n",
-           2 * sizeof(received), server_max);
+           "video_packets=2 video_bytes=%zu audio_packets=1 audio_bytes=%zu "
+           "max_media_packet_size=%zu\n",
+           2 * sizeof(received), sizeof(audio_received), server_max);
     return 0;
 
 failure:

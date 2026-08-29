@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 2u
+#define SC_DATASMASH_ABI_VERSION 3u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 
@@ -53,6 +53,15 @@ typedef struct ScDatasmashStats {
     uint64_t malformed_datagrams;
     uint64_t video_send_queue_high_water;
     uint64_t video_receive_queue_high_water;
+    uint64_t audio_packets_sent;
+    uint64_t audio_bytes_sent;
+    uint64_t audio_packets_received;
+    uint64_t audio_bytes_received;
+    uint64_t audio_send_queue_drops;
+    uint64_t audio_receive_queue_drops;
+    uint64_t audio_transport_send_drops;
+    uint64_t audio_send_queue_high_water;
+    uint64_t audio_receive_queue_high_water;
     uint64_t media_quic_rtt_us;
     uint64_t media_quic_packets_lost;
 } ScDatasmashStats;
@@ -94,6 +103,7 @@ uint32_t sc_datasmash_endpoint_state(const ScDatasmashEndpoint *endpoint);
  * endpoint is invalid or has not reached READY.
  */
 size_t sc_datasmash_video_max_packet_size(const ScDatasmashEndpoint *endpoint);
+size_t sc_datasmash_audio_max_packet_size(const ScDatasmashEndpoint *endpoint);
 
 /*
  * Server-only, nonblocking video submission. Both byte ranges are copied
@@ -112,6 +122,28 @@ int32_t sc_datasmash_video_send(ScDatasmashEndpoint *endpoint,
  * packet_size_out reports the required count and the packet remains queued.
  */
 int32_t sc_datasmash_video_receive(ScDatasmashEndpoint *endpoint,
+                                   uint8_t *packet,
+                                   size_t packet_capacity,
+                                   size_t *packet_size_out,
+                                   uint32_t timeout_ms);
+
+/*
+ * Server-only, nonblocking audio submission. Complete existing encrypted
+ * audio or audio-FEC packets are copied without repacketization. Audio has
+ * strict dequeue priority over video. SC_DATASMASH_DROPPED means the new
+ * packet was accepted after evicting the oldest queued audio packet.
+ */
+int32_t sc_datasmash_audio_send(ScDatasmashEndpoint *endpoint,
+                                const uint8_t *prefix,
+                                size_t prefix_size,
+                                const uint8_t *payload,
+                                size_t payload_size);
+
+/*
+ * Client-only bounded wait for one received legacy audio packet. Buffer and
+ * retention behavior matches sc_datasmash_video_receive().
+ */
+int32_t sc_datasmash_audio_receive(ScDatasmashEndpoint *endpoint,
                                    uint8_t *packet,
                                    size_t packet_capacity,
                                    size_t *packet_size_out,

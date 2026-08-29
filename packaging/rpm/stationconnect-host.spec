@@ -98,6 +98,9 @@ fi
 /usr/share/stationconnect/
 
 %changelog
+* Sat Aug 29 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.187.datasmash
+- Carry encrypted audio and audio-FEC packets over the experimental media plane
+
 * Sat Aug 29 2026 StationConnect Engineering <engineering@instinctual.la> - 0.1.0-0.185.datasmash
 - Carry encrypted video/FEC packets over the experimental QUIC data plane
 

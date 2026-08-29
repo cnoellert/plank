@@ -58,7 +58,9 @@ for required_datasmash_token in \
   'StationConnectDatasmashCertificateSha256' \
   'StationConnectDatasmashToken' \
   'start_datasmash_data_plane' \
-  'session.datasmash_endpoint'; do
+  'session.datasmash_endpoint' \
+  'sc_datasmash_audio_send' \
+  'Datasmash media transport'; do
   rg -Fq "$required_datasmash_token" \
     "$source_dir/src" || {
     echo "host datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2

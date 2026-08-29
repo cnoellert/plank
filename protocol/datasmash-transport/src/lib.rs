@@ -16,8 +16,8 @@ use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
-pub const PROTOCOL_VERSION: u16 = 2;
-pub const ABI_VERSION: u32 = 2;
+pub const PROTOCOL_VERSION: u16 = 3;
+pub const ABI_VERSION: u32 = 3;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -28,11 +28,17 @@ const MAX_PATH_LENGTH: usize = 4_096;
 const MAX_TOKEN_LENGTH: usize = 1_024;
 const DATAGRAM_HEADER_SIZE: usize = 16;
 const VIDEO_LANE: u8 = 1;
+const AUDIO_LANE: u8 = 2;
 // A single 4K IDR/FEC burst can exceed 64 packets before the Tokio worker is
 // scheduled. Keep enough bounded headroom for that burst without allowing an
 // unbounded latency queue; 512 maximum-sized packets are under 1 MiB.
 const VIDEO_SEND_QUEUE_CAPACITY: usize = 512;
 const VIDEO_RECEIVE_QUEUE_CAPACITY: usize = 2_048;
+// Eight 5 ms audio packets bound sender-side queueing to 40 ms. Audio is
+// always dequeued before video, so reaching this bound means the media path is
+// already unable to preserve real-time delivery.
+const AUDIO_SEND_QUEUE_CAPACITY: usize = 8;
+const AUDIO_RECEIVE_QUEUE_CAPACITY: usize = 64;
 
 pub const SC_DATASMASH_OK: i32 = 0;
 pub const SC_DATASMASH_TIMEOUT: i32 = 1;
@@ -226,9 +232,11 @@ struct SharedStatus {
 }
 
 #[derive(Default)]
-struct VideoQueues {
-    send: VecDeque<Bytes>,
-    receive: VecDeque<Bytes>,
+struct MediaQueues {
+    video_send: VecDeque<Bytes>,
+    video_receive: VecDeque<Bytes>,
+    audio_send: VecDeque<Bytes>,
+    audio_receive: VecDeque<Bytes>,
 }
 
 #[derive(Default)]
@@ -243,6 +251,15 @@ struct TransportStats {
     malformed_datagrams: AtomicU64,
     video_send_queue_high_water: AtomicU64,
     video_receive_queue_high_water: AtomicU64,
+    audio_packets_sent: AtomicU64,
+    audio_bytes_sent: AtomicU64,
+    audio_packets_received: AtomicU64,
+    audio_bytes_received: AtomicU64,
+    audio_send_queue_drops: AtomicU64,
+    audio_receive_queue_drops: AtomicU64,
+    audio_transport_send_drops: AtomicU64,
+    audio_send_queue_high_water: AtomicU64,
+    audio_receive_queue_high_water: AtomicU64,
     media_quic_rtt_us: AtomicU64,
     media_quic_packets_lost: AtomicU64,
 }
@@ -252,11 +269,13 @@ struct Shared {
     changed: Condvar,
     stop: AtomicBool,
     stop_notify: tokio::sync::Notify,
-    video_queues: Mutex<VideoQueues>,
-    video_send_notify: tokio::sync::Notify,
+    media_queues: Mutex<MediaQueues>,
+    media_send_notify: tokio::sync::Notify,
     video_receive_changed: Condvar,
+    audio_receive_changed: Condvar,
     video_sequence: AtomicU64,
-    max_video_packet_size: AtomicUsize,
+    audio_sequence: AtomicU64,
+    max_media_packet_size: AtomicUsize,
     stats: TransportStats,
 }
 
@@ -270,11 +289,13 @@ impl Shared {
             changed: Condvar::new(),
             stop: AtomicBool::new(false),
             stop_notify: tokio::sync::Notify::new(),
-            video_queues: Mutex::new(VideoQueues::default()),
-            video_send_notify: tokio::sync::Notify::new(),
+            media_queues: Mutex::new(MediaQueues::default()),
+            media_send_notify: tokio::sync::Notify::new(),
             video_receive_changed: Condvar::new(),
+            audio_receive_changed: Condvar::new(),
             video_sequence: AtomicU64::new(0),
-            max_video_packet_size: AtomicUsize::new(0),
+            audio_sequence: AtomicU64::new(0),
+            max_media_packet_size: AtomicUsize::new(0),
             stats: TransportStats::default(),
         }
     }
@@ -295,6 +316,7 @@ impl Shared {
         status.state = EndpointState::Failed;
         self.changed.notify_all();
         self.video_receive_changed.notify_all();
+        self.audio_receive_changed.notify_all();
     }
 }
 
@@ -329,6 +351,15 @@ pub struct ScDatasmashStats {
     pub malformed_datagrams: u64,
     pub video_send_queue_high_water: u64,
     pub video_receive_queue_high_water: u64,
+    pub audio_packets_sent: u64,
+    pub audio_bytes_sent: u64,
+    pub audio_packets_received: u64,
+    pub audio_bytes_received: u64,
+    pub audio_send_queue_drops: u64,
+    pub audio_receive_queue_drops: u64,
+    pub audio_transport_send_drops: u64,
+    pub audio_send_queue_high_water: u64,
+    pub audio_receive_queue_high_water: u64,
     pub media_quic_rtt_us: u64,
     pub media_quic_packets_lost: u64,
 }
@@ -452,10 +483,10 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
 
 type RoleConnection = (Connection, kynet::SendStream, kynet::RecvStream);
 
-fn frame_video_datagram(sequence: u64, prefix: &[u8], payload: &[u8]) -> Bytes {
+fn frame_media_datagram(lane: u8, sequence: u64, prefix: &[u8], payload: &[u8]) -> Bytes {
     let mut packet = BytesMut::with_capacity(DATAGRAM_HEADER_SIZE + prefix.len() + payload.len());
     packet.extend_from_slice(&PROTOCOL_MAGIC);
-    packet.put_u8(VIDEO_LANE);
+    packet.put_u8(lane);
     packet.put_u8(0);
     packet.put_u16(DATAGRAM_HEADER_SIZE as u16);
     packet.put_u64(sequence);
@@ -464,42 +495,74 @@ fn frame_video_datagram(sequence: u64, prefix: &[u8], payload: &[u8]) -> Bytes {
     packet.freeze()
 }
 
-fn parse_video_datagram(packet: Bytes) -> Option<Bytes> {
+fn parse_media_datagram(packet: Bytes) -> Option<(u8, Bytes)> {
     if packet.len() <= DATAGRAM_HEADER_SIZE || packet[..4] != PROTOCOL_MAGIC {
         return None;
     }
-    if packet[4] != VIDEO_LANE || packet[5] != 0 {
+    let lane = packet[4];
+    if !matches!(lane, VIDEO_LANE | AUDIO_LANE) || packet[5] != 0 {
         return None;
     }
     let header_size = u16::from_be_bytes([packet[6], packet[7]]) as usize;
     if header_size != DATAGRAM_HEADER_SIZE || header_size >= packet.len() {
         return None;
     }
-    Some(packet.slice(header_size..))
+    Some((lane, packet.slice(header_size..)))
 }
 
-async fn send_video_datagrams(shared: Arc<Shared>, connection: Connection) -> Result<()> {
+fn pop_next_media_packet(queues: &mut MediaQueues) -> Option<(u8, Bytes)> {
+    queues
+        .audio_send
+        .pop_front()
+        .map(|packet| (AUDIO_LANE, packet))
+        .or_else(|| {
+            queues
+                .video_send
+                .pop_front()
+                .map(|packet| (VIDEO_LANE, packet))
+        })
+}
+
+async fn send_media_datagrams(shared: Arc<Shared>, connection: Connection) -> Result<()> {
     loop {
-        let notified = shared.video_send_notify.notified();
-        let packet = shared.video_queues.lock().unwrap().send.pop_front();
-        if let Some(packet) = packet {
+        let notified = shared.media_send_notify.notified();
+        let packet = pop_next_media_packet(&mut shared.media_queues.lock().unwrap());
+        if let Some((lane, packet)) = packet {
             let payload_size = packet.len().saturating_sub(DATAGRAM_HEADER_SIZE) as u64;
             match connection.send_datagram(packet).await {
                 Ok(()) => {
-                    shared
-                        .stats
-                        .video_packets_sent
-                        .fetch_add(1, Ordering::Relaxed);
-                    shared
-                        .stats
-                        .video_bytes_sent
-                        .fetch_add(payload_size, Ordering::Relaxed);
+                    if lane == AUDIO_LANE {
+                        shared
+                            .stats
+                            .audio_packets_sent
+                            .fetch_add(1, Ordering::Relaxed);
+                        shared
+                            .stats
+                            .audio_bytes_sent
+                            .fetch_add(payload_size, Ordering::Relaxed);
+                    } else {
+                        shared
+                            .stats
+                            .video_packets_sent
+                            .fetch_add(1, Ordering::Relaxed);
+                        shared
+                            .stats
+                            .video_bytes_sent
+                            .fetch_add(payload_size, Ordering::Relaxed);
+                    }
                 }
                 Err(_) => {
-                    shared
-                        .stats
-                        .video_transport_send_drops
-                        .fetch_add(1, Ordering::Relaxed);
+                    if lane == AUDIO_LANE {
+                        shared
+                            .stats
+                            .audio_transport_send_drops
+                            .fetch_add(1, Ordering::Relaxed);
+                    } else {
+                        shared
+                            .stats
+                            .video_transport_send_drops
+                            .fetch_add(1, Ordering::Relaxed);
+                    }
                 }
             }
             continue;
@@ -511,13 +574,13 @@ async fn send_video_datagrams(shared: Arc<Shared>, connection: Connection) -> Re
     }
 }
 
-async fn receive_video_datagrams(shared: Arc<Shared>, connection: Connection) -> Result<()> {
+async fn receive_media_datagrams(shared: Arc<Shared>, connection: Connection) -> Result<()> {
     loop {
         let packet = tokio::select! {
             _ = shared.stop_notify.notified() => return Ok(()),
             result = connection.read_datagram() => result?,
         };
-        let Some(payload) = parse_video_datagram(packet) else {
+        let Some((lane, payload)) = parse_media_datagram(packet) else {
             shared
                 .stats
                 .malformed_datagrams
@@ -525,36 +588,69 @@ async fn receive_video_datagrams(shared: Arc<Shared>, connection: Connection) ->
             continue;
         };
         let payload_size = payload.len() as u64;
-        let (dropped, depth) = {
-            let mut queues = shared.video_queues.lock().unwrap();
-            let dropped = if queues.receive.len() == VIDEO_RECEIVE_QUEUE_CAPACITY {
-                queues.receive.pop_front();
-                true
-            } else {
-                false
+        if lane == AUDIO_LANE {
+            let (dropped, depth) = {
+                let mut queues = shared.media_queues.lock().unwrap();
+                let dropped = if queues.audio_receive.len() == AUDIO_RECEIVE_QUEUE_CAPACITY {
+                    queues.audio_receive.pop_front();
+                    true
+                } else {
+                    false
+                };
+                queues.audio_receive.push_back(payload);
+                (dropped, queues.audio_receive.len())
             };
-            queues.receive.push_back(payload);
-            (dropped, queues.receive.len())
-        };
-        if dropped {
+            if dropped {
+                shared
+                    .stats
+                    .audio_receive_queue_drops
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             shared
                 .stats
-                .video_receive_queue_drops
+                .audio_receive_queue_high_water
+                .fetch_max(depth as u64, Ordering::Relaxed);
+            shared
+                .stats
+                .audio_packets_received
                 .fetch_add(1, Ordering::Relaxed);
+            shared
+                .stats
+                .audio_bytes_received
+                .fetch_add(payload_size, Ordering::Relaxed);
+            shared.audio_receive_changed.notify_one();
+        } else {
+            let (dropped, depth) = {
+                let mut queues = shared.media_queues.lock().unwrap();
+                let dropped = if queues.video_receive.len() == VIDEO_RECEIVE_QUEUE_CAPACITY {
+                    queues.video_receive.pop_front();
+                    true
+                } else {
+                    false
+                };
+                queues.video_receive.push_back(payload);
+                (dropped, queues.video_receive.len())
+            };
+            if dropped {
+                shared
+                    .stats
+                    .video_receive_queue_drops
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            shared
+                .stats
+                .video_receive_queue_high_water
+                .fetch_max(depth as u64, Ordering::Relaxed);
+            shared
+                .stats
+                .video_packets_received
+                .fetch_add(1, Ordering::Relaxed);
+            shared
+                .stats
+                .video_bytes_received
+                .fetch_add(payload_size, Ordering::Relaxed);
+            shared.video_receive_changed.notify_one();
         }
-        shared
-            .stats
-            .video_receive_queue_high_water
-            .fetch_max(depth as u64, Ordering::Relaxed);
-        shared
-            .stats
-            .video_packets_received
-            .fetch_add(1, Ordering::Relaxed);
-        shared
-            .stats
-            .video_bytes_received
-            .fetch_add(payload_size, Ordering::Relaxed);
-        shared.video_receive_changed.notify_one();
     }
 }
 
@@ -591,7 +687,7 @@ async fn hold_connections(
         bail!("negotiated QUIC DATAGRAM size {max_datagram_size} is too small");
     }
     shared
-        .max_video_packet_size
+        .max_media_packet_size
         .store(max_datagram_size - DATAGRAM_HEADER_SIZE, Ordering::Release);
     shared.set_state(EndpointState::Ready);
     let media_connection = media.0.clone();
@@ -600,9 +696,9 @@ async fn hold_connections(
     let payload_connection = media_connection.clone();
     let mut payload_task = tokio::spawn(async move {
         if server_mode {
-            send_video_datagrams(payload_shared, payload_connection).await
+            send_media_datagrams(payload_shared, payload_connection).await
         } else {
-            receive_video_datagrams(payload_shared, payload_connection).await
+            receive_media_datagrams(payload_shared, payload_connection).await
         }
     });
     let mut stats_task = tokio::spawn(sample_media_stats(shared.clone(), media_connection.clone()));
@@ -632,6 +728,7 @@ async fn hold_connections(
     media.0.close(0, "StationConnect endpoint stopping");
     interaction.0.close(0, "StationConnect endpoint stopping");
     shared.video_receive_changed.notify_all();
+    shared.audio_receive_changed.notify_all();
     result
 }
 
@@ -942,7 +1039,7 @@ pub unsafe extern "C" fn sc_datasmash_video_max_packet_size(
             .map(|endpoint| {
                 endpoint
                     .shared
-                    .max_video_packet_size
+                    .max_media_packet_size
                     .load(Ordering::Acquire)
             })
             .unwrap_or(0)
@@ -951,13 +1048,19 @@ pub unsafe extern "C" fn sc_datasmash_video_max_packet_size(
 }
 
 #[unsafe(no_mangle)]
-/// Copies one video packet into the bounded server send queue.
+/// Returns the negotiated maximum legacy-audio packet payload.
 ///
 /// # Safety
-/// Byte ranges must be readable for their supplied lengths. `endpoint` must
-/// be a live, non-destroyed server endpoint.
-pub unsafe extern "C" fn sc_datasmash_video_send(
+/// `endpoint` must be null or a live, non-destroyed endpoint.
+pub unsafe extern "C" fn sc_datasmash_audio_max_packet_size(
+    endpoint: *const ScDatasmashEndpoint,
+) -> usize {
+    unsafe { sc_datasmash_video_max_packet_size(endpoint) }
+}
+
+unsafe fn submit_media_packet(
     endpoint: *mut ScDatasmashEndpoint,
+    lane: u8,
     prefix: *const u8,
     prefix_size: usize,
     payload: *const u8,
@@ -980,7 +1083,7 @@ pub unsafe extern "C" fn sc_datasmash_video_send(
         if packet_size
             > endpoint
                 .shared
-                .max_video_packet_size
+                .max_media_packet_size
                 .load(Ordering::Acquire)
         {
             return SC_DATASMASH_ERROR_BUFFER_TOO_SMALL;
@@ -995,35 +1098,67 @@ pub unsafe extern "C" fn sc_datasmash_video_send(
         } else {
             unsafe { std::slice::from_raw_parts(payload, payload_size) }
         };
-        let sequence = endpoint
-            .shared
-            .video_sequence
-            .fetch_add(1, Ordering::Relaxed);
-        let packet = frame_video_datagram(sequence, prefix, payload);
-        let (dropped, depth) = {
-            let mut queues = endpoint.shared.video_queues.lock().unwrap();
-            let dropped = if queues.send.len() == VIDEO_SEND_QUEUE_CAPACITY {
-                queues.send.pop_front();
+        let sequence = if lane == AUDIO_LANE {
+            endpoint
+                .shared
+                .audio_sequence
+                .fetch_add(1, Ordering::Relaxed)
+        } else {
+            endpoint
+                .shared
+                .video_sequence
+                .fetch_add(1, Ordering::Relaxed)
+        };
+        let packet = frame_media_datagram(lane, sequence, prefix, payload);
+        let (dropped, depth) = if lane == AUDIO_LANE {
+            let mut queues = endpoint.shared.media_queues.lock().unwrap();
+            let dropped = if queues.audio_send.len() == AUDIO_SEND_QUEUE_CAPACITY {
+                queues.audio_send.pop_front();
                 true
             } else {
                 false
             };
-            queues.send.push_back(packet);
-            (dropped, queues.send.len())
+            queues.audio_send.push_back(packet);
+            (dropped, queues.audio_send.len())
+        } else {
+            let mut queues = endpoint.shared.media_queues.lock().unwrap();
+            let dropped = if queues.video_send.len() == VIDEO_SEND_QUEUE_CAPACITY {
+                queues.video_send.pop_front();
+                true
+            } else {
+                false
+            };
+            queues.video_send.push_back(packet);
+            (dropped, queues.video_send.len())
         };
-        if dropped {
+        if lane == AUDIO_LANE {
+            if dropped {
+                endpoint
+                    .shared
+                    .stats
+                    .audio_send_queue_drops
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             endpoint
                 .shared
                 .stats
-                .video_send_queue_drops
-                .fetch_add(1, Ordering::Relaxed);
+                .audio_send_queue_high_water
+                .fetch_max(depth as u64, Ordering::Relaxed);
+        } else {
+            if dropped {
+                endpoint
+                    .shared
+                    .stats
+                    .video_send_queue_drops
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            endpoint
+                .shared
+                .stats
+                .video_send_queue_high_water
+                .fetch_max(depth as u64, Ordering::Relaxed);
         }
-        endpoint
-            .shared
-            .stats
-            .video_send_queue_high_water
-            .fetch_max(depth as u64, Ordering::Relaxed);
-        endpoint.shared.video_send_notify.notify_one();
+        endpoint.shared.media_send_notify.notify_one();
         if dropped {
             SC_DATASMASH_DROPPED
         } else {
@@ -1033,13 +1168,58 @@ pub unsafe extern "C" fn sc_datasmash_video_send(
 }
 
 #[unsafe(no_mangle)]
-/// Waits for and copies one received video packet from the client queue.
+/// Copies one video packet into the bounded server send queue.
 ///
 /// # Safety
-/// `packet_size_out` must be writable. When `packet_capacity` is nonzero,
-/// `packet` must point to that many writable bytes. `endpoint` must be live.
-pub unsafe extern "C" fn sc_datasmash_video_receive(
+/// Byte ranges must be readable for their supplied lengths. `endpoint` must
+/// be a live, non-destroyed server endpoint.
+pub unsafe extern "C" fn sc_datasmash_video_send(
     endpoint: *mut ScDatasmashEndpoint,
+    prefix: *const u8,
+    prefix_size: usize,
+    payload: *const u8,
+    payload_size: usize,
+) -> i32 {
+    unsafe {
+        submit_media_packet(
+            endpoint,
+            VIDEO_LANE,
+            prefix,
+            prefix_size,
+            payload,
+            payload_size,
+        )
+    }
+}
+
+#[unsafe(no_mangle)]
+/// Copies one audio packet into the priority server send queue.
+///
+/// # Safety
+/// Byte ranges must be readable for their supplied lengths. `endpoint` must
+/// be a live, non-destroyed server endpoint.
+pub unsafe extern "C" fn sc_datasmash_audio_send(
+    endpoint: *mut ScDatasmashEndpoint,
+    prefix: *const u8,
+    prefix_size: usize,
+    payload: *const u8,
+    payload_size: usize,
+) -> i32 {
+    unsafe {
+        submit_media_packet(
+            endpoint,
+            AUDIO_LANE,
+            prefix,
+            prefix_size,
+            payload,
+            payload_size,
+        )
+    }
+}
+
+unsafe fn receive_media_packet(
+    endpoint: *mut ScDatasmashEndpoint,
+    lane: u8,
     packet: *mut u8,
     packet_capacity: usize,
     packet_size_out: *mut usize,
@@ -1060,14 +1240,19 @@ pub unsafe extern "C" fn sc_datasmash_video_receive(
             return SC_DATASMASH_ERROR_INVALID_STATE;
         }
         let deadline = Instant::now() + Duration::from_millis(u64::from(timeout_ms));
-        let mut queues = endpoint.shared.video_queues.lock().unwrap();
+        let mut queues = endpoint.shared.media_queues.lock().unwrap();
         loop {
-            if let Some(front) = queues.receive.front() {
+            let receive_queue = if lane == AUDIO_LANE {
+                &mut queues.audio_receive
+            } else {
+                &mut queues.video_receive
+            };
+            if let Some(front) = receive_queue.front() {
                 unsafe { *packet_size_out = front.len() };
                 if packet_capacity < front.len() {
                     return SC_DATASMASH_ERROR_BUFFER_TOO_SMALL;
                 }
-                let packet_data = queues.receive.pop_front().expect("front checked");
+                let packet_data = receive_queue.pop_front().expect("front checked");
                 unsafe {
                     ptr::copy_nonoverlapping(packet_data.as_ptr(), packet, packet_data.len());
                 }
@@ -1080,17 +1265,75 @@ pub unsafe extern "C" fn sc_datasmash_video_receive(
             if now >= deadline {
                 return SC_DATASMASH_TIMEOUT;
             }
-            let (next_queues, wait) = endpoint
-                .shared
-                .video_receive_changed
+            let receive_changed = if lane == AUDIO_LANE {
+                &endpoint.shared.audio_receive_changed
+            } else {
+                &endpoint.shared.video_receive_changed
+            };
+            let (next_queues, wait) = receive_changed
                 .wait_timeout(queues, deadline - now)
                 .unwrap();
             queues = next_queues;
-            if wait.timed_out() && queues.receive.is_empty() {
+            let is_empty = if lane == AUDIO_LANE {
+                queues.audio_receive.is_empty()
+            } else {
+                queues.video_receive.is_empty()
+            };
+            if wait.timed_out() && is_empty {
                 return SC_DATASMASH_TIMEOUT;
             }
         }
     })
+}
+
+#[unsafe(no_mangle)]
+/// Waits for and copies one received video packet from the client queue.
+///
+/// # Safety
+/// `packet_size_out` must be writable. When `packet_capacity` is nonzero,
+/// `packet` must point to that many writable bytes. `endpoint` must be live.
+pub unsafe extern "C" fn sc_datasmash_video_receive(
+    endpoint: *mut ScDatasmashEndpoint,
+    packet: *mut u8,
+    packet_capacity: usize,
+    packet_size_out: *mut usize,
+    timeout_ms: u32,
+) -> i32 {
+    unsafe {
+        receive_media_packet(
+            endpoint,
+            VIDEO_LANE,
+            packet,
+            packet_capacity,
+            packet_size_out,
+            timeout_ms,
+        )
+    }
+}
+
+#[unsafe(no_mangle)]
+/// Waits for and copies one received audio packet from the client queue.
+///
+/// # Safety
+/// `packet_size_out` must be writable. When `packet_capacity` is nonzero,
+/// `packet` must point to that many writable bytes. `endpoint` must be live.
+pub unsafe extern "C" fn sc_datasmash_audio_receive(
+    endpoint: *mut ScDatasmashEndpoint,
+    packet: *mut u8,
+    packet_capacity: usize,
+    packet_size_out: *mut usize,
+    timeout_ms: u32,
+) -> i32 {
+    unsafe {
+        receive_media_packet(
+            endpoint,
+            AUDIO_LANE,
+            packet,
+            packet_capacity,
+            packet_size_out,
+            timeout_ms,
+        )
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -1164,6 +1407,51 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_stats(
             .stats
             .video_receive_queue_high_water
             .load(Ordering::Relaxed);
+        stats.audio_packets_sent = endpoint
+            .shared
+            .stats
+            .audio_packets_sent
+            .load(Ordering::Relaxed);
+        stats.audio_bytes_sent = endpoint
+            .shared
+            .stats
+            .audio_bytes_sent
+            .load(Ordering::Relaxed);
+        stats.audio_packets_received = endpoint
+            .shared
+            .stats
+            .audio_packets_received
+            .load(Ordering::Relaxed);
+        stats.audio_bytes_received = endpoint
+            .shared
+            .stats
+            .audio_bytes_received
+            .load(Ordering::Relaxed);
+        stats.audio_send_queue_drops = endpoint
+            .shared
+            .stats
+            .audio_send_queue_drops
+            .load(Ordering::Relaxed);
+        stats.audio_receive_queue_drops = endpoint
+            .shared
+            .stats
+            .audio_receive_queue_drops
+            .load(Ordering::Relaxed);
+        stats.audio_transport_send_drops = endpoint
+            .shared
+            .stats
+            .audio_transport_send_drops
+            .load(Ordering::Relaxed);
+        stats.audio_send_queue_high_water = endpoint
+            .shared
+            .stats
+            .audio_send_queue_high_water
+            .load(Ordering::Relaxed);
+        stats.audio_receive_queue_high_water = endpoint
+            .shared
+            .stats
+            .audio_receive_queue_high_water
+            .load(Ordering::Relaxed);
         stats.media_quic_rtt_us = endpoint
             .shared
             .stats
@@ -1200,8 +1488,9 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_stop(endpoint: *mut ScDatasmashEn
         }
         endpoint.shared.stop.store(true, Ordering::Release);
         endpoint.shared.stop_notify.notify_waiters();
-        endpoint.shared.video_send_notify.notify_waiters();
+        endpoint.shared.media_send_notify.notify_waiters();
         endpoint.shared.video_receive_changed.notify_all();
+        endpoint.shared.audio_receive_changed.notify_all();
         if let Some(worker) = endpoint.worker.lock().unwrap().take()
             && worker.join().is_err()
         {
@@ -1232,8 +1521,9 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_destroy(endpoint: *mut ScDatasmas
         let endpoint = unsafe { Box::from_raw(endpoint) };
         endpoint.shared.stop.store(true, Ordering::Release);
         endpoint.shared.stop_notify.notify_waiters();
-        endpoint.shared.video_send_notify.notify_waiters();
+        endpoint.shared.media_send_notify.notify_waiters();
         endpoint.shared.video_receive_changed.notify_all();
+        endpoint.shared.audio_receive_changed.notify_all();
         if let Some(worker) = endpoint.worker.lock().unwrap().take() {
             let _ = worker.join();
         }
@@ -1294,7 +1584,7 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 2);
+        assert_eq!(sc_datasmash_abi_version(), 3);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::Failed as u32, 6);
         assert_eq!(SC_DATASMASH_DROPPED, 2);
@@ -1302,10 +1592,10 @@ mod tests {
     }
 
     #[test]
-    fn video_datagram_preserves_the_existing_packet_bytes() {
+    fn media_datagram_preserves_lane_and_existing_packet_bytes() {
         let prefix = [0x10, 0x20, 0x30];
         let payload = [0x40, 0x50, 0x60, 0x70];
-        let packet = frame_video_datagram(0x0123_4567_89ab_cdef, &prefix, &payload);
+        let packet = frame_media_datagram(VIDEO_LANE, 0x0123_4567_89ab_cdef, &prefix, &payload);
         assert_eq!(
             packet.len(),
             DATAGRAM_HEADER_SIZE + prefix.len() + payload.len()
@@ -1317,17 +1607,54 @@ mod tests {
             0x0123_4567_89ab_cdef
         );
         assert_eq!(
-            parse_video_datagram(packet).unwrap().as_ref(),
-            &[0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70]
+            parse_media_datagram(packet).unwrap(),
+            (
+                VIDEO_LANE,
+                Bytes::from_static(&[0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70])
+            )
+        );
+
+        let audio = frame_media_datagram(AUDIO_LANE, 9, &prefix, &payload);
+        assert_eq!(
+            parse_media_datagram(audio).unwrap(),
+            (
+                AUDIO_LANE,
+                Bytes::from_static(&[0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70])
+            )
         );
     }
 
     #[test]
-    fn malformed_video_datagrams_are_rejected() {
-        assert!(parse_video_datagram(Bytes::from_static(b"short")).is_none());
-        let mut packet = frame_video_datagram(1, &[], b"payload").to_vec();
+    fn audio_is_dequeued_before_video() {
+        let mut queues = MediaQueues::default();
+        queues
+            .video_send
+            .push_back(Bytes::from_static(b"video-one"));
+        queues
+            .video_send
+            .push_back(Bytes::from_static(b"video-two"));
+        queues.audio_send.push_back(Bytes::from_static(b"audio"));
+
+        assert_eq!(
+            pop_next_media_packet(&mut queues),
+            Some((AUDIO_LANE, Bytes::from_static(b"audio")))
+        );
+        assert_eq!(
+            pop_next_media_packet(&mut queues),
+            Some((VIDEO_LANE, Bytes::from_static(b"video-one")))
+        );
+        assert_eq!(
+            pop_next_media_packet(&mut queues),
+            Some((VIDEO_LANE, Bytes::from_static(b"video-two")))
+        );
+    }
+
+    #[test]
+    fn malformed_media_datagrams_are_rejected() {
+        assert!(parse_media_datagram(Bytes::from_static(b"short")).is_none());
+        let mut packet = frame_media_datagram(VIDEO_LANE, 1, &[], b"payload").to_vec();
         packet[4] = 99;
-        assert!(parse_video_datagram(Bytes::from(packet)).is_none());
+        assert!(parse_media_datagram(Bytes::from(packet)).is_none());
     }
 
     #[test]
