@@ -19,8 +19,8 @@ pub mod native;
 pub mod native_ffi;
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
-pub const PROTOCOL_VERSION: u16 = 5;
-pub const ABI_VERSION: u32 = 5;
+pub const PROTOCOL_VERSION: u16 = 6;
+pub const ABI_VERSION: u32 = 6;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -1949,7 +1949,7 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 5);
+        assert_eq!(sc_datasmash_abi_version(), 6);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::Failed as u32, 6);
         assert_eq!(SC_DATASMASH_DROPPED, 2);

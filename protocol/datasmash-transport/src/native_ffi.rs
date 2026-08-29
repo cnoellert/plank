@@ -113,7 +113,10 @@ struct NativeShared {
     stop: AtomicBool,
     stop_notify: tokio::sync::Notify,
     queues: Mutex<NativeQueues>,
-    send_notify: tokio::sync::Notify,
+    video_send_notify: tokio::sync::Notify,
+    audio_send_notify: tokio::sync::Notify,
+    input_send_notify: tokio::sync::Notify,
+    data_send_notify: tokio::sync::Notify,
     video_receive_changed: Condvar,
     audio_receive_changed: Condvar,
     input_receive_changed: Condvar,
@@ -132,7 +135,10 @@ impl NativeShared {
             stop: AtomicBool::new(false),
             stop_notify: tokio::sync::Notify::new(),
             queues: Mutex::new(NativeQueues::default()),
-            send_notify: tokio::sync::Notify::new(),
+            video_send_notify: tokio::sync::Notify::new(),
+            audio_send_notify: tokio::sync::Notify::new(),
+            input_send_notify: tokio::sync::Notify::new(),
+            data_send_notify: tokio::sync::Notify::new(),
             video_receive_changed: Condvar::new(),
             audio_receive_changed: Condvar::new(),
             input_receive_changed: Condvar::new(),
@@ -165,7 +171,10 @@ impl NativeShared {
         self.input_receive_changed.notify_all();
         self.data_receive_changed.notify_all();
         self.stop_notify.notify_waiters();
-        self.send_notify.notify_waiters();
+        self.video_send_notify.notify_waiters();
+        self.audio_send_notify.notify_waiters();
+        self.input_send_notify.notify_waiters();
+        self.data_send_notify.notify_waiters();
     }
 }
 
@@ -240,7 +249,7 @@ async fn send_video(
 ) -> Result<()> {
     let mut active_codec = None;
     loop {
-        let notified = shared.send_notify.notified();
+        let notified = shared.video_send_notify.notified();
         let frame = shared.queues.lock().unwrap().video_send.pop_front();
         if let Some(frame) = frame {
             if active_codec != Some(frame.codec) {
@@ -314,7 +323,7 @@ async fn send_audio(
 ) -> Result<()> {
     let mut active_frame_samples = None;
     loop {
-        let notified = shared.send_notify.notified();
+        let notified = shared.audio_send_notify.notified();
         let packet = shared.queues.lock().unwrap().audio_send.pop_front();
         if let Some(packet) = packet {
             if active_frame_samples != Some(packet.frame_samples) {
@@ -511,7 +520,7 @@ async fn send_input(
     mut send: kymux_types::ProtocolSend<InputPacket>,
 ) -> Result<()> {
     loop {
-        let notified = shared.send_notify.notified();
+        let notified = shared.input_send_notify.notified();
         let packet = shared.queues.lock().unwrap().input_send.pop_front();
         if let Some(packet) = packet {
             send.send(InputPacket {
@@ -563,7 +572,7 @@ async fn send_data(
     mut send: kymux_types::ProtocolSend<DataPacket>,
 ) -> Result<()> {
     loop {
-        let notified = shared.send_notify.notified();
+        let notified = shared.data_send_notify.notified();
         let payload = shared.queues.lock().unwrap().data_send.pop_front();
         if let Some(payload) = payload {
             send.send(DataPacket { payload }).await?;
@@ -1009,7 +1018,7 @@ pub unsafe extern "C" fn sc_datasmash_native_video_send(
                 .video_send_drops
                 .fetch_add(1, Ordering::Relaxed);
         }
-        endpoint.shared.send_notify.notify_one();
+        endpoint.shared.video_send_notify.notify_one();
         if dropped {
             SC_DATASMASH_DROPPED
         } else {
@@ -1120,7 +1129,7 @@ pub unsafe extern "C" fn sc_datasmash_native_audio_send(
                 .audio_send_drops
                 .fetch_add(1, Ordering::Relaxed);
         }
-        endpoint.shared.send_notify.notify_one();
+        endpoint.shared.audio_send_notify.notify_one();
         if dropped {
             SC_DATASMASH_DROPPED
         } else {
@@ -1215,7 +1224,7 @@ pub unsafe extern "C" fn sc_datasmash_native_input_send(
             }),
         });
         drop(queues);
-        endpoint.shared.send_notify.notify_one();
+        endpoint.shared.input_send_notify.notify_one();
         SC_DATASMASH_OK
     })
 }
@@ -1292,7 +1301,7 @@ pub unsafe extern "C" fn sc_datasmash_native_data_send(
             std::slice::from_raw_parts(payload, payload_size)
         }));
         drop(queues);
-        endpoint.shared.send_notify.notify_one();
+        endpoint.shared.data_send_notify.notify_one();
         SC_DATASMASH_OK
     })
 }

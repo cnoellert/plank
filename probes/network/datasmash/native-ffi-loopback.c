@@ -63,6 +63,27 @@ int main(int argc, char **argv) {
         sc_datasmash_native_endpoint_wait_ready(server, 7000) !=
             SC_DATASMASH_OK) {
         print_error("native client", client);
+        ScDatasmashNativeStats failed_server_stats;
+        ScDatasmashNativeStats failed_client_stats;
+        memset(&failed_server_stats, 0, sizeof(failed_server_stats));
+        memset(&failed_client_stats, 0, sizeof(failed_client_stats));
+        failed_server_stats.struct_size = sizeof(failed_server_stats);
+        failed_client_stats.struct_size = sizeof(failed_client_stats);
+        if (sc_datasmash_native_endpoint_stats(server, &failed_server_stats) ==
+                SC_DATASMASH_OK &&
+            sc_datasmash_native_endpoint_stats(client, &failed_client_stats) ==
+                SC_DATASMASH_OK) {
+            fprintf(stderr,
+                    "native video failure stats: sent=%llu received=%llu "
+                    "server_quic_lost=%llu client_quic_lost=%llu "
+                    "server_kyproto_drops=%llu client_kyproto_drops=%llu\n",
+                    (unsigned long long)failed_server_stats.video_frames_sent,
+                    (unsigned long long)failed_client_stats.video_frames_received,
+                    (unsigned long long)failed_server_stats.quic_packets_lost,
+                    (unsigned long long)failed_client_stats.quic_packets_lost,
+                    (unsigned long long)failed_server_stats.kyproto_packets_dropped,
+                    (unsigned long long)failed_client_stats.kyproto_packets_dropped);
+        }
         print_error("native server", server);
         goto failure;
     }
@@ -98,9 +119,10 @@ int main(int argc, char **argv) {
     memset(&received_video_info, 0, sizeof(received_video_info));
     received_video_info.struct_size = sizeof(received_video_info);
     size_t received_size = 0;
-    if (sc_datasmash_native_video_receive(
+    int video_receive_result = sc_datasmash_native_video_receive(
             client, &received_video_info, video_received, video_size,
-            &received_size, 5000) != SC_DATASMASH_OK ||
+            &received_size, 5000);
+    if (video_receive_result != SC_DATASMASH_OK ||
         received_size != video_size ||
         memcmp(video, video_received, video_size) != 0 ||
         received_video_info.codec != video_info.codec ||
@@ -109,7 +131,43 @@ int main(int argc, char **argv) {
         received_video_info.pts != video_info.pts ||
         received_video_info.host_processing_latency !=
             video_info.host_processing_latency) {
-        fprintf(stderr, "native video frame or metadata mismatch\n");
+        fprintf(stderr,
+                "native video mismatch: result=%d size=%zu/%zu bytes_equal=%d "
+                "codec=%08x/%08x flags=%08x/%08x frame=%llu/%llu "
+                "pts=%llu/%llu latency=%u/%u\n",
+                video_receive_result, received_size, video_size,
+                received_size == video_size &&
+                    memcmp(video, video_received, video_size) == 0,
+                received_video_info.codec, video_info.codec,
+                received_video_info.flags, video_info.flags,
+                (unsigned long long)received_video_info.frame_number,
+                (unsigned long long)video_info.frame_number,
+                (unsigned long long)received_video_info.pts,
+                (unsigned long long)video_info.pts,
+                received_video_info.host_processing_latency,
+                video_info.host_processing_latency);
+        print_error("native client", client);
+        ScDatasmashNativeStats video_server_stats;
+        ScDatasmashNativeStats video_client_stats;
+        memset(&video_server_stats, 0, sizeof(video_server_stats));
+        memset(&video_client_stats, 0, sizeof(video_client_stats));
+        video_server_stats.struct_size = sizeof(video_server_stats);
+        video_client_stats.struct_size = sizeof(video_client_stats);
+        if (sc_datasmash_native_endpoint_stats(server, &video_server_stats) ==
+                SC_DATASMASH_OK &&
+            sc_datasmash_native_endpoint_stats(client, &video_client_stats) ==
+                SC_DATASMASH_OK) {
+            fprintf(stderr,
+                    "native video counters: sent=%llu received=%llu "
+                    "server_quic_lost=%llu client_quic_lost=%llu "
+                    "server_kyproto_drops=%llu client_kyproto_drops=%llu\n",
+                    (unsigned long long)video_server_stats.video_frames_sent,
+                    (unsigned long long)video_client_stats.video_frames_received,
+                    (unsigned long long)video_server_stats.quic_packets_lost,
+                    (unsigned long long)video_client_stats.quic_packets_lost,
+                    (unsigned long long)video_server_stats.kyproto_packets_dropped,
+                    (unsigned long long)video_client_stats.kyproto_packets_dropped);
+        }
         free(video);
         free(video_received);
         goto failure;

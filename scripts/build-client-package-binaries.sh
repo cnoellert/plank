@@ -49,8 +49,10 @@ for required_datasmash_token in \
   'StationConnectDatasmashCertificateSha256' \
   'isCanonicalSha256Hex' \
   'startDatasmashDataPlane' \
-  'LiSetStationConnectAudioPacketReceiver' \
-  'datasmashAudioPacketReceiver' \
+  'sc_datasmash_native_video_receive' \
+  'LiSubmitStationConnectVideoFrame' \
+  'sc_datasmash_native_audio_receive' \
+  'LiSubmitStationConnectAudioPacket' \
   'LiSetStationConnectControlPacketSender' \
   'datasmashControlPacketSender'; do
   rg -Fq "$required_datasmash_token" \
@@ -61,16 +63,16 @@ for required_datasmash_token in \
 done
 echo "client_datasmash_negotiation_gate=pass"
 for required_audio_transport_token in \
-  'StationConnectAudioPacketReceiver' \
-  'externalAudioPacketReceiver' \
-  'Audio Receive: external packet source failed'; do
+  'LiSubmitStationConnectVideoFrame' \
+  'LiSubmitStationConnectAudioPacket' \
+  'STATIONCONNECT_VIDEO_FRAME_FLAG_KEY'; do
   rg -Fq "$required_audio_transport_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" || {
-    echo "client external audio transport invariant is missing: ${required_audio_transport_token}" >&2
+    echo "client native media transport invariant is missing: ${required_audio_transport_token}" >&2
     exit 1
   }
 done
-echo "client_datasmash_audio_receiver_gate=pass"
+echo "client_datasmash_native_media_gate=pass"
 for required_control_transport_token in \
   'StationConnectControlPacketSender' \
   'externalControlPacketSender' \
@@ -87,7 +89,7 @@ for required_control_receiver_token in \
   'StationConnectControlPacketReceiver' \
   'externalControlPacketReceiver' \
   'External control packet source failed' \
-  'sc_datasmash_control_receive' \
+  'sc_datasmash_native_data_receive' \
   'datasmashControlPacketReceiver'; do
   if ! rg -Fq "$required_control_receiver_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \

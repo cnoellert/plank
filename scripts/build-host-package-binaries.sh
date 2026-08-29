@@ -59,12 +59,13 @@ for required_datasmash_token in \
   'StationConnectDatasmashToken' \
   'start_datasmash_data_plane' \
   'session.datasmash_endpoint' \
-  'sc_datasmash_audio_send' \
-  'sc_datasmash_control_send' \
-  'sc_datasmash_control_receive' \
+  'sc_datasmash_native_video_send' \
+  'sc_datasmash_native_audio_send' \
+  'sc_datasmash_native_data_send' \
+  'sc_datasmash_native_data_receive' \
   'drain_datasmash_control' \
   'Confirmed StationConnect encoder target over Datasmash' \
-  'Datasmash media transport'; do
+  'Datasmash native transport'; do
   rg -Fq "$required_datasmash_token" \
     "$source_dir/src" || {
     echo "host datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2

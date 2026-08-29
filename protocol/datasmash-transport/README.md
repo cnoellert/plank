@@ -11,27 +11,22 @@ and destroys it. Rust owns its Tokio runtime and worker threads; it does not
 call back into Host or Client C++ while a C++ lock is held. Error text remains
 owned by the endpoint and is copied into caller-provided storage.
 
-The current Stage 3 slice establishes and holds two independently authenticated
-QUIC connections on one UDP listener: `media` and `interaction`. The
-certificate is pinned by SHA-256 and both roles use the same short-lived
-session token. Duplicate, unknown, or mismatched roles are rejected.
+ABI version 6 adds the KyProto-native product boundary. A single
+certificate-pinned, token-authenticated KyProto connection registers Kyber's
+video, audio, input, and data endpoints in a fixed order. Complete Annex-B
+frames use `VideoProtocol::UnreliableFec`, raw Opus uses
+`AudioProtocol::UnreliableFec`, input uses KyProto's reliable input protocol,
+and non-input control uses its reliable data protocol. Kyber owns media
+packetization, RaptorQ, ordering, QUIC, and protocol statistics; StationConnect
+does not add GameStream RTP, media AES, or Reed-Solomon on this path.
 
-For bookmarks that explicitly select datasmash, the `media` connection carries
-the existing complete encrypted video/FEC and audio/FEC packets as unreliable
-QUIC DATAGRAMs. The Rust boundary adds only a small lane/sequence envelope; it
-does not reinterpret RTP, FEC, media encryption, or FEC. Bounded per-lane
-queues discard the oldest same-lane media packet rather than accumulate
-latency, with strict audio-before-video dequeue priority.
-
-ABI version 5 provides bounded bidirectional reliable control-record queues on
-the independent `interaction` connection. They preserve complete encrypted
-GameStream control packets and never evict accepted records: a full local send
-queue applies explicit backpressure and a full peer receive queue fails the
-connection closed. Product wiring begins with the low-frequency dynamic-bitrate
-request and its applied-rate acknowledgement before input, Wacom, or cursor
-traffic moves. The initial peer association pings and setup protocols
-deliberately remain on their proven legacy paths. Legacy remains the bookmark
-default.
+Each outbound lane has an independent wake-up and bounded queue, preventing a
+notification for one protocol from being consumed by another. Complete video
+metadata is carried in a small StationConnect prefix inside the RaptorQ object
+and removed after reconstruction. The older two-connection packet-tunnel ABI
+remains temporarily available only while the native product cutover is being
+qualified on the isolated branch; it will be deleted after the live matrix
+passes. Legacy remains the bookmark default until then.
 
 Run the Rust and real C ABI checks with the pinned toolchain and offline Cargo
 cache:
@@ -43,10 +38,12 @@ cargo clippy --locked --offline \
   --manifest-path protocol/datasmash-transport/Cargo.toml \
   --all-targets -- -D warnings
 scripts/run-datasmash-ffi-loopback.sh
+scripts/run-datasmash-native-loopback.sh
+scripts/run-datasmash-native-ffi-loopback.sh
 ```
 
-The standalone saturation probe imports the library's role authentication,
-which prevents the probe and product integration from drifting onto different
-handshake formats. The FFI loopback sends video, audio, and one reliable
-control packet in each direction through real QUIC connections and verifies
-byte-for-byte reconstruction at the opposite C ABI.
+The native C loopback verifies a 192-KiB key frame and metadata, raw Opus,
+Wacom-like input, and reliable data in both directions through real encrypted
+KyProto endpoints. The standalone saturation probe remains useful historical
+evidence for the tunneled implementation, but its split-connection and BBR
+results are not assumed for the new one-connection native baseline.
