@@ -43,6 +43,7 @@ for datasmash_input in \
   Cargo.lock \
   include/stationconnect_datasmash.h \
   include/stationconnect_datasmash_control.h \
+  include/stationconnect_datasmash_event.h \
   include/stationconnect_datasmash_input.h \
   src/lib.rs; do
   [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
@@ -88,6 +89,19 @@ for required_input_transport_token in \
   }
 done
 echo "host_datasmash_native_input_gate=pass"
+for required_event_transport_token in \
+  'send_datasmash_event' \
+  'SC_DATASMASH_EVENT_HDR_MODE' \
+  'SC_DATASMASH_EVENT_RAW_HID_WACOM' \
+  'SC_DATASMASH_EVENT_CURSOR_SHAPE' \
+  'SC_DATASMASH_EVENT_CURSOR_POSITION'; do
+  rg -Fq "$required_event_transport_token" \
+    "$source_dir/src" "$datasmash_transport_dir/include" || {
+    echo "host native event transport invariant is missing: ${required_event_transport_token}" >&2
+    exit 1
+  }
+done
+echo "host_datasmash_native_event_gate=pass"
 for compiler in \
   /opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   /opt/rh/gcc-toolset-14/root/usr/bin/g++ \

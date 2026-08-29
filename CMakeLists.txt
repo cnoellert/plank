@@ -355,6 +355,14 @@ if(BUILD_TESTING)
   target_link_libraries(datasmash-input-v1-test PRIVATE m)
   add_test(NAME datasmash-input-v1 COMMAND datasmash-input-v1-test)
 
+  add_executable(datasmash-event-v1-test
+    tests/protocol/datasmash-event-v1.c)
+  target_compile_options(datasmash-event-v1-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(datasmash-event-v1-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/datasmash-transport/include")
+  add_test(NAME datasmash-event-v1 COMMAND datasmash-event-v1-test)
+
   add_test(NAME kms-probe-self-test COMMAND connect-probe-kms --self-test)
   if(TARGET connect-probe-nvfbc)
     add_test(NAME nvfbc-probe-self-test COMMAND connect-probe-nvfbc --self-test)
