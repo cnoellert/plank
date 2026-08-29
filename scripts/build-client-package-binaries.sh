@@ -50,7 +50,9 @@ for required_datasmash_token in \
   'isCanonicalSha256Hex' \
   'startDatasmashDataPlane' \
   'LiSetStationConnectAudioPacketReceiver' \
-  'datasmashAudioPacketReceiver'; do
+  'datasmashAudioPacketReceiver' \
+  'LiSetStationConnectControlPacketSender' \
+  'datasmashControlPacketSender'; do
   rg -Fq "$required_datasmash_token" \
     "$source_dir/app" || {
     echo "client datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2
@@ -69,6 +71,18 @@ for required_audio_transport_token in \
   }
 done
 echo "client_datasmash_audio_receiver_gate=pass"
+for required_control_transport_token in \
+  'StationConnectControlPacketSender' \
+  'externalControlPacketSender' \
+  'ptype == packetTypes[IDX_SET_VIDEO_BITRATE]' \
+  'Failed to send StationConnect bitrate control packet over external transport'; do
+  rg -Fq "$required_control_transport_token" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src" || {
+    echo "client external control transport invariant is missing: ${required_control_transport_token}" >&2
+    exit 1
+  }
+done
+echo "client_datasmash_control_sender_gate=pass"
 
 package_version=$(<"${repo_dir}/packaging/VERSION")
 [[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {

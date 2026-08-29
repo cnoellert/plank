@@ -16,8 +16,8 @@ use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
-pub const PROTOCOL_VERSION: u16 = 3;
-pub const ABI_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u16 = 4;
+pub const ABI_VERSION: u32 = 4;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -39,6 +39,13 @@ const VIDEO_RECEIVE_QUEUE_CAPACITY: usize = 2_048;
 // already unable to preserve real-time delivery.
 const AUDIO_SEND_QUEUE_CAPACITY: usize = 8;
 const AUDIO_RECEIVE_QUEUE_CAPACITY: usize = 64;
+const CONTROL_STREAM_MAGIC: [u8; 4] = *b"DSCR";
+const CONTROL_STREAM_HEADER_SIZE: usize = 8;
+const MAX_CONTROL_PACKET_SIZE: usize = 64 * 1024;
+// Control records must never be evicted. A full bounded queue applies
+// backpressure to the caller or peer instead of silently losing a command.
+const CONTROL_SEND_QUEUE_CAPACITY: usize = 64;
+const CONTROL_RECEIVE_QUEUE_CAPACITY: usize = 64;
 
 pub const SC_DATASMASH_OK: i32 = 0;
 pub const SC_DATASMASH_TIMEOUT: i32 = 1;
@@ -240,6 +247,12 @@ struct MediaQueues {
 }
 
 #[derive(Default)]
+struct InteractionQueues {
+    control_send: VecDeque<Bytes>,
+    control_receive: VecDeque<Bytes>,
+}
+
+#[derive(Default)]
 struct TransportStats {
     video_packets_sent: AtomicU64,
     video_bytes_sent: AtomicU64,
@@ -262,6 +275,16 @@ struct TransportStats {
     audio_receive_queue_high_water: AtomicU64,
     media_quic_rtt_us: AtomicU64,
     media_quic_packets_lost: AtomicU64,
+    control_packets_sent: AtomicU64,
+    control_bytes_sent: AtomicU64,
+    control_packets_received: AtomicU64,
+    control_bytes_received: AtomicU64,
+    control_send_queue_full: AtomicU64,
+    control_receive_queue_overflow: AtomicU64,
+    control_send_queue_high_water: AtomicU64,
+    control_receive_queue_high_water: AtomicU64,
+    interaction_quic_rtt_us: AtomicU64,
+    interaction_quic_packets_lost: AtomicU64,
 }
 
 struct Shared {
@@ -273,6 +296,9 @@ struct Shared {
     media_send_notify: tokio::sync::Notify,
     video_receive_changed: Condvar,
     audio_receive_changed: Condvar,
+    interaction_queues: Mutex<InteractionQueues>,
+    control_send_notify: tokio::sync::Notify,
+    control_receive_changed: Condvar,
     video_sequence: AtomicU64,
     audio_sequence: AtomicU64,
     max_media_packet_size: AtomicUsize,
@@ -293,6 +319,9 @@ impl Shared {
             media_send_notify: tokio::sync::Notify::new(),
             video_receive_changed: Condvar::new(),
             audio_receive_changed: Condvar::new(),
+            interaction_queues: Mutex::new(InteractionQueues::default()),
+            control_send_notify: tokio::sync::Notify::new(),
+            control_receive_changed: Condvar::new(),
             video_sequence: AtomicU64::new(0),
             audio_sequence: AtomicU64::new(0),
             max_media_packet_size: AtomicUsize::new(0),
@@ -317,6 +346,7 @@ impl Shared {
         self.changed.notify_all();
         self.video_receive_changed.notify_all();
         self.audio_receive_changed.notify_all();
+        self.control_receive_changed.notify_all();
     }
 }
 
@@ -362,6 +392,16 @@ pub struct ScDatasmashStats {
     pub audio_receive_queue_high_water: u64,
     pub media_quic_rtt_us: u64,
     pub media_quic_packets_lost: u64,
+    pub control_packets_sent: u64,
+    pub control_bytes_sent: u64,
+    pub control_packets_received: u64,
+    pub control_bytes_received: u64,
+    pub control_send_queue_full: u64,
+    pub control_receive_queue_overflow: u64,
+    pub control_send_queue_high_water: u64,
+    pub control_receive_queue_high_water: u64,
+    pub interaction_quic_rtt_us: u64,
+    pub interaction_quic_packets_lost: u64,
 }
 
 pub struct ScDatasmashEndpoint {
@@ -654,6 +694,110 @@ async fn receive_media_datagrams(shared: Arc<Shared>, connection: Connection) ->
     }
 }
 
+fn frame_control_record(payload: &[u8]) -> Bytes {
+    let mut record = BytesMut::with_capacity(CONTROL_STREAM_HEADER_SIZE + payload.len());
+    record.extend_from_slice(&CONTROL_STREAM_MAGIC);
+    record.put_u32(payload.len() as u32);
+    record.extend_from_slice(payload);
+    record.freeze()
+}
+
+async fn send_control_records(shared: Arc<Shared>, mut stream: kynet::SendStream) -> Result<()> {
+    loop {
+        let notified = shared.control_send_notify.notified();
+        let packet = shared
+            .interaction_queues
+            .lock()
+            .unwrap()
+            .control_send
+            .pop_front();
+        if let Some(packet) = packet {
+            let payload_size = packet.len().saturating_sub(CONTROL_STREAM_HEADER_SIZE) as u64;
+            stream
+                .write_all(&packet)
+                .await
+                .context("failed to write reliable control record")?;
+            stream
+                .flush()
+                .await
+                .context("failed to flush reliable control record")?;
+            shared
+                .stats
+                .control_packets_sent
+                .fetch_add(1, Ordering::Relaxed);
+            shared
+                .stats
+                .control_bytes_sent
+                .fetch_add(payload_size, Ordering::Relaxed);
+            continue;
+        }
+        if shared.stop.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        notified.await;
+    }
+}
+
+async fn receive_control_records(shared: Arc<Shared>, mut stream: kynet::RecvStream) -> Result<()> {
+    loop {
+        let mut header = [0_u8; CONTROL_STREAM_HEADER_SIZE];
+        let first_byte_count = tokio::select! {
+            _ = shared.stop_notify.notified() => return Ok(()),
+            result = stream.read(&mut header[..1]) => {
+                result.context("failed to begin reliable control header")?
+            },
+        };
+        if first_byte_count == 0 {
+            return Ok(());
+        }
+        tokio::select! {
+            _ = shared.stop_notify.notified() => return Ok(()),
+            result = stream.read_exact(&mut header[1..]) => {
+                result.context("failed to finish reliable control header")?;
+            },
+        }
+        if header[..4] != CONTROL_STREAM_MAGIC {
+            bail!("reliable control record magic mismatch");
+        }
+        let payload_size = u32::from_be_bytes(header[4..8].try_into().unwrap()) as usize;
+        if !(2..=MAX_CONTROL_PACKET_SIZE).contains(&payload_size) {
+            bail!("invalid reliable control record size {payload_size}");
+        }
+        let mut payload = vec![0_u8; payload_size];
+        tokio::select! {
+            _ = shared.stop_notify.notified() => return Ok(()),
+            result = stream.read_exact(&mut payload) => {
+                result.context("failed to read reliable control payload")?;
+            },
+        }
+        let depth = {
+            let mut queues = shared.interaction_queues.lock().unwrap();
+            if queues.control_receive.len() == CONTROL_RECEIVE_QUEUE_CAPACITY {
+                shared
+                    .stats
+                    .control_receive_queue_overflow
+                    .fetch_add(1, Ordering::Relaxed);
+                bail!("reliable control receive queue exhausted");
+            }
+            queues.control_receive.push_back(Bytes::from(payload));
+            queues.control_receive.len()
+        };
+        shared
+            .stats
+            .control_receive_queue_high_water
+            .fetch_max(depth as u64, Ordering::Relaxed);
+        shared
+            .stats
+            .control_packets_received
+            .fetch_add(1, Ordering::Relaxed);
+        shared
+            .stats
+            .control_bytes_received
+            .fetch_add(payload_size as u64, Ordering::Relaxed);
+        shared.control_receive_changed.notify_one();
+    }
+}
+
 async fn sample_media_stats(shared: Arc<Shared>, connection: Connection) {
     let mut interval = tokio::time::interval(Duration::from_secs(1));
     loop {
@@ -673,14 +817,34 @@ async fn sample_media_stats(shared: Arc<Shared>, connection: Connection) {
     }
 }
 
+async fn sample_interaction_stats(shared: Arc<Shared>, connection: Connection) {
+    let mut interval = tokio::time::interval(Duration::from_secs(1));
+    loop {
+        interval.tick().await;
+        if shared.stop.load(Ordering::Acquire) {
+            return;
+        }
+        let stats = connection.stats().await;
+        shared.stats.interaction_quic_rtt_us.store(
+            stats.rtt.map(|value| value.as_micros() as u64).unwrap_or(0),
+            Ordering::Relaxed,
+        );
+        shared
+            .stats
+            .interaction_quic_packets_lost
+            .store(stats.packets_lost.unwrap_or(0), Ordering::Relaxed);
+    }
+}
+
 async fn hold_connections(
     shared: Arc<Shared>,
     media: RoleConnection,
     interaction: RoleConnection,
     server_mode: bool,
 ) -> Result<()> {
-    let max_datagram_size = media
-        .0
+    let (media_connection, _media_send_stream, _media_receive_stream) = media;
+    let (interaction_connection, interaction_send_stream, interaction_receive_stream) = interaction;
+    let max_datagram_size = media_connection
         .max_datagram_size()
         .ok_or_else(|| anyhow!("peer did not negotiate QUIC DATAGRAM support"))?;
     if max_datagram_size <= DATAGRAM_HEADER_SIZE {
@@ -690,8 +854,6 @@ async fn hold_connections(
         .max_media_packet_size
         .store(max_datagram_size - DATAGRAM_HEADER_SIZE, Ordering::Release);
     shared.set_state(EndpointState::Ready);
-    let media_connection = media.0.clone();
-    let interaction_connection = interaction.0.clone();
     let payload_shared = shared.clone();
     let payload_connection = media_connection.clone();
     let mut payload_task = tokio::spawn(async move {
@@ -701,8 +863,24 @@ async fn hold_connections(
             receive_media_datagrams(payload_shared, payload_connection).await
         }
     });
-    let mut stats_task = tokio::spawn(sample_media_stats(shared.clone(), media_connection.clone()));
+    let interaction_shared = shared.clone();
+    let mut interaction_task = tokio::spawn(async move {
+        if server_mode {
+            let _unused_send_stream = interaction_send_stream;
+            receive_control_records(interaction_shared, interaction_receive_stream).await
+        } else {
+            let _unused_receive_stream = interaction_receive_stream;
+            send_control_records(interaction_shared, interaction_send_stream).await
+        }
+    });
+    let mut media_stats_task =
+        tokio::spawn(sample_media_stats(shared.clone(), media_connection.clone()));
+    let mut interaction_stats_task = tokio::spawn(sample_interaction_stats(
+        shared.clone(),
+        interaction_connection.clone(),
+    ));
     let mut payload_finished = false;
+    let mut interaction_finished = false;
     let result = tokio::select! {
         _ = shared.stop_notify.notified() => Ok(()),
         result = media_connection.closed() => {
@@ -718,17 +896,31 @@ async fn hold_connections(
                 Err(error) => Err(anyhow!("video payload task failed: {error}")),
             }
         },
+        result = &mut interaction_task => {
+            interaction_finished = true;
+            match result {
+                Ok(result) => result.context("reliable control task failed"),
+                Err(error) => Err(anyhow!("reliable control task failed: {error}")),
+            }
+        },
     };
     if !payload_finished {
         payload_task.abort();
         let _ = (&mut payload_task).await;
     }
-    stats_task.abort();
-    let _ = (&mut stats_task).await;
-    media.0.close(0, "StationConnect endpoint stopping");
-    interaction.0.close(0, "StationConnect endpoint stopping");
+    if !interaction_finished {
+        interaction_task.abort();
+        let _ = (&mut interaction_task).await;
+    }
+    media_stats_task.abort();
+    let _ = (&mut media_stats_task).await;
+    interaction_stats_task.abort();
+    let _ = (&mut interaction_stats_task).await;
+    media_connection.close(0, "StationConnect endpoint stopping");
+    interaction_connection.close(0, "StationConnect endpoint stopping");
     shared.video_receive_changed.notify_all();
     shared.audio_receive_changed.notify_all();
+    shared.control_receive_changed.notify_all();
     result
 }
 
@@ -1337,6 +1529,116 @@ pub unsafe extern "C" fn sc_datasmash_audio_receive(
 }
 
 #[unsafe(no_mangle)]
+/// Copies one complete encrypted GameStream control packet into the bounded
+/// client send queue. Full queues apply backpressure and never evict records.
+///
+/// # Safety
+/// `packet` must point to `packet_size` readable bytes. `endpoint` must be a
+/// live, non-destroyed client endpoint.
+pub unsafe extern "C" fn sc_datasmash_control_send(
+    endpoint: *mut ScDatasmashEndpoint,
+    packet: *const u8,
+    packet_size: usize,
+) -> i32 {
+    catch_result(|| {
+        let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        };
+        if endpoint.mode != 2 || endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
+        }
+        if packet.is_null() || !(2..=MAX_CONTROL_PACKET_SIZE).contains(&packet_size) {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        let payload = unsafe { std::slice::from_raw_parts(packet, packet_size) };
+        let record = frame_control_record(payload);
+        let depth = {
+            let mut queues = endpoint.shared.interaction_queues.lock().unwrap();
+            if queues.control_send.len() == CONTROL_SEND_QUEUE_CAPACITY {
+                endpoint
+                    .shared
+                    .stats
+                    .control_send_queue_full
+                    .fetch_add(1, Ordering::Relaxed);
+                return SC_DATASMASH_TIMEOUT;
+            }
+            queues.control_send.push_back(record);
+            queues.control_send.len()
+        };
+        endpoint
+            .shared
+            .stats
+            .control_send_queue_high_water
+            .fetch_max(depth as u64, Ordering::Relaxed);
+        endpoint.shared.control_send_notify.notify_one();
+        SC_DATASMASH_OK
+    })
+}
+
+#[unsafe(no_mangle)]
+/// Waits for and copies one complete encrypted GameStream control packet from
+/// the bounded server receive queue. An undersized destination leaves the
+/// packet queued and reports its required size.
+///
+/// # Safety
+/// `packet_size_out` must be writable. When `packet_capacity` is nonzero,
+/// `packet` must point to that many writable bytes. `endpoint` must be live.
+pub unsafe extern "C" fn sc_datasmash_control_receive(
+    endpoint: *mut ScDatasmashEndpoint,
+    packet: *mut u8,
+    packet_capacity: usize,
+    packet_size_out: *mut usize,
+    timeout_ms: u32,
+) -> i32 {
+    catch_result(|| {
+        let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        };
+        if endpoint.mode != 1 || packet_size_out.is_null() {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        if packet_capacity != 0 && packet.is_null() {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        unsafe { *packet_size_out = 0 };
+        if endpoint.shared.state() != EndpointState::Ready {
+            return SC_DATASMASH_ERROR_INVALID_STATE;
+        }
+        let deadline = Instant::now() + Duration::from_millis(u64::from(timeout_ms));
+        let mut queues = endpoint.shared.interaction_queues.lock().unwrap();
+        loop {
+            if let Some(front) = queues.control_receive.front() {
+                unsafe { *packet_size_out = front.len() };
+                if packet_capacity < front.len() {
+                    return SC_DATASMASH_ERROR_BUFFER_TOO_SMALL;
+                }
+                let packet_data = queues.control_receive.pop_front().expect("front checked");
+                unsafe {
+                    ptr::copy_nonoverlapping(packet_data.as_ptr(), packet, packet_data.len());
+                }
+                return SC_DATASMASH_OK;
+            }
+            if endpoint.shared.state() != EndpointState::Ready {
+                return SC_DATASMASH_ERROR_RUNTIME;
+            }
+            let now = Instant::now();
+            if now >= deadline {
+                return SC_DATASMASH_TIMEOUT;
+            }
+            let (next_queues, wait) = endpoint
+                .shared
+                .control_receive_changed
+                .wait_timeout(queues, deadline - now)
+                .unwrap();
+            queues = next_queues;
+            if wait.timed_out() && queues.control_receive.is_empty() {
+                return SC_DATASMASH_TIMEOUT;
+            }
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
 /// Copies a consistent snapshot of endpoint transport counters.
 ///
 /// # Safety
@@ -1462,6 +1764,56 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_stats(
             .stats
             .media_quic_packets_lost
             .load(Ordering::Relaxed);
+        stats.control_packets_sent = endpoint
+            .shared
+            .stats
+            .control_packets_sent
+            .load(Ordering::Relaxed);
+        stats.control_bytes_sent = endpoint
+            .shared
+            .stats
+            .control_bytes_sent
+            .load(Ordering::Relaxed);
+        stats.control_packets_received = endpoint
+            .shared
+            .stats
+            .control_packets_received
+            .load(Ordering::Relaxed);
+        stats.control_bytes_received = endpoint
+            .shared
+            .stats
+            .control_bytes_received
+            .load(Ordering::Relaxed);
+        stats.control_send_queue_full = endpoint
+            .shared
+            .stats
+            .control_send_queue_full
+            .load(Ordering::Relaxed);
+        stats.control_receive_queue_overflow = endpoint
+            .shared
+            .stats
+            .control_receive_queue_overflow
+            .load(Ordering::Relaxed);
+        stats.control_send_queue_high_water = endpoint
+            .shared
+            .stats
+            .control_send_queue_high_water
+            .load(Ordering::Relaxed);
+        stats.control_receive_queue_high_water = endpoint
+            .shared
+            .stats
+            .control_receive_queue_high_water
+            .load(Ordering::Relaxed);
+        stats.interaction_quic_rtt_us = endpoint
+            .shared
+            .stats
+            .interaction_quic_rtt_us
+            .load(Ordering::Relaxed);
+        stats.interaction_quic_packets_lost = endpoint
+            .shared
+            .stats
+            .interaction_quic_packets_lost
+            .load(Ordering::Relaxed);
         SC_DATASMASH_OK
     })
 }
@@ -1489,8 +1841,10 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_stop(endpoint: *mut ScDatasmashEn
         endpoint.shared.stop.store(true, Ordering::Release);
         endpoint.shared.stop_notify.notify_waiters();
         endpoint.shared.media_send_notify.notify_waiters();
+        endpoint.shared.control_send_notify.notify_waiters();
         endpoint.shared.video_receive_changed.notify_all();
         endpoint.shared.audio_receive_changed.notify_all();
+        endpoint.shared.control_receive_changed.notify_all();
         if let Some(worker) = endpoint.worker.lock().unwrap().take()
             && worker.join().is_err()
         {
@@ -1522,8 +1876,10 @@ pub unsafe extern "C" fn sc_datasmash_endpoint_destroy(endpoint: *mut ScDatasmas
         endpoint.shared.stop.store(true, Ordering::Release);
         endpoint.shared.stop_notify.notify_waiters();
         endpoint.shared.media_send_notify.notify_waiters();
+        endpoint.shared.control_send_notify.notify_waiters();
         endpoint.shared.video_receive_changed.notify_all();
         endpoint.shared.audio_receive_changed.notify_all();
+        endpoint.shared.control_receive_changed.notify_all();
         if let Some(worker) = endpoint.worker.lock().unwrap().take() {
             let _ = worker.join();
         }
@@ -1584,11 +1940,86 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 3);
+        assert_eq!(sc_datasmash_abi_version(), 4);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::Failed as u32, 6);
         assert_eq!(SC_DATASMASH_DROPPED, 2);
         assert_eq!(SC_DATASMASH_ERROR_BUFFER_TOO_SMALL, -5);
+    }
+
+    #[test]
+    fn reliable_control_record_preserves_complete_packet_bytes() {
+        let payload = [0x01, 0x00, 0xaa, 0xbb, 0xcc, 0xdd];
+        let record = frame_control_record(&payload);
+        assert_eq!(record[..4], CONTROL_STREAM_MAGIC);
+        assert_eq!(
+            u32::from_be_bytes(record[4..8].try_into().unwrap()) as usize,
+            payload.len()
+        );
+        assert_eq!(&record[CONTROL_STREAM_HEADER_SIZE..], payload);
+    }
+
+    #[test]
+    fn reliable_control_queue_applies_backpressure_without_eviction() {
+        let endpoint = Box::new(ScDatasmashEndpoint {
+            config: EndpointConfig::Client {
+                remote_address: "127.0.0.1:47989".parse().unwrap(),
+                server_name: "stationconnect".to_owned(),
+                certificate_sha256: "00".repeat(32),
+                session_token: "test-token".to_owned(),
+                options: RuntimeOptions {
+                    handshake_timeout: Duration::from_secs(1),
+                    idle_timeout: Duration::from_secs(1),
+                    keep_alive_interval: Duration::from_secs(1),
+                },
+            },
+            mode: 2,
+            shared: Arc::new(Shared::new()),
+            worker: Mutex::new(None),
+        });
+        endpoint.shared.set_state(EndpointState::Ready);
+        let endpoint = Box::into_raw(endpoint);
+        let packet = [0x01_u8, 0x00, 0xaa, 0xbb];
+
+        for _ in 0..CONTROL_SEND_QUEUE_CAPACITY {
+            assert_eq!(
+                unsafe { sc_datasmash_control_send(endpoint, packet.as_ptr(), packet.len()) },
+                SC_DATASMASH_OK
+            );
+        }
+        assert_eq!(
+            unsafe { sc_datasmash_control_send(endpoint, packet.as_ptr(), packet.len()) },
+            SC_DATASMASH_TIMEOUT
+        );
+
+        let endpoint_ref = unsafe { &*endpoint };
+        let queues = endpoint_ref.shared.interaction_queues.lock().unwrap();
+        assert_eq!(queues.control_send.len(), CONTROL_SEND_QUEUE_CAPACITY);
+        assert!(
+            queues
+                .control_send
+                .iter()
+                .all(|record| { &record[CONTROL_STREAM_HEADER_SIZE..] == packet.as_slice() })
+        );
+        drop(queues);
+        assert_eq!(
+            endpoint_ref
+                .shared
+                .stats
+                .control_send_queue_full
+                .load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            endpoint_ref
+                .shared
+                .stats
+                .control_send_queue_high_water
+                .load(Ordering::Relaxed),
+            CONTROL_SEND_QUEUE_CAPACITY as u64
+        );
+
+        unsafe { sc_datasmash_endpoint_destroy(endpoint) };
     }
 
     #[test]

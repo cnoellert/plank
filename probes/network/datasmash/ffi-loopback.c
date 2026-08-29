@@ -158,6 +158,30 @@ int main(int argc, char **argv) {
         goto failure;
     }
 
+    unsigned char control_packet[37];
+    unsigned char control_received[sizeof(control_packet)];
+    for (size_t i = 0; i < sizeof(control_packet); ++i) {
+        control_packet[i] = (unsigned char)(0x80u ^ i);
+    }
+    result = sc_datasmash_control_send(client, control_packet,
+                                       sizeof(control_packet));
+    if (result != SC_DATASMASH_OK) {
+        fprintf(stderr, "failed to submit reliable control packet: %d\n",
+                result);
+        goto failure;
+    }
+    received_size = 0;
+    result = sc_datasmash_control_receive(server, control_received,
+                                          sizeof(control_received),
+                                          &received_size, 2000);
+    if (result != SC_DATASMASH_OK ||
+        received_size != sizeof(control_received) ||
+        memcmp(control_received, control_packet, sizeof(control_packet)) != 0) {
+        fprintf(stderr,
+                "reliable control packet did not survive the C ABI round trip\n");
+        goto failure;
+    }
+
     result = sc_datasmash_video_send(server, prefix, sizeof(prefix), payload,
                                      sizeof(payload));
     if (result != SC_DATASMASH_OK) {
@@ -205,7 +229,13 @@ int main(int argc, char **argv) {
         server_stats.audio_bytes_sent != sizeof(audio_received) ||
         client_stats.audio_bytes_received != sizeof(audio_received) ||
         server_stats.audio_send_queue_drops != 0 ||
-        client_stats.audio_receive_queue_drops != 0) {
+        client_stats.audio_receive_queue_drops != 0 ||
+        client_stats.control_packets_sent != 1 ||
+        client_stats.control_bytes_sent != sizeof(control_packet) ||
+        server_stats.control_packets_received != 1 ||
+        server_stats.control_bytes_received != sizeof(control_packet) ||
+        client_stats.control_send_queue_full != 0 ||
+        server_stats.control_receive_queue_overflow != 0) {
         fprintf(stderr, "media transport counters are inconsistent\n");
         goto failure;
     }
@@ -222,8 +252,9 @@ int main(int argc, char **argv) {
     sc_datasmash_endpoint_destroy(server);
     printf("status=complete test=datasmash-ffi-loopback connections=2 "
            "video_packets=2 video_bytes=%zu audio_packets=1 audio_bytes=%zu "
-           "max_media_packet_size=%zu\n",
-           2 * sizeof(received), sizeof(audio_received), server_max);
+           "control_packets=1 control_bytes=%zu max_media_packet_size=%zu\n",
+           2 * sizeof(received), sizeof(audio_received), sizeof(control_packet),
+           server_max);
     return 0;
 
 failure:

@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 3u
+#define SC_DATASMASH_ABI_VERSION 4u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 
@@ -64,6 +64,16 @@ typedef struct ScDatasmashStats {
     uint64_t audio_receive_queue_high_water;
     uint64_t media_quic_rtt_us;
     uint64_t media_quic_packets_lost;
+    uint64_t control_packets_sent;
+    uint64_t control_bytes_sent;
+    uint64_t control_packets_received;
+    uint64_t control_bytes_received;
+    uint64_t control_send_queue_full;
+    uint64_t control_receive_queue_overflow;
+    uint64_t control_send_queue_high_water;
+    uint64_t control_receive_queue_high_water;
+    uint64_t interaction_quic_rtt_us;
+    uint64_t interaction_quic_packets_lost;
 } ScDatasmashStats;
 
 /*
@@ -148,6 +158,25 @@ int32_t sc_datasmash_audio_receive(ScDatasmashEndpoint *endpoint,
                                    size_t packet_capacity,
                                    size_t *packet_size_out,
                                    uint32_t timeout_ms);
+
+/*
+ * Client-only, nonblocking submission of one complete encrypted GameStream
+ * control packet. The bytes are copied. A full bounded queue returns
+ * SC_DATASMASH_TIMEOUT and never evicts a previously accepted command.
+ */
+int32_t sc_datasmash_control_send(ScDatasmashEndpoint *endpoint,
+                                  const uint8_t *packet,
+                                  size_t packet_size);
+
+/*
+ * Server-only bounded wait for one complete encrypted GameStream control
+ * packet. Buffer and retention behavior matches the media receive functions.
+ */
+int32_t sc_datasmash_control_receive(ScDatasmashEndpoint *endpoint,
+                                     uint8_t *packet,
+                                     size_t packet_capacity,
+                                     size_t *packet_size_out,
+                                     uint32_t timeout_ms);
 
 int32_t sc_datasmash_endpoint_stats(const ScDatasmashEndpoint *endpoint,
                                     ScDatasmashStats *stats);

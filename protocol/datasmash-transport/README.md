@@ -17,13 +17,20 @@ certificate is pinned by SHA-256 and both roles use the same short-lived
 session token. Duplicate, unknown, or mismatched roles are rejected.
 
 For bookmarks that explicitly select datasmash, the `media` connection carries
-the existing complete encrypted video/FEC packets as unreliable QUIC
-DATAGRAMs. The Rust boundary adds only a small lane/sequence envelope; it does
-not reinterpret RTP, FEC, or video encryption. Bounded queues discard the
-oldest queued video packet rather than accumulate latency, and the C ABI
-exports queue, byte, loss, and RTT counters. Audio, control, input, cursor, and
-the initial video peer-association ping deliberately remain on their proven
-legacy transports. Legacy remains the bookmark default.
+the existing complete encrypted video/FEC and audio/FEC packets as unreliable
+QUIC DATAGRAMs. The Rust boundary adds only a small lane/sequence envelope; it
+does not reinterpret RTP, FEC, media encryption, or FEC. Bounded per-lane
+queues discard the oldest same-lane media packet rather than accumulate
+latency, with strict audio-before-video dequeue priority.
+
+ABI version 4 also provides a bounded client-to-Host reliable control-record
+queue on the independent `interaction` connection. It preserves the complete
+encrypted GameStream control packet and never evicts an accepted command: a
+full client queue applies explicit backpressure and a full Host queue fails the
+connection closed. Product wiring begins with one low-frequency StationConnect
+control message before input, Wacom, or cursor traffic moves. The initial peer
+association pings and setup protocols deliberately remain on their proven
+legacy paths. Legacy remains the bookmark default.
 
 Run the Rust and real C ABI checks with the pinned toolchain and offline Cargo
 cache:
@@ -39,6 +46,6 @@ scripts/run-datasmash-ffi-loopback.sh
 
 The standalone saturation probe imports the library's role authentication,
 which prevents the probe and product integration from drifting onto different
-handshake formats. The FFI loopback also sends one split host packet through a
-real QUIC connection and verifies byte-for-byte reconstruction at the client
-ABI.
+handshake formats. The FFI loopback sends video, audio, and a client-to-Host
+reliable control packet through real QUIC connections and verifies byte-for-byte
+reconstruction at the opposite C ABI.
