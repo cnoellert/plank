@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 4u
+#define SC_DATASMASH_ABI_VERSION 5u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 
@@ -160,16 +160,16 @@ int32_t sc_datasmash_audio_receive(ScDatasmashEndpoint *endpoint,
                                    uint32_t timeout_ms);
 
 /*
- * Client-only, nonblocking submission of one complete encrypted GameStream
+ * Bidirectional, nonblocking submission of one complete encrypted GameStream
  * control packet. The bytes are copied. A full bounded queue returns
- * SC_DATASMASH_TIMEOUT and never evicts a previously accepted command.
+ * SC_DATASMASH_TIMEOUT and never evicts a previously accepted record.
  */
 int32_t sc_datasmash_control_send(ScDatasmashEndpoint *endpoint,
                                   const uint8_t *packet,
                                   size_t packet_size);
 
 /*
- * Server-only bounded wait for one complete encrypted GameStream control
+ * Bidirectional bounded wait for one complete encrypted GameStream control
  * packet. Buffer and retention behavior matches the media receive functions.
  */
 int32_t sc_datasmash_control_receive(ScDatasmashEndpoint *endpoint,

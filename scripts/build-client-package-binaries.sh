@@ -83,6 +83,20 @@ for required_control_transport_token in \
   }
 done
 echo "client_datasmash_control_sender_gate=pass"
+for required_control_receiver_token in \
+  'StationConnectControlPacketReceiver' \
+  'externalControlPacketReceiver' \
+  'External control packet source failed' \
+  'sc_datasmash_control_receive' \
+  'datasmashControlPacketReceiver'; do
+  if ! rg -Fq "$required_control_receiver_token" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src" \
+    "$source_dir/app/streaming"; then
+    echo "client external control receiver invariant is missing: ${required_control_receiver_token}" >&2
+    exit 1
+  fi
+done
+echo "client_datasmash_control_receiver_gate=pass"
 
 package_version=$(<"${repo_dir}/packaging/VERSION")
 [[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {

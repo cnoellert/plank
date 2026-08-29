@@ -16,8 +16,8 @@ use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
-pub const PROTOCOL_VERSION: u16 = 4;
-pub const ABI_VERSION: u32 = 4;
+pub const PROTOCOL_VERSION: u16 = 5;
+pub const ABI_VERSION: u32 = 5;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -863,14 +863,20 @@ async fn hold_connections(
             receive_media_datagrams(payload_shared, payload_connection).await
         }
     });
-    let interaction_shared = shared.clone();
+    let interaction_send_shared = shared.clone();
+    let interaction_receive_shared = shared.clone();
     let mut interaction_task = tokio::spawn(async move {
-        if server_mode {
-            let _unused_send_stream = interaction_send_stream;
-            receive_control_records(interaction_shared, interaction_receive_stream).await
-        } else {
-            let _unused_receive_stream = interaction_receive_stream;
-            send_control_records(interaction_shared, interaction_send_stream).await
+        let mut send_task = Box::pin(send_control_records(
+            interaction_send_shared,
+            interaction_send_stream,
+        ));
+        let mut receive_task = Box::pin(receive_control_records(
+            interaction_receive_shared,
+            interaction_receive_stream,
+        ));
+        tokio::select! {
+            result = &mut send_task => result.context("reliable control sender failed"),
+            result = &mut receive_task => result.context("reliable control receiver failed"),
         }
     });
     let mut media_stats_task =
@@ -1530,11 +1536,11 @@ pub unsafe extern "C" fn sc_datasmash_audio_receive(
 
 #[unsafe(no_mangle)]
 /// Copies one complete encrypted GameStream control packet into the bounded
-/// client send queue. Full queues apply backpressure and never evict records.
+/// bidirectional send queue. Full queues apply backpressure and never evict records.
 ///
 /// # Safety
 /// `packet` must point to `packet_size` readable bytes. `endpoint` must be a
-/// live, non-destroyed client endpoint.
+/// live, non-destroyed endpoint.
 pub unsafe extern "C" fn sc_datasmash_control_send(
     endpoint: *mut ScDatasmashEndpoint,
     packet: *const u8,
@@ -1544,7 +1550,7 @@ pub unsafe extern "C" fn sc_datasmash_control_send(
         let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         };
-        if endpoint.mode != 2 || endpoint.shared.state() != EndpointState::Ready {
+        if endpoint.shared.state() != EndpointState::Ready {
             return SC_DATASMASH_ERROR_INVALID_STATE;
         }
         if packet.is_null() || !(2..=MAX_CONTROL_PACKET_SIZE).contains(&packet_size) {
@@ -1577,7 +1583,7 @@ pub unsafe extern "C" fn sc_datasmash_control_send(
 
 #[unsafe(no_mangle)]
 /// Waits for and copies one complete encrypted GameStream control packet from
-/// the bounded server receive queue. An undersized destination leaves the
+/// the bounded bidirectional receive queue. An undersized destination leaves the
 /// packet queued and reports its required size.
 ///
 /// # Safety
@@ -1594,7 +1600,7 @@ pub unsafe extern "C" fn sc_datasmash_control_receive(
         let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         };
-        if endpoint.mode != 1 || packet_size_out.is_null() {
+        if packet_size_out.is_null() {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         }
         if packet_capacity != 0 && packet.is_null() {
@@ -1940,7 +1946,7 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 4);
+        assert_eq!(sc_datasmash_abi_version(), 5);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::Failed as u32, 6);
         assert_eq!(SC_DATASMASH_DROPPED, 2);

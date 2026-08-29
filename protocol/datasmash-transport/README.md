@@ -23,14 +23,15 @@ does not reinterpret RTP, FEC, media encryption, or FEC. Bounded per-lane
 queues discard the oldest same-lane media packet rather than accumulate
 latency, with strict audio-before-video dequeue priority.
 
-ABI version 4 also provides a bounded client-to-Host reliable control-record
-queue on the independent `interaction` connection. It preserves the complete
-encrypted GameStream control packet and never evicts an accepted command: a
-full client queue applies explicit backpressure and a full Host queue fails the
-connection closed. Product wiring begins with one low-frequency StationConnect
-control message before input, Wacom, or cursor traffic moves. The initial peer
-association pings and setup protocols deliberately remain on their proven
-legacy paths. Legacy remains the bookmark default.
+ABI version 5 provides bounded bidirectional reliable control-record queues on
+the independent `interaction` connection. They preserve complete encrypted
+GameStream control packets and never evict accepted records: a full local send
+queue applies explicit backpressure and a full peer receive queue fails the
+connection closed. Product wiring begins with the low-frequency dynamic-bitrate
+request and its applied-rate acknowledgement before input, Wacom, or cursor
+traffic moves. The initial peer association pings and setup protocols
+deliberately remain on their proven legacy paths. Legacy remains the bookmark
+default.
 
 Run the Rust and real C ABI checks with the pinned toolchain and offline Cargo
 cache:
@@ -46,6 +47,6 @@ scripts/run-datasmash-ffi-loopback.sh
 
 The standalone saturation probe imports the library's role authentication,
 which prevents the probe and product integration from drifting onto different
-handshake formats. The FFI loopback sends video, audio, and a client-to-Host
-reliable control packet through real QUIC connections and verifies byte-for-byte
-reconstruction at the opposite C ABI.
+handshake formats. The FFI loopback sends video, audio, and one reliable
+control packet in each direction through real QUIC connections and verifies
+byte-for-byte reconstruction at the opposite C ABI.

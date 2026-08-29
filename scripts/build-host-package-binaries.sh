@@ -60,8 +60,10 @@ for required_datasmash_token in \
   'start_datasmash_data_plane' \
   'session.datasmash_endpoint' \
   'sc_datasmash_audio_send' \
+  'sc_datasmash_control_send' \
   'sc_datasmash_control_receive' \
   'drain_datasmash_control' \
+  'Confirmed StationConnect encoder target over Datasmash' \
   'Datasmash media transport'; do
   rg -Fq "$required_datasmash_token" \
     "$source_dir/src" || {
