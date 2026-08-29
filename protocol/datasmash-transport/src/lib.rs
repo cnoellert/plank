@@ -28,7 +28,10 @@ const MAX_PATH_LENGTH: usize = 4_096;
 const MAX_TOKEN_LENGTH: usize = 1_024;
 const DATAGRAM_HEADER_SIZE: usize = 16;
 const VIDEO_LANE: u8 = 1;
-const VIDEO_SEND_QUEUE_CAPACITY: usize = 64;
+// A single 4K IDR/FEC burst can exceed 64 packets before the Tokio worker is
+// scheduled. Keep enough bounded headroom for that burst without allowing an
+// unbounded latency queue; 512 maximum-sized packets are under 1 MiB.
+const VIDEO_SEND_QUEUE_CAPACITY: usize = 512;
 const VIDEO_RECEIVE_QUEUE_CAPACITY: usize = 2_048;
 
 pub const SC_DATASMASH_OK: i32 = 0;
