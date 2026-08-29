@@ -69,8 +69,10 @@ different. The client also sends `scEncoderBackend=software-cuda` or
 `StationConnectEncoderBackend` and `StationConnectEncodingMode`; a missing or
 different acknowledgement fails the launch. `x11-native10` is experimental
 and accepts only a 10-bit 4:4:4 identity profile. It never falls back to NvFBC
-or accepts an 8-bit profile. See `protocol/encoding-profiles.md` for the exact
-allowed tuples.
+or accepts an 8-bit profile. Its x264 path converts a same-size packed RGB10
+canvas directly to planar GBR10, or performs center-aligned bilinear scaling
+and plane generation in that same CPU pass when the negotiated encode size is
+different. See `protocol/encoding-profiles.md` for the exact allowed tuples.
 
 Bookmarks persist `configured`, `physical`, `single`, or `dual-horizontal` as
 their host-layout requirement. `configured` is resolved to the authenticated

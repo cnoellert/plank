@@ -619,6 +619,18 @@ for required_native_x11_token in \
     exit 1
   }
 done
+for required_native_x11_x264_token in \
+  'scale_xrgb10_to_gbr10_rows' \
+  'Native X11 x264 10-bit scaling:' \
+  'validate_h264_high10_444_identity' \
+  'video::encoding_mode_available(session.encoding_mode)' \
+  'StationConnectEncodingModes", get_stationconnect_encoding_modes()'; do
+  rg -Fq "$required_native_x11_x264_token" "$source_dir/src" || {
+    echo "Native X11 x264 invariant is missing: ${required_native_x11_x264_token}" >&2
+    exit 1
+  }
+done
+echo "host_native_x11_x264_gate=pass"
 echo "host_legacy_x11_capture_absence_gate=pass"
 
 # Virtual-display preparation augments the Autodesk Xorg baseline before GDM.

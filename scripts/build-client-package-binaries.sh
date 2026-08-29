@@ -517,6 +517,14 @@ for native_capture_label in \
     exit 1
   }
 done
+for native_x264_profile_label in \
+  'H.264 10-bit 4:4:4 (identity GBR) — x264'; do
+  rg -Fq "$native_x264_profile_label" \
+    "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
+    echo "native X11 profile must identify x264 explicitly" >&2
+    exit 1
+  }
+done
 for bookmark_layout_token in \
   'height: Math.min(1100, parent.height - 20)' \
   'id: unreachableActionComboBox' \
