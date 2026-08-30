@@ -97,6 +97,22 @@ for removed_legacy_listener_token in \
   fi
 done
 echo "host_datasmash_legacy_listener_absence_gate=pass"
+for removed_legacy_packetizer_token in \
+  'control_server_t' \
+  'video_packet_raw_t' \
+  'audio_fec_packet_t' \
+  'reed_solomon_encode' \
+  'enet_host_service' \
+  'platf::send_batch' \
+  'recv_ping' \
+  'video_sock' \
+  'audio_sock'; do
+  if rg -Fq "$removed_legacy_packetizer_token" "$source_dir/src/stream.cpp"; then
+    echo "obsolete host packetizer remains: ${removed_legacy_packetizer_token}" >&2
+    exit 1
+  fi
+done
+echo "host_datasmash_legacy_packetizer_absence_gate=pass"
 for required_input_transport_token in \
   'sc_datasmash_native_input_receive' \
   'nativeInputThread' \
