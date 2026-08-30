@@ -113,6 +113,22 @@ for removed_legacy_packetizer_token in \
   fi
 done
 echo "host_datasmash_legacy_packetizer_absence_gate=pass"
+for removed_host_transport_dependency_token in \
+  '<enet/enet.h>' \
+  'ENetHost' \
+  'enet_' \
+  '<rs.h>' \
+  'reed_solomon_' \
+  'moonlight-common-c/nanors' \
+  'moonlight-common-c/enet' \
+  'ENET_NO_INSTALL'; do
+  if rg -Fq "$removed_host_transport_dependency_token" \
+      "$source_dir/src" "$source_dir/cmake"; then
+    echo "obsolete host transport dependency remains: ${removed_host_transport_dependency_token}" >&2
+    exit 1
+  fi
+done
+echo "host_datasmash_legacy_dependency_absence_gate=pass"
 for required_input_transport_token in \
   'sc_datasmash_native_input_receive' \
   'nativeInputThread' \
