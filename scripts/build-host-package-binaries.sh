@@ -113,6 +113,11 @@ for removed_legacy_packetizer_token in \
   fi
 done
 echo "host_datasmash_legacy_packetizer_absence_gate=pass"
+if rg -Fq 'concat_and_insert' "$source_dir/src" "$source_dir/tests"; then
+  echo "obsolete host packet-construction helper or test remains: concat_and_insert" >&2
+  exit 1
+fi
+echo "host_datasmash_legacy_packetizer_test_absence_gate=pass"
 for removed_host_transport_dependency_token in \
   '<enet/enet.h>' \
   'ENetHost' \
