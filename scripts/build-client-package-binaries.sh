@@ -457,6 +457,25 @@ if rg -n 'nanors|Rtp(Audio|Video)Queue|reed_solomon_' \
 fi
 echo "client_legacy_media_fec_absence_gate=pass"
 
+# Native KyProto owns reliable control and input. The client must not retain
+# ENet source, build wiring, submodule state, or obsolete SDP advertisements.
+for retired_enet_path in \
+  .gitmodules \
+  enet; do
+  [[ ! -e "${client_common_root}/${retired_enet_path}" ]] || {
+    echo "retired client ENet path is present: ${retired_enet_path}" >&2
+    exit 1
+  }
+done
+if rg -n -i '\benet\b|useReliableUdp|useControlChannel' \
+  "${source_dir}/moonlight-common-c/moonlight-common-c.pro" \
+  "$client_common_root/CMakeLists.txt" \
+  "$client_common_root/src"; then
+  echo "retired client ENet integration is present" >&2
+  exit 1
+fi
+echo "client_legacy_enet_absence_gate=pass"
+
 # Keep the compact toolbar and on-screen presentation ready for the native
 # KyProto loss sample. Do not restore a dormant GameStream FEC queue merely to
 # produce this statistic.
