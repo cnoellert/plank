@@ -401,12 +401,12 @@ done
 echo "client_wacom_generation_transport_gate=pass"
 
 # StationConnect uses one compositor-owned local cursor across the stream and
-# toolbar. Exact host cursor images arrive on the encrypted control stream;
+# toolbar. Exact host cursor images arrive on the native KyProto event lane;
 # the client must not fall back to synchronizing a cursor embedded in video.
 for required_cursor_token in \
   'SC_CURSOR_WIRE_VERSION 1U' \
   'SC_CURSOR_MAX_CHUNK_SIZE (48U * 1024U)' \
-  '0x5507, // Local cursor shape' \
+  'LiNotifyStationConnectCursorChunk' \
   'ML_FF_LOCAL_CURSOR' \
   'LI_FF_LOCAL_CURSOR'; do
   rg -Fq "$required_cursor_token" "$client_common_dir" || {
@@ -414,6 +414,10 @@ for required_cursor_token in \
     exit 1
   }
 done
+if rg -Fq '0x5507' "$client_common_dir/ControlStream.c"; then
+  echo "client still contains the retired GameStream cursor message" >&2
+  exit 1
+fi
 for required_cursor_token in \
   handleRemoteCursorChunk \
   applyPendingRemoteCursor \
