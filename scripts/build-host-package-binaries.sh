@@ -797,6 +797,7 @@ env \
   -DCMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
   -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
+  -DCMAKE_CUDA_HOST_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
   -DFETCHCONTENT_SOURCE_DIR_BOOST="$boost_source_dir" \
   -DFFMPEG_PREPARED_BINARIES="$ffmpeg_dir" \
   -DBUILD_DOCS=OFF \
