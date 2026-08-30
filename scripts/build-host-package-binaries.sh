@@ -413,7 +413,8 @@ for required_cursor_token in \
   }
 done
 for required_cursor_token in \
-  '0x5507,  // Local cursor shape' \
+  SC_DATASMASH_EVENT_CURSOR_SHAPE \
+  SC_DATASMASH_EVENT_CURSOR_POSITION \
   localCursorThread \
   send_cursor_shape_control \
   XFixesGetCursorImage \
@@ -433,7 +434,7 @@ for required_cursor_token in \
   }
 done
 if rg -n \
-  'subscribe_position_events|wait_position|std::this_thread::sleep_for\(16ms\)' \
+  '0x5507,  // Local cursor shape|subscribe_position_events|wait_position|std::this_thread::sleep_for\(16ms\)' \
   "$source_dir/src/stream.cpp" \
   "$source_dir/src/platform/linux/x11grab.cpp" \
   "$source_dir/src/platform/linux/x11grab.h"; then
