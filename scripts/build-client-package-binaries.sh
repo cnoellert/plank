@@ -46,9 +46,6 @@ cargo metadata --locked --offline --no-deps \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
 echo "client_datasmash_rust_input_gate=pass"
 for required_datasmash_token in \
-  'stationconnect-data-plane' \
-  'Datasmash single-port transport (Experimental)' \
-  '"&scDataPlane="' \
   'StationConnectDatasmashCertificateSha256' \
   'isCanonicalSha256Hex' \
   'startDatasmashDataPlane' \
@@ -67,6 +64,20 @@ for required_datasmash_token in \
   }
 done
 echo "client_datasmash_negotiation_gate=pass"
+for removed_data_plane_selector_token in \
+  'stationconnect-data-plane' \
+  'scDataPlane' \
+  'StationConnectDataPlane' \
+  'SCDP_LEGACY' \
+  'SCDP_DATASMASH' \
+  'Legacy StationConnect transport' \
+  'Datasmash single-port transport (Experimental)'; do
+  if rg -Fq "$removed_data_plane_selector_token" "$source_dir/app"; then
+    echo "obsolete client data-plane selector remains: ${removed_data_plane_selector_token}" >&2
+    exit 1
+  fi
+done
+echo "client_datasmash_selector_absence_gate=pass"
 for required_audio_transport_token in \
   'LiSubmitStationConnectVideoFrame' \
   'LiSubmitStationConnectAudioPacket' \

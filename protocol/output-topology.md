@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 9 describes the host desktop after operating-system
+Protocol version 10 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 9` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 9 defines these bits:
+The host returns `schema_version: 10` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 10 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -29,7 +29,7 @@ The host returns `schema_version: 9` and a numeric `feature_flags` field from
 - `0x1000` — exact per-session encoder-backend and encoding-mode selection
 - `0x2000` — NvFBC 8-bit source expansion into HEVC 10-bit 4:4:4 direct NVENC
 
-The client sends `scProtocolVersion=9`, `scFeatureFlags`, `scDisplayMode`,
+The client sends `scProtocolVersion=10`, `scFeatureFlags`, `scDisplayMode`,
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
@@ -56,7 +56,7 @@ its output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`configured_mode` and a `source_rect` in composite-source coordinates. Version 9 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 10 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -73,6 +73,12 @@ or accepts an 8-bit profile. Its x264 path converts a same-size packed RGB10
 canvas directly to planar GBR10, or performs center-aligned bilinear scaling
 and plane generation in that same CPU pass when the negotiated encode size is
 different. See `protocol/encoding-profiles.md` for the exact allowed tuples.
+
+Protocol version 10 has one data plane: native Datasmash. The removed
+`scDataPlane` request and `StationConnectDataPlane` acknowledgement are not
+accepted compatibility switches. Every successful launch returns a Datasmash
+port, canonical TLS certificate SHA-256 fingerprint, and canonical one-use
+session token; missing or malformed native credentials fail the launch.
 
 Bookmarks persist `configured`, `physical`, `single`, or `dual-horizontal` as
 their host-layout requirement. `configured` is resolved to the authenticated
@@ -130,12 +136,12 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v9.json` represents a physical-startup host
+`tests/protocol/output-topology-v10.json` represents a physical-startup host
 temporarily presenting the Flame-style 3840x2160 primary plus 1280x2160
 secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout
 binding, independent modes, allowed-layout capability, startup provenance, and
 the primary fallback. The version-1, version-2, version-4, version-7, and
-version-8 vectors remain historical
+version-8 and version-9 vectors remain historical
 evidence only; StationConnect has no deployed legacy clients requiring a
 silent version fallback.

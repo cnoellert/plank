@@ -56,8 +56,6 @@ cargo metadata --locked --offline --no-deps \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
 echo "host_datasmash_rust_input_gate=pass"
 for required_datasmash_token in \
-  'scDataPlane' \
-  'legacy,datasmash' \
   'StationConnectDatasmashCertificateSha256' \
   'StationConnectDatasmashToken' \
   'start_datasmash_data_plane' \
@@ -77,6 +75,17 @@ for required_datasmash_token in \
   }
 done
 echo "host_datasmash_negotiation_gate=pass"
+for removed_data_plane_selector_token in \
+  'scDataPlane' \
+  'StationConnectDataPlane' \
+  'StationConnectDataPlanes' \
+  'legacy,datasmash'; do
+  if rg -Fq "$removed_data_plane_selector_token" "$source_dir/src"; then
+    echo "obsolete host data-plane selector remains: ${removed_data_plane_selector_token}" >&2
+    exit 1
+  fi
+done
+echo "host_datasmash_selector_absence_gate=pass"
 for required_input_transport_token in \
   'sc_datasmash_native_input_receive' \
   'nativeInputThread' \
