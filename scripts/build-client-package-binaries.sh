@@ -53,7 +53,6 @@ for required_datasmash_token in \
   'LiSubmitStationConnectVideoFrame' \
   'sc_datasmash_native_audio_receive' \
   'LiSubmitStationConnectAudioPacket' \
-  'LiSetStationConnectNativeMediaEnabled' \
   'LiSetStationConnectNativeControlSender' \
   'datasmashNativeControlSender' \
   'datasmashDataReceiveLoop'; do
@@ -81,7 +80,6 @@ echo "client_datasmash_selector_absence_gate=pass"
 for required_audio_transport_token in \
   'LiSubmitStationConnectVideoFrame' \
   'LiSubmitStationConnectAudioPacket' \
-  'StationConnectNativeMediaEnabled' \
   'STATIONCONNECT_VIDEO_FRAME_FLAG_KEY'; do
   rg -Fq "$required_audio_transport_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" || {
@@ -90,6 +88,26 @@ for required_audio_transport_token in \
   }
 done
 echo "client_datasmash_native_media_gate=pass"
+for removed_legacy_media_token in \
+  'LiSetStationConnectNativeMediaEnabled' \
+  'StationConnectNativeMediaEnabled' \
+  'VideoPingThreadProc' \
+  'VideoReceiveThreadProc' \
+  'AudioPingThreadProc' \
+  'AudioReceiveThreadProc' \
+  'RtpvAddPacket' \
+  'RtpaAddPacket'; do
+  if rg -Fq "$removed_legacy_media_token" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src/VideoStream.c" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src/AudioStream.c" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src/Connection.c" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src/Limelight.h" \
+    "$source_dir/moonlight-common-c/moonlight-common-c/src/Limelight-internal.h"; then
+    echo "obsolete client media transport remains: ${removed_legacy_media_token}" >&2
+    exit 1
+  fi
+done
+echo "client_datasmash_legacy_media_absence_gate=pass"
 for removed_media_bridge_token in \
   'StationConnectVideoPacketReceiver' \
   'StationConnectAudioPacketReceiver'; do

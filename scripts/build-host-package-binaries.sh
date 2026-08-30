@@ -86,6 +86,17 @@ for removed_data_plane_selector_token in \
   fi
 done
 echo "host_datasmash_selector_absence_gate=pass"
+for removed_legacy_listener_token in \
+  'control_server.bind' \
+  'video_sock.bind' \
+  'audio_sock.bind' \
+  'recv_thread = std::jthread'; do
+  if rg -Fq "$removed_legacy_listener_token" "$source_dir/src/stream.cpp"; then
+    echo "obsolete host data-plane listener remains active: ${removed_legacy_listener_token}" >&2
+    exit 1
+  fi
+done
+echo "host_datasmash_legacy_listener_absence_gate=pass"
 for required_input_transport_token in \
   'sc_datasmash_native_input_receive' \
   'nativeInputThread' \
