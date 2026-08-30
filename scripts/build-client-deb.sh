@@ -13,7 +13,6 @@ ffmpeg_work_dir=$(realpath -- "$2")
 output_dir=$(realpath -m -- "${3:-${repo_dir}/artifacts/packages}")
 moonlight_source_dir=$(realpath -- "${4:-${repo_dir}/client/moonlight-qt-fork}")
 common_source_dir="${moonlight_source_dir}/moonlight-common-c/moonlight-common-c"
-nanors_source_dir="${common_source_dir}/nanors"
 kyber_source_dir="${repo_dir}/third_party/kyber-kymux"
 approved_client_logo="${repo_dir}/branding/assets/stationconnect_logo_circle.png"
 runtime_client_logo="${moonlight_source_dir}/app/res/stationconnect-logo.png"
@@ -53,10 +52,6 @@ done
 }
 [[ -f ${moonlight_source_dir}/LICENSE ]] || {
   echo "Moonlight source tree is unavailable: ${moonlight_source_dir}" >&2
-  exit 1
-}
-[[ -f ${nanors_source_dir}/LICENSE ]] || {
-  echo "nanors source tree is unavailable: ${nanors_source_dir}" >&2
   exit 1
 }
 for kyber_license in COPYING.AGPLv3 COPYING.md; do
@@ -113,7 +108,6 @@ fi
 
 moonlight_commit=$(git -C "$moonlight_source_dir" rev-parse HEAD)
 common_commit=$(git -C "$common_source_dir" rev-parse HEAD)
-nanors_commit=$(git -C "$nanors_source_dir" rev-parse HEAD)
 kyber_commit=$(git -C "$kyber_source_dir" rev-parse HEAD)
 source_epoch=$(git -C "$moonlight_source_dir" log -1 --format=%ct)
 work_dir=$(mktemp -d --tmpdir stationconnect-client-deb.XXXXXX)
@@ -150,8 +144,6 @@ install -D -m 0644 "$moonlight_source_dir/app/res/stationconnect-logo.png" \
   "$stage_dir/usr/share/icons/hicolor/512x512/apps/stationconnect-client.png"
 install -D -m 0644 "$moonlight_source_dir/LICENSE" \
   "$stage_dir/usr/share/doc/stationconnect-client/copyright"
-install -D -m 0644 "$nanors_source_dir/LICENSE" \
-  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.nanors"
 install -D -m 0644 "$kyber_source_dir/COPYING.AGPLv3" \
   "$stage_dir/usr/share/doc/stationconnect-client/COPYING.Kyber.AGPLv3"
 install -D -m 0644 "$kyber_source_dir/COPYING.md" \
@@ -218,7 +210,6 @@ depends=$(sed -n 's/^shlibs:Depends=//p' "$work_dir/shlibdeps")
 cat >"$stage_dir/usr/share/doc/stationconnect-client/BUILD-INFO" <<EOF
 Moonlight-Qt commit: ${moonlight_commit}
 moonlight-common-c commit: ${common_commit}
-nanors commit: ${nanors_commit}
 Kyber kymux commit: ${kyber_commit}
 FFmpeg version: ${ffmpeg_version}
 FFmpeg source SHA-256: ${ffmpeg_sha256}
@@ -346,11 +337,11 @@ grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' \
   echo "client DEB is missing the Wacom udev access rule" >&2
   exit 1
 }
-grep -Fq './usr/share/doc/stationconnect-client/COPYING.nanors' \
-  <<<"$package_manifest" || {
-  echo "client DEB is missing the nanors license" >&2
+if grep -Fq './usr/share/doc/stationconnect-client/COPYING.nanors' \
+    <<<"$package_manifest"; then
+  echo "client DEB contains a notice for the removed nanors implementation" >&2
   exit 1
-}
+fi
 for kyber_license in COPYING.Kyber.AGPLv3 COPYING.Kyber.md; do
   grep -Fq "./usr/share/doc/stationconnect-client/${kyber_license}" \
     <<<"$package_manifest" || {

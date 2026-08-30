@@ -433,57 +433,33 @@ if rg -Fq 'forwardNativePointerPosition' "$source_dir/app/streaming"; then
 fi
 echo "client_local_cursor_gate=pass"
 
-# High-bitrate video recovery uses upstream nanors with runtime-selected SIMD
-# and GFNI implementations. Keep the old scalar Reed-Solomon source out of the
-# client build while preserving StationConnect's extended-FEC queue logic.
+# Native KyProto reconstructs video and audio before common-c submission.
+# Retired GameStream RTP queues and their second Reed-Solomon implementation
+# must not remain compiled into the native-only client.
 client_common_root="${source_dir}/moonlight-common-c/moonlight-common-c"
-for required_fec_source in \
-  nanors/rs.c \
-  nanors/deps/obl/oblas_common.c \
-  nanors/deps/obl/oblas_lite.c; do
-  [[ -f "${client_common_root}/${required_fec_source}" ]] || {
-    echo "optimized FEC source is unavailable: ${required_fec_source}" >&2
-    exit 1
-  }
-  rg -Fq "\$\$COMMON_C_DIR/${required_fec_source}" \
-    "${source_dir}/moonlight-common-c/moonlight-common-c.pro" || {
-    echo "optimized FEC source is absent from the Qt build: ${required_fec_source}" >&2
+for retired_fec_path in \
+  nanors \
+  src/RtpAudioQueue.c \
+  src/RtpAudioQueue.h \
+  src/RtpVideoQueue.c \
+  src/RtpVideoQueue.h; do
+  [[ ! -e "${client_common_root}/${retired_fec_path}" ]] || {
+    echo "retired client FEC path is present: ${retired_fec_path}" >&2
     exit 1
   }
 done
-for required_fec_token in \
-  'reed_solomon_decode(' \
-  'memcpy(queue->rs->p, parity, sizeof(parity));'; do
-  rg -Fq "$required_fec_token" "$client_common_root/src" || {
-    echo "nanors FEC integration invariant is missing: ${required_fec_token}" >&2
-    exit 1
-  }
-done
-if rg -n 'RS_DIR|reedsolomon/rs\.c|reed_solomon_reconstruct\(' \
+if rg -n 'nanors|Rtp(Audio|Video)Queue|reed_solomon_' \
   "${source_dir}/moonlight-common-c/moonlight-common-c.pro" \
+  "$client_common_root/CMakeLists.txt" \
   "$client_common_root/src"; then
-  echo "legacy scalar Reed-Solomon integration is present" >&2
+  echo "retired client RTP/Reed-Solomon integration is present" >&2
   exit 1
 fi
-echo "client_simd_fec_gate=pass"
+echo "client_legacy_media_fec_absence_gate=pass"
 
-# The compact toolbar exposes one authoritative rolling 10-second peak of the
-# FEC queue's one-second video data-packet loss samples. Do not substitute ENet
-# control loss, post-FEC frame drops, or parity arrival counts: those measure
-# different things and would either hide recovered network loss or report false
-# loss on healthy streams.
-for required_loss_token in \
-  'ConnListenerVideoPacketLossUpdate' \
-  'packetLossExpectedDataPackets' \
-  'packetLossMissingDataPackets' \
-  'queue->bufferDataPackets - queue->receivedDataPackets' \
-  'getVideoDataPacketLossPercentage' \
-  'videoPacketLossUpdate'; do
-  rg -Fq "$required_loss_token" "$client_common_root/src" || {
-    echo "video packet-loss telemetry invariant is missing: ${required_loss_token}" >&2
-    exit 1
-  }
-done
+# Keep the compact toolbar and on-screen presentation ready for the native
+# KyProto loss sample. Do not restore a dormant GameStream FEC queue merely to
+# produce this statistic.
 for required_loss_ui_token in \
   'm_CurrentVideoPacketLossPercent' \
   'currentVideoPacketLossPercent' \
