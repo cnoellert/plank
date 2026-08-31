@@ -614,8 +614,10 @@ for required_loss_ui_token in \
   'inline constexpr int VideoPacketLossDisplayDecimalPlaces = 2;' \
   'video_fec_source_symbols' \
   'video_fec_source_symbols_missing' \
-  'Incoming video loss (before/after FEC): %s/%s' \
+  'Frame rate (network/decode/render): %.2f/%.2f/%.2f FPS' \
+  'Incoming video packet loss (before/after FEC): %s/%s' \
   'Client frame queue drops (%%/render/overflow): %.2f%%/%u/%u' \
+  'Frame time (decode/queue/render incl. V-sync): %.2f/%.2f/%.2f ms' \
   'currentNetworkRttMs' \
   'quic_rtt_us' \
   'packetLossColor' \
@@ -644,6 +646,12 @@ for retired_stats_token in \
   'Frames dropped by your network connection' \
   'Frames dropped due to network jitter' \
   'Client pacer drops by reason' \
+  'Incoming frame rate from network' \
+  'Decoding frame rate' \
+  'Rendering frame rate' \
+  'Average decoding time' \
+  'Average frame queue delay' \
+  'Average rendering time' \
   'Frames dropped by client frame queues' \
   'Client frame queue drops by reason' \
   'Incoming video packet loss (before FEC)' \
