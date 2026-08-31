@@ -539,7 +539,7 @@ for retired_bootstrap_token in \
   'ML_PORT_FLAG_TCP_47984' \
   'ML_PORT_INDEX_TCP_47984' \
   '47984'; do
-  if rg -Fq "$retired_bootstrap_token" \
+  if rg -Fwq "$retired_bootstrap_token" \
       "$source_dir/app/backend" "$client_common_root/src"; then
     echo "retired client bootstrap transport remains: ${retired_bootstrap_token}" >&2
     exit 1
