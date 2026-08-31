@@ -998,7 +998,6 @@ if find "$build_dir" -maxdepth 1 -type f \
 fi
 for product_identity in \
   'StationConnectHost' \
-  'la.instinctual.StationConnect.Host' \
   'Package Publisher: ' \
   'Instinctual' \
   'https://instinctual.la'; do
@@ -1007,6 +1006,11 @@ for product_identity in \
     exit 1
   }
 done
+rg -Fq 'PROJECT_FQDN=\"la.instinctual.StationConnect.Host\"' \
+  "$build_dir/CMakeFiles/sunshine.dir/flags.make" || {
+  echo "host compiler definitions are missing the product application ID" >&2
+  exit 1
+}
 for inherited_identity in \
   'dev.lizardbyte.app.Sunshine' \
   'https://app.lizardbyte.dev/support'; do
