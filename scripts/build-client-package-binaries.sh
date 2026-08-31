@@ -491,9 +491,8 @@ fi
 echo "client_complete_frame_assembler_gate=pass"
 
 # KyProto encrypts native media, input, event, and runtime session negotiation
-# traffic. Do not retain unused GameStream media-encryption negotiation. The
-# compiled RTSP implementation remains only until the native cut passes live
-# validation; the Client must configure common-c through the native boundary.
+# traffic. The Client must configure common-c through the mandatory native
+# boundary and must not retain the retired GameStream RTSP setup implementation.
 for required_native_setup_token in \
   LiSetStationConnectNativeSessionConfiguration \
   STATIONCONNECT_NATIVE_SESSION_CONFIGURATION \
@@ -511,17 +510,23 @@ if rg -n 'ENCFLG_|encryptionFlags|EncryptionFeatures|AudioEncryptionEnabled|SS_E
   echo "retired client GameStream media-encryption negotiation is present" >&2
   exit 1
 fi
-for required_rtsp_security_token in \
-  ENCRYPTED_RTSP_BIT \
-  sealRtspMessage \
-  unsealRtspMessage \
-  'rtspenc://'; do
-  rg -Fq "$required_rtsp_security_token" "$client_common_root/src/RtspConnection.c" || {
-    echo "temporary encrypted RTSP invariant is missing: ${required_rtsp_security_token}" >&2
+for retired_rtsp_path in \
+  src/RtspConnection.c \
+  src/RtspParser.c \
+  src/Rtsp.h \
+  src/SdpGenerator.c; do
+  [[ ! -e "${client_common_root}/${retired_rtsp_path}" ]] || {
+    echo "retired client RTSP setup path is present: ${retired_rtsp_path}" >&2
     exit 1
   }
 done
-echo "client_rtsp_security_gate=pass"
+if rg -n 'performRtspHandshake|rtspSessionUrl|sessionUrl0|rikeyid|remoteInputAes|ENCRYPTED_RTSP_BIT|rtspenc://' \
+  "$source_dir/app" "$client_common_root/src" \
+  "${source_dir}/moonlight-common-c/moonlight-common-c.pro"; then
+  echo "retired client RTSP setup integration is present" >&2
+  exit 1
+fi
+echo "client_rtsp_absence_gate=pass"
 
 # Native KyProto owns reliable control and input. The client must not retain
 # ENet source, build wiring, submodule state, or obsolete SDP advertisements.

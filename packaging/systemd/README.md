@@ -144,10 +144,10 @@ files with mode `0600`. The active file rotates at 10 MiB and retains
 outside the media worker remain available in the service journal.
 
 The StationConnect host is built without Sunshine's browser configuration
-server and without its frontend assets. There is no listener on the former Web
-UI port and no second writable configuration path. Do not remove or block the
-separate NVHTTP, HTTPS, RTSP, audio, video, or control services required by the
-client protocol.
+server, frontend assets, or legacy RTSP listener. There is no listener on the
+former Web UI port and no second writable configuration path. The remaining
+HTTPS authentication and native QUIC session/media/input services run inside
+the packaged Host process.
 
 Leave Sunshine's `bind_address` empty so media listens on all available IPv4
 and IPv6 interfaces. When explicitly enabled, mDNS discovery also uses the

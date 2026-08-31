@@ -38,7 +38,7 @@ Worker-to-supervisor control messages distinguish acquire, activate, and
 release operations. The root supervisor owns the lease. The media worker may
 request it only for the PAM-authenticated account that owns the active desktop.
 An acquired lease has a short setup deadline. It becomes active only when the
-RTSP stream is allocated, preventing an abandoned HTTPS launch from leaving a
+native QUIC stream is allocated, preventing an abandoned HTTPS launch from leaving a
 temporary topology behind. The last stream releases the lease.
 
 ## Physical layout application

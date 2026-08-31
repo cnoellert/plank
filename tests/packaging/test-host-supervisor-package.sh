@@ -182,8 +182,8 @@ if rg -n '^[[:space:]]*output_name[[:space:]]*=' \
 fi
 rg -Fq 'session.output_name = *capture_name' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
-rg -Fq 'config.monitor.output_name = session.span_desktop ? std::string {} : session.output_name' \
-  "$repo_dir/host/sunshine-fork/src/rtsp.cpp"
+rg -Fq 'config.monitor.output_name = launch_session->span_desktop ?' \
+  "$repo_dir/host/sunshine-fork/src/session_stream.cpp"
 rg -Fq 'config.m_device_id = session.output_name' \
   "$repo_dir/host/sunshine-fork/src/display_device.cpp"
 rg -Fq 'host_static_capture_selector_absence_gate=pass' \

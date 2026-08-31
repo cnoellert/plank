@@ -68,7 +68,7 @@ for required_datasmash_token in \
   'SC_DATASMASH_SETUP_LAUNCH_REQUEST' \
   'host_feature_flags' \
   'reference_frame_invalidation' \
-  'Native QUIC session negotiation active; RTSP TCP listener disabled' \
+  'Native QUIC session negotiation active' \
   'drain_datasmash_control' \
   'if (!session->datasmash_endpoint)' \
   'Confirmed StationConnect encoder target over Datasmash' \
@@ -141,27 +141,26 @@ done
 echo "host_datasmash_legacy_dependency_absence_gate=pass"
 
 # KyProto encrypts native media, input, event, and runtime session negotiation
-# traffic. Reject dormant GameStream media-encryption negotiation. The compiled
-# RTSP implementation remains only until this native cut passes live validation;
-# the runtime listener must stay disabled above.
+# traffic. Reject dormant GameStream media-encryption and RTSP setup code.
 if rg -n 'encryptionFlagsEnabled|encryption_control_v2|encryption_video|encryption_audio|x-ss-general\.encryption(Supported|Requested|Enabled)' \
   "$source_dir/src"; then
   echo "retired host GameStream media-encryption negotiation is present" >&2
   exit 1
 fi
-for required_rtsp_security_token in \
-  rtsp_cipher \
+for removed_rtsp_token in \
+  'RtspParser.c' \
+  'src/rtsp.cpp' \
+  'src/rtsp.h' \
+  'rtsp_cipher' \
   'rtspenc://' \
-  'AES-GCM'; do
-  rg -Fq "$required_rtsp_security_token" \
-    "$source_dir/src/nvhttp.cpp" \
-    "$source_dir/src/rtsp.cpp" \
-    "$source_dir/src/rtsp.h" || {
-    echo "temporary encrypted RTSP invariant is missing: ${required_rtsp_security_token}" >&2
+  'sessionUrl0' \
+  'rikeyid'; do
+  if rg -Fq "$removed_rtsp_token" "$source_dir/src" "$source_dir/cmake"; then
+    echo "retired host RTSP setup remains: ${removed_rtsp_token}" >&2
     exit 1
-  }
+  fi
 done
-echo "host_rtsp_security_gate=pass"
+echo "host_rtsp_absence_gate=pass"
 
 for required_input_transport_token in \
   'sc_datasmash_native_input_receive' \
@@ -472,12 +471,12 @@ for required_cursor_token in \
   XQueryPointer \
   consume_shape_change \
   "16'666'667ns" \
-  'Rejecting client without required StationConnect local cursor transport' \
+  'StationConnect local cursor transport is unavailable' \
   'bool capture_cursor = false'; do
   rg -Fq "$required_cursor_token" \
     "$source_dir/src/stream.cpp" \
     "$source_dir/src/platform/linux/x11grab.cpp" \
-    "$source_dir/src/rtsp.cpp" \
+    "$source_dir/src/session_stream.cpp" \
     "$source_dir/src/video.cpp" || {
     echo "host local-cursor implementation invariant is missing: ${required_cursor_token}" >&2
     exit 1
@@ -577,11 +576,9 @@ fi
 echo "host_single_config_gate=pass"
 
 for required_network_token in \
-  'lan_encryption_mode = 0' \
-  'wan_encryption_mode = 1' \
   'ping_timeout = 10000' \
   'fec_percentage = 20' \
-  'Scope uses the remote socket source address, not the route or physical path.'; do
+  'Native QUIC transport encryption is always enabled'; do
   rg -Fq "$required_network_token" \
     "$repo_dir/packaging/config/stationconnect-host.conf" || {
     echo "host network configuration is missing: ${required_network_token}" >&2
@@ -589,11 +586,8 @@ for required_network_token in \
   }
 done
 for required_network_token in \
-  '"lan_encryption_mode"' \
-  '"wan_encryption_mode"' \
   '"ping_timeout"' \
-  '"fec_percentage"' \
-  'encryption_mode_for_address'; do
+  '"fec_percentage"'; do
   rg -Fq "$required_network_token" \
     "$source_dir/src/config.cpp" "$source_dir/src/network.cpp" || {
     echo "host network runtime is missing: ${required_network_token}" >&2
@@ -678,8 +672,7 @@ if rg -n \
 fi
 for required_session_authority in \
   'const int applied_kbps = requested_kbps;' \
-  'const std::int64_t bitrate = config.bitrate * 1000LL;' \
-  'config.packetsize = (int) util::from_view(args.at("x-nv-video[0].packetSize"sv));'; do
+  'const std::int64_t bitrate = config.bitrate * 1000LL;'; do
   rg -Fq "$required_session_authority" "$source_dir/src" || {
     echo "session bitrate/packet-size authority is missing: ${required_session_authority}" >&2
     exit 1
@@ -711,7 +704,7 @@ if rg -n '^[[:space:]]*output_name[[:space:]]*=' \
 fi
 for required_capture_token in \
   'session.output_name = *capture_name' \
-  'config.monitor.output_name = session.span_desktop ? std::string {} : session.output_name' \
+  'config.monitor.output_name = launch_session->span_desktop ?' \
   'config.m_device_id = session.output_name'; do
   rg -Fq "$required_capture_token" "$source_dir/src" || {
     echo "negotiated session capture selector is missing: ${required_capture_token}" >&2
@@ -741,7 +734,7 @@ for required_backend_invariant in \
   'validate_encoder(nvenc_direct' \
   'No exact StationConnect encoder backend is available.' \
   'Requested StationConnect capture source is unavailable' \
-  'config.monitor.encoder_backend = session.encoder_backend' \
+  'config.monitor.encoder_backend = launch_session->encoder_backend' \
   'config.monitor.capture_source = video::capture_source_e::nvfbc_8bit' \
   'config.monitor.capture_source = video::capture_source_e::x11_native10'; do
   rg -Fq "$required_backend_invariant" "$source_dir/src" || {
@@ -986,12 +979,12 @@ echo "host_fixed_desktop_reservation_gate=pass"
 
 for required_reconnect_token in \
   'std::mutex session_start_mutex' \
-  'rtsp_stream::session_count() == 0' \
-  'rtsp_stream::launch_session_pending()' \
+  'session_stream::session_count() == 0' \
+  'session_stream::launch_session_pending()' \
   'Clearing orphaned StationConnect Desktop reservation before launch'; do
   rg -Fq "$required_reconnect_token" \
-    "$source_dir/src/nvhttp.cpp" "$source_dir/src/rtsp.cpp" \
-    "$source_dir/src/rtsp.h" || {
+    "$source_dir/src/nvhttp.cpp" "$source_dir/src/session_stream.cpp" \
+    "$source_dir/src/session_stream.h" || {
     echo "rapid reconnect host cleanup invariant is missing: ${required_reconnect_token}" >&2
     exit 1
   }

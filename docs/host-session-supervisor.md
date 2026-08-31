@@ -44,7 +44,7 @@ a fresh Desktop stream. Passwords and one-use tokens are cleared when consumed
 or when the session ends; they are never written to settings, arguments,
 environment variables, or logs. A local disconnect does not trigger reconnect.
 
-A new launch synchronously joins any stopped RTSP session before evaluating the
+A new launch synchronously joins any stopped native media session before evaluating the
 process-less Desktop reservation. If no active or pending session still owns the
 reservation, the host clears it and admits the replacement launch immediately.
 If a session really is still active, the client keeps the pre-stream progress

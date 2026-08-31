@@ -11,10 +11,9 @@ and destroys it. Rust owns its Tokio runtime and worker threads; it does not
 call back into Host or Client C++ while a C++ lock is held. Error text remains
 owned by the endpoint and is copied into caller-provided storage.
 
-ABI version 7 adds the certificate-gated pre-session boundary. An active
-legacy-stage launch may still use the exact fingerprint and one-use token, but
-the true single-port setup mode starts with only a reliable KyProto data
-endpoint. The Client receives the peer leaf certificate, validates it against
+ABI version 7 provides the certificate-gated pre-session boundary. Session
+setup starts with a reliable KyProto data endpoint. The Client receives the
+peer leaf certificate, validates it against
 the StationConnect certificate profile, and explicitly approves it before any
 application queue is enabled. PAM, ownership, display, and launch setup then
 run on that reliable endpoint. Video, audio, and input endpoints are registered
@@ -26,7 +25,7 @@ The version-1 `LAUNCH_RESPONSE` JSON payload carries the exact accepted
 count, stream counts, packet duration, and channel mapping. The Client must
 install those host capabilities together with the codec/audio values before it
 starts common-c. Missing local-cursor support or malformed capability values
-fail the connection; they never fall back to stale RTSP-derived state.
+fail the connection; there is no legacy setup fallback.
 
 Complete Annex-B
 frames use `VideoProtocol::UnreliableFec`, raw Opus uses
@@ -38,10 +37,8 @@ does not add GameStream RTP, media AES, or Reed-Solomon on this path.
 Each outbound lane has an independent wake-up and bounded queue, preventing a
 notification for one protocol from being consumed by another. Complete video
 metadata is carried in a small StationConnect prefix inside the RaptorQ object
-and removed after reconstruction. The older two-connection packet-tunnel ABI
-remains temporarily available only while the native product cutover is being
-qualified on the isolated branch; it will be deleted after the live matrix
-passes. Legacy remains the bookmark default until then.
+and removed after reconstruction. The native product path uses the same QUIC
+connection for all registered protocol lanes.
 
 Run the Rust and real C ABI checks with the pinned toolchain and offline Cargo
 cache:

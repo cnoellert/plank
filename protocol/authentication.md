@@ -56,7 +56,7 @@ state. Successful authentication returns a 256-bit random bearer token bound
 to the client address. Application list, asset, launch, resume, and cancel
 requests require that token.
 
-The first launch transfers the open PAM session into the RTSP stream lifetime.
+The first launch transfers the open PAM session into the native QUIC stream lifetime.
 Concurrent streams may share it. Releasing the last stream closes PAM and
 invalidates the token; a later resume requires a new login. Pending
 conversations expire after 120 seconds, and unclaimed tokens after 300 seconds.

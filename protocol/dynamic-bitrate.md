@@ -7,8 +7,7 @@ leave the in-stream control disabled when that bit is absent.
 
 The synchronized StationConnect protocol also advertises feature flag `0x10`
 (`LI_FF_ENCODER_TARGET_ACK`) and accepts
-`x-sc-video.encoderTargetKbps` in the RTSP ANNOUNCE. Unlike Moonlight's
-`x-ml-video.configuredBitrateKbps` total network budget, this value is the
+`encoder_target_kbps` in the native QUIC launch request. This value is the
 exact video encoder target and is not reduced for audio, packet overhead, or
 FEC. It uses the same 500 through 500000 Kbps validation range. Providing the
 target during setup ensures the first encoder starts at the selected bookmark
