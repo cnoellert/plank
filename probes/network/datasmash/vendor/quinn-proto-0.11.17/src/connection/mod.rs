@@ -1283,6 +1283,8 @@ impl Connection {
             };
             let controller = if cfg!(feature = "stationconnect-bbr-default") {
                 "bbr"
+            } else if controller_metrics.pacing_rate.is_some() {
+                "target-rate"
             } else {
                 "cubic"
             };

@@ -226,6 +226,7 @@ async fn connect_raw_client(
         keep_alive_interval: Some(options.keep_alive_interval),
         max_udp_payload_size: options.max_udp_payload_size,
         certificate_hash: None,
+        ..Default::default()
     };
     let raw_connection = kynet::Connection::quinn_connect(
         remote_address,
@@ -452,12 +453,14 @@ pub async fn promote_setup_client(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rate_control::{StationConnectRateControllerFactory, TransportRatePolicy};
     use bytes::Bytes;
     use kymux_types::{
         AVPacket, CodecPacket, CodecPacketHeader, DataPacket, InputPacket, MediaPacket,
         MediaPacketHeader,
     };
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     fn test_certificate_paths() -> (PathBuf, PathBuf, String) {
         let certificate = std::env::var_os("SC_NATIVE_TEST_CERTIFICATE")
@@ -479,6 +482,51 @@ mod tests {
             .expect("loopback UDP socket has no address");
         drop(socket);
         address
+    }
+
+    async fn run_loss_proxy(
+        socket: tokio::net::UdpSocket,
+        server_address: SocketAddr,
+        drop_every_server_packet: Arc<AtomicU64>,
+        forwarded_server_packets: Arc<AtomicU64>,
+        dropped_server_packets: Arc<AtomicU64>,
+    ) {
+        let mut client_address = None;
+        let mut server_sequence = 0_u64;
+        let mut buffer = vec![0_u8; 65_535];
+        loop {
+            let Ok((size, source)) = socket.recv_from(&mut buffer).await else {
+                return;
+            };
+            if source == server_address {
+                let Some(client_address) = client_address else {
+                    continue;
+                };
+                server_sequence = server_sequence.wrapping_add(1);
+                let drop_every = drop_every_server_packet.load(Ordering::Acquire);
+                if drop_every != 0 && server_sequence.is_multiple_of(drop_every) {
+                    dropped_server_packets.fetch_add(1, Ordering::Relaxed);
+                    continue;
+                }
+                if socket
+                    .send_to(&buffer[..size], client_address)
+                    .await
+                    .is_err()
+                {
+                    return;
+                }
+                forwarded_server_packets.fetch_add(1, Ordering::Relaxed);
+            } else {
+                client_address = Some(source);
+                if socket
+                    .send_to(&buffer[..size], server_address)
+                    .await
+                    .is_err()
+                {
+                    return;
+                }
+            }
+        }
     }
 
     #[test]
@@ -507,9 +555,14 @@ mod tests {
             keep_alive_interval: Duration::from_secs(1),
             max_udp_payload_size: Some(1344),
         };
+        let rate_policy = TransportRatePolicy::new(100_000_000);
         let server_options = kynet::common::CommonServerOptions {
             max_idle_timeout: Some(options.idle_timeout),
             keep_alive_interval: Some(options.keep_alive_interval),
+            congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
+                rate_policy.clone(),
+            )),
+            datagram_pacer: Some(rate_policy.pacer()),
         };
         let server = kynet::Connection::start_server_on_addr(
             address,
@@ -546,6 +599,7 @@ mod tests {
             peer_certificate_der: _,
         } = client_protocols.expect("native KyProto client handshake failed");
 
+        let video_send_started = tokio::time::Instant::now();
         server_video
             .send
             .send(AVPacket::Codec(CodecPacket {
@@ -589,6 +643,10 @@ mod tests {
             }))
             .await
             .expect("failed to send native RaptorQ video frame");
+        assert!(
+            video_send_started.elapsed() >= Duration::from_millis(5),
+            "native RaptorQ symbols bypassed the pre-Quinn pacer"
+        );
 
         let received_video_codec =
             tokio::time::timeout(Duration::from_secs(5), client_video.recv.recv())
@@ -764,5 +822,172 @@ mod tests {
         server_connection.close();
         client_connection.close();
         server.close(0, "native KyProto loopback complete");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[ignore = "run through scripts/run-datasmash-native-loopback.sh"]
+    async fn native_raptorq_survives_progressive_transport_loss_at_150_mbps() {
+        crate::init_crypto_once();
+        let (certificate_path, private_key_path, certificate_sha256) = test_certificate_paths();
+        let certificate = kynet::cert::load_cert_from_pem_file(&certificate_path)
+            .await
+            .expect("failed to load loopback certificate");
+        let private_key = kynet::cert::load_private_key_from_pem_file(&private_key_path)
+            .await
+            .expect("failed to load loopback private key");
+        let server_address = unused_loopback_address();
+        let proxy_socket = tokio::net::UdpSocket::bind("127.0.0.1:0")
+            .await
+            .expect("failed to bind deterministic loss proxy");
+        let proxy_address = proxy_socket
+            .local_addr()
+            .expect("loss proxy has no local address");
+        let drop_every_server_packet = Arc::new(AtomicU64::new(0));
+        let forwarded_server_packets = Arc::new(AtomicU64::new(0));
+        let dropped_server_packets = Arc::new(AtomicU64::new(0));
+        let proxy_task = tokio::spawn(run_loss_proxy(
+            proxy_socket,
+            server_address,
+            drop_every_server_packet.clone(),
+            forwarded_server_packets.clone(),
+            dropped_server_packets.clone(),
+        ));
+
+        let options = NativeOptions {
+            handshake_timeout: Duration::from_secs(5),
+            idle_timeout: Duration::from_secs(10),
+            keep_alive_interval: Duration::from_secs(1),
+            max_udp_payload_size: Some(1_344),
+        };
+        let rate_policy = TransportRatePolicy::new(150_000_000);
+        let server_options = kynet::common::CommonServerOptions {
+            max_idle_timeout: Some(options.idle_timeout),
+            keep_alive_interval: Some(options.keep_alive_interval),
+            congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
+                rate_policy.clone(),
+            )),
+            datagram_pacer: Some(rate_policy.pacer()),
+        };
+        let server = kynet::Connection::start_server_on_addr(
+            server_address,
+            vec![certificate],
+            private_key,
+            &server_options,
+        )
+        .expect("failed to start loss-test KyProto server");
+        let token = "stationconnect-native-loss-loopback";
+        let (server_protocols, client_protocols) = tokio::join!(
+            accept_server(&server, token, options),
+            connect_client(
+                proxy_address,
+                "localhost",
+                Some(&certificate_sha256),
+                token,
+                options,
+            ),
+        );
+        let NativeServerProtocols {
+            connection: server_connection,
+            video: mut server_video,
+            audio: _,
+            input: _,
+            data: _,
+        } = server_protocols.expect("loss-test server handshake failed");
+        let NativeClientProtocols {
+            connection: client_connection,
+            video: mut client_video,
+            audio: _,
+            input: _,
+            data: _,
+            peer_certificate_der: _,
+        } = client_protocols.expect("loss-test client handshake failed");
+
+        server_video
+            .send
+            .send(AVPacket::Codec(CodecPacket {
+                header: CodecPacketHeader {
+                    codec: u32::from_be_bytes(*b"HEVC"),
+                    rotation: 0,
+                    frame_size: 0,
+                },
+            }))
+            .await
+            .expect("failed to send loss-test codec packet");
+        server_video
+            .send
+            .send(AVPacket::Media(MediaPacket {
+                header: MediaPacketHeader {
+                    is_config: true,
+                    is_key: true,
+                    pts: 0,
+                    size: 0,
+                },
+                payload: Bytes::new(),
+            }))
+            .await
+            .expect("failed to send loss-test config packet");
+
+        let receiver = tokio::spawn(async move {
+            let mut frames = 0_u64;
+            while frames < 240 {
+                let packet = client_video
+                    .recv
+                    .recv()
+                    .await
+                    .expect("loss-test video endpoint closed")
+                    .expect("loss-test video receive failed");
+                if matches!(packet, AVPacket::Media(ref media) if !media.header.is_config) {
+                    frames += 1;
+                }
+            }
+            frames
+        });
+
+        let payload = Bytes::from(
+            (0..312_000)
+                .map(|index| ((index * 29 + 7) & 0xff) as u8)
+                .collect::<Vec<_>>(),
+        );
+        let mut frame_number = 0_u64;
+        let mut dropped_after_phase = 0_u64;
+        for drop_every in [200_u64, 100, 50, 20] {
+            drop_every_server_packet.store(drop_every, Ordering::Release);
+            let phase_start = tokio::time::Instant::now();
+            for phase_frame in 0..60_u64 {
+                server_video
+                    .send
+                    .send(AVPacket::Media(MediaPacket {
+                        header: MediaPacketHeader {
+                            is_config: false,
+                            is_key: frame_number == 0,
+                            pts: frame_number * 1_500,
+                            size: payload.len() as u32,
+                        },
+                        payload: payload.clone(),
+                    }))
+                    .await
+                    .expect("failed to send paced loss-test frame");
+                frame_number += 1;
+                tokio::time::sleep_until(
+                    phase_start + Duration::from_nanos((phase_frame + 1) * 1_000_000_000 / 60),
+                )
+                .await;
+            }
+            let dropped = dropped_server_packets.load(Ordering::Relaxed);
+            assert!(dropped > dropped_after_phase);
+            dropped_after_phase = dropped;
+        }
+        let received_frames = tokio::time::timeout(Duration::from_secs(5), receiver)
+            .await
+            .expect("loss-test receiver timed out")
+            .expect("loss-test receiver task failed");
+        assert_eq!(received_frames, 240);
+        assert!(forwarded_server_packets.load(Ordering::Relaxed) > 20_000);
+        assert!(dropped_server_packets.load(Ordering::Relaxed) > 500);
+
+        server_connection.close();
+        client_connection.close();
+        server.close(0, "loss test complete");
+        proxy_task.abort();
     }
 }

@@ -9,6 +9,7 @@ use super::{
     SC_DATASMASH_ERROR_PANIC, SC_DATASMASH_ERROR_RUNTIME, SC_DATASMASH_OK, SC_DATASMASH_TIMEOUT,
     ScDatasmashConfig, catch_result, init_crypto_once, parse_config,
 };
+use crate::rate_control::{StationConnectRateControllerFactory, TransportRatePolicy};
 use anyhow::{Context, Result, anyhow};
 use bytes::{BufMut, Bytes, BytesMut};
 use kymux_types::{
@@ -131,10 +132,15 @@ struct NativeShared {
     input_receive_changed: Condvar,
     data_receive_changed: Condvar,
     stats: NativeStats,
+    rate_policy: Arc<TransportRatePolicy>,
 }
 
 impl NativeShared {
-    fn new(peer_certificate_approval_required: bool, setup_mode: bool) -> Self {
+    fn new(
+        peer_certificate_approval_required: bool,
+        setup_mode: bool,
+        initial_video_bitrate_bps: u64,
+    ) -> Self {
         Self {
             status: Mutex::new(NativeStatus {
                 state: EndpointState::Idle,
@@ -160,6 +166,7 @@ impl NativeShared {
             input_receive_changed: Condvar::new(),
             data_receive_changed: Condvar::new(),
             stats: NativeStats::default(),
+            rate_policy: TransportRatePolicy::new(initial_video_bitrate_bps),
         }
     }
 
@@ -850,6 +857,10 @@ async fn run_server(
     let server_options = kynet::common::CommonServerOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
+            shared.rate_policy.clone(),
+        )),
+        datagram_pacer: Some(shared.rate_policy.pacer()),
     };
     let server = kynet::Connection::start_server_on_addr(
         bind_address,
@@ -895,6 +906,10 @@ async fn run_setup_server(
     let server_options = kynet::common::CommonServerOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
+            shared.rate_policy.clone(),
+        )),
+        datagram_pacer: Some(shared.rate_policy.pacer()),
     };
     let server = kynet::Connection::start_server_on_addr(
         bind_address,
@@ -1126,12 +1141,18 @@ pub unsafe extern "C" fn sc_datasmash_native_endpoint_create(
                 ..
             } => (2, certificate_sha256.is_none(), *setup_mode),
         };
+        let initial_video_bitrate_bps = match &config {
+            EndpointConfig::Server { options, .. } | EndpointConfig::Client { options, .. } => {
+                options.initial_video_bitrate_bps
+            }
+        };
         let endpoint = Box::new(ScDatasmashNativeEndpoint {
             config,
             mode,
             shared: Arc::new(NativeShared::new(
                 peer_certificate_approval_required,
                 setup_mode,
+                initial_video_bitrate_bps,
             )),
             worker: Mutex::new(None),
         });
@@ -1360,6 +1381,28 @@ pub unsafe extern "C" fn sc_datasmash_native_video_send(
         } else {
             SC_DATASMASH_OK
         }
+    })
+}
+
+/// # Safety
+/// `endpoint` must be a live server endpoint returned by the create function.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sc_datasmash_native_set_video_bitrate(
+    endpoint: *mut ScDatasmashNativeEndpoint,
+    bitrate_kbps: u32,
+) -> i32 {
+    catch_result(|| {
+        let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        };
+        if endpoint.mode != 1 || !(10_000..=500_000).contains(&bitrate_kbps) {
+            return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
+        }
+        endpoint
+            .shared
+            .rate_policy
+            .set_requested_video_bps(u64::from(bitrate_kbps).saturating_mul(1_000));
+        SC_DATASMASH_OK
     })
 }
 

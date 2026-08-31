@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 9u
+#define SC_DATASMASH_ABI_VERSION 10u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 typedef struct ScDatasmashNativeEndpoint ScDatasmashNativeEndpoint;
@@ -107,6 +107,12 @@ typedef struct ScDatasmashConfig {
      * the peer through QUIC's max_udp_payload_size transport parameter.
      */
     uint32_t max_udp_payload_size;
+    /*
+     * Initial server-side video encoder target in kilobits per second. This
+     * drives the FEC-inclusive native transport budget. Zero is valid for a
+     * receive-only client endpoint.
+     */
+    uint32_t initial_video_bitrate_kbps;
     const char *bind_address;
     const char *remote_address;
     const char *server_name;
@@ -302,6 +308,9 @@ int32_t sc_datasmash_native_video_send(
         ScDatasmashNativeEndpoint *endpoint,
         const ScDatasmashNativeVideoFrameInfo *info,
         const uint8_t *payload, size_t payload_size);
+/* Update the live server-side video target and native transport budget. */
+int32_t sc_datasmash_native_set_video_bitrate(
+        ScDatasmashNativeEndpoint *endpoint, uint32_t bitrate_kbps);
 int32_t sc_datasmash_native_video_receive(
         ScDatasmashNativeEndpoint *endpoint,
         ScDatasmashNativeVideoFrameInfo *info,

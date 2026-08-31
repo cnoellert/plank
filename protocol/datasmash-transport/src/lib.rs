@@ -17,10 +17,11 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub mod native;
 pub mod native_ffi;
+pub mod rate_control;
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
 pub const PROTOCOL_VERSION: u16 = 7;
-pub const ABI_VERSION: u32 = 9;
+pub const ABI_VERSION: u32 = 10;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -239,6 +240,7 @@ struct RuntimeOptions {
     idle_timeout: Duration,
     keep_alive_interval: Duration,
     max_udp_payload_size: Option<u16>,
+    initial_video_bitrate_bps: u64,
 }
 
 struct SharedStatus {
@@ -368,6 +370,7 @@ pub struct ScDatasmashConfig {
     pub keep_alive_interval_ms: u32,
     pub session_mode: u32,
     pub max_udp_payload_size: u32,
+    pub initial_video_bitrate_kbps: u32,
     pub bind_address: *const c_char,
     pub remote_address: *const c_char,
     pub server_name: *const c_char,
@@ -482,6 +485,8 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
             "keep_alive_interval_ms",
         )?,
         max_udp_payload_size: configured_max_udp_payload_size(config.max_udp_payload_size)?,
+        initial_video_bitrate_bps: u64::from(config.initial_video_bitrate_kbps)
+            .saturating_mul(1_000),
     };
     if config.session_mode > 1 {
         bail!("unsupported session_mode {}", config.session_mode);
@@ -976,6 +981,7 @@ async fn run_server(
     let server_options = kynet::common::CommonServerOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        ..Default::default()
     };
     let server = Connection::start_server_on_addr(
         bind_address,
@@ -1041,6 +1047,7 @@ async fn run_client(
         keep_alive_interval: Some(options.keep_alive_interval),
         max_udp_payload_size: options.max_udp_payload_size,
         certificate_hash: Some(certificate_sha256.to_owned()),
+        ..Default::default()
     };
     let connect = async {
         let media = connect_authenticated(
@@ -1982,6 +1989,7 @@ mod tests {
             keep_alive_interval_ms: 0,
             session_mode: 0,
             max_udp_payload_size: 0,
+            initial_video_bitrate_kbps: 0,
             bind_address: ptr::null(),
             remote_address: ptr::null(),
             server_name: ptr::null(),
@@ -1994,7 +2002,7 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 9);
+        assert_eq!(sc_datasmash_abi_version(), 10);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::PeerValidation as u32, 3);
         assert_eq!(EndpointState::SetupReady as u32, 4);
@@ -2042,6 +2050,7 @@ mod tests {
                     idle_timeout: Duration::from_secs(1),
                     keep_alive_interval: Duration::from_secs(1),
                     max_udp_payload_size: None,
+                    initial_video_bitrate_bps: 0,
                 },
             },
             mode: 2,
