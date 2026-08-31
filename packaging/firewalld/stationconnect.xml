@@ -2,9 +2,6 @@
 <service>
   <short>StationConnect</short>
   <description>Authenticated StationConnect discovery, control, and media ports.</description>
-  <port protocol="tcp" port="47984"/>
   <port protocol="tcp" port="47989"/>
-  <port protocol="tcp" port="48010"/>
   <port protocol="udp" port="47989"/>
-  <port protocol="udp" port="47998-48000"/>
 </service>

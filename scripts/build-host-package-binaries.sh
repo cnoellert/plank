@@ -162,6 +162,26 @@ for removed_rtsp_token in \
 done
 echo "host_rtsp_absence_gate=pass"
 
+# StationConnect bootstraps only through certificate-profile-validated HTTPS
+# on the configured base port. Reject the retired unauthenticated discovery
+# listener and the old split HTTPS offset.
+for retired_http_token in \
+  'PORT_HTTP' \
+  'http_server_t' \
+  'SimpleWeb::Server<SimpleWeb::HTTP>' \
+  '47984'; do
+  if rg -Fq "$retired_http_token" \
+      "$source_dir/src/nvhttp.cpp" "$source_dir/src/nvhttp.h"; then
+    echo "retired host bootstrap transport remains: ${retired_http_token}" >&2
+    exit 1
+  fi
+done
+rg -Fq 'constexpr auto PORT_HTTPS = 0;' "$source_dir/src/nvhttp.h" || {
+  echo "host HTTPS control listener is not on the configured base port" >&2
+  exit 1
+}
+echo "host_https_only_bootstrap_gate=pass"
+
 for required_input_transport_token in \
   'sc_datasmash_native_input_receive' \
   'nativeInputThread' \

@@ -528,6 +528,40 @@ if rg -n 'performRtspHandshake|rtspSessionUrl|sessionUrl0|rikeyid|remoteInputAes
 fi
 echo "client_rtsp_absence_gate=pass"
 
+# Bootstrap, polling, PAM authentication, and launch must use the one HTTPS
+# control endpoint. Reject the retired unauthenticated HTTP discovery URL,
+# split-port state, and TCP 47984 connectivity flag.
+for retired_bootstrap_token in \
+  'DEFAULT_HTTP_PORT' \
+  'DEFAULT_HTTPS_PORT' \
+  'm_BaseUrlHttp' \
+  'activeHttpsPort' \
+  'ML_PORT_FLAG_TCP_47984' \
+  'ML_PORT_INDEX_TCP_47984' \
+  '47984'; do
+  if rg -Fq "$retired_bootstrap_token" \
+      "$source_dir/app/backend" "$client_common_root/src"; then
+    echo "retired client bootstrap transport remains: ${retired_bootstrap_token}" >&2
+    exit 1
+  fi
+done
+if rg -n '47984|47998|47999|48000|48010' \
+    "$client_common_root/src/ConnectionTester.c"; then
+  echo "retired client connectivity-test port remains" >&2
+  exit 1
+fi
+rg -Fq '#define DEFAULT_CONTROL_PORT 47989' \
+  "$source_dir/app/backend/nvaddress.h" || {
+  echo "client control port invariant is missing" >&2
+  exit 1
+}
+rg -Fq '#define ML_PORT_FLAG_UDP_47989 0x0100' \
+  "$client_common_root/src/Limelight.h" || {
+  echo "client native UDP port invariant is missing" >&2
+  exit 1
+}
+echo "client_https_only_bootstrap_gate=pass"
+
 # Native KyProto owns reliable control and input. The client must not retain
 # ENet source, build wiring, submodule state, or obsolete SDP advertisements.
 for retired_enet_path in \
