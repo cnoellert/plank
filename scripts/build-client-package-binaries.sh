@@ -83,6 +83,17 @@ if rg -n 'AppView|AppModel|BoxArtManager|CliListApps|ListCommandLineParser|View 
 fi
 echo "client_game_catalog_absence_gate=pass"
 
+# The workstation model exposes only the active StationConnect bookmark and
+# Desktop-session contract. Do not restore Moonlight's running-game model
+# roles or generic current-game session launcher.
+if rg -n 'BusyRole|StationConnectAuthenticationRole|createSessionForCurrentGame' \
+  "$source_dir/app/gui/computermodel.h" \
+  "$source_dir/app/gui/computermodel.cpp"; then
+  echo "legacy ComputerModel game/session surface remains" >&2
+  exit 1
+fi
+echo "client_computer_model_legacy_surface_absence_gate=pass"
+
 # Host/profile capability negotiation replaces NVIDIA GFE version heuristics.
 if rg -n 'CompatFetcher|isSupportedServerVersion|SER_NVIDIASOFTWARE|GeForce Experience 3\.0' \
   "$source_dir/app" \

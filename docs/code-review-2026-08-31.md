@@ -22,6 +22,9 @@ into the qualified packages and may be useful for the planned macOS work.
 - Removed the hidden game catalog, box-art manager, app-list CLI, and their
   unused QML/resources. The single `Desktop` application record remains part of
   the active launch/resume contract and is not a game catalog.
+- Removed the unused running-game roles and generic current-game launcher from
+  the QML workstation model. Its active bookmark, authentication, host-status,
+  and StationConnect Desktop-session interfaces remain.
 - Removed NVIDIA GeForce Experience version heuristics. Exact StationConnect
   host/profile capability negotiation remains authoritative.
 - Removed the host's unused remote-file downloader, libcurl dependency,
