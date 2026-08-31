@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 10u
+#define SC_DATASMASH_ABI_VERSION 11u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 typedef struct ScDatasmashNativeEndpoint ScDatasmashNativeEndpoint;
@@ -308,9 +308,10 @@ int32_t sc_datasmash_native_video_send(
         ScDatasmashNativeEndpoint *endpoint,
         const ScDatasmashNativeVideoFrameInfo *info,
         const uint8_t *payload, size_t payload_size);
-/* Update the live server-side video target and native transport budget. */
+/* Update the live video target and peak-inclusive native transport budget. */
 int32_t sc_datasmash_native_set_video_bitrate(
-        ScDatasmashNativeEndpoint *endpoint, uint32_t bitrate_kbps);
+        ScDatasmashNativeEndpoint *endpoint, uint32_t bitrate_kbps,
+        uint32_t peak_bitrate_kbps);
 int32_t sc_datasmash_native_video_receive(
         ScDatasmashNativeEndpoint *endpoint,
         ScDatasmashNativeVideoFrameInfo *info,

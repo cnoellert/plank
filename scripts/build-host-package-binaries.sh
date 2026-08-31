@@ -63,9 +63,9 @@ done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
-rg -q '^#define SC_DATASMASH_ABI_VERSION 10u$' \
+rg -q '^#define SC_DATASMASH_ABI_VERSION 11u$' \
   "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "host requires Datasmash transport ABI 10" >&2
+  echo "host requires Datasmash transport ABI 11" >&2
   exit 1
 }
 rg -Fq 'uint32_t max_udp_payload_size;' \

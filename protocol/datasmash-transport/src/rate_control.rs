@@ -50,6 +50,7 @@ fn window_for_rate(rate_bps: u64, rtt: Duration, mtu: u16) -> u64 {
 pub struct TransportRatePolicy {
     requested_video_bps: AtomicU64,
     active_video_bps: AtomicU64,
+    active_peak_video_bps: AtomicU64,
     pacer: Arc<DatagramPacer>,
     repairable_congestion_events: AtomicU64,
     persistent_congestion_events: AtomicU64,
@@ -62,6 +63,7 @@ impl TransportRatePolicy {
         Arc::new(Self {
             requested_video_bps: AtomicU64::new(requested_video_bps),
             active_video_bps: AtomicU64::new(requested_video_bps),
+            active_peak_video_bps: AtomicU64::new(requested_video_bps),
             pacer: Arc::new(DatagramPacer::new(wire_bps, Duration::from_millis(2), 0)),
             repairable_congestion_events: AtomicU64::new(0),
             persistent_congestion_events: AtomicU64::new(0),
@@ -77,21 +79,23 @@ impl TransportRatePolicy {
     }
 
     pub fn active_wire_bps(&self) -> u64 {
-        video_to_wire_bps(self.active_video_bps())
+        video_to_wire_bps(self.active_peak_video_bps.load(Ordering::Acquire))
     }
 
     pub fn pacer(&self) -> Arc<DatagramPacer> {
         self.pacer.clone()
     }
 
-    pub fn set_requested_video_bps(&self, requested_video_bps: u64) {
+    pub fn set_requested_video_bps(&self, requested_video_bps: u64, peak_video_bps: u64) {
         let requested_video_bps = requested_video_bps.max(MIN_VIDEO_BITRATE_BPS);
+        let peak_video_bps = peak_video_bps.max(requested_video_bps);
         self.requested_video_bps
             .store(requested_video_bps, Ordering::Release);
         self.active_video_bps
             .store(requested_video_bps, Ordering::Release);
-        self.pacer
-            .set_target_bps(video_to_wire_bps(requested_video_bps));
+        self.active_peak_video_bps
+            .store(peak_video_bps, Ordering::Release);
+        self.pacer.set_target_bps(video_to_wire_bps(peak_video_bps));
     }
 }
 
@@ -233,10 +237,10 @@ mod tests {
     #[test]
     fn explicit_rate_change_updates_the_shared_pacer() {
         let policy = TransportRatePolicy::new(100_000_000);
-        policy.set_requested_video_bps(150_000_000);
+        policy.set_requested_video_bps(150_000_000, 225_000_000);
         assert_eq!(policy.requested_video_bps(), 150_000_000);
         assert_eq!(policy.active_video_bps(), 150_000_000);
-        assert_eq!(policy.pacer().target_bps(), 203_500_000);
+        assert_eq!(policy.pacer().target_bps(), 304_750_000);
     }
 
     #[test]

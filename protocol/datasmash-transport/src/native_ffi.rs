@@ -1390,18 +1390,22 @@ pub unsafe extern "C" fn sc_datasmash_native_video_send(
 pub unsafe extern "C" fn sc_datasmash_native_set_video_bitrate(
     endpoint: *mut ScDatasmashNativeEndpoint,
     bitrate_kbps: u32,
+    peak_bitrate_kbps: u32,
 ) -> i32 {
     catch_result(|| {
         let Some(endpoint) = (unsafe { endpoint.as_ref() }) else {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         };
-        if endpoint.mode != 1 || !(10_000..=500_000).contains(&bitrate_kbps) {
+        if endpoint.mode != 1
+            || !(10_000..=500_000).contains(&bitrate_kbps)
+            || !(bitrate_kbps..=1_000_000).contains(&peak_bitrate_kbps)
+        {
             return SC_DATASMASH_ERROR_INVALID_ARGUMENT;
         }
-        endpoint
-            .shared
-            .rate_policy
-            .set_requested_video_bps(u64::from(bitrate_kbps).saturating_mul(1_000));
+        endpoint.shared.rate_policy.set_requested_video_bps(
+            u64::from(bitrate_kbps).saturating_mul(1_000),
+            u64::from(peak_bitrate_kbps).saturating_mul(1_000),
+        );
         SC_DATASMASH_OK
     })
 }
