@@ -963,6 +963,7 @@ env \
   -DSUNSHINE_ENABLE_X11=ON \
   -DSUNSHINE_ENABLE_XDG_PORTAL=OFF \
   -DSTATIONCONNECT_ENABLE_DATASMASH=ON \
+  -DSTATIONCONNECT_PRODUCT_BUILD=ON \
   -DSTATIONCONNECT_DATASMASH_TRANSPORT_DIR="$datasmash_transport_dir" \
   -DSTATIONCONNECT_DATASMASH_CARGO_FEATURES="$datasmash_cargo_features"
 cmake --build "$build_dir" --parallel "$build_jobs" \
@@ -985,6 +986,36 @@ if rg -a -q '/usr/local/assets' "$build_dir/stationconnect-host"; then
   exit 1
 fi
 rg -a -q '/usr/share/stationconnect' "$build_dir/stationconnect-host"
+rg -Fxq 'STATIONCONNECT_PRODUCT_BUILD:BOOL=ON' "$build_dir/CMakeCache.txt" || {
+  echo "host product build mode is not enabled" >&2
+  exit 1
+}
+if find "$build_dir" -maxdepth 1 -type f \
+  \( -name 'dev.lizardbyte.app.Sunshine*' -o -name 'app-dev.lizardbyte.app.Sunshine*' \) \
+  -print -quit | rg -q .; then
+  echo "host build generated inherited Sunshine application metadata" >&2
+  exit 1
+fi
+for product_identity in \
+  'StationConnectHost' \
+  'la.instinctual.StationConnect.Host' \
+  'Package Publisher: ' \
+  'Instinctual' \
+  'https://instinctual.la'; do
+  rg -a -Fq "$product_identity" "$build_dir/stationconnect-host" || {
+    echo "host binary is missing product identity: ${product_identity}" >&2
+    exit 1
+  }
+done
+for inherited_identity in \
+  'dev.lizardbyte.app.Sunshine' \
+  'https://app.lizardbyte.dev/support'; do
+  if rg -a -Fq "$inherited_identity" "$build_dir/stationconnect-host"; then
+    echo "host binary retains inherited identity: ${inherited_identity}" >&2
+    exit 1
+  fi
+done
+echo "host_product_identity_gate=pass"
 [[ ! -d ${build_dir}/assets/web ]] || {
   echo "host Web UI assets were produced" >&2
   exit 1

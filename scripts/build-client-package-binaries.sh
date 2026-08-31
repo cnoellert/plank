@@ -608,21 +608,31 @@ for retired_bootstrap_token in \
     exit 1
   fi
 done
-if rg -n '47984|47998|47999|48000|48010' \
-    "$client_common_root/src/ConnectionTester.c"; then
-  echo "retired client connectivity-test port remains" >&2
-  exit 1
-fi
 rg -Fq '#define DEFAULT_CONTROL_PORT 47989' \
   "$source_dir/app/backend/nvaddress.h" || {
   echo "client control port invariant is missing" >&2
   exit 1
 }
-rg -Fq '#define ML_PORT_FLAG_UDP_47989 0x0100' \
-  "$client_common_root/src/Limelight.h" || {
-  echo "client native UDP port invariant is missing" >&2
+rg -Fq 'QStringLiteral("UDP %1").arg(DEFAULT_CONTROL_PORT)' \
+  "$source_dir/app/streaming/session.cpp" || {
+  echo "client connection diagnostics do not use the native UDP endpoint" >&2
   exit 1
 }
+for retired_network_path in \
+  src/ConnectionTester.c \
+  src/SimpleStun.c; do
+  [[ ! -e "${client_common_root}/${retired_network_path}" ]] || {
+    echo "retired client network probe remains: ${retired_network_path}" >&2
+    exit 1
+  }
+done
+if rg -n 'LiFindExternalAddressIP4|LiTestClientConnectivity|LiGetPortFlagsFromStage|LiStringifyPortFlags|ML_PORT_FLAG_' \
+    "$source_dir/app" "$client_common_root/src" \
+    "${source_dir}/moonlight-common-c/moonlight-common-c.pro"; then
+  echo "retired client STUN or connectivity-test API remains" >&2
+  exit 1
+fi
+echo "client_legacy_network_probe_absence_gate=pass"
 echo "client_https_only_bootstrap_gate=pass"
 
 # Native KyProto owns reliable control and input. The client must not retain

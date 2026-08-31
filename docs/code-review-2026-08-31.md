@@ -17,6 +17,9 @@ into the qualified packages and may be useful for the planned macOS work.
 - Removed client calls to Moonlight compatibility, connection-test, and STUN
   services. Bookmark reachability and route-MTU selection remain local to the
   configured workstation path.
+- Removed common-c's dormant STUN implementation and generic multi-port
+  connectivity tester. Connection errors now identify StationConnect's fixed
+  UDP 47989 endpoint directly instead of preserving GameStream port tables.
 - Removed all client actions that opened upstream Help pages, plus the unused
   browser capability and Help-button plumbing.
 - Removed the hidden game catalog, box-art manager, app-list CLI, and their
@@ -31,6 +34,10 @@ into the qualified packages and may be useful for the planned macOS work.
   mutable application-art endpoint, and related tests and packaging inputs.
 - Removed the host's shared-temporary first-run credential path. Credentials
   are created only at their configured private location.
+- Isolated the qualified host from inherited CPack, desktop-entry, AppImage,
+  Flatpak, and per-user service metadata. The explicit RPM manifest receives
+  only required runtime assets, while the compiled project name, reverse-DNS
+  identifier, publisher, website, and startup log use StationConnect identity.
 
 ## Security results
 
