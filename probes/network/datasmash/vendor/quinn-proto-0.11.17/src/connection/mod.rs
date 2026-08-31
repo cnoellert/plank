@@ -1286,10 +1286,15 @@ impl Connection {
             } else {
                 "cubic"
             };
+            let side = if self.side.is_client() {
+                "client"
+            } else {
+                "server"
+            };
             eprintln!(
-                "StationConnect QUIC telemetry controller={} side={:?} remote={} rtt_us={} rtt_latest_us={} rtt_min_us={} rtt_max_us={} rtt_var_us={} cwnd_bytes={} in_flight_bytes={} in_flight_packets={} effective_pacing_bps={} controller_pacing_bps={} bandwidth_estimate_bps={} congestion_events={} sent_packets={} sent_bytes={} lost_packets={} lost_bytes={} mtu={} queue_limit_bytes={} queue_datagrams={} queue_payload_bytes={} queue_memory_bytes={} queue_high_water_payload_bytes={} queue_high_water_memory_bytes={} queue_evicted_datagrams={} queue_evicted_payload_bytes={}",
+                "StationConnect QUIC telemetry controller={} side={} remote={} rtt_us={} rtt_latest_us={} rtt_min_us={} rtt_max_us={} rtt_var_us={} cwnd_bytes={} in_flight_bytes={} in_flight_packets={} effective_pacing_bps={} controller_pacing_bps={} bandwidth_estimate_bps={} congestion_events={} sent_packets={} sent_bytes={} lost_packets={} lost_bytes={} mtu={} queue_limit_bytes={} queue_datagrams={} queue_payload_bytes={} queue_memory_bytes={} queue_high_water_payload_bytes={} queue_high_water_memory_bytes={} queue_evicted_datagrams={} queue_evicted_payload_bytes={}",
                 controller,
-                self.side,
+                side,
                 self.path.remote,
                 stats.path.rtt.as_micros(),
                 self.path.rtt.latest().as_micros(),
