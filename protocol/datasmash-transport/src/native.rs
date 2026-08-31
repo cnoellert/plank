@@ -559,6 +559,7 @@ mod tests {
         let server_options = kynet::common::CommonServerOptions {
             max_idle_timeout: Some(options.idle_timeout),
             keep_alive_interval: Some(options.keep_alive_interval),
+            max_udp_payload_size: options.max_udp_payload_size,
             congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
                 rate_policy.clone(),
             )),
@@ -863,6 +864,7 @@ mod tests {
         let server_options = kynet::common::CommonServerOptions {
             max_idle_timeout: Some(options.idle_timeout),
             keep_alive_interval: Some(options.keep_alive_interval),
+            max_udp_payload_size: options.max_udp_payload_size,
             congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
                 rate_policy.clone(),
             )),

@@ -866,6 +866,7 @@ async fn run_server(
     let server_options = kynet::common::CommonServerOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        max_udp_payload_size: options.max_udp_payload_size,
         congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
             shared.rate_policy.clone(),
         )),
@@ -915,6 +916,7 @@ async fn run_setup_server(
     let server_options = kynet::common::CommonServerOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        max_udp_payload_size: options.max_udp_payload_size,
         congestion_controller_factory: Some(StationConnectRateControllerFactory::new(
             shared.rate_policy.clone(),
         )),

@@ -981,6 +981,7 @@ async fn run_server(
     let server_options = kynet::common::CommonServerOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        max_udp_payload_size: options.max_udp_payload_size,
         ..Default::default()
     };
     let server = Connection::start_server_on_addr(
