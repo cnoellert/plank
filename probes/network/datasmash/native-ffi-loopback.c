@@ -1,10 +1,14 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "stationconnect_datasmash.h"
+#include "stationconnect_datasmash_setup.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 static ScDatasmashConfig base_config(uint32_t mode, const char *token) {
     ScDatasmashConfig config;
@@ -28,12 +32,15 @@ static void print_error(const char *label,
 }
 
 int main(int argc, char **argv) {
-    if (argc != 7) {
+    if (argc != 7 && argc != 8) {
         fprintf(stderr,
-                "usage: %s <bind> <remote> <server-name> <cert> <key> <hash>\n",
+                "usage: %s <bind> <remote> <server-name> <cert> <key> <hash> "
+                "[expected-cert-der]\n",
                 argv[0]);
         return 2;
     }
+
+    const int profile_validation = argc == 8;
 
     const char *token = "stationconnect-native-ffi-loopback";
     ScDatasmashConfig server_config =
@@ -45,7 +52,10 @@ int main(int argc, char **argv) {
         base_config(SC_DATASMASH_MODE_CLIENT, token);
     client_config.remote_address = argv[2];
     client_config.server_name = argv[3];
-    client_config.certificate_sha256 = argv[6];
+    client_config.certificate_sha256 = profile_validation ? NULL : argv[6];
+    server_config.session_mode = profile_validation ? SC_DATASMASH_SESSION_SETUP :
+                                                      SC_DATASMASH_SESSION_ACTIVE;
+    client_config.session_mode = server_config.session_mode;
 
     ScDatasmashNativeEndpoint *server = NULL;
     ScDatasmashNativeEndpoint *client = NULL;
@@ -57,6 +67,126 @@ int main(int argc, char **argv) {
         sc_datasmash_native_endpoint_start(client) != SC_DATASMASH_OK) {
         fprintf(stderr, "failed to create or start native endpoints\n");
         goto failure;
+    }
+    if (profile_validation) {
+        const struct timespec pause = {0, 10 * 1000 * 1000};
+        unsigned int attempt;
+        for (attempt = 0; attempt < 700; ++attempt) {
+            if (sc_datasmash_native_endpoint_state(client) ==
+                    SC_DATASMASH_STATE_PEER_VALIDATION) {
+                break;
+            }
+            nanosleep(&pause, NULL);
+        }
+        if (sc_datasmash_native_endpoint_state(client) !=
+                SC_DATASMASH_STATE_PEER_VALIDATION) {
+            fprintf(stderr, "client did not pause for certificate validation\n");
+            goto failure;
+        }
+        if (sc_datasmash_native_data_send(
+                client, (const uint8_t *)"blocked", 8) !=
+                SC_DATASMASH_ERROR_INVALID_STATE) {
+            fprintf(stderr, "application data was accepted before certificate approval\n");
+            goto failure;
+        }
+        FILE *expected_file = fopen(argv[7], "rb");
+        if (expected_file == NULL || fseek(expected_file, 0, SEEK_END) != 0) {
+            fprintf(stderr, "failed to open expected DER certificate\n");
+            if (expected_file != NULL) {
+                fclose(expected_file);
+            }
+            goto failure;
+        }
+        long expected_size_long = ftell(expected_file);
+        if (expected_size_long <= 0 || fseek(expected_file, 0, SEEK_SET) != 0) {
+            fprintf(stderr, "invalid expected DER certificate\n");
+            fclose(expected_file);
+            goto failure;
+        }
+        size_t expected_size = (size_t)expected_size_long;
+        unsigned char *expected = malloc(expected_size);
+        unsigned char *received = malloc(expected_size);
+        size_t required_size = 0;
+        if (expected == NULL || received == NULL ||
+            fread(expected, 1, expected_size, expected_file) != expected_size) {
+            fprintf(stderr, "failed to read expected DER certificate\n");
+            fclose(expected_file);
+            free(expected);
+            free(received);
+            goto failure;
+        }
+        fclose(expected_file);
+        if (sc_datasmash_native_endpoint_peer_certificate(
+                client, NULL, 0, &required_size) !=
+                    SC_DATASMASH_ERROR_BUFFER_TOO_SMALL ||
+            required_size != expected_size ||
+            sc_datasmash_native_endpoint_peer_certificate(
+                client, received, expected_size, &required_size) !=
+                    SC_DATASMASH_OK ||
+            memcmp(expected, received, expected_size) != 0) {
+            fprintf(stderr, "peer DER certificate mismatch\n");
+            free(expected);
+            free(received);
+            goto failure;
+        }
+        free(expected);
+        free(received);
+        if (sc_datasmash_native_endpoint_approve_peer_certificate(client) !=
+                SC_DATASMASH_OK) {
+            fprintf(stderr, "failed to approve peer certificate\n");
+            goto failure;
+        }
+
+        for (attempt = 0; attempt < 700; ++attempt) {
+            if (sc_datasmash_native_endpoint_state(client) ==
+                    SC_DATASMASH_STATE_SETUP_READY &&
+                sc_datasmash_native_endpoint_state(server) ==
+                    SC_DATASMASH_STATE_SETUP_READY) {
+                break;
+            }
+            nanosleep(&pause, NULL);
+        }
+        if (sc_datasmash_native_endpoint_state(client) !=
+                SC_DATASMASH_STATE_SETUP_READY ||
+            sc_datasmash_native_endpoint_state(server) !=
+                SC_DATASMASH_STATE_SETUP_READY) {
+            fprintf(stderr, "setup endpoints did not reach setup-ready\n");
+            goto failure;
+        }
+
+        uint8_t setup_request[SC_DATASMASH_SETUP_HEADER_SIZE] = {0};
+        uint8_t setup_received[SC_DATASMASH_SETUP_HEADER_SIZE] = {0};
+        size_t setup_size = 0;
+        size_t setup_received_size = 0;
+        ScDatasmashSetupPacket decoded_setup;
+        if (sc_datasmash_setup_encode(
+                SC_DATASMASH_SETUP_SERVER_INFO_REQUEST, 0,
+                SC_DATASMASH_SETUP_STATUS_OK, 1, NULL, 0,
+                setup_request, sizeof(setup_request), &setup_size) != 0 ||
+            sc_datasmash_native_data_send(client, setup_request, setup_size) !=
+                SC_DATASMASH_OK ||
+            sc_datasmash_native_data_receive(
+                server, setup_received, sizeof(setup_received),
+                &setup_received_size, 5000) != SC_DATASMASH_OK ||
+            sc_datasmash_setup_decode(
+                setup_received, setup_received_size, &decoded_setup) != 0 ||
+            decoded_setup.type != SC_DATASMASH_SETUP_SERVER_INFO_REQUEST) {
+            fprintf(stderr, "pre-session setup request did not round trip\n");
+            goto failure;
+        }
+        if (sc_datasmash_native_input_send(
+                client, 1, (const uint8_t *)"blocked", 8) !=
+                SC_DATASMASH_ERROR_INVALID_STATE) {
+            fprintf(stderr, "input was accepted before session authorization\n");
+            goto failure;
+        }
+        if (sc_datasmash_native_endpoint_authorize_session(server) !=
+                SC_DATASMASH_OK ||
+            sc_datasmash_native_endpoint_authorize_session(client) !=
+                SC_DATASMASH_OK) {
+            fprintf(stderr, "failed to authorize setup endpoints\n");
+            goto failure;
+        }
     }
     if (sc_datasmash_native_endpoint_wait_ready(client, 7000) !=
             SC_DATASMASH_OK ||
@@ -271,8 +401,8 @@ int main(int argc, char **argv) {
         client_stats.input_packets_sent != 1 ||
         server_stats.input_packets_received != 1 ||
         server_stats.data_packets_sent != 1 ||
-        server_stats.data_packets_received != 1 ||
-        client_stats.data_packets_sent != 1 ||
+        server_stats.data_packets_received != (profile_validation ? 2u : 1u) ||
+        client_stats.data_packets_sent != (profile_validation ? 2u : 1u) ||
         client_stats.data_packets_received != 1 ||
         server_stats.video_send_drops != 0 ||
         client_stats.video_receive_drops != 0 ||
@@ -287,9 +417,10 @@ int main(int argc, char **argv) {
     sc_datasmash_native_endpoint_stop(server);
     sc_datasmash_native_endpoint_destroy(client);
     sc_datasmash_native_endpoint_destroy(server);
-    printf("status=complete test=native-kyproto-ffi-loopback "
+    printf("status=complete test=native-kyproto-ffi-loopback trust=%s "
            "video_frames=1 video_bytes=%zu audio_packets=1 input_packets=1 "
-           "data_packets_each_direction=1\n", video_size);
+           "data_packets_each_direction=1\n",
+           profile_validation ? "profile" : "fingerprint", video_size);
     return 0;
 
 failure:

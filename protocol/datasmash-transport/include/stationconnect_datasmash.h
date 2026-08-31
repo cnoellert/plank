@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 6u
+#define SC_DATASMASH_ABI_VERSION 7u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 typedef struct ScDatasmashNativeEndpoint ScDatasmashNativeEndpoint;
@@ -20,14 +20,21 @@ typedef enum ScDatasmashMode {
     SC_DATASMASH_MODE_CLIENT = 2,
 } ScDatasmashMode;
 
+typedef enum ScDatasmashSessionMode {
+    SC_DATASMASH_SESSION_ACTIVE = 0,
+    SC_DATASMASH_SESSION_SETUP = 1,
+} ScDatasmashSessionMode;
+
 typedef enum ScDatasmashState {
     SC_DATASMASH_STATE_INVALID = 0,
     SC_DATASMASH_STATE_IDLE = 1,
     SC_DATASMASH_STATE_STARTING = 2,
-    SC_DATASMASH_STATE_READY = 3,
-    SC_DATASMASH_STATE_STOPPING = 4,
-    SC_DATASMASH_STATE_STOPPED = 5,
-    SC_DATASMASH_STATE_FAILED = 6,
+    SC_DATASMASH_STATE_PEER_VALIDATION = 3,
+    SC_DATASMASH_STATE_SETUP_READY = 4,
+    SC_DATASMASH_STATE_READY = 5,
+    SC_DATASMASH_STATE_STOPPING = 6,
+    SC_DATASMASH_STATE_STOPPED = 7,
+    SC_DATASMASH_STATE_FAILED = 8,
 } ScDatasmashState;
 
 typedef enum ScDatasmashResult {
@@ -81,7 +88,10 @@ typedef struct ScDatasmashStats {
  * Strings are copied during sc_datasmash_endpoint_create() and need only
  * remain valid for that call. Server mode requires bind_address,
  * certificate_path, private_key_path, and session_token. Client mode requires
- * remote_address, server_name, certificate_sha256, and session_token.
+ * remote_address, server_name, and session_token. A non-NULL
+ * certificate_sha256 selects exact-fingerprint validation. NULL selects the
+ * explicit StationConnect certificate-profile validation workflow documented
+ * with sc_datasmash_native_endpoint_peer_certificate().
  */
 typedef struct ScDatasmashConfig {
     uint32_t struct_size;
@@ -90,6 +100,7 @@ typedef struct ScDatasmashConfig {
     uint32_t handshake_timeout_ms;
     uint32_t idle_timeout_ms;
     uint32_t keep_alive_interval_ms;
+    uint32_t session_mode;
     const char *bind_address;
     const char *remote_address;
     const char *server_name;
@@ -255,6 +266,29 @@ int32_t sc_datasmash_native_endpoint_wait_ready(
         ScDatasmashNativeEndpoint *endpoint, uint32_t timeout_ms);
 uint32_t sc_datasmash_native_endpoint_state(
         const ScDatasmashNativeEndpoint *endpoint);
+
+/*
+ * A Client config with certificate_sha256 == NULL pauses in PEER_VALIDATION.
+ * The caller must validate this DER leaf certificate against the
+ * StationConnect certificate profile, then explicitly approve it. No native
+ * application queue is active before approval. Exact-fingerprint Client
+ * configs retain automatic validation and proceed directly to READY.
+ */
+int32_t sc_datasmash_native_endpoint_peer_certificate(
+        const ScDatasmashNativeEndpoint *endpoint,
+        uint8_t *certificate, size_t certificate_capacity,
+        size_t *certificate_size_out);
+int32_t sc_datasmash_native_endpoint_approve_peer_certificate(
+        ScDatasmashNativeEndpoint *endpoint);
+
+/*
+ * SETUP endpoints expose only reliable data while in SETUP_READY. After the
+ * Host has completed PAM, ownership, display, and launch validation and sent
+ * SESSION_READY, each peer authorizes its side of the same connection. Only
+ * then are KyProto media and input endpoints registered and READY reached.
+ */
+int32_t sc_datasmash_native_endpoint_authorize_session(
+        ScDatasmashNativeEndpoint *endpoint);
 
 int32_t sc_datasmash_native_video_send(
         ScDatasmashNativeEndpoint *endpoint,

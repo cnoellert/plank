@@ -802,6 +802,8 @@ dependencies = [
  "kynet",
  "kyproto",
  "quinn-proto",
+ "ring",
+ "rustls",
  "subtle",
  "tokio",
 ]

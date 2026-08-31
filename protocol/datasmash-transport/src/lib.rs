@@ -19,8 +19,8 @@ pub mod native;
 pub mod native_ffi;
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
-pub const PROTOCOL_VERSION: u16 = 6;
-pub const ABI_VERSION: u32 = 6;
+pub const PROTOCOL_VERSION: u16 = 7;
+pub const ABI_VERSION: u32 = 7;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -205,10 +205,12 @@ pub enum EndpointState {
     Invalid = 0,
     Idle = 1,
     Starting = 2,
-    Ready = 3,
-    Stopping = 4,
-    Stopped = 5,
-    Failed = 6,
+    PeerValidation = 3,
+    SetupReady = 4,
+    Ready = 5,
+    Stopping = 6,
+    Stopped = 7,
+    Failed = 8,
 }
 
 #[derive(Clone)]
@@ -218,13 +220,15 @@ enum EndpointConfig {
         certificate_path: PathBuf,
         private_key_path: PathBuf,
         session_token: String,
+        setup_mode: bool,
         options: RuntimeOptions,
     },
     Client {
         remote_address: SocketAddr,
         server_name: String,
-        certificate_sha256: String,
+        certificate_sha256: Option<String>,
         session_token: String,
+        setup_mode: bool,
         options: RuntimeOptions,
     },
 }
@@ -361,6 +365,7 @@ pub struct ScDatasmashConfig {
     pub handshake_timeout_ms: u32,
     pub idle_timeout_ms: u32,
     pub keep_alive_interval_ms: u32,
+    pub session_mode: u32,
     pub bind_address: *const c_char,
     pub remote_address: *const c_char,
     pub server_name: *const c_char,
@@ -465,6 +470,10 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
             "keep_alive_interval_ms",
         )?,
     };
+    if config.session_mode > 1 {
+        bail!("unsupported session_mode {}", config.session_mode);
+    }
+    let setup_mode = config.session_mode == 1;
     if options.keep_alive_interval >= options.idle_timeout {
         bail!("keep_alive_interval_ms must be less than idle_timeout_ms");
     }
@@ -490,6 +499,7 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
                 certificate_path,
                 private_key_path,
                 session_token,
+                setup_mode,
                 options,
             })
         }
@@ -502,13 +512,19 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
             let server_name = unsafe {
                 required_string(config.server_name, "server_name", MAX_SERVER_NAME_LENGTH)?
             };
-            let certificate_sha256 =
-                unsafe { required_string(config.certificate_sha256, "certificate_sha256", 64)? };
-            let decoded = hex::decode(&certificate_sha256)
-                .context("certificate_sha256 is not valid hexadecimal")?;
-            if decoded.len() != 32 {
-                bail!("certificate_sha256 must contain exactly 32 bytes");
-            }
+            let certificate_sha256 = if config.certificate_sha256.is_null() {
+                None
+            } else {
+                let value = unsafe {
+                    required_string(config.certificate_sha256, "certificate_sha256", 64)?
+                };
+                let decoded =
+                    hex::decode(&value).context("certificate_sha256 is not valid hexadecimal")?;
+                if decoded.len() != 32 {
+                    bail!("certificate_sha256 must contain exactly 32 bytes");
+                }
+                Some(value)
+            };
             let session_token = unsafe {
                 required_string(config.session_token, "session_token", MAX_TOKEN_LENGTH)?
             };
@@ -517,6 +533,7 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
                 server_name,
                 certificate_sha256,
                 session_token,
+                setup_mode,
                 options,
             })
         }
@@ -1060,34 +1077,46 @@ fn endpoint_worker(config: EndpointConfig, shared: Arc<Shared>) {
                 certificate_path,
                 private_key_path,
                 session_token,
+                setup_mode,
                 options,
             } => {
-                run_server(
-                    shared.clone(),
-                    bind_address,
-                    &certificate_path,
-                    &private_key_path,
-                    &session_token,
-                    options,
-                )
-                .await
+                if setup_mode {
+                    Err(anyhow!("legacy endpoint API does not support setup mode"))
+                } else {
+                    run_server(
+                        shared.clone(),
+                        bind_address,
+                        &certificate_path,
+                        &private_key_path,
+                        &session_token,
+                        options,
+                    )
+                    .await
+                }
             }
             EndpointConfig::Client {
                 remote_address,
                 server_name,
                 certificate_sha256,
                 session_token,
+                setup_mode,
                 options,
             } => {
-                run_client(
-                    shared.clone(),
-                    remote_address,
-                    &server_name,
-                    &certificate_sha256,
-                    &session_token,
-                    options,
-                )
-                .await
+                if setup_mode {
+                    Err(anyhow!("legacy endpoint API does not support setup mode"))
+                } else {
+                    run_client(
+                        shared.clone(),
+                        remote_address,
+                        &server_name,
+                        certificate_sha256.as_deref().ok_or_else(|| {
+                            anyhow!("legacy endpoint requires certificate_sha256")
+                        })?,
+                        &session_token,
+                        options,
+                    )
+                    .await
+                }
             }
         }
     });
@@ -1937,6 +1966,7 @@ mod tests {
             handshake_timeout_ms: 0,
             idle_timeout_ms: 0,
             keep_alive_interval_ms: 0,
+            session_mode: 0,
             bind_address: ptr::null(),
             remote_address: ptr::null(),
             server_name: ptr::null(),
@@ -1949,9 +1979,11 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 6);
+        assert_eq!(sc_datasmash_abi_version(), 7);
         assert_eq!(EndpointState::Idle as u32, 1);
-        assert_eq!(EndpointState::Failed as u32, 6);
+        assert_eq!(EndpointState::PeerValidation as u32, 3);
+        assert_eq!(EndpointState::SetupReady as u32, 4);
+        assert_eq!(EndpointState::Failed as u32, 8);
         assert_eq!(SC_DATASMASH_DROPPED, 2);
         assert_eq!(SC_DATASMASH_ERROR_BUFFER_TOO_SMALL, -5);
     }
@@ -1974,8 +2006,9 @@ mod tests {
             config: EndpointConfig::Client {
                 remote_address: "127.0.0.1:47989".parse().unwrap(),
                 server_name: "stationconnect".to_owned(),
-                certificate_sha256: "00".repeat(32),
+                certificate_sha256: Some("00".repeat(32)),
                 session_token: "test-token".to_owned(),
+                setup_mode: false,
                 options: RuntimeOptions {
                     handshake_timeout: Duration::from_secs(1),
                     idle_timeout: Duration::from_secs(1),
@@ -2120,7 +2153,7 @@ mod tests {
     }
 
     #[test]
-    fn client_requires_an_exact_certificate_hash() {
+    fn client_accepts_profile_validation_or_an_exact_certificate_hash() {
         let remote = CString::new("127.0.0.1:47489").unwrap();
         let name = CString::new("localhost").unwrap();
         let hash = CString::new("00").unwrap();
@@ -2133,6 +2166,15 @@ mod tests {
         config.session_token = token.as_ptr();
 
         assert!(unsafe { parse_config(&config) }.is_err());
+
+        config.certificate_sha256 = ptr::null();
+        let parsed = unsafe { parse_config(&config) }.unwrap();
+        match parsed {
+            EndpointConfig::Client {
+                certificate_sha256, ..
+            } => assert!(certificate_sha256.is_none()),
+            EndpointConfig::Server { .. } => panic!("unexpected server config"),
+        }
     }
 
     #[test]

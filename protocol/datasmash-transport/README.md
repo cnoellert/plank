@@ -11,9 +11,16 @@ and destroys it. Rust owns its Tokio runtime and worker threads; it does not
 call back into Host or Client C++ while a C++ lock is held. Error text remains
 owned by the endpoint and is copied into caller-provided storage.
 
-ABI version 6 adds the KyProto-native product boundary. A single
-certificate-pinned, token-authenticated KyProto connection registers Kyber's
-video, audio, input, and data endpoints in a fixed order. Complete Annex-B
+ABI version 7 adds the certificate-gated pre-session boundary. An active
+legacy-stage launch may still use the exact fingerprint and one-use token, but
+the true single-port setup mode starts with only a reliable KyProto data
+endpoint. The Client receives the peer leaf certificate, validates it against
+the StationConnect certificate profile, and explicitly approves it before any
+application queue is enabled. PAM, ownership, display, and launch setup then
+run on that reliable endpoint. Video, audio, and input endpoints are registered
+on the same QUIC connection only after both peers authorize the session.
+
+Complete Annex-B
 frames use `VideoProtocol::UnreliableFec`, raw Opus uses
 `AudioProtocol::UnreliableFec`, input uses KyProto's reliable input protocol,
 and non-input control uses its reliable data protocol. Kyber owns media
@@ -42,8 +49,9 @@ scripts/run-datasmash-native-loopback.sh
 scripts/run-datasmash-native-ffi-loopback.sh
 ```
 
-The native C loopback verifies a 192-KiB key frame and metadata, raw Opus,
-Wacom-like input, and reliable data in both directions through real encrypted
-KyProto endpoints. The standalone saturation probe remains useful historical
+The native C loopback verifies exact-fingerprint and certificate-profile trust,
+pre-session data with media/input blocked, explicit same-connection promotion,
+a 192-KiB key frame and metadata, raw Opus, Wacom-like input, and reliable data
+in both directions through real encrypted KyProto endpoints. The standalone saturation probe remains useful historical
 evidence for the tunneled implementation, but its split-connection and BBR
 results are not assumed for the new one-connection native baseline.

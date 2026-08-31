@@ -34,3 +34,13 @@ certificate_hash=${certificate_hash%% *}
   "$probe_tmp/cert.pem" \
   "$probe_tmp/key.pem" \
   "$certificate_hash"
+
+profile_port=$((probe_port + 1))
+"$probe_tmp/native-ffi-loopback" \
+  "127.0.0.1:$profile_port" \
+  "127.0.0.1:$profile_port" \
+  localhost \
+  "$probe_tmp/cert.pem" \
+  "$probe_tmp/key.pem" \
+  "$certificate_hash" \
+  "$probe_tmp/cert.der"

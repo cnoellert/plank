@@ -13,6 +13,7 @@ use kymux_types::{VideoClientProtocol, VideoServerProtocol};
 use kynet::Server;
 use kyproto::{AudioProtocol, ClientAuth, Connection, VideoProtocol};
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use subtle::ConstantTimeEq;
 
@@ -20,6 +21,10 @@ pub const VIDEO_ENDPOINT_ID: u16 = 0;
 pub const AUDIO_ENDPOINT_ID: u16 = 2;
 pub const INPUT_ENDPOINT_ID: u16 = 4;
 pub const DATA_ENDPOINT_ID: u16 = 6;
+pub const SETUP_DATA_ENDPOINT_ID: u16 = 0;
+pub const SETUP_VIDEO_ENDPOINT_ID: u16 = 2;
+pub const SETUP_AUDIO_ENDPOINT_ID: u16 = 4;
+pub const SETUP_INPUT_ENDPOINT_ID: u16 = 6;
 
 #[derive(Clone, Copy)]
 pub struct NativeOptions {
@@ -38,10 +43,42 @@ pub struct NativeServerProtocols {
 
 pub struct NativeClientProtocols {
     connection: Connection,
+    pub peer_certificate_der: Vec<u8>,
     pub video: VideoClientProtocol,
     pub audio: AudioClientProtocol,
     pub input: InputProtocol,
     pub data: DataProtocol,
+}
+
+pub struct NativeSetupServerProtocols {
+    connection: Connection,
+    pub data: DataProtocol,
+}
+
+pub struct NativeSetupClientProtocols {
+    connection: Connection,
+    pub peer_certificate_der: Vec<u8>,
+    pub data: DataProtocol,
+}
+
+impl NativeSetupServerProtocols {
+    pub fn connection(&self) -> &Connection {
+        &self.connection
+    }
+
+    pub(crate) fn into_parts(self) -> (Connection, DataProtocol) {
+        (self.connection, self.data)
+    }
+}
+
+impl NativeSetupClientProtocols {
+    pub fn connection(&self) -> &Connection {
+        &self.connection
+    }
+
+    pub(crate) fn into_parts(self) -> (Connection, DataProtocol, Vec<u8>) {
+        (self.connection, self.data, self.peer_certificate_der)
+    }
 }
 
 impl NativeServerProtocols {
@@ -68,6 +105,69 @@ impl NativeServerProtocols {
     }
 }
 
+#[derive(Debug)]
+struct RecordingCertificateVerifier {
+    expected_sha256: Option<Vec<u8>>,
+    peer_certificate_der: Arc<Mutex<Option<Vec<u8>>>>,
+}
+
+impl rustls::client::danger::ServerCertVerifier for RecordingCertificateVerifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: &rustls::pki_types::CertificateDer<'_>,
+        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
+        _server_name: &rustls::pki_types::ServerName<'_>,
+        _ocsp_response: &[u8],
+        _now: rustls::pki_types::UnixTime,
+    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        let der = end_entity.as_ref();
+        if let Some(expected) = &self.expected_sha256 {
+            let actual = ring::digest::digest(&ring::digest::SHA256, der);
+            if actual.as_ref().ct_eq(expected).unwrap_u8() != 1 {
+                return Err(rustls::Error::General(
+                    "StationConnect certificate fingerprint mismatch".to_owned(),
+                ));
+            }
+        }
+        *self.peer_certificate_der.lock().unwrap() = Some(der.to_vec());
+        Ok(rustls::client::danger::ServerCertVerified::assertion())
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &rustls::pki_types::CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        rustls::crypto::verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+        )
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &rustls::pki_types::CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        rustls::crypto::verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+        )
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        rustls::crypto::ring::default_provider()
+            .signature_verification_algorithms
+            .supported_schemes()
+    }
+}
+
 impl NativeClientProtocols {
     pub fn connection(&self) -> &Connection {
         &self.connection
@@ -81,6 +181,7 @@ impl NativeClientProtocols {
         AudioClientProtocol,
         InputProtocol,
         DataProtocol,
+        Vec<u8>,
     ) {
         (
             self.connection,
@@ -88,6 +189,7 @@ impl NativeClientProtocols {
             self.audio,
             self.input,
             self.data,
+            self.peer_certificate_der,
         )
     }
 }
@@ -97,6 +199,45 @@ fn verify_endpoint_id(actual: u16, expected: u16, name: &str) -> Result<()> {
         bail!("KyProto allocated {name} endpoint {actual}, expected {expected}");
     }
     Ok(())
+}
+
+async fn connect_raw_client(
+    remote_address: SocketAddr,
+    server_name: &str,
+    certificate_sha256: Option<&str>,
+    options: NativeOptions,
+) -> Result<(kynet::Connection, Vec<u8>)> {
+    let expected_sha256 = certificate_sha256
+        .map(hex::decode)
+        .transpose()
+        .context("certificate SHA-256 is not valid hexadecimal")?;
+    let peer_certificate_der = Arc::new(Mutex::new(None));
+    let verifier = RecordingCertificateVerifier {
+        expected_sha256,
+        peer_certificate_der: peer_certificate_der.clone(),
+    };
+    let tls_config = rustls::ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(Arc::new(verifier))
+        .with_no_client_auth();
+    let client_options = kynet::quinn::QuinnClientOptions {
+        max_idle_timeout: Some(options.idle_timeout),
+        keep_alive_interval: Some(options.keep_alive_interval),
+        certificate_hash: None,
+    };
+    let raw_connection = kynet::Connection::quinn_connect(
+        remote_address,
+        server_name,
+        Some(tls_config),
+        &client_options,
+    )
+    .await?;
+    let peer_certificate_der = peer_certificate_der
+        .lock()
+        .unwrap()
+        .take()
+        .ok_or_else(|| anyhow!("QUIC handshake did not provide a peer certificate"))?;
+    Ok((raw_connection, peer_certificate_der))
 }
 
 pub async fn accept_server(
@@ -164,19 +305,13 @@ pub async fn accept_server(
 pub async fn connect_client(
     remote_address: SocketAddr,
     server_name: &str,
-    certificate_sha256: &str,
+    certificate_sha256: Option<&str>,
     session_token: &str,
     options: NativeOptions,
 ) -> Result<NativeClientProtocols> {
-    let client_options = kynet::quinn::QuinnClientOptions {
-        max_idle_timeout: Some(options.idle_timeout),
-        keep_alive_interval: Some(options.keep_alive_interval),
-        certificate_hash: Some(certificate_sha256.to_owned()),
-    };
     let connect = async {
-        let raw_connection =
-            kynet::Connection::quinn_connect(remote_address, server_name, None, &client_options)
-                .await?;
+        let (raw_connection, peer_certificate_der) =
+            connect_raw_client(remote_address, server_name, certificate_sha256, options).await?;
         let auth = ClientAuth::new(session_token)?;
         let connection = Connection::connect_with_auth(raw_connection, &auth).await?;
 
@@ -193,6 +328,7 @@ pub async fn connect_client(
         let data = data_endpoint.ready().await?;
         Ok::<_, anyhow::Error>(NativeClientProtocols {
             connection,
+            peer_certificate_der,
             video,
             audio,
             input,
@@ -203,6 +339,112 @@ pub async fn connect_client(
     tokio::time::timeout(options.handshake_timeout, connect)
         .await
         .context("timed out establishing native KyProto connection")?
+}
+
+pub async fn accept_setup_server(
+    server: &kynet::common::CommonServer,
+    expected_token: &str,
+    options: NativeOptions,
+) -> Result<NativeSetupServerProtocols> {
+    let raw_connection = tokio::time::timeout(options.handshake_timeout, server.accept())
+        .await
+        .context("timed out waiting for setup KyProto connection")??
+        .ok_or_else(|| anyhow!("setup KyProto listener closed"))?;
+    let unauthenticated = tokio::time::timeout(
+        options.handshake_timeout,
+        Connection::accept_with_auth(raw_connection),
+    )
+    .await
+    .context("timed out receiving setup KyProto marker")??;
+    if unauthenticated
+        .get_auth()
+        .token()
+        .as_bytes()
+        .ct_eq(expected_token.as_bytes())
+        .unwrap_u8()
+        != 1
+    {
+        unauthenticated.reject_authentication();
+        bail!("setup KyProto marker mismatch");
+    }
+    let connection = unauthenticated.accept_authentication().await?;
+    let (data_id, data_endpoint) = connection.register_data_endpoint().await?;
+    verify_endpoint_id(data_id, SETUP_DATA_ENDPOINT_ID, "setup data")?;
+    let data = tokio::time::timeout(options.handshake_timeout, data_endpoint.ready())
+        .await
+        .context("timed out starting setup data endpoint")??;
+    Ok(NativeSetupServerProtocols { connection, data })
+}
+
+pub async fn connect_setup_client(
+    remote_address: SocketAddr,
+    server_name: &str,
+    setup_marker: &str,
+    options: NativeOptions,
+) -> Result<NativeSetupClientProtocols> {
+    let connect = async {
+        let (raw_connection, peer_certificate_der) =
+            connect_raw_client(remote_address, server_name, None, options).await?;
+        let auth = ClientAuth::new(setup_marker)?;
+        let connection = Connection::connect_with_auth(raw_connection, &auth).await?;
+        let data_endpoint = connection.connect_data_endpoint(SETUP_DATA_ENDPOINT_ID)?;
+        let data = data_endpoint.ready().await?;
+        Ok::<_, anyhow::Error>(NativeSetupClientProtocols {
+            connection,
+            peer_certificate_der,
+            data,
+        })
+    };
+    tokio::time::timeout(options.handshake_timeout, connect)
+        .await
+        .context("timed out establishing setup KyProto connection")?
+}
+
+pub async fn promote_setup_server(
+    connection: &Connection,
+    options: NativeOptions,
+) -> Result<(VideoServerProtocol, AudioServerProtocol, InputProtocol)> {
+    let (video_id, video_endpoint) = connection
+        .register_video_endpoint(VideoProtocol::UnreliableFec)
+        .await?;
+    verify_endpoint_id(video_id, SETUP_VIDEO_ENDPOINT_ID, "setup video")?;
+    let (audio_id, audio_endpoint) = connection
+        .register_audio_endpoint(AudioProtocol::UnreliableFec)
+        .await?;
+    verify_endpoint_id(audio_id, SETUP_AUDIO_ENDPOINT_ID, "setup audio")?;
+    let (input_id, input_endpoint) = connection.register_input_endpoint().await?;
+    verify_endpoint_id(input_id, SETUP_INPUT_ENDPOINT_ID, "setup input")?;
+    let ready = async {
+        let video = video_endpoint.ready().await?;
+        let audio = audio_endpoint.ready().await?;
+        let input = input_endpoint.ready().await?;
+        Ok::<_, kyproto::ProtocolError>((video, audio, input))
+    };
+    let (video, audio, input) = tokio::time::timeout(options.handshake_timeout, ready)
+        .await
+        .context("timed out promoting server KyProto endpoints")??;
+    Ok((video, audio, input))
+}
+
+pub async fn promote_setup_client(
+    connection: &Connection,
+    options: NativeOptions,
+) -> Result<(VideoClientProtocol, AudioClientProtocol, InputProtocol)> {
+    let video_endpoint =
+        connection.connect_video_endpoint(SETUP_VIDEO_ENDPOINT_ID, VideoProtocol::UnreliableFec)?;
+    let audio_endpoint =
+        connection.connect_audio_endpoint(SETUP_AUDIO_ENDPOINT_ID, AudioProtocol::UnreliableFec)?;
+    let input_endpoint = connection.connect_input_endpoint(SETUP_INPUT_ENDPOINT_ID)?;
+    let ready = async {
+        let video = video_endpoint.ready().await?;
+        let audio = audio_endpoint.ready().await?;
+        let input = input_endpoint.ready().await?;
+        Ok::<_, kyproto::ProtocolError>((video, audio, input))
+    };
+    let (video, audio, input) = tokio::time::timeout(options.handshake_timeout, ready)
+        .await
+        .context("timed out promoting client KyProto endpoints")??;
+    Ok((video, audio, input))
 }
 
 #[cfg(test)]
@@ -277,7 +519,13 @@ mod tests {
 
         let (server_protocols, client_protocols) = tokio::join!(
             accept_server(&server, token, options),
-            connect_client(address, "localhost", &certificate_sha256, token, options,),
+            connect_client(
+                address,
+                "localhost",
+                Some(&certificate_sha256),
+                token,
+                options,
+            ),
         );
         let NativeServerProtocols {
             connection: server_connection,
@@ -292,6 +540,7 @@ mod tests {
             audio: mut client_audio,
             input: mut client_input,
             data: mut client_data,
+            peer_certificate_der: _,
         } = client_protocols.expect("native KyProto client handshake failed");
 
         server_video
