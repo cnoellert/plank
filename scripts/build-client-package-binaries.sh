@@ -496,7 +496,9 @@ echo "client_complete_frame_assembler_gate=pass"
 # validation; the Client must configure common-c through the native boundary.
 for required_native_setup_token in \
   LiSetStationConnectNativeSessionConfiguration \
-  STATIONCONNECT_NATIVE_SESSION_CONFIGURATION; do
+  STATIONCONNECT_NATIVE_SESSION_CONFIGURATION \
+  hostFeatureFlags \
+  referenceFrameInvalidationSupported; do
   rg -Fq "$required_native_setup_token" \
     "$source_dir/app/streaming/session.cpp" "$client_common_root/src" || {
     echo "client native setup invariant is missing: ${required_native_setup_token}" >&2

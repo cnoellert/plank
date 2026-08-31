@@ -66,6 +66,8 @@ for required_datasmash_token in \
   'sc_datasmash_native_data_send' \
   'sc_datasmash_native_data_receive' \
   'SC_DATASMASH_SETUP_LAUNCH_REQUEST' \
+  'host_feature_flags' \
+  'reference_frame_invalidation' \
   'Native QUIC session negotiation active; RTSP TCP listener disabled' \
   'drain_datasmash_control' \
   'if (!session->datasmash_endpoint)' \

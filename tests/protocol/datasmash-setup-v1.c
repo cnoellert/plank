@@ -51,6 +51,32 @@ static void check_empty_request(void) {
     CHECK(decoded.payload_size == 0);
 }
 
+static void check_launch_response(void) {
+    static const uint8_t payload[] =
+        "{\"video_format\":8,\"host_feature_flags\":127,"
+        "\"reference_frame_invalidation\":1,\"audio\":{"
+        "\"sample_rate\":48000,\"channels\":2,\"streams\":1,"
+        "\"coupled_streams\":1,\"packet_duration_ms\":5,"
+        "\"mapping\":[0,1]}}";
+    uint8_t encoded[512] = {0};
+    size_t encoded_size = 0;
+    ScDatasmashSetupPacket decoded;
+
+    CHECK(sc_datasmash_setup_encode(
+              SC_DATASMASH_SETUP_LAUNCH_RESPONSE,
+              SC_DATASMASH_SETUP_FLAG_RESPONSE,
+              SC_DATASMASH_SETUP_STATUS_OK, 9,
+              payload, sizeof(payload) - 1,
+              encoded, sizeof(encoded), &encoded_size) == 0);
+    CHECK(sc_datasmash_setup_decode(encoded, encoded_size, &decoded) == 0);
+    CHECK(decoded.type == SC_DATASMASH_SETUP_LAUNCH_RESPONSE);
+    CHECK(decoded.flags == SC_DATASMASH_SETUP_FLAG_RESPONSE);
+    CHECK(decoded.status == SC_DATASMASH_SETUP_STATUS_OK);
+    CHECK(decoded.request_id == 9);
+    CHECK(decoded.payload_size == sizeof(payload) - 1);
+    CHECK(memcmp(decoded.payload, payload, sizeof(payload) - 1) == 0);
+}
+
 static void check_malformed_records(void) {
     uint8_t encoded[64] = {0};
     size_t encoded_size = 0;
@@ -81,6 +107,7 @@ static void check_malformed_records(void) {
 int main(void) {
     check_pam_challenge_vector();
     check_empty_request();
+    check_launch_response();
     check_malformed_records();
     return 0;
 }

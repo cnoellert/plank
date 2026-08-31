@@ -20,6 +20,14 @@ application queue is enabled. PAM, ownership, display, and launch setup then
 run on that reliable endpoint. Video, audio, and input endpoints are registered
 on the same QUIC connection only after both peers authorize the session.
 
+The version-1 `LAUNCH_RESPONSE` JSON payload carries the exact accepted
+`video_format`, `host_feature_flags`, and
+`reference_frame_invalidation` capability, plus the Opus sample rate, channel
+count, stream counts, packet duration, and channel mapping. The Client must
+install those host capabilities together with the codec/audio values before it
+starts common-c. Missing local-cursor support or malformed capability values
+fail the connection; they never fall back to stale RTSP-derived state.
+
 Complete Annex-B
 frames use `VideoProtocol::UnreliableFec`, raw Opus uses
 `AudioProtocol::UnreliableFec`, input uses KyProto's reliable input protocol,
