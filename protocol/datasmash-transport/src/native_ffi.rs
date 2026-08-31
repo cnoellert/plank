@@ -475,7 +475,11 @@ async fn receive_video(
                 );
             }
             AVPacket::Media(_) => {}
-            AVPacket::Hole(_) => return Err(anyhow!("unexpected hole on KyProto video endpoint")),
+            // A KyProto hole is a normal unrecoverable-frame indication, not a
+            // connection failure.  Preserve the endpoint and let the next
+            // complete frame's sequence discontinuity drive decoder/IDR
+            // recovery at the client boundary.
+            AVPacket::Hole(_) => {}
         }
     }
     Ok(())
