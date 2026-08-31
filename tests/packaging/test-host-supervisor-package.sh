@@ -26,9 +26,9 @@ if rg -q '47990' "$firewalld_service"; then
   echo 'firewalld service still exposes the removed Web UI port' >&2
   exit 1
 fi
-rg -Fxq '  <port protocol="tcp" port="47989"/>' "$firewalld_service"
-rg -Fxq '  <port protocol="udp" port="47989"/>' "$firewalld_service"
-if rg -q '47984|48010|47998|47999|48000' "$firewalld_service"; then
+rg -Fxq '  <port protocol="tcp" port="28989"/>' "$firewalld_service"
+rg -Fxq '  <port protocol="udp" port="28989"/>' "$firewalld_service"
+if rg -q '47984|47989|48010|47998|47999|48000' "$firewalld_service"; then
   echo "retired StationConnect port remains in firewalld service" >&2
   exit 1
 fi

@@ -2041,7 +2041,7 @@ mod tests {
     fn reliable_control_queue_applies_backpressure_without_eviction() {
         let endpoint = Box::new(ScDatasmashEndpoint {
             config: EndpointConfig::Client {
-                remote_address: "127.0.0.1:47989".parse().unwrap(),
+                remote_address: "127.0.0.1:28989".parse().unwrap(),
                 server_name: "stationconnect".to_owned(),
                 certificate_sha256: Some("00".repeat(32)),
                 session_token: "test-token".to_owned(),

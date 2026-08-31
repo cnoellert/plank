@@ -608,14 +608,19 @@ for retired_bootstrap_token in \
     exit 1
   fi
 done
-rg -Fq '#define DEFAULT_CONTROL_PORT 47989' \
+rg -Fq '#define DEFAULT_CONTROL_PORT 28989' \
   "$source_dir/app/backend/nvaddress.h" || {
   echo "client control port invariant is missing" >&2
   exit 1
 }
-rg -Fq 'QStringLiteral("UDP %1").arg(DEFAULT_CONTROL_PORT)' \
-  "$source_dir/app/streaming/session.cpp" || {
-  echo "client connection diagnostics do not use the native UDP endpoint" >&2
+if rg -Fq '.arg(DEFAULT_CONTROL_PORT)' \
+    "$source_dir/app/streaming/session.cpp"; then
+  echo "client connection diagnostics still hardcode the default UDP endpoint" >&2
+  exit 1
+fi
+[[ $(rg -Fc 's_ActiveSession->m_Computer->activeAddress.port()' \
+      "$source_dir/app/streaming/session.cpp") -ge 2 ]] || {
+  echo "client connection diagnostics do not use the active host endpoint" >&2
   exit 1
 }
 for retired_network_path in \
