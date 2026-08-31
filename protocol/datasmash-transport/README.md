@@ -33,6 +33,9 @@ frames use `VideoProtocol::UnreliableFec`, raw Opus uses
 and non-input control uses its reliable data protocol. Kyber owns media
 packetization, RaptorQ, ordering, QUIC, and protocol statistics; StationConnect
 does not add GameStream RTP, media AES, or Reed-Solomon on this path.
+KyProto currently emits repair symbols equal to 30% of each video or audio
+object's source-symbol count, rounded up, with a minimum of two repair symbols.
+This is fixed transport policy rather than a host configuration setting.
 
 Each outbound lane has an independent wake-up and bounded queue, preventing a
 notification for one protocol from being consumed by another. Complete video

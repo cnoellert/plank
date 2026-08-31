@@ -662,8 +662,7 @@ fi
 echo "host_single_config_gate=pass"
 
 for required_network_token in \
-  'ping_timeout = 10000' \
-  'fec_percentage = 20'; do
+  'ping_timeout = 10000'; do
   rg -Fq "$required_network_token" \
     "$repo_dir/packaging/config/stationconnect-host.conf" || {
     echo "host network configuration is missing: ${required_network_token}" >&2
@@ -671,14 +670,20 @@ for required_network_token in \
   }
 done
 for required_network_token in \
-  '"ping_timeout"' \
-  '"fec_percentage"'; do
+  '"ping_timeout"'; do
   rg -Fq "$required_network_token" \
     "$source_dir/src/config.cpp" "$source_dir/src/network.cpp" || {
     echo "host network runtime is missing: ${required_network_token}" >&2
     exit 1
   }
 done
+if rg -n 'fec_percentage|fecPercentage' \
+  "$repo_dir/packaging/config/stationconnect-host.conf" \
+  "$source_dir/src/config.cpp" \
+  "$source_dir/src/config.h"; then
+  echo "dormant host FEC configuration remains" >&2
+  exit 1
+fi
 echo "host_network_config_gate=pass"
 
 # StationConnect accepts a deliberately small host configuration surface.

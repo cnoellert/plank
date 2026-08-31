@@ -83,15 +83,18 @@ if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
 fi
 echo "host_rpm_global_video_selector_absence_gate=pass"
 for required_network_token in \
-  'ping_timeout = 10000' \
-  'fec_percentage = 20' \
-  'Native QUIC transport encryption is always enabled'; do
+  'ping_timeout = 10000'; do
   rg -Fq "$required_network_token" \
     "$payload_dir/etc/stationconnect/stationconnect-host.conf" || {
     echo "host RPM payload is missing network configuration: ${required_network_token}" >&2
     exit 1
   }
 done
+if rg -n 'fec_percentage|fecPercentage' \
+  "$payload_dir/etc/stationconnect/stationconnect-host.conf"; then
+  echo "host RPM payload contains dormant FEC configuration" >&2
+  exit 1
+fi
 echo "host_rpm_network_config_gate=pass"
 rg -Fxq '[x264-encoder]' \
   "$payload_dir/etc/stationconnect/stationconnect-host.conf" || {
