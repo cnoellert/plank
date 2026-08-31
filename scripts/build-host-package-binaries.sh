@@ -63,9 +63,9 @@ done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
-rg -q '^#define SC_DATASMASH_ABI_VERSION 9u$' \
+rg -q '^#define SC_DATASMASH_ABI_VERSION 10u$' \
   "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "host requires Datasmash transport ABI 9" >&2
+  echo "host requires Datasmash transport ABI 10" >&2
   exit 1
 }
 rg -Fq 'uint32_t max_udp_payload_size;' \
@@ -73,6 +73,15 @@ rg -Fq 'uint32_t max_udp_payload_size;' \
   echo "host Datasmash transport is missing the route MTU contract" >&2
   exit 1
 }
+for required_rate_contract in \
+  'uint32_t initial_video_bitrate_kbps;' \
+  'sc_datasmash_native_set_video_bitrate('; do
+  rg -Fq "$required_rate_contract" \
+    "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
+    echo "host Datasmash transport is missing the encoder-rate contract: ${required_rate_contract}" >&2
+    exit 1
+  }
+done
 echo "host_datasmash_rust_input_gate=pass"
 echo "host_datasmash_cargo_features=${datasmash_cargo_features}"
 for required_datasmash_token in \
