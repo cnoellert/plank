@@ -34,7 +34,7 @@ for archive_candidate in \
   fi
 done
 package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+(\.[a-z0-9][a-z0-9-]*)?$ && $package_version != *.main ]] || {
   echo "invalid shared package version: ${package_version}" >&2
   exit 1
 }

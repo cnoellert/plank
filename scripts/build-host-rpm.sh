@@ -11,7 +11,7 @@ repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 output_dir=$(realpath -m -- "${2:-${repo_dir}/artifacts/packages}")
 package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.datasmash$ ]] || {
+[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+(\.[a-z0-9][a-z0-9-]*)?$ && $package_version != *.main ]] || {
   echo "invalid shared package version: ${package_version}" >&2
   exit 1
 }
