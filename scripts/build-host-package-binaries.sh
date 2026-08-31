@@ -63,6 +63,16 @@ done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
+rg -q '^#define SC_DATASMASH_ABI_VERSION 8u$' \
+  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
+  echo "host requires Datasmash transport ABI 8" >&2
+  exit 1
+}
+rg -Fq 'uint32_t max_udp_payload_size;' \
+  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
+  echo "host Datasmash transport is missing the route MTU contract" >&2
+  exit 1
+}
 echo "host_datasmash_rust_input_gate=pass"
 echo "host_datasmash_cargo_features=${datasmash_cargo_features}"
 for required_datasmash_token in \

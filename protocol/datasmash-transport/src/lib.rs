@@ -20,7 +20,7 @@ pub mod native_ffi;
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
 pub const PROTOCOL_VERSION: u16 = 7;
-pub const ABI_VERSION: u32 = 7;
+pub const ABI_VERSION: u32 = 8;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -238,6 +238,7 @@ struct RuntimeOptions {
     handshake_timeout: Duration,
     idle_timeout: Duration,
     keep_alive_interval: Duration,
+    max_udp_payload_size: Option<u16>,
 }
 
 struct SharedStatus {
@@ -366,6 +367,7 @@ pub struct ScDatasmashConfig {
     pub idle_timeout_ms: u32,
     pub keep_alive_interval_ms: u32,
     pub session_mode: u32,
+    pub max_udp_payload_size: u32,
     pub bind_address: *const c_char,
     pub remote_address: *const c_char,
     pub server_name: *const c_char,
@@ -442,6 +444,16 @@ fn configured_duration(value_ms: u32, default_ms: u32, field: &str) -> Result<Du
     Ok(Duration::from_millis(u64::from(value_ms)))
 }
 
+fn configured_max_udp_payload_size(value: u32) -> Result<Option<u16>> {
+    if value == 0 {
+        return Ok(None);
+    }
+    if !(1200..=65_527).contains(&value) {
+        bail!("max_udp_payload_size must be zero or between 1200 and 65527 bytes");
+    }
+    Ok(Some(value as u16))
+}
+
 unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfig> {
     if config.is_null() {
         bail!("config is required");
@@ -469,6 +481,7 @@ unsafe fn parse_config(config: *const ScDatasmashConfig) -> Result<EndpointConfi
             DEFAULT_KEEP_ALIVE_INTERVAL_MS,
             "keep_alive_interval_ms",
         )?,
+        max_udp_payload_size: configured_max_udp_payload_size(config.max_udp_payload_size)?,
     };
     if config.session_mode > 1 {
         bail!("unsupported session_mode {}", config.session_mode);
@@ -1026,6 +1039,7 @@ async fn run_client(
     let client_options = kynet::quinn::QuinnClientOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        max_udp_payload_size: options.max_udp_payload_size,
         certificate_hash: Some(certificate_sha256.to_owned()),
     };
     let connect = async {
@@ -1967,6 +1981,7 @@ mod tests {
             idle_timeout_ms: 0,
             keep_alive_interval_ms: 0,
             session_mode: 0,
+            max_udp_payload_size: 0,
             bind_address: ptr::null(),
             remote_address: ptr::null(),
             server_name: ptr::null(),
@@ -1979,13 +1994,26 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(sc_datasmash_abi_version(), 7);
+        assert_eq!(sc_datasmash_abi_version(), 8);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::PeerValidation as u32, 3);
         assert_eq!(EndpointState::SetupReady as u32, 4);
         assert_eq!(EndpointState::Failed as u32, 8);
         assert_eq!(SC_DATASMASH_DROPPED, 2);
         assert_eq!(SC_DATASMASH_ERROR_BUFFER_TOO_SMALL, -5);
+    }
+
+    #[test]
+    fn maximum_udp_payload_size_is_bounded_by_quic() {
+        assert_eq!(configured_max_udp_payload_size(0).unwrap(), None);
+        assert_eq!(configured_max_udp_payload_size(1200).unwrap(), Some(1200));
+        assert_eq!(configured_max_udp_payload_size(1344).unwrap(), Some(1344));
+        assert_eq!(
+            configured_max_udp_payload_size(65_527).unwrap(),
+            Some(65_527)
+        );
+        assert!(configured_max_udp_payload_size(1199).is_err());
+        assert!(configured_max_udp_payload_size(65_528).is_err());
     }
 
     #[test]
@@ -2013,6 +2041,7 @@ mod tests {
                     handshake_timeout: Duration::from_secs(1),
                     idle_timeout: Duration::from_secs(1),
                     keep_alive_interval: Duration::from_secs(1),
+                    max_udp_payload_size: None,
                 },
             },
             mode: 2,

@@ -45,6 +45,16 @@ done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
+rg -q '^#define SC_DATASMASH_ABI_VERSION 8u$' \
+  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
+  echo "client requires Datasmash transport ABI 8" >&2
+  exit 1
+}
+rg -Fq 'uint32_t max_udp_payload_size;' \
+  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
+  echo "client Datasmash transport is missing the route MTU contract" >&2
+  exit 1
+}
 echo "client_datasmash_rust_input_gate=pass"
 for required_datasmash_token in \
   'StationConnectDatasmashCertificateSha256' \
@@ -111,6 +121,12 @@ for removed_legacy_media_token in \
   fi
 done
 echo "client_datasmash_legacy_media_absence_gate=pass"
+if rg -n '^#define STREAM_CFG_(LOCAL|REMOTE|AUTO)|^[[:space:]]*int (packetSize|streamingRemotely);' \
+  "$source_dir/moonlight-common-c/moonlight-common-c/src/Limelight.h"; then
+  echo "obsolete GameStream route and packet-size policy remains in client common-c" >&2
+  exit 1
+fi
+echo "client_gamestream_packet_policy_absence_gate=pass"
 for removed_media_bridge_token in \
   'StationConnectVideoPacketReceiver' \
   'StationConnectAudioPacketReceiver'; do
@@ -1197,20 +1213,23 @@ if rg -n 'Wake PC|WakeableRole|wakeComputer|macAddress|SER_MAC|wolPayload|STATIC
 fi
 echo "client_wake_on_lan_absence_gate=pass"
 
-# A configured physical path MTU is converted once to a conservative,
-# 16-byte-aligned video packet size. Keep the old raw packet-size control out.
-if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER' \
+# Native KyProto owns media packetization. Keep the retired GameStream packet
+# size preference and its misleading UI out of the Client.
+if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER|networkMtu|stationconnect-network-mtu|videoPacketSizeForMtu|Determine network MTU|Physical path MTU|stationconnectpacketsize' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "legacy raw packet-size configuration is present in StationConnect client" >&2
+  echo "legacy packet-size configuration is present in StationConnect client" >&2
   exit 1
 fi
 for required_mtu_token in \
   'Network Settings' \
-  stationconnect-network-mtu \
-  videoPacketSizeForPhysicalMtu; do
+  ZeroTierQuicUdpPayloadMtu \
+  quicUdpPayloadMtu \
+  'Determine QUIC MTU automatically' \
+  'Maximum QUIC UDP payload' \
+  max_udp_payload_size; do
   rg -Fq "$required_mtu_token" "$source_dir/app" || {
-    echo "client MTU configuration invariant is missing: ${required_mtu_token}" >&2
+    echo "client native MTU invariant is missing: ${required_mtu_token}" >&2
     exit 1
   }
 done

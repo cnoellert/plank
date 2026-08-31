@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 7u
+#define SC_DATASMASH_ABI_VERSION 8u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 typedef struct ScDatasmashNativeEndpoint ScDatasmashNativeEndpoint;
@@ -101,6 +101,12 @@ typedef struct ScDatasmashConfig {
     uint32_t idle_timeout_ms;
     uint32_t keep_alive_interval_ms;
     uint32_t session_mode;
+    /*
+     * Maximum complete QUIC UDP payload, excluding outer IP/UDP headers.
+     * Zero retains Quinn's default path policy. A nonzero value also limits
+     * the peer through QUIC's max_udp_payload_size transport parameter.
+     */
+    uint32_t max_udp_payload_size;
     const char *bind_address;
     const char *remote_address;
     const char *server_name;

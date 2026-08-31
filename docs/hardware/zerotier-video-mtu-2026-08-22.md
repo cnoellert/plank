@@ -44,3 +44,37 @@ SHA-256 630418c44b61661f23d7acf287a3a20c547f32e3739c16859882244df6bece78
 The synchronized host RPM passed its package-binary and manifest gates. It
 contains no functional host change and is not required for the packet-size
 test; an installed 0.13 host honors the size negotiated by the 0.14 client.
+
+## Native KyProto/QUIC qualification
+
+The Datasmash transport no longer uses the Moonlight packet-size negotiation
+described above. Live captures on 2026-08-30 established the corresponding
+native QUIC contract. ZeroTier successfully reassembled larger inner packets,
+which allowed Quinn's DPLPMTUD to report success at 1452 bytes even though the
+underlay emitted fragments. Representative complete QUIC UDP payloads produced
+these observed ZeroTier physical UDP payloads:
+
+| QUIC UDP payload | Observed physical payload |
+| ---: | ---: |
+| 1200 | 1238 |
+| 1328 | 1366 |
+| 1344 | 1382 |
+| 1352 | 1390 |
+| 1400 | 1432 + 22-byte fragment |
+| 1452 | 1432 + 74-byte fragment |
+
+The 38-byte difference in the unfragmented samples is the normal ZeroTier
+envelope. The extended-frame budget remains 51 bytes, so the native Client
+uses a 1344-byte QUIC UDP ceiling only when the kernel-selected route matches
+a ZeroTier interface. Including inner IPv4/UDP and the extended envelope gives
+`1344 + 28 + 51 = 1423`, below the 1432-byte physical boundary. A conservative
+38-byte QUIC DATAGRAM allowance and KyProto's 26-byte video FEC header leave a
+1280-byte RaptorQ video symbol.
+
+The Client supplies 1344 both as Quinn's MTU-discovery upper bound and as the
+QUIC `max_udp_payload_size` transport parameter. This constrains both Client-
+to-Host and Host-to-Client traffic. The old physical-path-MTU UI and GameStream
+`packetSize` fields did not affect native KyProto and are removed. The
+replacement manual override is the exact maximum QUIC UDP payload and therefore
+feeds Quinn directly. Automatic remains the default; other route types retain
+Quinn's normal discovery policy.

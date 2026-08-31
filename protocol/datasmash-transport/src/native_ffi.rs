@@ -252,6 +252,7 @@ fn native_options(options: super::RuntimeOptions) -> NativeOptions {
         handshake_timeout: options.handshake_timeout,
         idle_timeout: options.idle_timeout,
         keep_alive_interval: options.keep_alive_interval,
+        max_udp_payload_size: options.max_udp_payload_size,
     }
 }
 

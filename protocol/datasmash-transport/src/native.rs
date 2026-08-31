@@ -31,6 +31,7 @@ pub struct NativeOptions {
     pub handshake_timeout: Duration,
     pub idle_timeout: Duration,
     pub keep_alive_interval: Duration,
+    pub max_udp_payload_size: Option<u16>,
 }
 
 pub struct NativeServerProtocols {
@@ -223,6 +224,7 @@ async fn connect_raw_client(
     let client_options = kynet::quinn::QuinnClientOptions {
         max_idle_timeout: Some(options.idle_timeout),
         keep_alive_interval: Some(options.keep_alive_interval),
+        max_udp_payload_size: options.max_udp_payload_size,
         certificate_hash: None,
     };
     let raw_connection = kynet::Connection::quinn_connect(
@@ -503,6 +505,7 @@ mod tests {
             handshake_timeout: Duration::from_secs(5),
             idle_timeout: Duration::from_secs(10),
             keep_alive_interval: Duration::from_secs(1),
+            max_udp_payload_size: Some(1344),
         };
         let server_options = kynet::common::CommonServerOptions {
             max_idle_timeout: Some(options.idle_timeout),
