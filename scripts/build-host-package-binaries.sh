@@ -493,6 +493,22 @@ echo "host_touchscreen_absence_gate=pass"
 # host UHID/XInput endpoints. Stable endpoint identity prevents applications
 # such as Flame from retaining a stale stylus/eraser device ID after refocus.
 host_common_dir="${source_dir}/third-party/moonlight-common-c/src"
+for retired_network_path in \
+  ConnectionTester.c \
+  SimpleStun.c; do
+  [[ ! -e "${host_common_dir}/${retired_network_path}" ]] || {
+    echo "retired host common-c network probe remains: ${retired_network_path}" >&2
+    exit 1
+  }
+done
+if rg -n \
+  'LiFindExternalAddressIP4|LiTestClientConnectivity|LiGetPortFlagsFromStage|LiGetPortFlagsFromTerminationErrorCode|LiGetProtocolFromPortFlagIndex|LiGetPortFromPortFlagIndex|LiStringifyPortFlags|ML_PORT_FLAG_|ML_PORT_INDEX_|ML_TEST_RESULT' \
+  "$host_common_dir"; then
+  echo "retired host common-c STUN or connectivity-test API remains" >&2
+  exit 1
+fi
+echo "host_legacy_network_probe_absence_gate=pass"
+
 for required_raw_hid_token in \
   '#define SC_RAW_HID_WIRE_VERSION 2U' \
   'SC_RAW_HID_SUSPEND = 13'; do
