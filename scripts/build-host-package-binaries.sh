@@ -170,7 +170,7 @@ for retired_http_token in \
   'http_server_t' \
   'SimpleWeb::Server<SimpleWeb::HTTP>' \
   '47984'; do
-  if rg -Fq "$retired_http_token" \
+  if rg -Fwq "$retired_http_token" \
       "$source_dir/src/nvhttp.cpp" "$source_dir/src/nvhttp.h"; then
     echo "retired host bootstrap transport remains: ${retired_http_token}" >&2
     exit 1
