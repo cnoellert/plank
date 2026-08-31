@@ -1029,7 +1029,7 @@ fn worker(config: EndpointConfig, shared: Arc<NativeShared>) {
     if shared.stop.load(Ordering::Acquire) {
         shared.set_state(EndpointState::Stopped);
     } else if let Err(error) = result {
-        shared.fail(error);
+        shared.fail(format!("{error:#}"));
     } else {
         shared.set_state(EndpointState::Stopped);
     }
