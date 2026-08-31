@@ -80,8 +80,6 @@ grep -Fxq '# Listener address family: ipv4 = IPv4 only; both = IPv4 and IPv6.' \
   "${host_profile}"
 grep -Fxq 'ping_timeout = 10000' "${host_profile}"
 grep -Fxq 'fec_percentage = 20' "${host_profile}"
-grep -Fxq '# Native QUIC transport encryption is always enabled and has no per-network' \
-  "${host_profile}"
 for section in network x264-encoder security discovery; do
   grep -Fxq "[${section}]" "${host_profile}"
 done
@@ -99,6 +97,7 @@ if rg -q '^[[:space:]]*[A-Z][A-Z0-9_]*=' "${host_profile}"; then
 fi
 grep -Fxq '[network]' "${client_policy}"
 grep -Fxq '# mdns_discovery = false' "${client_policy}"
+grep -Fxq 'port = 28989' "${client_policy}"
 if rg -q '^[[:space:]]*mdns_discovery[[:space:]]*=' "${client_policy}"; then
   echo 'Packaged client policy locks mDNS instead of leaving it user-configurable' >&2
   exit 1

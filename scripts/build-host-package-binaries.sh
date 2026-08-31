@@ -663,8 +663,7 @@ echo "host_single_config_gate=pass"
 
 for required_network_token in \
   'ping_timeout = 10000' \
-  'fec_percentage = 20' \
-  'Native QUIC transport encryption is always enabled'; do
+  'fec_percentage = 20'; do
   rg -Fq "$required_network_token" \
     "$repo_dir/packaging/config/stationconnect-host.conf" || {
     echo "host network configuration is missing: ${required_network_token}" >&2

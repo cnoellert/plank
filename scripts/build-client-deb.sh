@@ -267,6 +267,10 @@ grep -Fxq '[network]' <<<"$client_policy" || {
   echo "client administrator policy is missing its network section" >&2
   exit 1
 }
+grep -Fxq 'port = 28989' <<<"$client_policy" || {
+  echo "client administrator policy does not define the product network port" >&2
+  exit 1
+}
 grep -Fxq '# mdns_discovery = false' <<<"$client_policy" || {
   echo "client administrator policy does not leave mDNS user-configurable by default" >&2
   exit 1

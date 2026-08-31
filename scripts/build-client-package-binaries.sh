@@ -608,9 +608,9 @@ for retired_bootstrap_token in \
     exit 1
   fi
 done
-rg -Fq '#define DEFAULT_CONTROL_PORT 28989' \
-  "$source_dir/app/backend/nvaddress.h" || {
-  echo "client control port invariant is missing" >&2
+rg -Fq 'static constexpr quint16 BuiltInNetworkPort = 28989;' \
+  "$source_dir/app/settings/stationconnectclientpolicy.h" || {
+  echo "client built-in control-port fallback is missing" >&2
   exit 1
 }
 if rg -Fq '.arg(DEFAULT_CONTROL_PORT)' \
@@ -1392,6 +1392,19 @@ rg -Fxq '[network]' "$client_policy" || {
   echo "client administrator policy is missing its network section" >&2
   exit 1
 }
+rg -Fxq 'port = 28989' "$client_policy" || {
+  echo "client administrator policy does not define the product network port" >&2
+  exit 1
+}
+for required_port_token in \
+  'network/port' \
+  'policy.networkPort()' \
+  'StationConnectClientPolicy().networkPort()'; do
+  rg -Fq "$required_port_token" "$source_dir/app" || {
+    echo "client configured network-port path is missing: ${required_port_token}" >&2
+    exit 1
+  }
+done
 rg -Fxq '# mdns_discovery = false' "$client_policy" || {
   echo "client administrator policy does not document the optional managed value" >&2
   exit 1

@@ -111,6 +111,9 @@ the saved preference and locks its UI control. The client does not source
 per-user shell configuration. Capture selection follows the authenticated
 bookmark topology for each session; there is no fixed administrator
 capture-output selector.
+The active `network.port` value supplies the TCP/UDP endpoint when a bookmark
+address does not include an explicit port. An explicit `hostname:port` bookmark
+continues to take precedence.
 The software profile expands x264 worker affinity to the qualified CPU set and
 uses 16 slices on hardware-test-host; neither the CPU count nor slice count is a universal
 default. The host configuration uses INI-style section headers and one globally
