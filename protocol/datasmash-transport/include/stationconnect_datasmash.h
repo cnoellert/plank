@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define SC_DATASMASH_ABI_VERSION 8u
+#define SC_DATASMASH_ABI_VERSION 9u
 
 typedef struct ScDatasmashEndpoint ScDatasmashEndpoint;
 typedef struct ScDatasmashNativeEndpoint ScDatasmashNativeEndpoint;
@@ -161,6 +161,8 @@ typedef struct ScDatasmashNativeStats {
     uint64_t quic_rtt_us;
     uint64_t quic_packets_lost;
     uint64_t kyproto_packets_dropped;
+    uint64_t video_fec_source_symbols;
+    uint64_t video_fec_source_symbols_missing;
 } ScDatasmashNativeStats;
 
 uint32_t sc_datasmash_abi_version(void);

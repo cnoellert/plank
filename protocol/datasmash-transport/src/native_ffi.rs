@@ -100,6 +100,8 @@ struct NativeStats {
     quic_rtt_us: AtomicU64,
     quic_packets_lost: AtomicU64,
     kyproto_packets_dropped: AtomicU64,
+    video_fec_source_symbols: AtomicU64,
+    video_fec_source_symbols_missing: AtomicU64,
 }
 
 struct NativeStatus {
@@ -238,6 +240,8 @@ pub struct ScDatasmashNativeStats {
     pub quic_rtt_us: u64,
     pub quic_packets_lost: u64,
     pub kyproto_packets_dropped: u64,
+    pub video_fec_source_symbols: u64,
+    pub video_fec_source_symbols_missing: u64,
 }
 
 pub struct ScDatasmashNativeEndpoint {
@@ -652,6 +656,16 @@ async fn sample_stats(
         );
         shared.stats.kyproto_packets_dropped.store(
             protocol.dropped_packets.unwrap_or_default(),
+            Ordering::Relaxed,
+        );
+        shared.stats.video_fec_source_symbols.store(
+            protocol.video_fec_source_symbols.unwrap_or_default(),
+            Ordering::Relaxed,
+        );
+        shared.stats.video_fec_source_symbols_missing.store(
+            protocol
+                .video_fec_source_symbols_missing
+                .unwrap_or_default(),
             Ordering::Relaxed,
         );
     }
@@ -1715,6 +1729,10 @@ pub unsafe extern "C" fn sc_datasmash_native_endpoint_stats(
             quic_rtt_us: stats.quic_rtt_us.load(Ordering::Relaxed),
             quic_packets_lost: stats.quic_packets_lost.load(Ordering::Relaxed),
             kyproto_packets_dropped: stats.kyproto_packets_dropped.load(Ordering::Relaxed),
+            video_fec_source_symbols: stats.video_fec_source_symbols.load(Ordering::Relaxed),
+            video_fec_source_symbols_missing: stats
+                .video_fec_source_symbols_missing
+                .load(Ordering::Relaxed),
         };
         SC_DATASMASH_OK
     })

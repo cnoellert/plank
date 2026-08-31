@@ -619,6 +619,19 @@ mod tests {
         assert!(received_video.header.is_key);
         assert_eq!(received_video.header.pts, 90_000);
         assert_eq!(received_video.payload, video_payload);
+        let video_protocol_stats = client_connection.protocol_stats();
+        assert!(
+            video_protocol_stats
+                .video_fec_source_symbols
+                .unwrap_or_default()
+                > 0
+        );
+        assert_eq!(
+            video_protocol_stats
+                .video_fec_source_symbols_missing
+                .unwrap_or_default(),
+            0
+        );
 
         server_audio
             .send

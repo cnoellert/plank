@@ -45,9 +45,9 @@ done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
-rg -q '^#define SC_DATASMASH_ABI_VERSION 8u$' \
+rg -q '^#define SC_DATASMASH_ABI_VERSION 9u$' \
   "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "client requires Datasmash transport ABI 8" >&2
+  echo "client requires Datasmash transport ABI 9" >&2
   exit 1
 }
 rg -Fq 'uint32_t max_udp_payload_size;' \
@@ -603,8 +603,11 @@ echo "client_legacy_enet_absence_gate=pass"
 for required_loss_ui_token in \
   'm_CurrentVideoPacketLossPercent' \
   'currentVideoPacketLossPercent' \
+  'VideoPacketLossInterval' \
   'VideoPacketLossPeakWindow' \
   'kWindowMs = 10000' \
+  'video_fec_source_symbols' \
+  'video_fec_source_symbols_missing' \
   'Incoming video packet loss (before FEC): %.2f%%' \
   'packetLossColor' \
   'const QColor blue(52, 132, 228)' \
@@ -627,6 +630,25 @@ for required_loss_ui_token in \
   }
 done
 echo "client_video_packet_loss_indicator_gate=pass"
+
+# StationConnect presents immediately and keeps the optional upstream software
+# frame pacer out of user policy. A renderer may still force its internal pacer
+# when required for backend correctness.
+if rg -n -i \
+  'frame.?pacing|SER_FRAMEPACING|framePacing' \
+  "$source_dir/app/gui/SettingsView.qml" \
+  "$source_dir/app/settings/streamingpreferences.cpp" \
+  "$source_dir/app/settings/streamingpreferences.h" \
+  "$source_dir/app/cli/commandlineparser.cpp"; then
+  echo "obsolete client frame-pacing preference remains" >&2
+  exit 1
+fi
+rg -Fq 'params.enableFramePacing = false;' \
+  "$source_dir/app/streaming/session.cpp" || {
+  echo "StationConnect unpaced presentation policy is missing" >&2
+  exit 1
+}
+echo "client_frame_pacing_preference_absence_gate=pass"
 
 # The speed candidate keeps the accepted system-memory allocator as its
 # default and exposes two developer-only alternatives through an environment
@@ -743,6 +765,11 @@ for required_bookmark_profile_ui_token in \
     exit 1
   }
 done
+rg -Fq 'addEncodingProfile.currentIndex = 6' \
+  "$source_dir/app/gui/main.qml" || {
+  echo "new bookmarks do not default to H.265 10-bit 4:4:4 NVENC" >&2
+  exit 1
+}
 if rg -n 'stationConnectVideoProfile|Encoding profile' \
   "$source_dir/app/gui/SettingsView.qml" \
   "$source_dir/app/settings/streamingpreferences.cpp"; then
@@ -1278,6 +1305,11 @@ rg -Fxq '# mdns_discovery = false' "$client_policy" || {
   echo "client administrator policy does not document the optional managed value" >&2
   exit 1
 }
+if rg -Fq 'Automatically find PCs on the local network (Recommended)' \
+  "$source_dir/app/gui/SettingsView.qml"; then
+  echo "obsolete mDNS recommendation label remains" >&2
+  exit 1
+fi
 if rg -q '^[[:space:]]*mdns_discovery[[:space:]]*=' "$client_policy"; then
   echo "client administrator policy locks mDNS in the default package" >&2
   exit 1
