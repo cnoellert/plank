@@ -68,7 +68,7 @@ change exact-format decoder policy: H.264 High 10 4:4:4 identity still uses the
 qualified FFmpeg software decoder because the Intel VA-API driver does not
 expose that exact profile; supported exact HEVC profiles may use hardware.
 
-## Validation completed before packaging
+## Validation
 
 - Host package-binary build gates passed on `hardware-test-host`, including legacy HTTP
   surface absence and secure credential-write gates.
@@ -76,6 +76,11 @@ expose that exact profile; supported exact HEVC profiles may use hardware.
   the retained Boost 1.89.0 source, and the prepared host FFmpeg tree.
 - Thirty focused host tests covering file handling, PAM broker framing,
   web-auth lifetime/binding, and the fixed Desktop identity passed.
-- Client and host diffs passed whitespace validation. The clean Development NUC
-  client build/install and final RPM packaging remain release gates for the
-  candidate commit.
+- The clean Qt 6.10.2 Client build, binary/runtime checks, DEB manifest gates,
+  APT installation on the Development NUC, exact version/hash checks, and
+  no-autostart checks passed.
+- The clean GCC Toolset 14/CUDA 13.0 Host build and RPM manifest gates passed.
+  Root CTest passed 18/18. NvFBC CUDA capture met 60 fps and real 2160p60 NVENC
+  HEVC Rext 10-bit 4:4:4 encoding passed. The aggregate live qualification is
+  incomplete because hardware-test-host has no attached Wacom and public KMS scanout was
+  unavailable; those are recorded limitations rather than false passes.
