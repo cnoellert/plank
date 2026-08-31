@@ -614,10 +614,8 @@ for required_loss_ui_token in \
   'inline constexpr int VideoPacketLossDisplayDecimalPlaces = 2;' \
   'video_fec_source_symbols' \
   'video_fec_source_symbols_missing' \
-  'Incoming video packet loss (before FEC): %.*f%%' \
-  'Incoming video frame loss (after FEC): %.2f%%' \
-  'Frames dropped by client frame queues: %.2f%%' \
-  'Client frame queue drops by reason (render/overflow): %u/%u' \
+  'Incoming video loss (before/after FEC): %s/%s' \
+  'Client frame queue drops (%%/render/overflow): %.2f%%/%u/%u' \
   'currentNetworkRttMs' \
   'quic_rtt_us' \
   'packetLossColor' \
@@ -645,7 +643,11 @@ for retired_stats_token in \
   'LiGetEstimatedRttInfo' \
   'Frames dropped by your network connection' \
   'Frames dropped due to network jitter' \
-  'Client pacer drops by reason'; do
+  'Client pacer drops by reason' \
+  'Frames dropped by client frame queues' \
+  'Client frame queue drops by reason' \
+  'Incoming video packet loss (before FEC)' \
+  'Incoming video frame loss (after FEC)'; do
   if rg -Fq "$retired_stats_token" \
     "$source_dir/app/streaming" \
     "$client_common_root/src"; then
