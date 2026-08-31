@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 10 describes the host desktop after operating-system
+Protocol version 11 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 10` and a numeric `feature_flags` field from
-`GET /stationconnect/topology`. Version 10 defines these bits:
+The host returns `schema_version: 11` and a numeric `feature_flags` field from
+`GET /stationconnect/topology`. Version 11 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -28,8 +28,9 @@ The host returns `schema_version: 10` and a numeric `feature_flags` field from
 - `0x800` — exact per-session capture-source selection and acknowledgement
 - `0x1000` — exact per-session encoder-backend and encoding-mode selection
 - `0x2000` — NvFBC 8-bit source expansion into HEVC 10-bit 4:4:4 direct NVENC
+- `0x4000` — one fixed complete QUIC UDP payload ceiling for both endpoints
 
-The client sends `scProtocolVersion=10`, `scFeatureFlags`, `scDisplayMode`,
+The client sends `scProtocolVersion=11`, `scFeatureFlags`, `scDisplayMode`,
 `scHostLayout`, `scVirtualMode1`, and `scVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `scTopologyGeneration` returned by the topology endpoint. `single-output` also
@@ -56,7 +57,7 @@ its output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`configured_mode` and a `source_rect` in composite-source coordinates. Version 10 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 11 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -74,11 +75,20 @@ canvas directly to planar GBR10, or performs center-aligned bilinear scaling
 and plane generation in that same CPU pass when the negotiated encode size is
 different. See `protocol/encoding-profiles.md` for the exact allowed tuples.
 
-Protocol version 10 has one data plane: native Datasmash. The removed
+Protocol version 11 has one data plane: native Datasmash. The removed
 `scDataPlane` request and `StationConnectDataPlane` acknowledgement are not
 accepted compatibility switches. Every successful launch returns a Datasmash
 port, canonical TLS certificate SHA-256 fingerprint, and canonical one-use
 session token; missing or malformed native credentials fail the launch.
+The client also resolves its active route and sends
+`scQuicUdpPayloadMtu=1200..65527`. The host applies that exact complete UDP
+payload ceiling before it starts its Quinn listener, echoes it as
+`StationConnectQuicUdpPayloadMtu`, and the client applies the same value before
+its endpoint starts. Automatic mode uses the selected route interface MTU with
+a conservative cap; the qualified ZeroTier route uses 1344 bytes. Manual mode
+is an explicit complete-QUIC-UDP-payload override. A missing, invalid, or
+mismatched value fails launch so RaptorQ never packetizes a frame against a
+path size that can shrink underneath it.
 
 Bookmarks persist `configured`, `physical`, `single`, or `dual-horizontal` as
 their host-layout requirement. `configured` is resolved to the authenticated
@@ -136,7 +146,7 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v10.json` represents a physical-startup host
+`tests/protocol/output-topology-v11.json` represents a physical-startup host
 temporarily presenting the Flame-style 3840x2160 primary plus 1280x2160
 secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout
