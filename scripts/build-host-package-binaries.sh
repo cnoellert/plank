@@ -45,6 +45,7 @@ for datasmash_input in \
   include/stationconnect_datasmash_control.h \
   include/stationconnect_datasmash_event.h \
   include/stationconnect_datasmash_input.h \
+  include/stationconnect_datasmash_setup.h \
   src/lib.rs; do
   [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
     echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
@@ -64,6 +65,8 @@ for required_datasmash_token in \
   'sc_datasmash_native_audio_send' \
   'sc_datasmash_native_data_send' \
   'sc_datasmash_native_data_receive' \
+  'SC_DATASMASH_SETUP_LAUNCH_REQUEST' \
+  'Native QUIC session negotiation active; RTSP TCP listener disabled' \
   'drain_datasmash_control' \
   'if (!session->datasmash_endpoint)' \
   'Confirmed StationConnect encoder target over Datasmash' \
@@ -135,9 +138,10 @@ for removed_host_transport_dependency_token in \
 done
 echo "host_datasmash_legacy_dependency_absence_gate=pass"
 
-# KyProto encrypts native media, input, and event traffic. Reject the dormant
-# GameStream media-encryption negotiation while preserving AES-GCM on the
-# temporary TCP RTSP setup exchange until setup moves onto QUIC.
+# KyProto encrypts native media, input, event, and runtime session negotiation
+# traffic. Reject dormant GameStream media-encryption negotiation. The compiled
+# RTSP implementation remains only until this native cut passes live validation;
+# the runtime listener must stay disabled above.
 if rg -n 'encryptionFlagsEnabled|encryption_control_v2|encryption_video|encryption_audio|x-ss-general\.encryption(Supported|Requested|Enabled)' \
   "$source_dir/src"; then
   echo "retired host GameStream media-encryption negotiation is present" >&2

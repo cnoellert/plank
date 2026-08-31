@@ -35,6 +35,7 @@ for datasmash_input in \
   include/stationconnect_datasmash_control.h \
   include/stationconnect_datasmash_event.h \
   include/stationconnect_datasmash_input.h \
+  include/stationconnect_datasmash_setup.h \
   src/lib.rs; do
   [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
     echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
@@ -49,6 +50,8 @@ for required_datasmash_token in \
   'StationConnectDatasmashCertificateSha256' \
   'isCanonicalSha256Hex' \
   'startDatasmashDataPlane' \
+  'negotiateDatasmashSession' \
+  'SC_DATASMASH_SETUP_LAUNCH_REQUEST' \
   'sc_datasmash_native_video_receive' \
   'LiSubmitStationConnectVideoFrame' \
   'sc_datasmash_native_audio_receive' \
@@ -487,9 +490,20 @@ if rg -n 'queueRtpPacket|notifyFrameLost|NV_VIDEO_PACKET|RTP_PACKET|VideoDepacke
 fi
 echo "client_complete_frame_assembler_gate=pass"
 
-# KyProto encrypts native media, input, and event traffic. Do not retain the
-# unused GameStream media-encryption negotiation. The temporary TCP RTSP setup
-# channel remains AES-GCM protected until setup itself moves onto QUIC.
+# KyProto encrypts native media, input, event, and runtime session negotiation
+# traffic. Do not retain unused GameStream media-encryption negotiation. The
+# compiled RTSP implementation remains only until the native cut passes live
+# validation; the Client must configure common-c through the native boundary.
+for required_native_setup_token in \
+  LiSetStationConnectNativeSessionConfiguration \
+  STATIONCONNECT_NATIVE_SESSION_CONFIGURATION; do
+  rg -Fq "$required_native_setup_token" \
+    "$source_dir/app/streaming/session.cpp" "$client_common_root/src" || {
+    echo "client native setup invariant is missing: ${required_native_setup_token}" >&2
+    exit 1
+  }
+done
+echo "client_native_setup_gate=pass"
 if rg -n 'ENCFLG_|encryptionFlags|EncryptionFeatures|AudioEncryptionEnabled|SS_ENC_|x-ss-general\.encryptionEnabled|hasFastAes|NVFF_AUDIO_ENCRYPTION' \
   "$source_dir/app" "$client_common_root/src"; then
   echo "retired client GameStream media-encryption negotiation is present" >&2
