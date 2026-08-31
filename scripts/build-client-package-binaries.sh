@@ -611,9 +611,15 @@ for required_loss_ui_token in \
   'VideoPacketLossInterval' \
   'VideoPacketLossPeakWindow' \
   'kWindowMs = 10000' \
+  'inline constexpr int VideoPacketLossDisplayDecimalPlaces = 2;' \
   'video_fec_source_symbols' \
   'video_fec_source_symbols_missing' \
-  'Incoming video packet loss (before FEC): %.2f%%' \
+  'Incoming video packet loss (before FEC): %.*f%%' \
+  'Incoming video frame loss (after FEC): %.2f%%' \
+  'Frames dropped by client frame queues: %.2f%%' \
+  'Client frame queue drops by reason (render/overflow): %u/%u' \
+  'currentNetworkRttMs' \
+  'quic_rtt_us' \
   'packetLossColor' \
   'const QColor blue(52, 132, 228)' \
   'const QColor green(52, 199, 110)' \
@@ -633,6 +639,19 @@ for required_loss_ui_token in \
     echo "video packet-loss toolbar invariant is missing: ${required_loss_ui_token}" >&2
     exit 1
   }
+done
+
+for retired_stats_token in \
+  'LiGetEstimatedRttInfo' \
+  'Frames dropped by your network connection' \
+  'Frames dropped due to network jitter' \
+  'Client pacer drops by reason'; do
+  if rg -Fq "$retired_stats_token" \
+    "$source_dir/app/streaming" \
+    "$client_common_root/src"; then
+    echo "retired client statistics token remains: ${retired_stats_token}" >&2
+    exit 1
+  fi
 done
 echo "client_video_packet_loss_indicator_gate=pass"
 
