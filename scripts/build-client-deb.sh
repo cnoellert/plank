@@ -239,7 +239,7 @@ dpkg-deb --root-owner-group --uniform-compression -Zxz --build "$stage_dir" "$de
 dpkg-deb --info "$deb_file" >/dev/null
 dpkg-deb --contents "$deb_file" >/dev/null
 for required_package in \
-  intel-media-va-driver \
+  intel-media-va-driver-non-free \
   qml6-module-qtquick \
   qml6-module-qtquick-controls \
   qml6-module-qtquick-layouts \

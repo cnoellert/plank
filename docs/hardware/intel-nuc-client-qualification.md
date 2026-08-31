@@ -1,7 +1,8 @@
 # Intel NUC Client Qualification
 
 Run this gate on every supported NUC generation with its production Ubuntu
-kernel, `intel-media-va-driver` (`iHD`), libva, FFmpeg, GStreamer's `vah265dec`,
+kernel, `intel-media-va-driver-non-free` (`iHD`), libva, FFmpeg, GStreamer's
+`vah265dec`,
 compositor, and display. On Ubuntu, install `gstreamer1.0-plugins-bad` for the
 VA decoder. The DMA-BUF probe additionally needs `build-essential`, `pkgconf`,
 `libgstreamer1.0-dev`, `libgstreamer-plugins-base1.0-dev`, and `libdrm-dev`.
@@ -643,8 +644,9 @@ On the Raptor Lake development NUC, replacing `intel-media-va-driver` with
 the matching `intel-media-va-driver-non-free` 26.1.2 build did not add H.264
 High 10 or High 4:4:4 decode profiles. Both variants expose H.264 constrained
 baseline, main, and high only, while HEVC Main 4:4:4 10 remains available.
-The package therefore continues to depend on the free driver; the current
-H.264 High 10 4:4:4 identity stream requires FFmpeg software decoding.
+The package uses the non-free driver so the qualified appliance receives the
+full codec implementation. This does not change the H.264 result: the current
+H.264 High 10 4:4:4 identity stream still requires FFmpeg software decoding.
 
 Auto selection is enabled by default. A saved preference can disable it and
 use the existing width/height setting as an explicit override; an automatic

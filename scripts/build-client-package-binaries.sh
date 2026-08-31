@@ -61,6 +61,37 @@ rg -Fq 'uint32_t initial_video_bitrate_kbps;' \
   exit 1
 }
 echo "client_datasmash_rust_input_gate=pass"
+
+# The StationConnect client must not contact upstream Moonlight services or
+# offer help actions that leave the appliance UI. Network reachability is
+# evaluated against the configured workstation and its selected route only.
+if rg -n 'moonlight-stream\.org/compatibility|qt\.conntest\.moonlight-stream\.org|stun\.moonlight-stream\.org|moonlight-docs|Qt\.openUrlExternally|Dialog\.Help|helpUrl' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "upstream Moonlight network or help integration remains in StationConnect client" >&2
+  exit 1
+fi
+echo "client_upstream_network_absence_gate=pass"
+
+# StationConnect exposes one authenticated Desktop session. Keep the hidden
+# game catalog, artwork downloader, and CLI app-list surface out of the build.
+if rg -n 'AppView|AppModel|BoxArtManager|CliListApps|ListCommandLineParser|View All Apps|cli/listapps' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "legacy game catalog remains in StationConnect client" >&2
+  exit 1
+fi
+echo "client_game_catalog_absence_gate=pass"
+
+# Host/profile capability negotiation replaces NVIDIA GFE version heuristics.
+if rg -n 'CompatFetcher|isSupportedServerVersion|SER_NVIDIASOFTWARE|GeForce Experience 3\.0' \
+  "$source_dir/app" \
+  --glob '!**/languages/**'; then
+  echo "legacy GeForce Experience compatibility gate remains in StationConnect client" >&2
+  exit 1
+fi
+echo "client_gfe_compatibility_absence_gate=pass"
+
 for required_datasmash_token in \
   'StationConnectDatasmashCertificateSha256' \
   'isCanonicalSha256Hex' \

@@ -256,6 +256,29 @@ done
 }
 echo "host_prepared_boost_gate=pass"
 
+# StationConnect does not fetch remote files or expose mutable application
+# artwork. Keep the inherited libcurl downloader, application-art endpoint,
+# and shared-temporary first-run credential path out of the host.
+if rg -n 'download_file|url_escape\(|url_get_host|CURL::|CURL_|libcurl|appasset|desktop_image_path|FRESH_STATE|/tmp/Sunshine' \
+  "$source_dir/src" "$source_dir/cmake" "$source_dir/tests" \
+  --glob '!**/third-party/**'; then
+  echo "legacy host downloader, artwork endpoint, or temporary credential path remains" >&2
+  exit 1
+fi
+for required_secure_write_token in \
+  'O_NOFOLLOW' \
+  '::fchmod(fd, mode)' \
+  'WriteFileRejectsSymbolicLinks'; do
+  rg -Fq "$required_secure_write_token" \
+    "$source_dir/src/file_handler.cpp" \
+    "$source_dir/tests/unit/test_file_handler.cpp" || {
+    echo "secure host credential-write invariant is missing: ${required_secure_write_token}" >&2
+    exit 1
+  }
+done
+echo "host_legacy_http_surface_absence_gate=pass"
+echo "host_secure_credential_write_gate=pass"
+
 # StationConnect's Rocky host accepts workstation keyboard, mouse, normalized
 # pen, and raw-HID Wacom input only. Keep controller packet routing, feedback,
 # Linux virtual-gamepad integration, launch metadata, and configuration UI out

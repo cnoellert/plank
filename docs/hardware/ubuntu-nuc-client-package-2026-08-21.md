@@ -74,9 +74,9 @@ Manifest, private-runtime, dependency, maintainer-script syntax, and
 reproducibility gates passed. The production-workflow NUC was used only for
 read-only diagnosis; installation and verification are operator-owned.
 
-Revision 0.9 additionally requires Ubuntu's open
-`intel-media-va-driver`. A fresh installation had the generic `libva`
+Revision 0.9 additionally requires Ubuntu's
+`intel-media-va-driver-non-free`. A fresh installation had the generic `libva`
 libraries, an active `i915` kernel driver, an accessible render node, and no
-`iHD_drv_video.so`; without the implementation driver Moonlight correctly
+`iHD_drv_video.so`; without the implementation driver the client correctly
 reported that hardware-accelerated decoding was unavailable. The development
-NUC's qualified VA-API path uses the same open driver release.
+NUC's qualified VA-API path uses the matching Intel media driver release.
