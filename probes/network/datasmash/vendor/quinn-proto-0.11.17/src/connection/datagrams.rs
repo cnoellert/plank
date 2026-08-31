@@ -308,7 +308,7 @@ mod stationconnect_tests {
         assert_eq!(before.evicted_datagrams, 0);
 
         let additional_memory = 8 + size_of::<Datagram>();
-        let capacity = before.memory_bytes + additional_memory - 1;
+        let capacity = buffer.memory_used() + additional_memory - 1;
         buffer.make_space_for(additional_memory, capacity);
 
         let after = buffer.telemetry();
