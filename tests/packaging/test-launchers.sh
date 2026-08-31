@@ -76,9 +76,11 @@ fi
 grep -Fxq 'sw_vbv_maxrate_percentage = 150' "${host_profile}"
 grep -Fxq 'sw_vbv_buffer_frames = 4' "${host_profile}"
 grep -Fxq 'stationconnect_mdns_discovery = false' "${host_profile}"
-grep -Fxq '# Listener address family: ipv4 = IPv4 only; both = IPv4 and IPv6.' \
-  "${host_profile}"
 grep -Fxq 'ping_timeout = 10000' "${host_profile}"
+if rg -n '^[#[:space:]]*(address_family|bind_address)[[:space:]]*=' "${host_profile}"; then
+  echo 'host profile contains removed listener-binding options' >&2
+  exit 1
+fi
 for section in network x264-encoder security discovery; do
   grep -Fxq "[${section}]" "${host_profile}"
 done
