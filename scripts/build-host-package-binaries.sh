@@ -381,7 +381,6 @@ if rg -n -i 'miniupnp|upnp' \
   "$source_dir/scripts" \
   "$source_dir/packaging" \
   "$source_dir/docs" \
-  "$source_dir/.github" \
   "$source_dir/docker" \
   "$repo_dir/packaging" \
   --glob '!**/third-party/**'; then

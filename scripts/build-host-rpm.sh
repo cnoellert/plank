@@ -16,7 +16,15 @@ package_version=$(<"${repo_dir}/packaging/VERSION")
   exit 1
 }
 rpm_version=${package_version%%-*}
+# RPM Release values cannot contain a hyphen. Preserve the shared/displayed
+# StationConnect version verbatim, but map branch-name separators to an
+# RPM-safe underscore for package metadata and filenames.
 rpm_release=${package_version#*-}
+rpm_release=${rpm_release//-/_}
+[[ $rpm_release =~ ^[A-Za-z0-9._+]+$ ]] || {
+  echo "invalid RPM release derived from shared version: ${rpm_release}" >&2
+  exit 1
+}
 
 if [[ -n $(git -C "$repo_dir" status --porcelain --untracked-files=normal) ]]; then
   echo "refusing to package a dirty StationConnect source tree" >&2
