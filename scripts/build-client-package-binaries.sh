@@ -881,7 +881,7 @@ for native_x264_profile_label in \
   }
 done
 for bookmark_layout_token in \
-  'height: Math.min(1100, parent.height - 20)' \
+  'height: Math.min(implicitHeight, parent.height - 20)' \
   'id: unreachableActionComboBox' \
   'width: parent.width'; do
   rg -Fq "$bookmark_layout_token" \
