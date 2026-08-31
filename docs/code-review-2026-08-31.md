@@ -81,13 +81,17 @@ expose that exact profile; supported exact HEVC profiles may use hardware.
   surface absence and secure credential-write gates.
 - The host, PAM broker, and supervisor compiled with GCC Toolset 14, CUDA 13.0,
   the retained Boost 1.89.0 source, and the prepared host FFmpeg tree.
-- Thirty focused host tests covering file handling, PAM broker framing,
-  web-auth lifetime/binding, and the fixed Desktop identity passed.
+- Fifty-five focused host tests covering color/input/configuration, file
+  handling, PAM broker framing, session/topology policy, web-auth
+  lifetime/binding, and the fixed Desktop identity passed.
 - The clean Qt 6.10.2 Client build, binary/runtime checks, DEB manifest gates,
   APT installation on the Development NUC, exact version/hash checks, and
   no-autostart checks passed.
 - The clean GCC Toolset 14/CUDA 13.0 Host build and RPM manifest gates passed.
   Root CTest passed 18/18. NvFBC CUDA capture met 60 fps and real 2160p60 NVENC
   HEVC Rext 10-bit 4:4:4 encoding passed. The aggregate live qualification is
-  incomplete because hardware-test-host has no attached Wacom and public KMS scanout was
-  unavailable; those are recorded limitations rather than false passes.
+  incomplete because hardware-test-host exposes only the virtual StationConnect tablet,
+  not a raw Wacom HID descriptor, and public KMS scanout was unavailable;
+  those are recorded limitations rather than false passes. Host `.234` is
+  installed on hardware-test-host with all packaged units active; Client `.234` is
+  installed on the Development NUC with no autostart unit.
