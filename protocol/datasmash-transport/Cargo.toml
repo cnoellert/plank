@@ -11,6 +11,7 @@ crate-type = ["staticlib", "rlib"]
 [features]
 default = []
 quinn-bbr = ["quinn-proto/stationconnect-bbr-default"]
+quinn-telemetry = ["quinn-proto/stationconnect-telemetry"]
 
 [dependencies]
 anyhow = "1.0"

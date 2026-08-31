@@ -189,6 +189,10 @@ impl DatagramState {
 pub(super) struct DatagramBuffer {
     queue: VecDeque<Datagram>,
     payload_bytes: usize,
+    high_water_payload_bytes: usize,
+    high_water_memory_bytes: usize,
+    evicted_datagrams: u64,
+    evicted_payload_bytes: u64,
 }
 
 impl DatagramBuffer {
@@ -197,6 +201,10 @@ impl DatagramBuffer {
             let Some(previous) = self.pop_front() else {
                 break;
             };
+            self.evicted_datagrams = self.evicted_datagrams.saturating_add(1);
+            self.evicted_payload_bytes = self
+                .evicted_payload_bytes
+                .saturating_add(previous.data.len() as u64);
             trace!(len = previous.data.len(), "dropping outgoing datagram");
         }
     }
@@ -204,6 +212,8 @@ impl DatagramBuffer {
     fn push_back(&mut self, datagram: Datagram) {
         self.payload_bytes += datagram.data.len();
         self.queue.push_back(datagram);
+        self.high_water_payload_bytes = self.high_water_payload_bytes.max(self.payload_bytes);
+        self.high_water_memory_bytes = self.high_water_memory_bytes.max(self.memory_used());
     }
 
     fn pop_front(&mut self) -> Option<Datagram> {
@@ -222,6 +232,18 @@ impl DatagramBuffer {
             .saturating_add(self.queue.len() * size_of::<Datagram>())
     }
 
+    pub(super) fn telemetry(&self) -> DatagramBufferTelemetry {
+        DatagramBufferTelemetry {
+            datagrams: self.queue.len() as u64,
+            payload_bytes: self.payload_bytes as u64,
+            memory_bytes: self.memory_used() as u64,
+            high_water_payload_bytes: self.high_water_payload_bytes as u64,
+            high_water_memory_bytes: self.high_water_memory_bytes as u64,
+            evicted_datagrams: self.evicted_datagrams,
+            evicted_payload_bytes: self.evicted_payload_bytes,
+        }
+    }
+
     pub(super) fn can_send_1rtt(&self, max_size: usize) -> bool {
         self.queue.front().is_some_and(|x| x.size(true) <= max_size)
     }
@@ -229,6 +251,17 @@ impl DatagramBuffer {
     pub(super) fn is_empty(&self) -> bool {
         self.queue.is_empty()
     }
+}
+
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
+pub(super) struct DatagramBufferTelemetry {
+    pub(super) datagrams: u64,
+    pub(super) payload_bytes: u64,
+    pub(super) memory_bytes: u64,
+    pub(super) high_water_payload_bytes: u64,
+    pub(super) high_water_memory_bytes: u64,
+    pub(super) evicted_datagrams: u64,
+    pub(super) evicted_payload_bytes: u64,
 }
 
 #[cfg(test)]
@@ -252,6 +285,38 @@ mod stationconnect_tests {
         assert_eq!(buffer.queue.len(), 1);
         assert_eq!(buffer.payload_bytes, 2);
         assert_eq!(buffer.queue.front().unwrap().data.len(), 2);
+        assert_eq!(buffer.evicted_datagrams, 1);
+        assert_eq!(buffer.evicted_payload_bytes, 7);
+        assert_eq!(buffer.high_water_payload_bytes, 9);
+        assert!(buffer.high_water_memory_bytes >= 9);
+    }
+
+    #[test]
+    fn telemetry_reports_queue_high_water_and_eviction_totals() {
+        let mut buffer = DatagramBuffer::default();
+        buffer.push_back(Datagram {
+            data: Bytes::from_static(&[0; 11]),
+        });
+        buffer.push_back(Datagram {
+            data: Bytes::from_static(&[0; 5]),
+        });
+
+        let before = buffer.telemetry();
+        assert_eq!(before.datagrams, 2);
+        assert_eq!(before.payload_bytes, 16);
+        assert_eq!(before.high_water_payload_bytes, 16);
+        assert_eq!(before.evicted_datagrams, 0);
+
+        let additional_memory = 8 + size_of::<Datagram>();
+        let capacity = before.memory_bytes + additional_memory - 1;
+        buffer.make_space_for(additional_memory, capacity);
+
+        let after = buffer.telemetry();
+        assert_eq!(after.datagrams, 1);
+        assert_eq!(after.payload_bytes, 5);
+        assert_eq!(after.high_water_payload_bytes, 16);
+        assert_eq!(after.evicted_datagrams, 1);
+        assert_eq!(after.evicted_payload_bytes, 11);
     }
 }
 

@@ -71,6 +71,7 @@ pub trait Controller: Send + Sync {
             congestion_window: self.window(),
             ssthresh: None,
             pacing_rate: None,
+            bandwidth_estimate: None,
         }
     }
 
@@ -94,6 +95,8 @@ pub struct ControllerMetrics {
     pub ssthresh: Option<u64>,
     /// Pacing rate (bits/s)
     pub pacing_rate: Option<u64>,
+    /// Estimated bottleneck bandwidth (bits/s), when provided by the controller
+    pub bandwidth_estimate: Option<u64>,
 }
 
 /// Constructs controllers on demand

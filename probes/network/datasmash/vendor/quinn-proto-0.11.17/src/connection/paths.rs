@@ -291,6 +291,8 @@ pub struct RttEstimator {
     var: Duration,
     /// The minimum RTT seen in the connection, ignoring ack delay.
     min: Duration,
+    /// The maximum raw RTT sample seen in the connection.
+    max: Duration,
 }
 
 impl RttEstimator {
@@ -300,6 +302,7 @@ impl RttEstimator {
             smoothed: None,
             var: initial_rtt / 2,
             min: initial_rtt,
+            max: initial_rtt,
         }
     }
 
@@ -321,6 +324,21 @@ impl RttEstimator {
         self.min
     }
 
+    /// Most recent raw RTT sample.
+    pub fn latest(&self) -> Duration {
+        self.latest
+    }
+
+    /// Current RTT variance.
+    pub fn variance(&self) -> Duration {
+        self.var
+    }
+
+    /// Maximum raw RTT sample registered so far.
+    pub fn max(&self) -> Duration {
+        self.max
+    }
+
     // PTO computed as described in RFC9002#6.2.1
     pub(crate) fn pto_base(&self) -> Duration {
         self.get() + cmp::max(4 * self.var, TIMER_GRANULARITY)
@@ -330,6 +348,7 @@ impl RttEstimator {
         self.latest = rtt;
         // min_rtt ignores ack delay.
         self.min = cmp::min(self.min, self.latest);
+        self.max = cmp::max(self.max, self.latest);
         // Based on RFC6298.
         if let Some(smoothed) = self.smoothed {
             let adjusted_rtt = if self.min + ack_delay <= self.latest {

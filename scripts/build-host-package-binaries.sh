@@ -13,6 +13,14 @@ package_version=$(<"${repo_dir}/packaging/VERSION")
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 ffmpeg_dir=$(realpath -m -- "${2:-${source_dir}/cmake-build-ffmpeg-x264rgb-install/ffmpeg}")
 build_jobs=${STATIONCONNECT_BUILD_JOBS:-8}
+datasmash_cargo_features=${STATIONCONNECT_DATASMASH_CARGO_FEATURES:-quinn-telemetry}
+case "$datasmash_cargo_features" in
+  quinn-telemetry|quinn-telemetry,quinn-bbr) ;;
+  *)
+    echo "unsupported StationConnect datasmash Cargo feature set: ${datasmash_cargo_features}" >&2
+    exit 1
+    ;;
+esac
 [[ -n ${STATIONCONNECT_BOOST_SOURCE_DIR:-} ]] || {
   echo "prepared Boost source is required; set STATIONCONNECT_BOOST_SOURCE_DIR" >&2
   exit 1
@@ -56,6 +64,7 @@ cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
 echo "host_datasmash_rust_input_gate=pass"
+echo "host_datasmash_cargo_features=${datasmash_cargo_features}"
 for required_datasmash_token in \
   'StationConnectDatasmashCertificateSha256' \
   'StationConnectDatasmashToken' \
@@ -913,7 +922,8 @@ env \
   -DSUNSHINE_ENABLE_X11=ON \
   -DSUNSHINE_ENABLE_XDG_PORTAL=OFF \
   -DSTATIONCONNECT_ENABLE_DATASMASH=ON \
-  -DSTATIONCONNECT_DATASMASH_TRANSPORT_DIR="$datasmash_transport_dir"
+  -DSTATIONCONNECT_DATASMASH_TRANSPORT_DIR="$datasmash_transport_dir" \
+  -DSTATIONCONNECT_DATASMASH_CARGO_FEATURES="$datasmash_cargo_features"
 cmake --build "$build_dir" --parallel "$build_jobs" \
   --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
 
