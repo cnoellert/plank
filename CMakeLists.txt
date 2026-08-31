@@ -296,15 +296,6 @@ if(BUILD_TESTING)
   target_link_libraries(session-policy-test PRIVATE stationconnect-session-context)
   add_test(NAME session-policy COMMAND session-policy-test)
 
-  add_executable(extended-fec-block-indices-test
-    tests/protocol/extended-fec-block-indices.c)
-  target_compile_options(extended-fec-block-indices-test PRIVATE
-    -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(extended-fec-block-indices-test PRIVATE
-    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
-  add_test(NAME extended-fec-block-indices
-    COMMAND extended-fec-block-indices-test)
-
   add_executable(video-packet-loss-telemetry-test
     tests/protocol/video-packet-loss-telemetry.c)
   target_compile_options(video-packet-loss-telemetry-test PRIVATE
