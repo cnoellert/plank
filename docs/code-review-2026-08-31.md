@@ -10,10 +10,10 @@ into the qualified packages and may be useful for the planned macOS work.
 
 ## Removed surfaces
 
-- Removed inherited GitHub workflows and bot configuration from both forks.
-  They targeted unsupported AppImage, Steam Link, Windows, macOS, distribution,
-  and upstream publication jobs and were the source of recurring failed-build
-  notifications.
+- Removed inherited GitHub workflows and bot configuration from the Client,
+  Host, and common-c forks. They targeted unsupported AppImage, Steam Link,
+  Windows, macOS, ARM, distribution, CodeQL, Dependabot, and upstream
+  publication jobs and were the source of recurring failed-build notifications.
 - Removed client calls to Moonlight compatibility, connection-test, and STUN
   services. Bookmark reachability and route-MTU selection remain local to the
   configured workstation path.
@@ -95,3 +95,6 @@ expose that exact profile; supported exact HEVC profiles may use hardware.
   those are recorded limitations rather than false passes. Host `.234` is
   installed on hardware-test-host with all packaged units active; Client `.234` is
   installed on the Development NUC with no autostart unit.
+- The common-c workflow cleanup was a source-control-only follow-up after the
+  `.234` validation. It changes no compiled source or package input, so the
+  validated packages were not rebuilt.
