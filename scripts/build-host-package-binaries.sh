@@ -134,6 +134,29 @@ for removed_host_transport_dependency_token in \
   fi
 done
 echo "host_datasmash_legacy_dependency_absence_gate=pass"
+
+# KyProto encrypts native media, input, and event traffic. Reject the dormant
+# GameStream media-encryption negotiation while preserving AES-GCM on the
+# temporary TCP RTSP setup exchange until setup moves onto QUIC.
+if rg -n 'encryptionFlagsEnabled|encryption_control_v2|encryption_video|encryption_audio|x-ss-general\.encryption(Supported|Requested|Enabled)' \
+  "$source_dir/src"; then
+  echo "retired host GameStream media-encryption negotiation is present" >&2
+  exit 1
+fi
+for required_rtsp_security_token in \
+  rtsp_cipher \
+  'rtspenc://' \
+  'AES-GCM'; do
+  rg -Fq "$required_rtsp_security_token" \
+    "$source_dir/src/nvhttp.cpp" \
+    "$source_dir/src/rtsp.cpp" \
+    "$source_dir/src/rtsp.h" || {
+    echo "temporary encrypted RTSP invariant is missing: ${required_rtsp_security_token}" >&2
+    exit 1
+  }
+done
+echo "host_rtsp_security_gate=pass"
+
 for required_input_transport_token in \
   'sc_datasmash_native_input_receive' \
   'nativeInputThread' \

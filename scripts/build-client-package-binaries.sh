@@ -461,6 +461,52 @@ if rg -n 'nanors|Rtp(Audio|Video)Queue|reed_solomon_' \
 fi
 echo "client_legacy_media_fec_absence_gate=pass"
 
+# Native KyProto submits complete reconstructed frames. Keep the compact
+# frame-assembler path and reject the dormant GameStream RTP depacketizer,
+# packet-buffer helpers, and packet-era recovery symbols.
+[[ -f "${client_common_root}/src/VideoFrameAssembler.c" ]] || {
+  echo "native complete-frame assembler is missing" >&2
+  exit 1
+}
+for retired_video_path in \
+  src/VideoDepacketizer.c \
+  src/LegacyRtpVideoPacket.h \
+  src/ByteBuffer.c \
+  src/ByteBuffer.h; do
+  [[ ! -e "${client_common_root}/${retired_video_path}" ]] || {
+    echo "retired client packet assembly path is present: ${retired_video_path}" >&2
+    exit 1
+  }
+done
+if rg -n 'queueRtpPacket|notifyFrameLost|NV_VIDEO_PACKET|RTP_PACKET|VideoDepacketizer|LegacyRtpVideoPacket|ByteBuffer' \
+  "${source_dir}/moonlight-common-c/moonlight-common-c.pro" \
+  "$client_common_root/CMakeLists.txt" \
+  "$client_common_root/src"; then
+  echo "retired client RTP depacketizer integration is present" >&2
+  exit 1
+fi
+echo "client_complete_frame_assembler_gate=pass"
+
+# KyProto encrypts native media, input, and event traffic. Do not retain the
+# unused GameStream media-encryption negotiation. The temporary TCP RTSP setup
+# channel remains AES-GCM protected until setup itself moves onto QUIC.
+if rg -n 'ENCFLG_|encryptionFlags|EncryptionFeatures|AudioEncryptionEnabled|SS_ENC_|x-ss-general\.encryptionEnabled|hasFastAes|NVFF_AUDIO_ENCRYPTION' \
+  "$source_dir/app" "$client_common_root/src"; then
+  echo "retired client GameStream media-encryption negotiation is present" >&2
+  exit 1
+fi
+for required_rtsp_security_token in \
+  ENCRYPTED_RTSP_BIT \
+  sealRtspMessage \
+  unsealRtspMessage \
+  'rtspenc://'; do
+  rg -Fq "$required_rtsp_security_token" "$client_common_root/src/RtspConnection.c" || {
+    echo "temporary encrypted RTSP invariant is missing: ${required_rtsp_security_token}" >&2
+    exit 1
+  }
+done
+echo "client_rtsp_security_gate=pass"
+
 # Native KyProto owns reliable control and input. The client must not retain
 # ENet source, build wiring, submodule state, or obsolete SDP advertisements.
 for retired_enet_path in \
