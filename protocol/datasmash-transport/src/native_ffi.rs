@@ -682,6 +682,11 @@ async fn sample_stats(
     }
 }
 
+fn active_lane_result(result: Result<()>, lane: &str) -> Result<()> {
+    result.with_context(|| format!("{lane} failed"))?;
+    Err(anyhow!("{lane} ended while the native endpoint was active"))
+}
+
 async fn hold_server(shared: Arc<NativeShared>, protocols: NativeServerProtocols) -> Result<()> {
     let stats_provider = protocols.connection().stats_provider();
     let (connection, video, audio, input, data) = protocols.into_parts();
@@ -694,12 +699,12 @@ async fn hold_server(shared: Arc<NativeShared>, protocols: NativeServerProtocols
     shared.set_state(EndpointState::Ready);
     tokio::select! {
         _ = shared.stop_notify.notified() => Ok(()),
-        result = &mut video => result.context("native video sender failed"),
-        result = &mut audio => result.context("native audio sender failed"),
-        result = &mut input => result.context("native input receiver failed"),
-        result = &mut data_send => result.context("native data sender failed"),
-        result = &mut data_receive => result.context("native data receiver failed"),
-        result = &mut stats => result.context("native stats sampler failed"),
+        result = &mut video => active_lane_result(result, "native video sender"),
+        result = &mut audio => active_lane_result(result, "native audio sender"),
+        result = &mut input => active_lane_result(result, "native input receiver"),
+        result = &mut data_send => active_lane_result(result, "native data sender"),
+        result = &mut data_receive => active_lane_result(result, "native data receiver"),
+        result = &mut stats => active_lane_result(result, "native stats sampler"),
         result = connection.closed() => result.context("native KyProto connection closed"),
     }
 }
@@ -732,12 +737,12 @@ async fn hold_client(shared: Arc<NativeShared>, protocols: NativeClientProtocols
     shared.set_state(EndpointState::Ready);
     tokio::select! {
         _ = shared.stop_notify.notified() => Ok(()),
-        result = &mut video => result.context("native video receiver failed"),
-        result = &mut audio => result.context("native audio receiver failed"),
-        result = &mut input => result.context("native input sender failed"),
-        result = &mut data_send => result.context("native data sender failed"),
-        result = &mut data_receive => result.context("native data receiver failed"),
-        result = &mut stats => result.context("native stats sampler failed"),
+        result = &mut video => active_lane_result(result, "native video receiver"),
+        result = &mut audio => active_lane_result(result, "native audio receiver"),
+        result = &mut input => active_lane_result(result, "native input sender"),
+        result = &mut data_send => active_lane_result(result, "native data sender"),
+        result = &mut data_receive => active_lane_result(result, "native data receiver"),
+        result = &mut stats => active_lane_result(result, "native stats sampler"),
         result = connection.closed() => result.context("native KyProto connection closed"),
     }
 }
