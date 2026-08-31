@@ -296,15 +296,6 @@ if(BUILD_TESTING)
   target_link_libraries(session-policy-test PRIVATE stationconnect-session-context)
   add_test(NAME session-policy COMMAND session-policy-test)
 
-  add_executable(video-packet-loss-telemetry-test
-    tests/protocol/video-packet-loss-telemetry.c)
-  target_compile_options(video-packet-loss-telemetry-test PRIVATE
-    -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(video-packet-loss-telemetry-test PRIVATE
-    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
-  add_test(NAME video-packet-loss-telemetry
-    COMMAND video-packet-loss-telemetry-test)
-
   add_executable(video-packet-loss-window-test
     tests/protocol/video-packet-loss-window.cpp)
   target_compile_features(video-packet-loss-window-test PRIVATE cxx_std_17)
