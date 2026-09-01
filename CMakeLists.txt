@@ -18,7 +18,11 @@ pkg_check_modules(GSTREAMER QUIET IMPORTED_TARGET
   gstreamer-app-1.0
   gstreamer-video-1.0
   gstreamer-allocators-1.0)
-find_path(FFNVCODEC_INCLUDE_DIR ffnvcodec/nvEncodeAPI.h REQUIRED)
+find_path(FFNVCODEC_INCLUDE_DIR ffnvcodec/nvEncodeAPI.h
+  HINTS
+    "$ENV{PLANK_HOST_FFMPEG_ROOT}/include"
+    "$ENV{PLANK_HOST_FFMPEG_BUILD}/usr/local/include"
+  REQUIRED)
 set(NVFBC_SDK_ROOT "" CACHE PATH "Path to the NVIDIA Capture SDK root")
 find_path(NVFBC_INCLUDE_DIR NvFBC.h
   HINTS

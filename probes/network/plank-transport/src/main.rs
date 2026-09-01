@@ -403,6 +403,13 @@ async fn run_server(args: &[String]) -> Result<()> {
     let options = kynet::common::CommonServerOptions {
         max_idle_timeout: Some(Duration::from_secs(10)),
         keep_alive_interval: Some(Duration::from_secs(2)),
+        // Preserve the standalone probe's original transport behavior. Its
+        // compile-time feature selects Quinn's default BBR or CUBIC factory,
+        // its producer already paces the synthetic media rate, and Quinn owns
+        // path-MTU selection for this generic probe.
+        max_udp_payload_size: None,
+        congestion_controller_factory: None,
+        datagram_pacer: None,
     };
     let server =
         Connection::start_server_on_addr(bind_address, vec![certificate], private_key, &options)?;
@@ -641,7 +648,10 @@ async fn run_client(args: &[String]) -> Result<()> {
     let options = kynet::quinn::QuinnClientOptions {
         max_idle_timeout: Some(Duration::from_secs(10)),
         keep_alive_interval: Some(Duration::from_secs(2)),
+        max_udp_payload_size: None,
         certificate_hash: Some(certificate_hash.clone()),
+        congestion_controller_factory: None,
+        datagram_pacer: None,
     };
     if role_order == "duplicate-media" || role_order == "duplicate-interaction" {
         let duplicate_role = if role_order == "duplicate-media" {

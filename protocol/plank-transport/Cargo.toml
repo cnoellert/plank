@@ -27,6 +27,6 @@ subtle = "2.6"
 tokio = { version = "1.47", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 
 [patch.crates-io]
-# Keep the same narrowly repaired Quinn release qualified by the standalone
-# probe. See probes/network/plank-transport/vendor/README.md.
-quinn-proto = { path = "../../probes/network/plank-transport/vendor/quinn-proto-0.11.17" }
+# Keep the same narrowly repaired Quinn release shared by production and the
+# standalone probes. See third_party/quinn-proto-0.11.17/PLANK-PATCH.md.
+quinn-proto = { path = "../../third_party/quinn-proto-0.11.17" }

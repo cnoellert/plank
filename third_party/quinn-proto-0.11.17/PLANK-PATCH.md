@@ -1,6 +1,6 @@
 # Vendored Quinn backport
 
-`quinn-proto-0.11.17/` is the unmodified crates.io source for
+This directory contains the unmodified crates.io source for
 `quinn-proto 0.11.17`, except for the narrow PLANK DATAGRAM
 send-buffer accounting backport in `src/connection/datagrams.rs`.
 
@@ -20,11 +20,14 @@ adapted from upstream Quinn commits
 `c50f83bc4f5df16aa71d05e2d20e8f2b04ae4f62`. The double-decrement correction
 is specific to the `DatagramBuffer` refactor shipped in 0.11.17.
 
-The additional `plank-bbr-default` feature makes Quinn's experimental
-BBR controller the default only when the PlankTransport probe explicitly enables
-it. Without that feature, the vendored crate retains upstream's CUBIC default.
-This narrow hook exists because Kyber 0.28.0 does not expose Quinn's congestion
-controller in its public connection options; it is not a proposed product API.
+The additional `plank-bbr-default` feature makes Quinn's experimental BBR
+controller the default only when PLANK explicitly enables it. Without that
+feature, the vendored crate retains upstream's CUBIC default. This narrow hook
+exists because Kyber 0.28.0 does not expose Quinn's congestion controller in
+its public connection options; it is not a proposed product API.
+
+Both the production transport crate and its standalone probes consume this one
+canonical copy. Do not create a second probe-local vendor tree.
 
 Remove this override only after Kyber resolves to a released Quinn version
 that contains equivalent fixes and passes the PLANK 5% and 10% loss
