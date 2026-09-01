@@ -36,7 +36,7 @@ if [[ -e ${repo_dir}/packaging/bin/plank-client ]]; then
   echo 'Client package still carries an unnecessary launcher wrapper' >&2
   exit 1
 fi
-grep -Fq "\\\$\$ORIGIN/../lib/plank" "${client_project}" || {
+grep -Fq '\$$ORIGIN/../lib/plank' "${client_project}" || {
   echo 'Client executable does not define its private relative RUNPATH' >&2
   exit 1
 }

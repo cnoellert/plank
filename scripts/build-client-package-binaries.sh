@@ -1398,7 +1398,7 @@ fi
   echo "client package still carries an unnecessary launcher wrapper" >&2
   exit 1
 }
-rg -Fq "\\\$\$ORIGIN/../lib/plank" "$source_dir/app/app.pro" || {
+rg -Fq '\$$ORIGIN/../lib/plank' "$source_dir/app/app.pro" || {
   echo "client build does not define its private relative runtime path" >&2
   exit 1
 }
