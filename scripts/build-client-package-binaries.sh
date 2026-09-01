@@ -974,6 +974,7 @@ for required_session_takeover_token in \
   '&plankTakeover=1' \
   'PLANK workstation session is active' \
   'Disconnect the existing client and continue?' \
+  'm_WaitingForActiveSessionTakeoverDecision' \
   'PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER' \
   'This PLANK session was transferred to another client.'; do
   rg -Fq "$required_session_takeover_token" \
