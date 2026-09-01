@@ -9,7 +9,7 @@
 
 #include <unistd.h>
 
-namespace session = stationconnect::session;
+namespace session = plank::session;
 
 namespace {
   session::descriptor_t valid_session() {
@@ -89,7 +89,7 @@ int main() {
     return 12;
   }
 
-  char display_config_path[] = "/tmp/stationconnect-display-policy.XXXXXX";
+  char display_config_path[] = "/tmp/plank-display-policy.XXXXXX";
   const int display_config_descriptor = mkstemp(display_config_path);
   if (display_config_descriptor < 0 || close(display_config_descriptor) != 0) {
     std::cerr << "unable to create display-policy fixture\n";

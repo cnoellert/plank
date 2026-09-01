@@ -1,0 +1,39 @@
+[Unit]
+Description=PLANK workstation host supervisor
+Documentation=file:/usr/share/doc/plank-host/README.md
+X-PLANK-ApplicationId=la.instinctual.Plank.Host
+Requires=plank-pam-broker.service
+Wants=network-online.target
+After=plank-pam-broker.service display-manager.service network-online.target systemd-user-sessions.service
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/plank/plank-host-supervisor
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=15s
+KillMode=mixed
+UMask=0077
+RuntimeDirectory=plank/host
+RuntimeDirectoryMode=0700
+LogsDirectory=plank
+LogsDirectoryMode=0700
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+LockPersonality=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectHome=read-only
+ProtectSystem=full
+ReadOnlyPaths=-/vol/home
+ReadWritePaths=/etc/X11/xorg.conf.d
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

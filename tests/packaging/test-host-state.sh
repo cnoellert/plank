@@ -3,14 +3,14 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-helper=${repo_dir}/packaging/bin/stationconnect-host-state
-test_dir=$(mktemp -d --tmpdir stationconnect-host-state-test.XXXXXX)
+helper=${repo_dir}/packaging/bin/plank-host-state
+test_dir=$(mktemp -d --tmpdir plank-host-state-test.XXXXXX)
 cleanup() {
   rm -rf -- "$test_dir"
 }
 trap cleanup EXIT
 
-state_file=${test_dir}/stationconnect_state.json
+state_file=${test_dir}/plank-state.json
 "$helper" "$state_file"
 if rg -q 'named_devices' "$state_file"; then
   echo 'state helper retained obsolete paired-device storage' >&2

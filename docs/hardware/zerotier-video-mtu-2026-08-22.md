@@ -1,6 +1,6 @@
 # ZeroTier Video MTU Qualification
 
-The StationConnect host and production-workflow client both use 1500-byte
+The PLANK host and production-workflow client both use 1500-byte
 physical Ethernet MTUs. Their ZeroTier 1.16.2 interfaces advertise an inner
 MTU of 2800, but ZeroTier limits each physical UDP payload to 1432 bytes and
 fragments larger virtual packets internally.
@@ -27,7 +27,7 @@ maximum for normal direct frames is 1344, but 1328 preserves extended-frame
 compatibility for about a 1.2 percent payload-capacity cost. The client unit
 test locks the interface classification and packet calculations to these
 values. A post-install stream must confirm the log line
-`Using StationConnect VPN packet size: 1328 bytes` and show no repeated
+`Using PLANK VPN packet size: 1328 bytes` and show no repeated
 1432-plus-58 fragment pairs on the physical interface.
 
 ## Release Artifacts
@@ -37,7 +37,7 @@ commit `536eaba8` and the pinned private FFmpeg 9.0.1 runtime. Both builds were
 byte-identical and passed the package manifest and runtime dependency gates.
 
 ```text
-stationconnect-client_0.1.0-0.14_amd64.deb
+plank-client_0.1.0-0.14_amd64.deb
 SHA-256 630418c44b61661f23d7acf287a3a20c547f32e3739c16859882244df6bece78
 ```
 
@@ -47,7 +47,7 @@ test; an installed 0.13 host honors the size negotiated by the 0.14 client.
 
 ## Native KyProto/QUIC qualification
 
-The Datasmash transport no longer uses the Moonlight packet-size negotiation
+The PLANK transport no longer uses the Moonlight packet-size negotiation
 described above. Live captures on 2026-08-30 established the corresponding
 native QUIC contract. ZeroTier successfully reassembled larger inner packets,
 which allowed Quinn's DPLPMTUD to report success at 1452 bytes even though the

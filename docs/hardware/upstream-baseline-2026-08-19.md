@@ -13,7 +13,7 @@ moonlight-common-c, Web UI, and test objects through 100%.
 Final linking is blocked by Sunshine's pinned prebuilt x265 archive, which
 references `_ZGVbN2v_log2`; Rocky's glibc 2.34 `libmvec` does not export that
 symbol. This is an upstream binary-dependency compatibility issue, not a
-failure of NvFBC, CUDA, NVENC, or the StationConnect qualification probes.
+failure of NvFBC, CUDA, NVENC, or the PLANK qualification probes.
 Resolve it by rebuilding Sunshine's pinned FFmpeg dependency bundle on a
 Rocky-compatible baseline or by producing the host package in a compatible
 RHEL/Rocky build environment. Do not replace workstation glibc.
@@ -28,5 +28,5 @@ built-in HEVC Main10 test selected FFmpeg's `vaapi` path and a P010 surface.
 The upstream client baseline therefore works without a custom renderer. The
 remaining color-path delta is specific: for a matrix-coefficient-0 HEVC Rext
 4:4:4 stream, FFmpeg currently reports `gbrp10le` and misses this hardware
-path. StationConnect must preserve hardware selection using the driver's
+path. PLANK must preserve hardware selection using the driver's
 Y410/XV30 surface and apply the identity channel interpretation at presentation.

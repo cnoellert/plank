@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if (($# < 2 || $# > 3)); then
-  echo "usage: $0 MOONLIGHT_SOURCE_DIR FFMPEG_WORK_DIR [BUILD_DIR]" >&2
+  echo "usage: $0 PLANK_CLIENT_SOURCE_DIR FFMPEG_WORK_DIR [BUILD_DIR]" >&2
   exit 2
 fi
 
@@ -20,73 +20,73 @@ for command_name in c++ cargo cmp find git make mktemp nm pkg-config qmake6 read
   }
 done
 [[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
-  echo "StationConnect datasmash requires rustc 1.89.0" >&2
+  echo "PLANK transport requires rustc 1.89.0" >&2
   exit 1
 }
 [[ $(cargo --version) == "cargo 1.89.0 "* ]] || {
-  echo "StationConnect datasmash requires cargo 1.89.0" >&2
+  echo "PLANK transport requires cargo 1.89.0" >&2
   exit 1
 }
-datasmash_transport_dir="${repo_dir}/protocol/datasmash-transport"
-for datasmash_input in \
+plank_transport_dir="${repo_dir}/protocol/plank-transport"
+for plank_transport_input in \
   Cargo.toml \
   Cargo.lock \
-  include/stationconnect_datasmash.h \
-  include/stationconnect_datasmash_control.h \
-  include/stationconnect_datasmash_event.h \
-  include/stationconnect_datasmash_input.h \
-  include/stationconnect_datasmash_setup.h \
+  include/plank_transport.h \
+  include/plank_transport_control.h \
+  include/plank_transport_event.h \
+  include/plank_transport_input.h \
+  include/plank_transport_setup.h \
   src/lib.rs; do
-  [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
-    echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
+  [[ -f ${plank_transport_dir}/${plank_transport_input} ]] || {
+    echo "PLANK transport input is unavailable: ${plank_transport_input}" >&2
     exit 1
   }
 done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
-  --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
-rg -q '^#define SC_DATASMASH_ABI_VERSION 11u$' \
-  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "client requires Datasmash transport ABI 11" >&2
+  --manifest-path "${plank_transport_dir}/Cargo.toml" >/dev/null
+rg -q '^#define PLANK_TRANSPORT_ABI_VERSION 12u$' \
+  "${plank_transport_dir}/include/plank_transport.h" || {
+  echo "client requires PLANK transport ABI 12" >&2
   exit 1
 }
 rg -Fq 'uint32_t max_udp_payload_size;' \
-  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "client Datasmash transport is missing the route MTU contract" >&2
+  "${plank_transport_dir}/include/plank_transport.h" || {
+  echo "client PLANK transport is missing the route MTU contract" >&2
   exit 1
 }
 rg -Fq 'uint32_t initial_video_bitrate_kbps;' \
-  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "client Datasmash transport is missing the encoder-rate contract" >&2
+  "${plank_transport_dir}/include/plank_transport.h" || {
+  echo "client PLANK transport is missing the encoder-rate contract" >&2
   exit 1
 }
-echo "client_datasmash_rust_input_gate=pass"
+echo "client_plank_transport_rust_input_gate=pass"
 
-# The StationConnect client must not contact upstream Moonlight services or
+# The PLANK client must not contact upstream Moonlight services or
 # offer help actions that leave the appliance UI. Network reachability is
 # evaluated against the configured workstation and its selected route only.
 if rg -n 'moonlight-stream\.org/compatibility|qt\.conntest\.moonlight-stream\.org|stun\.moonlight-stream\.org|moonlight-docs|Qt\.openUrlExternally|Dialog\.Help|helpUrl' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "upstream Moonlight network or help integration remains in StationConnect client" >&2
+  echo "upstream Moonlight network or help integration remains in PLANK client" >&2
   exit 1
 fi
 echo "client_upstream_network_absence_gate=pass"
 
-# StationConnect exposes one authenticated Desktop session. Keep the hidden
+# PLANK exposes one authenticated Desktop session. Keep the hidden
 # game catalog, artwork downloader, and CLI app-list surface out of the build.
 if rg -n 'AppView|AppModel|BoxArtManager|CliListApps|ListCommandLineParser|View All Apps|cli/listapps' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "legacy game catalog remains in StationConnect client" >&2
+  echo "legacy game catalog remains in PLANK client" >&2
   exit 1
 fi
 echo "client_game_catalog_absence_gate=pass"
 
-# The workstation model exposes only the active StationConnect bookmark and
+# The workstation model exposes only the active PLANK bookmark and
 # Desktop-session contract. Do not restore Moonlight's running-game model
 # roles or generic current-game session launcher.
-if rg -n 'BusyRole|StationConnectAuthenticationRole|createSessionForCurrentGame' \
+if rg -n 'BusyRole|PlankAuthenticationRole|createSessionForCurrentGame' \
   "$source_dir/app/gui/computermodel.h" \
   "$source_dir/app/gui/computermodel.cpp"; then
   echo "legacy ComputerModel game/session surface remains" >&2
@@ -98,59 +98,59 @@ echo "client_computer_model_legacy_surface_absence_gate=pass"
 if rg -n 'CompatFetcher|isSupportedServerVersion|SER_NVIDIASOFTWARE|GeForce Experience 3\.0' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "legacy GeForce Experience compatibility gate remains in StationConnect client" >&2
+  echo "legacy GeForce Experience compatibility gate remains in PLANK client" >&2
   exit 1
 fi
 echo "client_gfe_compatibility_absence_gate=pass"
 
-for required_datasmash_token in \
-  'StationConnectDatasmashCertificateSha256' \
+for required_plank_transport_token in \
+  'PlankTransportCertificateSha256' \
   'isCanonicalSha256Hex' \
-  'startDatasmashDataPlane' \
-  'negotiateDatasmashSession' \
-  'SC_DATASMASH_SETUP_LAUNCH_REQUEST' \
-  'sc_datasmash_native_video_receive' \
-  'LiSubmitStationConnectVideoFrame' \
-  'sc_datasmash_native_audio_receive' \
-  'LiSubmitStationConnectAudioPacket' \
-  'LiSetStationConnectNativeControlSender' \
-  'datasmashNativeControlSender' \
-  'datasmashDataReceiveLoop'; do
-  rg -Fq "$required_datasmash_token" \
+  'startPlankTransportDataPlane' \
+  'negotiatePlankTransportSession' \
+  'PLANK_TRANSPORT_SETUP_LAUNCH_REQUEST' \
+  'plank_transport_native_video_receive' \
+  'LiSubmitPlankVideoFrame' \
+  'plank_transport_native_audio_receive' \
+  'LiSubmitPlankAudioPacket' \
+  'LiSetPlankNativeControlSender' \
+  'plank_transportNativeControlSender' \
+  'plank_transportDataReceiveLoop'; do
+  rg -Fq "$required_plank_transport_token" \
     "$source_dir/app" || {
-    echo "client datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2
+    echo "client plank_transport negotiation invariant is missing: ${required_plank_transport_token}" >&2
     exit 1
   }
 done
-echo "client_datasmash_negotiation_gate=pass"
+echo "client_plank_transport_negotiation_gate=pass"
 for removed_data_plane_selector_token in \
-  'stationconnect-data-plane' \
-  'scDataPlane' \
-  'StationConnectDataPlane' \
+  'plank-data-plane' \
+  'plankDataPlane' \
+  'PlankDataPlane' \
   'SCDP_LEGACY' \
-  'SCDP_DATASMASH' \
-  'Legacy StationConnect transport' \
-  'Datasmash single-port transport (Experimental)'; do
+  'PLANK_DATA_PLANE' \
+  'Legacy PLANK transport' \
+  'PlankTransport single-port transport (Experimental)'; do
   if rg -Fq "$removed_data_plane_selector_token" "$source_dir/app"; then
     echo "obsolete client data-plane selector remains: ${removed_data_plane_selector_token}" >&2
     exit 1
   fi
 done
-echo "client_datasmash_selector_absence_gate=pass"
+echo "client_plank_transport_selector_absence_gate=pass"
 for required_audio_transport_token in \
-  'LiSubmitStationConnectVideoFrame' \
-  'LiSubmitStationConnectAudioPacket' \
-  'STATIONCONNECT_VIDEO_FRAME_FLAG_KEY'; do
+  'LiSubmitPlankVideoFrame' \
+  'LiSubmitPlankAudioPacket' \
+  'PLANK_VIDEO_FRAME_FLAG_KEY'; do
   rg -Fq "$required_audio_transport_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" || {
     echo "client native media transport invariant is missing: ${required_audio_transport_token}" >&2
     exit 1
   }
 done
-echo "client_datasmash_native_media_gate=pass"
+echo "client_plank_transport_native_media_gate=pass"
 for removed_legacy_media_token in \
-  'LiSetStationConnectNativeMediaEnabled' \
-  'StationConnectNativeMediaEnabled' \
+  'LiSetPlankNativeMediaEnabled' \
+  'PlankNativeMediaEnabled' \
   'VideoPingThreadProc' \
   'VideoReceiveThreadProc' \
   'AudioPingThreadProc' \
@@ -167,7 +167,7 @@ for removed_legacy_media_token in \
     exit 1
   fi
 done
-echo "client_datasmash_legacy_media_absence_gate=pass"
+echo "client_plank_transport_legacy_media_absence_gate=pass"
 if rg -n '^#define STREAM_CFG_(LOCAL|REMOTE|AUTO)|^[[:space:]]*int (packetSize|streamingRemotely);' \
   "$source_dir/moonlight-common-c/moonlight-common-c/src/Limelight.h"; then
   echo "obsolete GameStream route and packet-size policy remains in client common-c" >&2
@@ -175,8 +175,8 @@ if rg -n '^#define STREAM_CFG_(LOCAL|REMOTE|AUTO)|^[[:space:]]*int (packetSize|s
 fi
 echo "client_gamestream_packet_policy_absence_gate=pass"
 for removed_media_bridge_token in \
-  'StationConnectVideoPacketReceiver' \
-  'StationConnectAudioPacketReceiver'; do
+  'PlankVideoPacketReceiver' \
+  'PlankAudioPacketReceiver'; do
   if rg -Fq "$removed_media_bridge_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \
     "$source_dir/app/streaming"; then
@@ -184,9 +184,9 @@ for removed_media_bridge_token in \
     exit 1
   fi
 done
-echo "client_datasmash_legacy_media_bridge_absence_gate=pass"
+echo "client_plank_transport_legacy_media_bridge_absence_gate=pass"
 for required_control_transport_token in \
-  'StationConnectNativeControlSender' \
+  'PlankNativeControlSender' \
   'LI_SC_NATIVE_CONTROL_REQUEST_IDR' \
   'LI_SC_NATIVE_CONTROL_INVALIDATE_REFERENCE_FRAMES' \
   'LI_SC_NATIVE_CONTROL_SET_VIDEO_BITRATE'; do
@@ -196,43 +196,43 @@ for required_control_transport_token in \
     exit 1
   }
 done
-echo "client_datasmash_native_control_sender_gate=pass"
+echo "client_plank_transport_native_control_sender_gate=pass"
 for required_input_transport_token in \
-  'StationConnectNativeInputSender' \
-  'LiSetStationConnectNativeInputSender' \
-  'datasmashNativeInputSender' \
-  'sc_datasmash_native_input_send' \
-  'SC_DATASMASH_INPUT_RAW_HID_WACOM'; do
+  'PlankNativeInputSender' \
+  'LiSetPlankNativeInputSender' \
+  'plank_transportNativeInputSender' \
+  'plank_transport_native_input_send' \
+  'PLANK_TRANSPORT_INPUT_RAW_HID_WACOM'; do
   rg -Fq "$required_input_transport_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \
     "$source_dir/app/streaming" \
-    "$datasmash_transport_dir/include" || {
+    "$plank_transport_dir/include" || {
     echo "client native input transport invariant is missing: ${required_input_transport_token}" >&2
     exit 1
   }
 done
-echo "client_datasmash_native_input_gate=pass"
+echo "client_plank_transport_native_input_gate=pass"
 for required_event_transport_token in \
-  'stationconnect_datasmash_event.h' \
-  'SC_DATASMASH_EVENT_CURSOR_SHAPE' \
-  'LiNotifyStationConnectHdrMode' \
-  'LiNotifyStationConnectRawHidControl' \
-  'LiNotifyStationConnectCursorPosition'; do
+  'plank_transport_event.h' \
+  'PLANK_TRANSPORT_EVENT_CURSOR_SHAPE' \
+  'LiNotifyPlankHdrMode' \
+  'LiNotifyPlankRawHidControl' \
+  'LiNotifyPlankCursorPosition'; do
   rg -Fq "$required_event_transport_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \
     "$source_dir/app/streaming" \
-    "$datasmash_transport_dir/include" || {
+    "$plank_transport_dir/include" || {
     echo "client native event transport invariant is missing: ${required_event_transport_token}" >&2
     exit 1
   }
 done
-echo "client_datasmash_native_event_gate=pass"
+echo "client_plank_transport_native_event_gate=pass"
 for required_control_receiver_token in \
-  'stationconnect_datasmash_control.h' \
-  'LiNotifyStationConnectVideoBitrateApplied' \
-  'LiNotifyStationConnectHostTermination' \
-  'sc_datasmash_native_data_receive' \
-  'datasmashDataReceiveLoop'; do
+  'plank_transport_control.h' \
+  'LiNotifyPlankVideoBitrateApplied' \
+  'LiNotifyPlankHostTermination' \
+  'plank_transport_native_data_receive' \
+  'plank_transportDataReceiveLoop'; do
   if ! rg -Fq "$required_control_receiver_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \
     "$source_dir/app/streaming"; then
@@ -240,14 +240,14 @@ for required_control_receiver_token in \
     exit 1
   fi
 done
-echo "client_datasmash_native_control_receiver_gate=pass"
+echo "client_plank_transport_native_control_receiver_gate=pass"
 for removed_control_bridge_token in \
-  'StationConnectControlPacketSender' \
-  'StationConnectControlPacketReceiver' \
+  'PlankControlPacketSender' \
+  'PlankControlPacketReceiver' \
   'externalControlPacketSender' \
   'externalControlPacketReceiver' \
-  'datasmashControlPacketSender' \
-  'datasmashControlPacketReceiver'; do
+  'plank_transportControlPacketSender' \
+  'plank_transportControlPacketReceiver'; do
   if rg -Fq "$removed_control_bridge_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \
     "$source_dir/app/streaming"; then
@@ -255,8 +255,8 @@ for removed_control_bridge_token in \
     exit 1
   fi
 done
-echo "client_datasmash_legacy_control_bridge_absence_gate=pass"
-echo "client_datasmash_control_receiver_gate=pass"
+echo "client_plank_transport_legacy_control_bridge_absence_gate=pass"
+echo "client_plank_transport_control_receiver_gate=pass"
 
 package_version=$(<"${repo_dir}/packaging/VERSION")
 [[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+(\.[a-z0-9][a-z0-9-]*)?$ && $package_version != *.main ]] || {
@@ -283,7 +283,7 @@ if [[ -d ${build_dir} && -n $(find "$build_dir" -mindepth 1 -maxdepth 1 -print -
   exit 1
 fi
 
-# StationConnect is a remote-workstation client. Controller input and
+# PLANK is a remote-workstation client. Controller input and
 # controller-driven UI navigation are deliberately outside the product scope.
 for removed_path in \
   app/SDL_GameControllerDB \
@@ -296,7 +296,7 @@ for removed_path in \
   app/settings/mappingmanager.h \
   app/streaming/input/gamepad.cpp; do
   [[ ! -e ${source_dir}/${removed_path} ]] || {
-    echo "gamepad support is present in StationConnect client source: ${removed_path}" >&2
+    echo "gamepad support is present in PLANK client source: ${removed_path}" >&2
     exit 1
   }
 done
@@ -305,12 +305,12 @@ if rg -n \
   "$source_dir/app" \
   --glob '!**/languages/**' \
   --glob '!**/Info.plist'; then
-  echo "gamepad support or controller UI navigation is present in StationConnect client source" >&2
+  echo "gamepad support or controller UI navigation is present in PLANK client source" >&2
   exit 1
 fi
 echo "client_gamepad_absence_gate=pass"
 
-# StationConnect uses per-session operating-system authentication. It has no
+# PLANK uses per-session operating-system authentication. It has no
 # GameStream PIN workflow or persistent client-certificate identity.
 for removed_path in \
   app/backend/identitymanager.cpp \
@@ -321,7 +321,7 @@ for removed_path in \
   app/cli/pair.h \
   app/gui/CliPair.qml; do
   [[ ! -e ${source_dir}/${removed_path} ]] || {
-    echo "legacy pairing source is present in StationConnect client: ${removed_path}" >&2
+    echo "legacy pairing source is present in PLANK client: ${removed_path}" >&2
     exit 1
   }
 done
@@ -330,23 +330,23 @@ if rg -n \
   "$source_dir/app" \
   --glob '!**/languages/**' \
   --glob '!**/deploy/**'; then
-  echo "legacy PIN or persistent client-certificate workflow is present in StationConnect client" >&2
+  echo "legacy PIN or persistent client-certificate workflow is present in PLANK client" >&2
   exit 1
 fi
 echo "client_pairing_absence_gate=pass"
 
 if rg -n \
-  'STATIONCONNECT_VPN_INTERFACE|isApprovedStationConnectRoute|approved VPN route' \
+  'PLANK_VPN_INTERFACE|isApprovedPlankRoute|approved VPN route' \
   "$source_dir/app"; then
-  echo "client-side VPN route restriction is present in StationConnect" >&2
+  echo "client-side VPN route restriction is present in PLANK" >&2
   exit 1
 fi
 echo "client_vpn_route_check_absence_gate=pass"
 
-# StationConnect Client is launched explicitly from its desktop entry or
+# PLANK Client is launched explicitly from its desktop entry or
 # command. It must not ship or manage a background user service or autostart
 # entry.
-[[ ! -e ${repo_dir}/packaging/systemd/stationconnect-client.service ]] || {
+[[ ! -e ${repo_dir}/packaging/systemd/plank-client.service ]] || {
   echo "client systemd user service remains in package source" >&2
   exit 1
 }
@@ -354,14 +354,14 @@ if find "$repo_dir/packaging" -path '*/autostart/*' -print -quit | rg -q .; then
   echo "client desktop autostart entry remains in package source" >&2
   exit 1
 fi
-if rg -n 'stationconnect-client\.service|deb-systemd-helper|systemctl[[:space:]]+--user' \
+if rg -n 'plank-client\.service|deb-systemd-helper|systemctl[[:space:]]+--user' \
   "$repo_dir/packaging/deb/postinst" "$repo_dir/packaging/deb/postrm"; then
   echo "client maintainer scripts retain user-service or autostart handling" >&2
   exit 1
 fi
 echo "client_autostart_absence_gate=pass"
 
-# StationConnect disconnects streams without changing the physical workstation
+# PLANK disconnects streams without changing the physical workstation
 # display or terminating the workstation application. Keep Moonlight's legacy
 # SOPS and remote app-cancel controls out of the product.
 for removed_path in \
@@ -380,7 +380,7 @@ if rg -n \
   'Host Settings|gameOptimizations|quitAppAfter|quitRunningApp|quitAppCompleted|unlockBitrate|Unlock bitrate limit|absoluteTouchMode|swapMouseButtons|reverseScrollDirection|absoluteMouseMode|touchscreen-trackpad|mouse-buttons-swap|reverse-scroll-direction|absolute-mouse|Use touchscreen as a virtual trackpad|Swap left and right mouse buttons|Reverse mouse scrolling direction|Optimize mouse for remote desktop|KeyComboToggleMouseMode|SDL_FINGER(DOWN|MOTION|UP)|LiSendTouchEvent|SDL_(Get|Set)RelativeMouseMode|[?&]sops=|game-optimization|quit-after' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "legacy SOPS or remote app termination is present in StationConnect client" >&2
+  echo "legacy SOPS or remote app termination is present in PLANK client" >&2
   exit 1
 fi
 echo "client_remote_host_control_absence_gate=pass"
@@ -395,8 +395,8 @@ printf '#include "Limelight.h"\nint main() { return 0; }\n' |
   }
 echo "client_limelight_header_gate=pass"
 for required_raw_hid_token in \
-  '#define SC_RAW_HID_WIRE_VERSION 2U' \
-  'SC_RAW_HID_SUSPEND = 13'; do
+  '#define PLANK_RAW_HID_WIRE_VERSION 2U' \
+  'PLANK_RAW_HID_SUSPEND = 13'; do
   rg -Fq "$required_raw_hid_token" "$client_common_dir" || {
     echo "client raw-HID focus-suspend protocol invariant is missing: ${required_raw_hid_token}" >&2
     exit 1
@@ -410,7 +410,7 @@ rg -q '#define[[:space:]]+LI_FF_RAW_HID_FOCUS_SUSPEND[[:space:]]+0x20' \
 for required_raw_hid_token in \
   LI_FF_RAW_HID_FOCUS_SUSPEND \
   suspendForFocusLoss \
-  'sendFrame(SC_RAW_HID_SUSPEND, 0, 0, nullptr, 0)'; do
+  'sendFrame(PLANK_RAW_HID_SUSPEND, 0, 0, nullptr, 0)'; do
   rg -Fq "$required_raw_hid_token" \
     "$source_dir/app/streaming/input/input.cpp" \
     "$source_dir/app/streaming/input/linuxrawwacom.cpp" \
@@ -453,8 +453,8 @@ for required_wacom_generation_token in \
   'case 0x0314: // PTH-451' \
   'case 0x0315: // PTH-651' \
   'case 0x0317: // PTH-851' \
-  'return StationConnectWacomTransport::NormalizedPen;' \
-  'return StationConnectWacomTransport::ExactRawHid;' \
+  'return PlankWacomTransport::NormalizedPen;' \
+  'return PlankWacomTransport::ExactRawHid;' \
   'Using normalized pen transport for first-generation Intuos Pro'; do
   rg -Fq "$required_wacom_generation_token" \
     "$source_dir/app/streaming/input/input.cpp" \
@@ -466,13 +466,13 @@ for required_wacom_generation_token in \
 done
 echo "client_wacom_generation_transport_gate=pass"
 
-# StationConnect uses one compositor-owned local cursor across the stream and
+# PLANK uses one compositor-owned local cursor across the stream and
 # toolbar. Exact host cursor images arrive on the native KyProto event lane;
 # the client must not fall back to synchronizing a cursor embedded in video.
 for required_cursor_token in \
-  'SC_CURSOR_WIRE_VERSION 1U' \
-  'SC_CURSOR_MAX_CHUNK_SIZE (48U * 1024U)' \
-  'LiNotifyStationConnectCursorChunk' \
+  'PLANK_CURSOR_WIRE_VERSION 1U' \
+  'PLANK_CURSOR_MAX_CHUNK_SIZE (48U * 1024U)' \
+  'LiNotifyPlankCursorChunk' \
   'ML_FF_LOCAL_CURSOR' \
   'LI_FF_LOCAL_CURSOR'; do
   rg -Fq "$required_cursor_token" "$client_common_dir" || {
@@ -488,7 +488,7 @@ for required_cursor_token in \
   handleRemoteCursorChunk \
   applyPendingRemoteCursor \
   SDL_CreateColorCursor \
-  SDL_CODE_STATIONCONNECT_CURSOR; do
+  SDL_CODE_PLANK_CURSOR; do
   rg -Fq "$required_cursor_token" \
     "$source_dir/app/streaming/input/input.cpp" \
     "$source_dir/app/streaming/input/input.h" \
@@ -557,8 +557,8 @@ echo "client_complete_frame_assembler_gate=pass"
 # traffic. The Client must configure common-c through the mandatory native
 # boundary and must not retain the retired GameStream RTSP setup implementation.
 for required_native_setup_token in \
-  LiSetStationConnectNativeSessionConfiguration \
-  STATIONCONNECT_NATIVE_SESSION_CONFIGURATION \
+  LiSetPlankNativeSessionConfiguration \
+  PLANK_NATIVE_SESSION_CONFIGURATION \
   hostFeatureFlags \
   referenceFrameInvalidationSupported; do
   rg -Fq "$required_native_setup_token" \
@@ -609,7 +609,7 @@ for retired_bootstrap_token in \
   fi
 done
 rg -Fq 'static constexpr quint16 BuiltInNetworkPort = 28989;' \
-  "$source_dir/app/settings/stationconnectclientpolicy.h" || {
+  "$source_dir/app/settings/plankclientpolicy.h" || {
   echo "client built-in control-port fallback is missing" >&2
   exit 1
 }
@@ -690,8 +690,8 @@ for required_loss_ui_token in \
     "$source_dir/app/streaming/session.cpp" \
     "$source_dir/app/streaming/session.h" \
     "$source_dir/app/streaming/videopacketlosswindow.h" \
-    "$source_dir/app/streaming/stationconnecttoolbar.cpp" \
-    "$source_dir/app/streaming/stationconnecttoolbar.h" \
+    "$source_dir/app/streaming/planktoolbar.cpp" \
+    "$source_dir/app/streaming/planktoolbar.h" \
     "$source_dir/app/streaming/video/ffmpeg.cpp" || {
     echo "video packet-loss toolbar invariant is missing: ${required_loss_ui_token}" >&2
     exit 1
@@ -722,7 +722,7 @@ for retired_stats_token in \
 done
 echo "client_video_packet_loss_indicator_gate=pass"
 
-# StationConnect presents immediately and keeps the optional upstream software
+# PLANK presents immediately and keeps the optional upstream software
 # frame pacer out of user policy. A renderer may still force its internal pacer
 # when required for backend correctness.
 if rg -n -i \
@@ -736,7 +736,7 @@ if rg -n -i \
 fi
 rg -Fq 'params.enableFramePacing = false;' \
   "$source_dir/app/streaming/session.cpp" || {
-  echo "StationConnect unpaced presentation policy is missing" >&2
+  echo "PLANK unpaced presentation policy is missing" >&2
   exit 1
 }
 echo "client_frame_pacing_preference_absence_gate=pass"
@@ -752,7 +752,7 @@ for required_frame_allocator_token in \
   'static int getImportedHostBuffer(AVCodecContext *context, AVFrame *frame, int flags);' \
   'mappedContext.opaque = const_cast<pl_gpu*>(&renderer->m_Vulkan->gpu);' \
   'return pl_get_buffer2(&mappedContext, frame, flags);' \
-  'STATIONCONNECT_VULKAN_FRAME_ALLOCATOR' \
+  'PLANK_VULKAN_FRAME_ALLOCATOR' \
   'requestedAllocator == "host-import"' \
   'bufferParams.import_handle = PL_HANDLE_HOST_PTR' \
   'Using pooled cacheable FFmpeg decode buffers imported into Vulkan' \
@@ -783,7 +783,7 @@ if rg -n \
   'enableHdr|enableYUV444|supportsHdr|Enable HDR|Enable YUV 4:4:4|addToggleOption\("(hdr|yuv444)"|GUI display mode|uiDisplayMode|UIDisplayMode|UI_(WINDOWED|MAXIMIZED|FULLSCREEN)|uidisplaymode|startwindowed' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "optional HDR, YUV 4:4:4, or GUI display-mode controls are present in StationConnect client" >&2
+  echo "optional HDR, YUV 4:4:4, or GUI display-mode controls are present in PLANK client" >&2
   exit 1
 fi
 if rg -n \
@@ -797,17 +797,17 @@ echo "client_global_video_codec_absence_gate=pass"
 if rg -n \
   'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_(H264\)|H265\)|H265_MAIN|AV1_MAIN)' \
   "$source_dir/app/streaming/session.cpp"; then
-  echo "a 4:2:0 video profile is advertised by the StationConnect session" >&2
+  echo "a 4:2:0 video profile is advertised by the PLANK session" >&2
   exit 1
 fi
 for required_profile_token in \
-  'SCVP_H264_8BIT_422' \
-  'SCVP_H264_8BIT_444' \
-  'SCVP_H264_10BIT_422' \
-  'SCVP_H264_10BIT_444' \
-  'SCVP_NVENC_H264_8BIT_444' \
-  'SCVP_NVENC_HEVC_8BIT_444' \
-  'SCVP_NVENC_HEVC_10BIT_444' \
+  'PLANK_PROFILE_H264_8BIT_422' \
+  'PLANK_PROFILE_H264_8BIT_444' \
+  'PLANK_PROFILE_H264_10BIT_422' \
+  'PLANK_PROFILE_H264_10BIT_444' \
+  'PLANK_PROFILE_NVENC_H264_8BIT_444' \
+  'PLANK_PROFILE_NVENC_HEVC_8BIT_444' \
+  'PLANK_PROFILE_NVENC_HEVC_10BIT_444' \
   'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH8_422;' \
   'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH8_444;' \
   'selectedVideoFormat = VIDEO_FORMAT_H264_HIGH10_422;' \
@@ -818,23 +818,23 @@ for required_profile_token in \
   rg -Fq "$required_profile_token" \
     "$source_dir/app/settings/streamingpreferences.h" \
     "$source_dir/app/streaming/session.cpp" || {
-    echo "StationConnect exact H.264 profile selection is missing: ${required_profile_token}" >&2
+    echo "PLANK exact H.264 profile selection is missing: ${required_profile_token}" >&2
     exit 1
   }
 done
 if rg -n 'm_SupportedVideoFormats\.append\(VIDEO_FORMAT_' \
   "$source_dir/app/streaming/session.cpp"; then
-  echo "StationConnect must advertise the one selected bookmark format, not fixed fallback formats" >&2
+  echo "PLANK must advertise the one selected bookmark format, not fixed fallback formats" >&2
   exit 1
 fi
 for required_bookmark_profile_token in \
-  '#define SER_VIDEOPROFILE "stationconnect-video-profile"' \
-  'int stationConnectVideoProfile = 0;' \
+  '#define SER_VIDEOPROFILE "plank-video-profile"' \
+  'int plankVideoProfile = 0;' \
   'settings.value(SER_VIDEOPROFILE,' \
-  'settings.setValue(SER_VIDEOPROFILE, stationConnectVideoProfile);' \
-  'stationConnectVideoProfile == that.stationConnectVideoProfile' \
-  'stationConnectVideoProfile(int computerIndex) const' \
-  'm_StationConnectVideoProfile'; do
+  'settings.setValue(SER_VIDEOPROFILE, plankVideoProfile);' \
+  'plankVideoProfile == that.plankVideoProfile' \
+  'plankVideoProfile(int computerIndex) const' \
+  'm_PlankVideoProfile'; do
   rg -Fq "$required_bookmark_profile_token" \
     "$source_dir/app/backend/nvcomputer.h" \
     "$source_dir/app/backend/nvcomputer.cpp" \
@@ -842,17 +842,17 @@ for required_bookmark_profile_token in \
     "$source_dir/app/gui/computermodel.cpp" \
     "$source_dir/app/streaming/session.h" \
     "$source_dir/app/streaming/session.cpp" || {
-    echo "StationConnect bookmark encoding profile is missing: ${required_bookmark_profile_token}" >&2
+    echo "PLANK bookmark encoding profile is missing: ${required_bookmark_profile_token}" >&2
     exit 1
   }
 done
 for required_bookmark_profile_ui_token in \
   'addEncodingProfile' \
   'editEncodingProfile' \
-  'computerModel.stationConnectVideoProfile(index)'; do
+  'computerModel.plankVideoProfile(index)'; do
   rg -Fq "$required_bookmark_profile_ui_token" \
     "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
-    echo "StationConnect bookmark encoding-profile UI is missing: ${required_bookmark_profile_ui_token}" >&2
+    echo "PLANK bookmark encoding-profile UI is missing: ${required_bookmark_profile_ui_token}" >&2
     exit 1
   }
 done
@@ -861,10 +861,10 @@ rg -Fq 'addEncodingProfile.currentIndex = 6' \
   echo "new bookmarks do not default to H.265 10-bit 4:4:4 NVENC" >&2
   exit 1
 }
-if rg -n 'stationConnectVideoProfile|Encoding profile' \
+if rg -n 'plankVideoProfile|Encoding profile' \
   "$source_dir/app/gui/SettingsView.qml" \
   "$source_dir/app/settings/streamingpreferences.cpp"; then
-  echo "encoding profile remains a global StationConnect preference" >&2
+  echo "encoding profile remains a global PLANK preference" >&2
   exit 1
 fi
 
@@ -872,17 +872,17 @@ fi
 # bookmark. The toolbar owns only a session-local copy, and no global or
 # command-line bitrate source may compete with the bookmark/profile value.
 for required_bookmark_bitrate_token in \
-  '#define SER_STATIONCONNECT_PROFILE_BITRATES "stationconnect-profile-bitrates-kbps"' \
-  'QVector<int> stationConnectProfileBitratesKbps =' \
-  'stationConnectProfileBitratesFromVariantList(' \
-  'stationConnectProfileBitratesToVariantList(' \
-  'stationConnectProfileBitratesKbps ==' \
-  'stationConnectProfileBitratesKbps(' \
-  'stationConnectBitrateForProfile(' \
-  'm_StationConnectBitrateKbps' \
-  'm_StreamConfig.bitrate = m_StationConnectBitrateKbps;' \
-  'StationConnectH264DefaultBitrateKbps = 80000' \
-  'StationConnectHevcDefaultBitrateKbps = 50000'; do
+  '#define SER_PLANK_PROFILE_BITRATES "plank-profile-bitrates-kbps"' \
+  'QVector<int> plankProfileBitratesKbps =' \
+  'plankProfileBitratesFromVariantList(' \
+  'plankProfileBitratesToVariantList(' \
+  'plankProfileBitratesKbps ==' \
+  'plankProfileBitratesKbps(' \
+  'plankBitrateForProfile(' \
+  'm_PlankBitrateKbps' \
+  'm_StreamConfig.bitrate = m_PlankBitrateKbps;' \
+  'PlankH264DefaultBitrateKbps = 80000' \
+  'PlankHevcDefaultBitrateKbps = 50000'; do
   rg -Fq "$required_bookmark_bitrate_token" \
     "$source_dir/app/backend/nvcomputer.h" \
     "$source_dir/app/backend/nvcomputer.cpp" \
@@ -891,7 +891,7 @@ for required_bookmark_bitrate_token in \
     "$source_dir/app/streaming/session.h" \
     "$source_dir/app/streaming/session.cpp" \
     "$source_dir/app/settings/streamingpreferences.h" || {
-    echo "StationConnect bookmark bitrate invariant is missing: ${required_bookmark_bitrate_token}" >&2
+    echo "PLANK bookmark bitrate invariant is missing: ${required_bookmark_bitrate_token}" >&2
     exit 1
   }
 done
@@ -901,18 +901,18 @@ for required_bookmark_bitrate_ui_token in \
   'Startup encoder target:' \
   'Saved independently for each encoding profile. Toolbar adjustments apply only to the active session.' \
   'rememberProfileBitrate' \
-  'computerModel.stationConnectProfileBitratesKbps(index)'; do
+  'computerModel.plankProfileBitratesKbps(index)'; do
   rg -Fq "$required_bookmark_bitrate_ui_token" \
     "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
-    echo "StationConnect bookmark bitrate UI is missing: ${required_bookmark_bitrate_ui_token}" >&2
+    echo "PLANK bookmark bitrate UI is missing: ${required_bookmark_bitrate_ui_token}" >&2
     exit 1
   }
 done
 if rg -n \
-  'Q_PROPERTY\(int bitrateKbps|\bbitrateKbps MEMBER|#define SER_BITRATE "bitrate"|stationconnect-bitrate-kbps|getDefaultBitrate|StreamingPreferences\.bitrateKbps|m_Preferences\.bitrateKbps|preferences->bitrateKbps|addValueOption\("bitrate"' \
+  'Q_PROPERTY\(int bitrateKbps|\bbitrateKbps MEMBER|#define SER_BITRATE "bitrate"|plank-bitrate-kbps|getDefaultBitrate|StreamingPreferences\.bitrateKbps|m_Preferences\.bitrateKbps|preferences->bitrateKbps|addValueOption\("bitrate"' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "global or command-line bitrate configuration remains in StationConnect client" >&2
+  echo "global or command-line bitrate configuration remains in PLANK client" >&2
   exit 1
 fi
 if rg -n 'NVENC \(Experimental\)' \
@@ -944,7 +944,7 @@ for bookmark_layout_token in \
   rg -Fq "$bookmark_layout_token" \
     "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" \
     "$source_dir/app/gui/SettingsView.qml" || {
-    echo "StationConnect bookmark/settings layout invariant is missing: ${bookmark_layout_token}" >&2
+    echo "PLANK bookmark/settings layout invariant is missing: ${bookmark_layout_token}" >&2
     exit 1
   }
 done
@@ -953,13 +953,13 @@ for audio_settings_token in \
   'Mutes streamed audio when you Alt+Tab out of the stream or click on a different window.'; do
   rg -Fq "$audio_settings_token" \
     "$source_dir/app/gui/SettingsView.qml" || {
-    echo "StationConnect Audio Settings wording is missing: ${audio_settings_token}" >&2
+    echo "PLANK Audio Settings wording is missing: ${audio_settings_token}" >&2
     exit 1
   }
 done
 if rg -n 'Mute audio stream when Moonlight|Mutes Moonlight.s audio' \
   "$source_dir/app/gui/SettingsView.qml"; then
-  echo "Moonlight branding remains in StationConnect Audio Settings" >&2
+  echo "Moonlight branding remains in PLANK Audio Settings" >&2
   exit 1
 fi
 if rg -n -U 'id: uiSettingsGroupBox\n[[:space:]]+parent: settingsColumn2' \
@@ -1015,7 +1015,7 @@ done
 echo "client_retained_reconnect_renderer_gate=pass"
 
 for required_reconnect_local_event_token in \
-  'handleStationConnectLocalUserEvent' \
+  'handlePlankLocalUserEvent' \
   'applyPendingRemoteCursor();' \
   'applyPendingTabletCursorActivation();' \
   'applyPendingRemoteCursorPosition();' \
@@ -1029,10 +1029,10 @@ done
 echo "client_reconnect_local_event_gate=pass"
 
 for required_client_identity_token in \
-  'QGuiApplication::setApplicationDisplayName("StationConnect Client");' \
-  'SDL_SetAppMetadata("StationConnect Client",' \
-  '"la.instinctual.StationConnect.Client");' \
-  'app.setDesktopFileName("la.instinctual.StationConnect.Client");'; do
+  'QGuiApplication::setApplicationDisplayName("PLANK Client");' \
+  'SDL_SetAppMetadata("PLANK Client",' \
+  '"la.instinctual.Plank.Client");' \
+  'app.setDesktopFileName("la.instinctual.Plank.Client");'; do
   rg -Fq "$required_client_identity_token" "$source_dir/app/main.cpp" || {
     echo "client application identity is missing: ${required_client_identity_token}" >&2
     exit 1
@@ -1043,33 +1043,33 @@ if rg -n 'SDL_(AUDIO_DEVICE_APP_NAME|VIDEO_(WAYLAND|X11)_WMCLASS)' \
   echo "client source still uses removed SDL2 application identity variables" >&2
   exit 1
 fi
-rg -Fq 'TARGET = stationconnect-client' "$source_dir/app/app.pro" || {
-  echo "client build target is not branded stationconnect-client" >&2
+rg -Fq 'TARGET = plank-client' "$source_dir/app/app.pro" || {
+  echo "client build target is not branded plank-client" >&2
   exit 1
 }
-approved_client_logo="$repo_dir/branding/assets/stationconnect_logo_circle.png"
-runtime_client_logo="$source_dir/app/res/stationconnect-logo.png"
+approved_client_logo="$repo_dir/branding/assets/plank-logo.png"
+runtime_client_logo="$source_dir/app/res/plank-logo.png"
 [[ -f $approved_client_logo ]] || {
-  echo "approved StationConnect client logo is unavailable: ${approved_client_logo}" >&2
+  echo "approved PLANK client logo is unavailable: ${approved_client_logo}" >&2
   exit 1
 }
 cmp --silent "$approved_client_logo" "$runtime_client_logo" || {
-  echo "runtime client logo differs from the approved StationConnect artwork" >&2
+  echo "runtime client logo differs from the approved PLANK artwork" >&2
   exit 1
 }
 echo "client_approved_logo_source_gate=pass"
-client_desktop="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.desktop"
-client_appstream="$source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.appdata.xml"
-rg -Fxq 'Name=StationConnect Client' "$client_desktop" || {
-  echo "client desktop display name is not StationConnect Client" >&2
+client_desktop="$source_dir/app/deploy/linux/la.instinctual.Plank.Client.desktop"
+client_appstream="$source_dir/app/deploy/linux/la.instinctual.Plank.Client.appdata.xml"
+rg -Fxq 'Name=PLANK Client' "$client_desktop" || {
+  echo "client desktop display name is not PLANK Client" >&2
   exit 1
 }
-rg -Fxq 'StartupWMClass=la.instinctual.StationConnect.Client' \
+rg -Fxq 'StartupWMClass=la.instinctual.Plank.Client' \
   "$client_desktop" || {
   echo "client desktop application ID is not canonical" >&2
   exit 1
 }
-rg -Fq '<id>la.instinctual.StationConnect.Client</id>' \
+rg -Fq '<id>la.instinctual.Plank.Client</id>' \
   "$client_appstream" || {
   echo "client AppStream application ID is not canonical" >&2
   exit 1
@@ -1095,13 +1095,13 @@ for required_exact_decoder_token in \
 done
 echo "client_exact_decoder_selection_gate=pass"
 
-# The StationConnect client is Wayland-only. It offers compositor-managed
+# The PLANK client is Wayland-only. It offers compositor-managed
 # borderless and decorated/resizable windowed streaming, but no exclusive
 # modesetting path.
 if rg -n '\bWM_FULLSCREEN\b|\{"fullscreen",[[:space:]]*StreamingPreferences::WM|m_FullScreenFlag[[:space:]]*=[[:space:]]*SDL_WINDOW_FULLSCREEN;' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "exclusive fullscreen support is present in the Wayland-only StationConnect client" >&2
+  echo "exclusive fullscreen support is present in the Wayland-only PLANK client" >&2
   exit 1
 fi
 for required_window_token in \
@@ -1126,7 +1126,7 @@ echo "client_wayland_window_mode_gate=pass"
 # uses the selected host canvas exactly. Do not restore the old global
 # resolution preference, saved width/height state, or CLI override path.
 if rg -n \
-  'stationConnectAutoResolution|SER_(WIDTH|HEIGHT)|Q_PROPERTY\(int (width|height)|add(Value|Flag)Option\("(resolution|720|1080|1440|4K)"|Use native client display resolution|Resolution and FPS' \
+  'plankAutoResolution|SER_(WIDTH|HEIGHT)|Q_PROPERTY\(int (width|height)|add(Value|Flag)Option\("(resolution|720|1080|1440|4K)"|Use native client display resolution|Resolution and FPS' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
   echo "obsolete global stream-resolution preference is present" >&2
@@ -1148,12 +1148,12 @@ echo "client_bookmark_resolution_policy_gate=pass"
 # They retain both the entered address and editable nickname, then bind to the
 # first server identity that successfully answers at that address.
 for required_bookmark_token in \
-  stationconnect-manual-bookmark \
-  stationconnect-server-uuid \
-  stationconnect-host-layout \
-  stationconnect-virtual-mode-1 \
-  stationconnect-virtual-mode-2 \
-  stationconnect-scaling-mode \
+  plank-manual-bookmark \
+  plank-server-uuid \
+  plank-host-layout \
+  plank-virtual-mode-1 \
+  plank-virtual-mode-2 \
+  plank-scaling-mode \
   acceptsServerUuid \
   'Address or hostname' \
   Nickname; do
@@ -1191,7 +1191,7 @@ rg -U -q 'id: addPcDialog(.|\n)*ColumnLayout \{\n[[:space:]]+width: parent\.widt
   echo "connection fields must fill the dialog width" >&2
   exit 1
 }
-if rg -q 'placeholderText: qsTr\("hardware-test-host(\.stationconnect\.io)?"\)' \
+if rg -q 'placeholderText: qsTr\("hardware-test-host(\.plank\.io)?"\)' \
   "$source_dir/app/gui/main.qml"; then
   echo "connection dialog contains misleading workstation example text" >&2
   exit 1
@@ -1208,14 +1208,14 @@ echo "client_offline_bookmark_gate=pass"
 for bookmark_ui in \
   "$source_dir/app/gui/main.qml" \
   "$source_dir/app/gui/PcView.qml"; do
-  rg -Fq 'property var virtualModeChoices: ComputerManager.stationConnectVirtualModeChoices()' \
+  rg -Fq 'property var virtualModeChoices: ComputerManager.plankVirtualModeChoices()' \
     "$bookmark_ui" || {
     echo "bookmark resolution UI does not use the canonical backend list: ${bookmark_ui}" >&2
     exit 1
   }
 done
 for required_virtual_mode_token in \
-  'Q_INVOKABLE QStringList stationConnectVirtualModeChoices() const;' \
+  'Q_INVOKABLE QStringList plankVirtualModeChoices() const;' \
   'QStringList choices = NvOutputTopology::qualifiedVirtualModes();' \
   'int hostLayout = 0, int virtualMode1 = 9' \
   'int virtualMode2 = 1' \
@@ -1270,7 +1270,7 @@ echo "client_match_client_layout_gate=pass"
 # headless hosts reject only the physical choice. Offline bookmarks remain fully
 # editable and are never silently rewritten when topology arrives.
 for required_display_policy_token in \
-  'stationConnectHostDisplayPolicy' \
+  'plankHostDisplayPolicy' \
   'displayPolicyKnown' \
   'allowedLayoutKinds' \
   'TemporaryPhysicalLayoutFeature' \
@@ -1292,14 +1292,14 @@ echo "client_host_display_policy_gate=pass"
 # 1:1 transport canvas; Scaled-Span uses the qualified
 # client-resolution fit. Individual remote-output selection is intentionally
 # absent from the headless workflow.
-if rg -n 'stationconnect-selected-output|selectedOutputId|scOutputId|stationConnectDisplayChoices|selectOutput\(|SingleOutputMode|SeparateDisplaysMode|Primary display|specific host monitor|Named host monitors' \
+if rg -n 'plank-selected-output|selectedOutputId|plankOutputId|plankDisplayChoices|selectOutput\(|SingleOutputMode|SeparateDisplaysMode|Primary display|specific host monitor|Named host monitors' \
   "$source_dir/app" --glob '!**/languages/**'; then
-  echo "remote-monitor selection is present in the StationConnect client" >&2
+  echo "remote-monitor selection is present in the PLANK client" >&2
   exit 1
 fi
 for required_scaling_token in \
   'NativeScalingMode' \
-  'stationConnectScalingChoice' \
+  'plankScalingChoice' \
   'Native (1:1 pixels)' \
   'Scaled-Span' \
   'Native scaling requires a valid host desktop pixel size.'; do
@@ -1320,23 +1320,23 @@ if rg -n 'DetailsRole|showPcDetailsDialog|View Details|Running Game ID|MAC Addre
 fi
 echo "client_workstation_details_absence_gate=pass"
 
-# StationConnect workstations are expected to be available through their
+# PLANK workstations are expected to be available through their
 # approved network path. Do not retain Moonlight's Wake-on-LAN UI, MAC-address
 # persistence, CLI auto-wake, or magic-packet transport.
 if rg -n 'Wake PC|WakeableRole|wakeComputer|macAddress|SER_MAC|wolPayload|STATIC_WOL_PORTS|DYNAMIC_WOL_PORTS|computer->wake\(\)' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "Wake-on-LAN support is present in StationConnect client" >&2
+  echo "Wake-on-LAN support is present in PLANK client" >&2
   exit 1
 fi
 echo "client_wake_on_lan_absence_gate=pass"
 
 # Native KyProto owns media packetization. Keep the retired GameStream packet
 # size preference and its misleading UI out of the Client.
-if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER|networkMtu|stationconnect-network-mtu|videoPacketSizeForMtu|Determine network MTU|Physical path MTU|stationconnectpacketsize' \
+if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER|networkMtu|plank-network-mtu|videoPacketSizeForMtu|Determine network MTU|Physical path MTU|plankpacketsize' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "legacy packet-size configuration is present in StationConnect client" >&2
+  echo "legacy packet-size configuration is present in PLANK client" >&2
   exit 1
 fi
 for required_mtu_token in \
@@ -1371,9 +1371,9 @@ rg -Fq 'settings.value(SER_MDNS, false)' \
   exit 1
 }
 for required_mdns_token in \
-  StationConnectClientPolicy \
+  PlankClientPolicy \
   'network/mdns_discovery' \
-  '/etc/stationconnect/stationconnect-client.conf' \
+  '/etc/plank/client.conf' \
   mdnsDiscoveryManaged \
   '!StreamingPreferences.mdnsDiscoveryManaged'; do
   rg -Fq "$required_mdns_token" "$source_dir/app" || {
@@ -1381,13 +1381,13 @@ for required_mdns_token in \
     exit 1
   }
 done
-if rg -n 'STATIONCONNECT_MDNS_DISCOVERY|client\.env' \
+if rg -n 'PLANK_MDNS_DISCOVERY|client\.env' \
   "$source_dir/app" \
-  "$repo_dir/packaging/bin/stationconnect-client"; then
+  "$repo_dir/packaging/bin/plank-client"; then
   echo "client retains the deprecated user-controlled mDNS environment policy" >&2
   exit 1
 fi
-client_policy="$repo_dir/packaging/config/stationconnect-client.conf"
+client_policy="$repo_dir/packaging/config/plank-client.conf"
 rg -Fxq '[network]' "$client_policy" || {
   echo "client administrator policy is missing its network section" >&2
   exit 1
@@ -1399,7 +1399,7 @@ rg -Fxq 'port = 28989' "$client_policy" || {
 for required_port_token in \
   'network/port' \
   'policy.networkPort()' \
-  'StationConnectClientPolicy().networkPort()'; do
+  'PlankClientPolicy().networkPort()'; do
   rg -Fq "$required_port_token" "$source_dir/app" || {
     echo "client configured network-port path is missing: ${required_port_token}" >&2
     exit 1
@@ -1419,8 +1419,8 @@ if rg -q '^[[:space:]]*mdns_discovery[[:space:]]*=' "$client_policy"; then
   exit 1
 fi
 for policy_test_file in \
-  tests/stationconnectclientpolicy/stationconnectclientpolicy.pro \
-  tests/stationconnectclientpolicy/test_stationconnectclientpolicy.cpp; do
+  tests/plankclientpolicy/plankclientpolicy.pro \
+  tests/plankclientpolicy/test_plankclientpolicy.cpp; do
   [[ -f ${source_dir}/${policy_test_file} ]] || {
     echo "client administrator policy test is missing: ${policy_test_file}" >&2
     exit 1
@@ -1434,14 +1434,14 @@ echo "client_mdns_default_off_gate=pass"
 for required_log_token in \
   XDG_STATE_HOME \
   '.local/state' \
-  'stationconnect/logs'; do
+  'plank/logs'; do
   rg -Fq "$required_log_token" "$source_dir/app/path.cpp" || {
     echo "client persistent log path invariant is missing: ${required_log_token}" >&2
     exit 1
   }
 done
 for required_log_token in \
-  'stationconnect-client-*.log' \
+  'plank-client-*.log' \
   'MAX_LOG_SIZE_BYTES (10 * 1024 * 1024)' \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner' \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \
@@ -1455,7 +1455,7 @@ for required_log_token in \
 done
 echo "client_persistent_log_source_gate=pass"
 
-policy_test_build=$(mktemp -d --tmpdir stationconnect-client-policy-test.XXXXXX)
+policy_test_build=$(mktemp -d --tmpdir plank-client-policy-test.XXXXXX)
 cleanup_policy_test() {
   if [[ -d ${policy_test_build} ]]; then
     find "$policy_test_build" -xdev -depth -mindepth 1 -delete
@@ -1463,10 +1463,10 @@ cleanup_policy_test() {
   fi
 }
 trap cleanup_policy_test EXIT
-qmake6 "$source_dir/tests/stationconnectclientpolicy/stationconnectclientpolicy.pro" \
+qmake6 "$source_dir/tests/plankclientpolicy/plankclientpolicy.pro" \
   -o "$policy_test_build/Makefile"
 make -C "$policy_test_build" -j"$(nproc)"
-QT_QPA_PLATFORM=offscreen "$policy_test_build/stationconnectclientpolicy"
+QT_QPA_PLATFORM=offscreen "$policy_test_build/plankclientpolicy"
 cleanup_policy_test
 trap - EXIT
 echo "client_administrator_policy_test=pass"
@@ -1481,9 +1481,9 @@ export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PAT
 mkdir -p "$build_dir"
 (
   cd "$build_dir"
-  qmake6 "$source_dir" CONFIG+=release CONFIG+=stationconnect-datasmash \
-    "STATIONCONNECT_DATASMASH_TRANSPORT_DIR=${datasmash_transport_dir}" \
-    "STATIONCONNECT_VERSION=${package_version}" \
+  qmake6 "$source_dir" CONFIG+=release CONFIG+=plank-transport \
+    "PLANK_TRANSPORT_DIR=${plank_transport_dir}" \
+    "PLANK_VERSION=${package_version}" \
     "QMAKE_CFLAGS+=-ffile-prefix-map=${build_dir}=." \
     "QMAKE_CFLAGS+=-ffile-prefix-map=${source_dir}=../src" \
     "QMAKE_CXXFLAGS+=-ffile-prefix-map=${build_dir}=." \
@@ -1491,29 +1491,29 @@ mkdir -p "$build_dir"
   make -j"$(nproc)"
 )
 
-client_binary="${build_dir}/app/stationconnect-client"
+client_binary="${build_dir}/app/plank-client"
 [[ -x ${client_binary} ]] || {
-  echo "StationConnect client package binary was not produced" >&2
+  echo "PLANK client package binary was not produced" >&2
   exit 1
 }
-nm -C "$client_binary" | rg ' [Tt] sc_datasmash_abi_version$' >/dev/null || {
-  echo "client binary does not link the datasmash transport ABI" >&2
+nm -C "$client_binary" | rg ' [Tt] plank_transport_abi_version$' >/dev/null || {
+  echo "client binary does not link the PLANK transport ABI" >&2
   exit 1
 }
-rg -a -Fq 'StationConnect datasmash transport ABI' "$client_binary" || {
-  echo "client binary does not report the inactive datasmash boundary" >&2
+rg -a -Fq 'PLANK native transport ABI' "$client_binary" || {
+  echo "client binary does not report the inactive plank_transport boundary" >&2
   exit 1
 }
-echo "client_datasmash_link_gate=pass"
+echo "client_plank_transport_link_gate=pass"
 if [[ -e ${build_dir}/app/moonlight ]]; then
   echo "client build still produced the superseded Moonlight runtime name" >&2
   exit 1
 fi
 rg -a -Fq "$package_version" "$client_binary" || {
-  echo "Moonlight does not embed the StationConnect package version: ${package_version}" >&2
+  echo "Moonlight does not embed the PLANK package version: ${package_version}" >&2
   exit 1
 }
-echo "stationconnect_client_version=${package_version}"
+echo "plank_client_version=${package_version}"
 echo "client_version_banner_gate=pass"
 dynamic_section=$(readelf -d "$client_binary")
 for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
@@ -1528,7 +1528,7 @@ done
 log_runtime_root=$(mktemp -d)
 log_runtime_home="${log_runtime_root}/home"
 log_runtime_state="${log_runtime_root}/state"
-log_runtime_dir="${log_runtime_state}/stationconnect/logs"
+log_runtime_dir="${log_runtime_state}/plank/logs"
 log_runtime_config="${log_runtime_root}/config"
 log_runtime_cache="${log_runtime_root}/cache"
 log_runtime_session="${log_runtime_root}/runtime"
@@ -1537,7 +1537,7 @@ mkdir -p "$log_runtime_home" "$log_runtime_dir" "$log_runtime_config" \
 chmod 0700 "$log_runtime_home" "$log_runtime_dir" "$log_runtime_config" \
   "$log_runtime_cache" "$log_runtime_session"
 for old_log in {01..11}; do
-  touch "${log_runtime_dir}/stationconnect-client-20000101-000000-000-${old_log}.log"
+  touch "${log_runtime_dir}/plank-client-20000101-000000-000-${old_log}.log"
 done
 chmod 0600 "${log_runtime_dir}"/*.log
 
@@ -1559,7 +1559,7 @@ if [[ $log_runtime_status -ne 0 ]]; then
 fi
 
 mapfile -t runtime_logs < <(find "$log_runtime_dir" -maxdepth 1 -type f \
-  -name 'stationconnect-client-*.log' -print)
+  -name 'plank-client-*.log' -print)
 if [[ ${#runtime_logs[@]} -ne 10 ]]; then
   printf '%s\n' "$log_runtime_output" >&2
   echo "client did not retain exactly 10 persistent logs" >&2

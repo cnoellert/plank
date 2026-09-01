@@ -1,11 +1,11 @@
 # Active-Session Video Bitrate
 
-StationConnect clients may change the running video encoder bitrate without
+PLANK clients may change the running video encoder bitrate without
 disconnecting. Sunshine advertises support with host feature flag `0x08`
 (`LI_FF_DYNAMIC_VIDEO_BITRATE`) in `x-ss-general.featureFlags`. Clients must
 leave the in-stream control disabled when that bit is absent.
 
-The synchronized StationConnect protocol also advertises feature flag `0x10`
+The synchronized PLANK protocol also advertises feature flag `0x10`
 (`LI_FF_ENCODER_TARGET_ACK`) and accepts
 `encoder_target_kbps` in the native QUIC launch request. This value is the
 exact video encoder target and is not reduced for audio, packet overhead, or

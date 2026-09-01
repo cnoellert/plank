@@ -21,7 +21,7 @@
 | Native 10-bit NvFBC source | Unsupported, non-blocking | NvFBC 1.9 exposes only 8-bit RGB/YUV output formats, including native `BGRA8888`; the approved baseline is labeled 8-bit-source/up-converted. |
 | HEVC Rext 10-bit 4:4:4 encode | Pass | The integrated 600-frame stream decodes without error; `ffprobe` reports `Rext`, `gbrp10le`, full-range GBR identity signaling, sRGB transfer, and BT.709 primaries. |
 | Live Sunshine/Moonlight identity session | Pass | The NUC negotiated format `0x800`, hardware-decoded to Y410, and imported the Y410/XR30 alias through EGL. After fixing startup queue priming, five fresh connections, one full loop, and a 10:20 soak all had exact pacer totals of `0/0/0`. Client diagnostics explicitly label the 8-bit source, 10-bit 4:4:4 codec, and 10-bit identity presentation stages. |
-| NVIDIA driver/build-deps compatibility | Fixed in fork | Driver 580 exposes NVENC API 13.0. The StationConnect build-deps fork pins `nv-codec-headers` to API 13.0 and prevents GCC from introducing a glibc vector-math ABI into x265 that Rocky 9 does not provide. |
+| NVIDIA driver/build-deps compatibility | Fixed in fork | Driver 580 exposes NVENC API 13.0. The PLANK build-deps fork pins `nv-codec-headers` to API 13.0 and prevents GCC from introducing a glibc vector-math ABI into x265 that Rocky 9 does not provide. |
 | Synthetic animated 2160p60 pipeline | Pass, marginal | The enforced rerun sustained 60.05 fps with zero submission misses and 15.959 ms p95, but its 16.862 ms p99 failed the stricter robustness gate. P95 headroom was only 0.708 ms. |
 | Full looping production workload | Pass | The instrumented 150-second loop encoded 9,000 frames at 60.01 fps with 8,999 new captures, zero misses, 14.645 ms p95, 15.041 ms p99, and 2.022 ms p95 headroom. |
 | Real-workload SFE A/B | Auto required on Ada | Matched 9,000-frame runs measured 14.512 ms p95 and 14.939 ms p99 with driver-auto, versus 17.419 ms p95 and 17.752 ms p99 with SFE disabled. Both decoded without error; only auto met the 16.67 ms budget. |
@@ -143,19 +143,19 @@ A packaged-session check on 2026-08-21 identified a separate application
 startup-order constraint. Flare was already running when the authenticated
 stream created the exact UHID Wacom. Pressure worked and Flame saved its 5%
 margin preference, but Xorg's `Wacom Tablet Area` remained at the full
-`0 0 44800 29600` extent. Restarting only Flare while StationConnect remained
-connected made Tablet Margins work immediately. StationConnect must therefore
+`0 0 44800 29600` extent. Restarting only Flare while PLANK remained
+connected made Tablet Margins work immediately. PLANK must therefore
 attach the tablet before Flame starts; connecting to an existing Flame process
 requires a save-and-restart until a reliable live tablet-rescan mechanism is
 available. No margin watcher or coordinate emulation was introduced.
 
 ## Authenticated Desktop Launch
 
-The dedicated NUC completed the StationConnect login flow against the PAM
+The dedicated NUC completed the PLANK login flow against the PAM
 broker on 2026-08-20. After successful authentication, Moonlight launched the
 only advertised application, `Desktop`, without presenting the upstream
 Desktop/Steam chooser. Sunshine now filters `/applist` and rejects launch or
-resume requests for every non-Desktop application while StationConnect
+resume requests for every non-Desktop application while PLANK
 authentication is active. The session negotiated the qualified 3840x2160 at
 60 Hz H.264 High 4:4:4 Predictive 10-bit identity path at a 100 Mbps client
 request. The NUC selected FFmpeg software decode to `gbrp10le` and Vulkan
@@ -211,7 +211,7 @@ later without intervention.
 An early development unit temporarily used a supplementary-group override for
 the PAM broker. That override was ignored by Git and was never part of the
 production units. A subsequent logout/login activated
-`graphical-session.target` and `stationconnect-host.service` together at
+`graphical-session.target` and `plank-host.service` together at
 17:29:05 without a terminal process. Sunshine selected the 3840x2160 output,
 qualified software-x264, enabled PAM authentication, and restored its wildcard
 listeners; the NUC rediscovered hardware-test-host. Persistent SSH sessions kept the old
@@ -260,14 +260,14 @@ transfer, and BT.709 primaries. Protocol and UI telemetry report source precisio
 and codec precision separately.
 
 Sunshine must consume prepared FFmpeg artifacts from
-`instinctual/build-deps`, branch `stationconnect/main`. Do not roll the entire
+`instinctual/build-deps`, branch `plank/main`. Do not roll the entire
 bundle back to the older API-13.0 release: its x265 archive references vector
-math symbols unavailable on Rocky 9. The StationConnect fork pins the NV codec
+math symbols unavailable on Rocky 9. The PLANK fork pins the NV codec
 headers and disables only GCC tree vectorization for x265; x265's hand-written
 architecture-specific SIMD remains enabled.
 
 The validated artifact is
-`v2026.724.203728-stationconnect.4` (`4a54a631f8c217318c15c070141e3690a938d3e6`).
+`v2026.724.203728-plank.4` (`4a54a631f8c217318c15c070141e3690a938d3e6`).
 Its Linux x86_64 archive SHA-256 is
 `c0ab243756a24506f536bf7a0a1c9bd7638bb6bcda14fa4ece820fa07e2bf5de`.
 A clean configure downloaded that release by tag; Sunshine linked on Rocky 9,
@@ -463,7 +463,7 @@ setup and immediately before opening x264. Live inspection confirmed all 58
 x264 video workers inherited CPUs 0-127, while unrelated Sunshine threads
 retained the desktop session's narrower mask.
 
-Sunshine's StationConnect software backend now selects `libx264rgb` for native
+Sunshine's PLANK software backend now selects `libx264rgb` for native
 8-bit RGB or `libx264` with identity GBR planes for the 10-bit path. The latter
 is explicitly labeled `8-bit-source/up-converted`. NVENC HEVC remains a
 qualified comparison—the moving-content full-loop run had zero deadline
@@ -515,9 +515,9 @@ gates now pass. The preferred fullscreen artifacts are stored under the
 repository's ignored qualification artifact directory:
 
 ```text
-artifacts/qualification/video/stationconnect-flame-fullscreen-3583f24-final-sfe-auto-repeat2.hevc
+artifacts/qualification/video/plank-flame-fullscreen-3583f24-final-sfe-auto-repeat2.hevc
 sha256=a483c4301590ae40b5621ee734db31a056860822a8874fd0223ce333bb07a0b1
-artifacts/qualification/video/stationconnect-flame-fullscreen-3583f24-final-sfe-disabled2.hevc
+artifacts/qualification/video/plank-flame-fullscreen-3583f24-final-sfe-disabled2.hevc
 sha256=dfb18707b03739540541beb3b369369ce4bceb8811658b259f9281dd6feff94f
 ```
 
@@ -552,7 +552,7 @@ future backend and is not part of the production Xorg capture path.
 
 ## Synchronized 0.5 Package Smoke Test — 2026-08-21
 
-`stationconnect-host-0.1.0-0.5.el9.x86_64` was installed alongside the matching
+`plank-host-0.1.0-0.5.el9.x86_64` was installed alongside the matching
 NUC client release and both services returned active. A fresh authenticated
 scaled-span session started the qualified 3840x2160p60 10-bit H.264 4:4:4
 identity stream with stereo audio. Host `libinput` enumerated the forwarded

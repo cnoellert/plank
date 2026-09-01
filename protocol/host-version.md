@@ -1,12 +1,12 @@
-# StationConnect Host Version Discovery
+# PLANK Host Version Discovery
 
-The client discovers the installed StationConnect Host release during its
+The client discovers the installed PLANK Host release during its
 normal bookmark availability poll. The host adds this element to both HTTP and
 authenticated HTTPS `/serverinfo` responses:
 
 ```xml
-<StationConnectHostMetadataVersion>1</StationConnectHostMetadataVersion>
-<StationConnectHostVersion>0.1.0-0.104</StationConnectHostVersion>
+<PlankHostMetadataVersion>1</PlankHostMetadataVersion>
+<PlankHostVersion>0.1.0-0.104</PlankHostVersion>
 ```
 
 Metadata schema version 1 defines the host-version element. Its value is the

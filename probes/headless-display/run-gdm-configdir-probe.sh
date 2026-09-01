@@ -3,11 +3,11 @@
 set -euo pipefail
 
 readonly probe_host="${PLANK_PROBE_HOST:?Set PLANK_PROBE_HOST for the authorized test Host}"
-readonly overlay_source="${1:-/run/stationconnect/headless-probe/xorg-overlay-dual-virtual.conf}"
+readonly overlay_source="${1:-/run/plank/headless-probe/xorg-overlay-dual-virtual.conf}"
 readonly expected_monitor_count="${2:-2}"
 readonly expected_screen_geometry="${3:-3840x1080}"
 readonly nvfbc_probe="${4:-}"
-readonly overlay_path="/etc/X11/xorg.conf.d/99-stationconnect-headless-probe.conf"
+readonly overlay_path="/etc/X11/xorg.conf.d/99-plank-headless-probe.conf"
 readonly gdm_xauthority="/run/user/42/gdm/Xauthority"
 
 if [[ ${EUID} -ne 0 ]]; then

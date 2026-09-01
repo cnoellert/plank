@@ -3,10 +3,10 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-host_launcher=${repo_dir}/packaging/bin/stationconnect-host
-client_launcher=${repo_dir}/packaging/bin/stationconnect-client
-host_profile=${repo_dir}/packaging/config/stationconnect-host.conf
-client_policy=${repo_dir}/packaging/config/stationconnect-client.conf
+host_launcher=${repo_dir}/packaging/bin/plank-host
+client_launcher=${repo_dir}/packaging/bin/plank-client
+host_profile=${repo_dir}/packaging/config/plank-host.conf
+client_policy=${repo_dir}/packaging/config/plank-client.conf
 client_main=${repo_dir}/client/moonlight-qt-fork/app/main.cpp
 client_path=${repo_dir}/client/moonlight-qt-fork/app/path.cpp
 
@@ -24,24 +24,24 @@ expect_status() {
   fi
 }
 
-expect_status 127 env STATIONCONNECT_HOST_BINARY=/does/not/exist \
+expect_status 127 env PLANK_HOST_BINARY=/does/not/exist \
   "${host_launcher}"
 expect_status 1 env -u DISPLAY -u XAUTHORITY \
-  STATIONCONNECT_HOST_BINARY=/bin/true "${host_launcher}"
+  PLANK_HOST_BINARY=/bin/true "${host_launcher}"
 expect_status 1 env DISPLAY=:99 XAUTHORITY=/does/not/exist \
-  STATIONCONNECT_HOST_BINARY=/bin/true \
-  STATIONCONNECT_AUTH_SOCKET=/does/not/exist "${host_launcher}"
+  PLANK_HOST_BINARY=/bin/true \
+  PLANK_AUTH_SOCKET=/does/not/exist "${host_launcher}"
 
-expect_status 127 env STATIONCONNECT_CLIENT_BINARY=/does/not/exist \
+expect_status 127 env PLANK_CLIENT_BINARY=/does/not/exist \
   DISPLAY=:99 "${client_launcher}"
 expect_status 1 env -u DISPLAY -u WAYLAND_DISPLAY \
-  STATIONCONNECT_CLIENT_BINARY=/bin/true "${client_launcher}"
-expect_status 0 env STATIONCONNECT_CLIENT_BINARY=/bin/true \
+  PLANK_CLIENT_BINARY=/bin/true "${client_launcher}"
+expect_status 0 env PLANK_CLIENT_BINARY=/bin/true \
   DISPLAY=:99 "${client_launcher}" forwarded-argument
 
-client_environment=$(env -u STATIONCONNECT_MDNS_DISCOVERY \
-  STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
-  STATIONCONNECT_CLIENT_LIBDIR="${repo_dir}/packaging" \
+client_environment=$(env -u PLANK_MDNS_DISCOVERY \
+  PLANK_CLIENT_BINARY=/usr/bin/env \
+  PLANK_CLIENT_LIBDIR="${repo_dir}/packaging" \
   XDG_CONFIG_HOME=/does/not/exist \
   LD_LIBRARY_PATH=/system/lib DISPLAY=:99 "${client_launcher}")
 if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
@@ -49,7 +49,7 @@ if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
   echo 'Client launcher did not prefer the private library directory' >&2
   exit 1
 fi
-if grep -q '^STATIONCONNECT_MDNS_DISCOVERY=' <<<"${client_environment}"; then
+if grep -q '^PLANK_MDNS_DISCOVERY=' <<<"${client_environment}"; then
   echo 'Client launcher injected a deprecated mDNS environment override' >&2
   exit 1
 fi
@@ -60,22 +60,22 @@ fi
 
 client_config_root=$(mktemp -d)
 trap 'rm -rf -- "${client_config_root}"' EXIT
-mkdir -p "${client_config_root}/stationconnect"
-printf '%s\n' 'STATIONCONNECT_MDNS_DISCOVERY=1' \
-  >"${client_config_root}/stationconnect/client.env"
-client_environment=$(env -u STATIONCONNECT_MDNS_DISCOVERY \
+mkdir -p "${client_config_root}/plank"
+printf '%s\n' 'PLANK_MDNS_DISCOVERY=1' \
+  >"${client_config_root}/plank/client.env"
+client_environment=$(env -u PLANK_MDNS_DISCOVERY \
   XDG_CONFIG_HOME="${client_config_root}" \
-  STATIONCONNECT_CLIENT_BINARY=/usr/bin/env \
-  STATIONCONNECT_CLIENT_LIBDIR=/does/not/exist \
+  PLANK_CLIENT_BINARY=/usr/bin/env \
+  PLANK_CLIENT_LIBDIR=/does/not/exist \
   DISPLAY=:99 "${client_launcher}")
-if grep -q '^STATIONCONNECT_MDNS_DISCOVERY=' <<<"${client_environment}"; then
+if grep -q '^PLANK_MDNS_DISCOVERY=' <<<"${client_environment}"; then
   echo 'Client launcher loaded the obsolete per-user client.env file' >&2
   exit 1
 fi
 
 grep -Fxq 'sw_vbv_maxrate_percentage = 150' "${host_profile}"
 grep -Fxq 'sw_vbv_buffer_frames = 4' "${host_profile}"
-grep -Fxq 'stationconnect_mdns_discovery = false' "${host_profile}"
+grep -Fxq 'mdns_discovery = false' "${host_profile}"
 grep -Fxq 'ping_timeout = 10000' "${host_profile}"
 if rg -n '^[#[:space:]]*(address_family|bind_address)[[:space:]]*=' "${host_profile}"; then
   echo 'host profile contains removed listener-binding options' >&2
@@ -104,11 +104,11 @@ if rg -q '^[[:space:]]*mdns_discovery[[:space:]]*=' "${client_policy}"; then
   exit 1
 fi
 
-for required_log_token in XDG_STATE_HOME '.local/state' 'stationconnect/logs'; do
+for required_log_token in XDG_STATE_HOME '.local/state' 'plank/logs'; do
   rg -Fq "${required_log_token}" "${client_path}"
 done
 for required_log_token in \
-  'stationconnect-client-*.log' \
+  'plank-client-*.log' \
   'MAX_LOG_SIZE_BYTES (10 * 1024 * 1024)' \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner' \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \

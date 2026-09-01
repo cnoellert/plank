@@ -1,0 +1,32 @@
+[package]
+name = "plank-transport"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = []
+quinn-bbr = ["quinn-proto/plank-bbr-default"]
+quinn-telemetry = ["quinn-proto/plank-telemetry"]
+
+[dependencies]
+anyhow = "1.0"
+bytes = "1.10"
+hex = "0.4"
+kynet = { path = "../../third_party/kyber-kymux/kynet", features = ["kynet-quinn"] }
+kyproto = { path = "../../third_party/kyber-kymux/kyproto" }
+kymux-types = { path = "../../third_party/kyber-kymux/kymux-types" }
+quinn-proto = { version = "=0.11.17", default-features = false }
+ring = "0.17"
+rustls = { version = "0.23.31", default-features = false, features = ["logging", "std", "tls12"] }
+subtle = "2.6"
+tokio = { version = "1.47", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+
+[patch.crates-io]
+# Keep the same narrowly repaired Quinn release qualified by the standalone
+# probe. See probes/network/plank-transport/vendor/README.md.
+quinn-proto = { path = "../../probes/network/plank-transport/vendor/quinn-proto-0.11.17" }

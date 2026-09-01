@@ -12,10 +12,10 @@
 /artifacts/qualification/wacom/raw/
 /artifacts/development/
 /artifacts/packages/
-/scripts/__pycache__/
-/probes/network/datasmash/target/
-/probes/network/datasmash/vendor/**/target/
-/protocol/datasmash-transport/target/
+**/__pycache__/
+/probes/network/plank-transport/target/
+/probes/network/plank-transport/vendor/**/target/
+/protocol/plank-transport/target/
 /test_sunshine.log*
 /sunshine_state.json
 /write_file_test_*.txt

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<service>
-  <short>StationConnect</short>
-  <description>Authenticated StationConnect discovery, control, and media ports.</description>
-  <port protocol="tcp" port="28989"/>
-  <port protocol="udp" port="28989"/>
-</service>

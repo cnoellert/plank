@@ -2,14 +2,14 @@
 
 ## Scope
 
-`headless-test-host` at `192.0.2.105` is the dedicated StationConnect headless-display
+`headless-test-host` at `192.0.2.105` is the dedicated PLANK headless-display
 test host. These probes did not alter `hardware-test-host`. The work qualified NVIDIA/Xorg
 virtual outputs, XRandR/Xinerama enumeration, depth-30 direct OpenGL, and
 NvFBC-to-CUDA capture without a physical monitor or dummy dongle.
 
-The probes did not qualify Flame, GDM-to-user login, StationConnect packaging,
+The probes did not qualify Flame, GDM-to-user login, PLANK packaging,
 the x264 encoder, client decoding, Wacom, or multi-hour reliability. The
-StationConnect host package was not installed on `headless-test-host` during these tests.
+PLANK host package was not installed on `headless-test-host` during these tests.
 
 ## Machine Inventory
 
@@ -125,8 +125,8 @@ qualified for x264 encoding or the client's exact-profile software decoder.
 ### Real GDM configuration-directory overlay
 
 An overlay was linked temporarily at
-`/etc/X11/xorg.conf.d/99-stationconnect-headless-probe.conf`. Its
-`DefaultServerLayout` selected the StationConnect screen while Xorg continued
+`/etc/X11/xorg.conf.d/99-plank-headless-probe.conf`. Its
+`DefaultServerLayout` selected the PLANK screen while Xorg continued
 to load `/etc/X11/xorg.conf` and the canonical global input classes. Under the
 normal GDM command line, the result was:
 
@@ -143,7 +143,7 @@ after the probe.
 ### Packaged display-preparation helper
 
 The candidate production helper generated the same configuration from a
-temporary StationConnect INI containing `virtual_outputs = dual-horizontal`
+temporary PLANK INI containing `virtual_outputs = dual-horizontal`
 and `virtual_mode = 1920x1080`. It ran only after GDM stopped, then normal GDM
 startup produced two independent 1920x1080 outputs, a 3840x1080 X screen,
 depth-30 direct NVIDIA rendering, and matching NvFBC output rectangles.
@@ -171,10 +171,10 @@ its runtime systemd drop-in, and restored GDM. Production must not rely on an
 
 ## Selected Direction
 
-Use a StationConnect-generated file in `/etc/X11/xorg.conf.d/` with a unique
+Use a PLANK-generated file in `/etc/X11/xorg.conf.d/` with a unique
 device, screen, and layout plus `DefaultServerLayout`. Preserve Autodesk's
-canonical configuration and global input classes. Keep all StationConnect
-screens at depth 30. The user explicitly authorized StationConnect to replace
+canonical configuration and global input classes. Keep all PLANK
+screens at depth 30. The user explicitly authorized PLANK to replace
 or delete the active `xorg.conf` if later qualification demonstrates that a
 configuration-directory overlay is insufficient, but replacement is not
 currently necessary.
@@ -186,7 +186,7 @@ The production implementation still needs:
 3. an atomic overlay generator and systemd ordering before GDM;
 4. active-session refusal and rollback behavior;
 5. GDM-to-user login plus Flame visibility tests;
-6. StationConnect host package and real stream tests;
+6. PLANK host package and real stream tests;
 7. exact-profile encode/decode, client presentation, input, Wacom, reconnect,
    and soak validation.
 
@@ -195,10 +195,10 @@ The production implementation still needs:
 After every probe:
 
 - `gdm.service` was enabled and active;
-- the transient `stationconnect-headless-xorg-probe.service` was inactive;
+- the transient `plank-headless-xorg-probe.service` was inactive;
 - `/tmp/.X11-unix` contained only GDM's `X0` socket;
 - the probe overlay and GDM systemd drop-in were absent;
-- no StationConnect host package was installed;
+- no PLANK host package was installed;
 - `hardware-test-host` and the End-User NUC were untouched.
 
 After qualification, the active `/etc/X11/xorg.conf` was deliberately reset
@@ -210,7 +210,7 @@ SHA-256
 GDM then started normally at depth 30 with direct NVIDIA rendering.
 
 The prior `nvidia-settings`-generated configuration remains available at
-`/etc/X11/xorg.conf.pre-stationconnect-20260825` with SHA-256
+`/etc/X11/xorg.conf.pre-plank-20260825` with SHA-256
 `460c32a53b7387a89417d5210a8ec01061b52c492eb21e30a26a94863bc380f6`.
 Production virtual-display support will overlay the Autodesk-derived baseline;
 it will not modify that baseline for each requested topology.
@@ -241,7 +241,7 @@ on headless-test-host. The `.82` client package from root `0853d0a` and Moonligh
 `c221c282` is installed on the Development NUC. The client now persists exact
 host-layout and virtual-mode choices per bookmark, parses topology schema 2,
 and sends the negotiated layout with each launch. The host validates the
-requested layout against both `stationconnect-host.conf` and the live X11 topology
+requested layout against both `/etc/plank/host.conf` and the live X11 topology
 before claiming the PAM launch state.
 
 A 30-second native Wayland run requested protocol 2, feature mask `255`,
@@ -327,7 +327,7 @@ these graphical-owner commands to the system manager, preserving the host
 service capability boundary rather than broadening it.
 
 The clean `.92-c2` RPM is installed after the corrective GDM restart. The host
-log reports `StationConnect secondary virtual monitor is hidden to the
+log reports `PLANK secondary virtual monitor is hidden to the
 desktop`, one connected 2560x2160 output, and DP-2 disconnected before the
 persistent worker starts. Mutter DisplayConfig contains only DP-0 and reports
 its raw identity as manufacturer `INS`, product `SC Virtual 1`, serial
@@ -342,7 +342,7 @@ product-selected `INS` code.
 The `.93-c1` package replaces the collision-prone `INS` identity with the
 private internal manufacturer code `SCV` and product names `Display 1` and
 `Display 2`. `SCV` is intentionally unregistered and is suitable only for the
-controlled StationConnect fleet. A future externally distributed product
+controlled PLANK fleet. A future externally distributed product
 should instead use the standards-compliant literal PNP code `CID` and a
 registered IEEE CID in a DisplayID 2.1 Product Identification block.
 
@@ -351,13 +351,13 @@ The exact package source is root
 `1328a9208abf60e8f22fa5474d5b707a77866018`. The clean RPM is 5,857,854
 bytes with SHA-256
 `3b4b04d6fe5143b87a247f52dbe201574cbf1e0385e807de63e3af2c7b2df8db`.
-It is installed on headless-test-host as `stationconnect-host-0.1.0-0.93.el9.x86_64`.
+It is installed on headless-test-host as `plank-host-0.1.0-0.93.el9.x86_64`.
 
 After a fresh GDM/Xorg start, XRandR reported DP-0 connected at exact
 2560x2160p60 and DP-2 disconnected. Mutter DisplayConfig exposed only DP-0
 with raw identity manufacturer `SCV`, product `Display 1`, serial
 `0x00000001`, and visible name `SCV Display 1`. The host log recorded
-`StationConnect secondary virtual monitor is hidden to the desktop` before
+`PLANK secondary virtual monitor is hidden to the desktop` before
 the persistent worker enumerated DP-0 connected and DP-2 disconnected. This
 validates both the private identity and the single-layout hot-plug boundary.
 

@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if (($# != 1)); then
+  echo "usage: $0 STATE_FILE" >&2
+  exit 2
+fi
+
+state_file=$1
+state_dir=$(dirname -- "$state_file")
+uuid_pattern='[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}'
+
+if [[ $state_file != /* || ! -d $state_dir || -L $state_file ]]; then
+  echo "host state must be a non-symlink absolute path in an existing directory" >&2
+  exit 1
+fi
+
+read_uuid() {
+  local source_file=$1
+  [[ -f $source_file && ! -L $source_file ]] || return 1
+  sed -nE \
+    's/.*"uniqueid"[[:space:]]*:[[:space:]]*"('"$uuid_pattern"')".*/\1/p' \
+    "$source_file" | head -n 1
+}
+
+existing_uuid=$(read_uuid "$state_file" || true)
+if [[ $existing_uuid =~ ^$uuid_pattern$ ]]; then
+  chmod 0600 "$state_file"
+  echo "host_state=valid uuid=${existing_uuid^^}"
+  exit 0
+fi
+
+selected_uuid=$(< /proc/sys/kernel/random/uuid)
+selected_uuid=${selected_uuid^^}
+
+umask 0077
+temporary_file=$(mktemp --tmpdir="$state_dir" .plank-state.XXXXXX)
+cleanup() {
+  rm -f -- "$temporary_file"
+}
+trap cleanup EXIT
+
+printf '%s\n' \
+  '{' \
+  '    "root": {' \
+  "        \"uniqueid\": \"${selected_uuid}\"" \
+  '    }' \
+  '}' >"$temporary_file"
+
+generated_uuid=$(read_uuid "$temporary_file" || true)
+if [[ $generated_uuid != "$selected_uuid" ]]; then
+  echo "generated host state failed validation" >&2
+  exit 1
+fi
+
+chmod 0600 "$temporary_file"
+mv -f -- "$temporary_file" "$state_file"
+trap - EXIT
+echo "host_state=generated uuid=${selected_uuid}"

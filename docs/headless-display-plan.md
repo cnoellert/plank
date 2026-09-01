@@ -2,7 +2,7 @@
 
 ## Objective
 
-Support StationConnect hosts with no physical monitor or display emulator while
+Support PLANK hosts with no physical monitor or display emulator while
 preserving the qualified NVIDIA Xorg, NvFBC, CUDA, H.264, absolute-input, and
 raw-HID Wacom paths. A bookmark may request one or two stable host displays.
 The client may present that workspace on one physical display as a scaled span
@@ -22,7 +22,7 @@ or introduce a second display-configuration source.
 3. A headless workstation exposes two virtual displays and a dual-monitor
    client maps one host output to each local output.
 4. A workstation with physical displays continues to use its qualified layout
-   unless an administrator explicitly enables StationConnect-owned virtual
+   unless an administrator explicitly enables PLANK-owned virtual
    outputs.
 5. The virtual display identity and geometry survive a client disconnect so
    Flame does not move windows or exchange pen and eraser state on reconnect.
@@ -36,8 +36,8 @@ or introduce a second display-configuration source.
   screens such as `:0.0` and `:0.1` for separate monitors.
 - NvFBC remains the production capture path and CUDA remains the span-scaling
   path. NvFBC 1.9 BGRA8888 remains honestly labeled as an 8-bit source.
-- Keep host configuration in `/etc/stationconnect/stationconnect-host.conf` and
-  mutable identity/state in `/var/lib/stationconnect/`.
+- Keep host configuration in `/etc/plank/host.conf` and
+  mutable identity/state in `/var/lib/plank/`.
 - A client request is constrained by administrator policy. It cannot provide
   arbitrary Xorg options, file paths, modelines, EDID bytes, connector names,
   shell commands, or unbounded dimensions.
@@ -55,7 +55,7 @@ or introduce a second display-configuration source.
 
 The current vertical slice already provides:
 
-- authenticated output topology at `GET /stationconnect/topology`;
+- authenticated output topology at `GET /plank/topology`;
 - stable Linux output IDs in the form `x11:<connector>`;
 - a topology generation bound to launch and the active session;
 - per-bookmark Native or Scaled-Span transport scaling;
@@ -74,14 +74,14 @@ lifecycle, scaling choices, and larger native canvases.
 
 ### 1. Host display ownership
 
-The StationConnect supervisor owns headless display preparation because it is
+The PLANK supervisor owns headless display preparation because it is
 already responsible for boot, GDM/user-session transitions, and media-worker
 replacement. The unprivileged media worker may inspect the resulting topology
 but must not write Xorg configuration or invoke privileged modesets.
 
 The supervisor prepares only an administrator-approved topology. Generated
-runtime material belongs under `/run/stationconnect/display/`; packaged EDIDs
-and immutable templates belong under `/usr/share/stationconnect/display/`.
+runtime material belongs under `/run/plank/display/`; packaged EDIDs
+and immutable templates belong under `/usr/share/plank/display/`.
 Production code must not rewrite the workstation's canonical Xorg
 configuration in place.
 
@@ -211,7 +211,7 @@ local window position
   -> destination viewport position
   -> host output rectangle
   -> full host desktop coordinates
-  -> normalized StationConnect absolute coordinates
+  -> normalized PLANK absolute coordinates
 ```
 
 Clicks in letterbox or pillarbox regions do not reach the host. Crossing local
@@ -227,7 +227,7 @@ behavior remain correct with one and two virtual outputs.
 ## Configuration Model
 
 Add one administrator-controlled `[display]` section to
-`stationconnect-host.conf`. The first qualified implementation uses:
+`/etc/plank/host.conf`. The first qualified implementation uses:
 
 ```ini
 [display]
@@ -259,18 +259,18 @@ EDID aspect-ratio marker, not a claim about physical dimensions; this lets
 Mutter present the product identity without deriving inappropriate DPI from a
 fictitious virtual-monitor size. NVIDIA validates the full live-switching pool
 when Xorg starts. An authenticated reconnect selects the 60 Hz entry by its
-published RandR mode name and rate; StationConnect does not enable
+published RandR mode name and rate; PLANK does not enable
 `AllowNonEdidModes` or inject runtime modelines with `xrandr --newmode`.
 
 `SCV` is deliberately unregistered and is used only inside the controlled
-StationConnect fleet. It is not represented as an IEEE-assigned identity. If
+PLANK fleet. It is not represented as an IEEE-assigned identity. If
 the product is distributed beyond that fleet, replace it with the standards-
 defined `CID` marker plus an Instinctual IEEE CID/OUI in a DisplayID 2.1
 Product Identification Data Block.
 
 The two stable NVIDIA outputs remain available to Xorg so an authenticated
 user can switch between single and dual layouts without restarting the
-desktop. In a single-output layout, StationConnect turns the secondary output
+desktop. In a single-output layout, PLANK turns the secondary output
 off and sets its standard XRandR `non-desktop` property to `1`; Mutter then
 hides it from GNOME Displays instead of showing a connected but inactive
 monitor. A dual-output transition first clears `non-desktop` to `0`, then
@@ -284,7 +284,7 @@ family, and runtime limits.
 
 ## Protocol Evolution
 
-Version 4 is the current StationConnect headless-layout protocol. The current
+Version 4 is the current PLANK headless-layout protocol. The current
 client always requests the complete-desktop `scaled-span` capture path and
 adds:
 
@@ -414,7 +414,7 @@ desktop and aspect ratio across restart, reconnect, and client reboot.
   and host reboot tests.
 - Decide from evidence whether synchronized per-output streams are required.
 
-Exit gate: the selected production layouts meet the existing StationConnect
+Exit gate: the selected production layouts meet the existing PLANK
 latency, color, input, security, and reliability gates without a physical
 display device.
 

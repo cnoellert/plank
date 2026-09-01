@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the immutable EDIDs used by StationConnect virtual displays."""
+"""Generate the immutable EDIDs used by PLANK virtual displays."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import hashlib
 from pathlib import Path
 
 
-# Qualified Dell U4021QW base timing data. StationConnect replaces the
+# Qualified Dell U4021QW base timing data. PLANK replaces the
 # identity and detailed timings. The generated EDID is deliberately limited
 # to 384 bytes because Mutter 40 reads at most 400 bytes from XRandR; a longer
 # property is truncated to a non-128-byte length and rejected as unknown.
@@ -33,7 +33,7 @@ a02950302035008b882100001a023a80
 
 
 # Deterministic 60 Hz timings. These are the complete
-# StationConnect virtual-monitor allowlist. Keep the protocol, host parser,
+# PLANK virtual-monitor allowlist. Keep the protocol, host parser,
 # client bookmark UI, and display-preparation helper synchronized with it.
 # Each tuple is:
 # pixel clock MHz, h active/start/end/total, v active/start/end/total.
@@ -215,7 +215,7 @@ def validate_mode_pool(edid: bytes, base_modes: list[str], preferred_mode: str) 
 
 
 def build_edid(index: int, mode: str) -> bytes:
-    """Build one checksum-valid EDID with a stable StationConnect identity."""
+    """Build one checksum-valid EDID with a stable PLANK identity."""
     validate_exact_refresh_rates()
     edid = bytearray.fromhex(BASE_EDID_HEX)[:128]
     if len(edid) != 128:
@@ -225,8 +225,8 @@ def build_edid(index: int, mode: str) -> bytes:
     if sum(edid) & 0xFF:
         raise ValueError("base EDID checksum is invalid")
 
-    # SCV is the stable private StationConnect Virtual manufacturer identity.
-    edid[8:10] = eisa_manufacturer_id("SCV")
+    # PLK is the stable private PLANK Virtual manufacturer identity.
+    edid[8:10] = eisa_manufacturer_id("PLK")
     edid[10:12] = (0x5300 + index).to_bytes(2, byteorder="little")
     edid[12:16] = index.to_bytes(4, byteorder="little")
     edid[16] = 1

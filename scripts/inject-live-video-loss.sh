@@ -12,7 +12,7 @@ loss_percent=${2:-5}
 duration_seconds=${3:-60}
 network_interface=${4:-$(ip route get "${client_ip}" | awk '{for (i=1; i<=NF; i++) if ($i == "dev") {print $(i+1); exit}}')}
 video_port=${5:-47998}
-table_name=stationconnect_qualification
+table_name=plank_qualification
 
 if [[ ! ${loss_percent} =~ ^[0-9]+$ ]] || ((loss_percent < 1 || loss_percent > 100)); then
   echo "loss percent must be an integer from 1 through 100" >&2
@@ -40,15 +40,15 @@ done
 sudo -n true
 
 qualification_gso_mode=false
-while IFS= read -r stationconnect_host_pid; do
-  if sudo -n tr '\0' '\n' <"/proc/${stationconnect_host_pid}/environ" 2>/dev/null |
+while IFS= read -r plank_host_pid; do
+  if sudo -n tr '\0' '\n' <"/proc/${plank_host_pid}/environ" 2>/dev/null |
       grep -qx 'SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1'; then
     qualification_gso_mode=true
     break
   fi
-done < <(pgrep -f '^/usr/libexec/stationconnect/stationconnect-host([[:space:]]|$)' || true)
+done < <(pgrep -f '^/usr/libexec/plank/plank-host([[:space:]]|$)' || true)
 if [[ ${qualification_gso_mode} != true ]]; then
-  echo "StationConnect Host must run with SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1" >&2
+  echo "PLANK Host must run with SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1" >&2
   exit 2
 fi
 

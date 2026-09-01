@@ -26,7 +26,7 @@ local Xorg desktop has depth 30. Do not modify Xorg, replace the NVIDIA DDX, or
 claim native 10-bit capture to make this gate pass.
 
 DRM/KMS is retained as inventory. Override its primary node with
-`CONNECT_DRM_DEVICE=/dev/dri/card1` when required. The account running the probe
+`PLANK_DRM_DEVICE=/dev/dri/card1` when required. The account running the probe
 must be able to open the DRM primary node; render-node access alone cannot
 enumerate connectors, CRTCs, and planes.
 
@@ -63,8 +63,8 @@ decoded Y410 frame with:
 
 ```bash
 ./scripts/probe-intel-recovery-pixels.sh \
-  stationconnect-recovery-ref-invalidate-reference.hevc \
-  stationconnect-recovery-ref-invalidate.hevc 180 600 120
+  plank-recovery-ref-invalidate-reference.hevc \
+  plank-recovery-ref-invalidate.hevc 180 600 120
 ```
 
 Transport FEC remains a separate live-session gate.
@@ -97,7 +97,7 @@ The standard host report also inventories attached Wacom event capabilities
 and hashes every physical Wacom HID report descriptor. It does not generate
 input events; run application-level pen tests separately.
 
-Run `sudo ./build/qualification/connect-probe-uhid --self-test-mouse` to verify
+Run `sudo ./build/qualification/plank-probe-uhid --self-test-mouse` to verify
 the UHID transport itself. Then run `./scripts/probe-wacom-uhid.sh` to create an
 eight-second virtual copy from the physical Wacom interface descriptor and
 check whether `hid-wacom` exposes input devices. The Wacom probe deliberately
@@ -110,7 +110,7 @@ parsing only; it does not qualify the Wacom driver or preserve production
 device identity:
 
 ```bash
-sudo ./build/qualification/connect-probe-uhid --generic \
+sudo ./build/qualification/plank-probe-uhid --generic \
   /sys/class/hidraw/hidraw2/device/report_descriptor
 ```
 
@@ -119,14 +119,14 @@ kernel probes the correct model table. Supply all HID-interface descriptors in
 one invocation so they share physical identity, for example:
 
 ```bash
-sudo ./build/qualification/connect-probe-uhid --product 0357 \
+sudo ./build/qualification/plank-probe-uhid --product 0357 \
   /sys/class/hidraw/hidraw4/device/report_descriptor \
   /sys/class/hidraw/hidraw6/device/report_descriptor
 ```
 
 For client-side exact raw-HID forwarding, install
-`packaging/udev/70-stationconnect-client-wacom.rules` on the Ubuntu client and
+`packaging/udev/70-plank-client-wacom.rules` on the Ubuntu client and
 reload udev before attaching the tablet. The rule grants only the active local
 session access to Wacom input and hidraw interfaces; it does not make those
-devices globally writable. StationConnect grabs the complete tablet group while
+devices globally writable. PLANK grabs the complete tablet group while
 its stream window has focus and releases it on focus loss or disconnect.

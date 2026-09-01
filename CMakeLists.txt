@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(stationconnect_qualification VERSION 0.1.0 LANGUAGES C CXX)
+project(plank_qualification VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)
 find_package(PkgConfig REQUIRED)
@@ -37,54 +37,54 @@ find_library(X264_LIBRARY x264
   PATH_SUFFIXES lib lib64)
 
 if(X11_FOUND AND X11_Xext_FOUND AND XCOMPOSITE_LIBRARY)
-  add_executable(connect-probe-x11-native10
-    probes/x11/connect-probe-x11-native10.cpp)
-  target_compile_features(connect-probe-x11-native10 PRIVATE cxx_std_17)
-  target_compile_options(connect-probe-x11-native10 PRIVATE
+  add_executable(plank-probe-x11-native10
+    probes/x11/plank-probe-x11-native10.cpp)
+  target_compile_features(plank-probe-x11-native10 PRIVATE cxx_std_17)
+  target_compile_options(plank-probe-x11-native10 PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(connect-probe-x11-native10 PRIVATE
+  target_include_directories(plank-probe-x11-native10 PRIVATE
     ${X11_INCLUDE_DIR})
-  target_link_libraries(connect-probe-x11-native10 PRIVATE
+  target_link_libraries(plank-probe-x11-native10 PRIVATE
     ${X11_LIBRARIES} ${X11_Xext_LIB} ${XCOMPOSITE_LIBRARY})
 endif()
 
-add_executable(connect-probe-kms probes/kms/connect-probe-kms.cpp)
-target_compile_features(connect-probe-kms PRIVATE cxx_std_17)
-target_compile_options(connect-probe-kms PRIVATE -Wall -Wextra -Wpedantic -Werror)
-target_link_libraries(connect-probe-kms PRIVATE PkgConfig::LIBDRM)
+add_executable(plank-probe-kms probes/kms/plank-probe-kms.cpp)
+target_compile_features(plank-probe-kms PRIVATE cxx_std_17)
+target_compile_options(plank-probe-kms PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_link_libraries(plank-probe-kms PRIVATE PkgConfig::LIBDRM)
 
-add_library(stationconnect-session-context STATIC
+add_library(plank-session-context STATIC
   host/sunshine-fork/src/session/session_context.cpp)
-target_compile_features(stationconnect-session-context PRIVATE cxx_std_20)
-target_compile_options(stationconnect-session-context PRIVATE
+target_compile_features(plank-session-context PRIVATE cxx_std_20)
+target_compile_options(plank-session-context PRIVATE
   -Wall -Wextra -Wpedantic -Werror)
-target_include_directories(stationconnect-session-context PUBLIC
+target_include_directories(plank-session-context PUBLIC
   host/sunshine-fork/src)
-target_link_libraries(stationconnect-session-context PUBLIC PkgConfig::SYSTEMD)
+target_link_libraries(plank-session-context PUBLIC PkgConfig::SYSTEMD)
 
-add_executable(connect-probe-kms-xb30 probes/kms/connect-probe-kms-xb30.cpp)
-target_compile_features(connect-probe-kms-xb30 PRIVATE cxx_std_17)
-target_compile_options(connect-probe-kms-xb30 PRIVATE -Wall -Wextra -Wpedantic -Werror)
-target_link_libraries(connect-probe-kms-xb30 PRIVATE PkgConfig::LIBDRM PkgConfig::EGL)
+add_executable(plank-probe-kms-xb30 probes/kms/plank-probe-kms-xb30.cpp)
+target_compile_features(plank-probe-kms-xb30 PRIVATE cxx_std_17)
+target_compile_options(plank-probe-kms-xb30 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_link_libraries(plank-probe-kms-xb30 PRIVATE PkgConfig::LIBDRM PkgConfig::EGL)
 
 if(GSTREAMER_FOUND AND GBM_FOUND AND GLESV2_FOUND)
-  add_executable(connect-probe-vaapi-dmabuf
-    probes/video/connect-probe-vaapi-dmabuf.cpp)
-  target_compile_features(connect-probe-vaapi-dmabuf PRIVATE cxx_std_17)
-  target_compile_options(connect-probe-vaapi-dmabuf PRIVATE
+  add_executable(plank-probe-vaapi-dmabuf
+    probes/video/plank-probe-vaapi-dmabuf.cpp)
+  target_compile_features(plank-probe-vaapi-dmabuf PRIVATE cxx_std_17)
+  target_compile_options(plank-probe-vaapi-dmabuf PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_link_libraries(connect-probe-vaapi-dmabuf PRIVATE
+  target_link_libraries(plank-probe-vaapi-dmabuf PRIVATE
     PkgConfig::GSTREAMER PkgConfig::EGL PkgConfig::GBM PkgConfig::GLESV2
     PkgConfig::LIBDRM)
 endif()
 
 if(GSTREAMER_FOUND)
-  add_executable(connect-probe-client-kms
-    probes/video/connect-probe-client-kms.cpp)
-  target_compile_features(connect-probe-client-kms PRIVATE cxx_std_17)
-  target_compile_options(connect-probe-client-kms PRIVATE
+  add_executable(plank-probe-client-kms
+    probes/video/plank-probe-client-kms.cpp)
+  target_compile_features(plank-probe-client-kms PRIVATE cxx_std_17)
+  target_compile_options(plank-probe-client-kms PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_link_libraries(connect-probe-client-kms PRIVATE
+  target_link_libraries(plank-probe-client-kms PRIVATE
     PkgConfig::GSTREAMER PkgConfig::LIBDRM)
 endif()
 
@@ -106,15 +106,15 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
     COMMAND "${WAYLAND_SCANNER}" client-header "${XDG_SHELL_XML}" "${XDG_SHELL_HEADER}"
     COMMAND "${WAYLAND_SCANNER}" private-code "${XDG_SHELL_XML}" "${XDG_SHELL_CODE}"
     DEPENDS "${XDG_SHELL_XML}")
-  add_executable(connect-probe-wayland-xr30
-    probes/video/connect-probe-wayland-xr30.cpp
+  add_executable(plank-probe-wayland-xr30
+    probes/video/plank-probe-wayland-xr30.cpp
     "${XDG_SHELL_CODE}" "${XDG_SHELL_HEADER}")
-  target_compile_features(connect-probe-wayland-xr30 PRIVATE cxx_std_17)
-  target_compile_options(connect-probe-wayland-xr30 PRIVATE
+  target_compile_features(plank-probe-wayland-xr30 PRIVATE cxx_std_17)
+  target_compile_options(plank-probe-wayland-xr30 PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(connect-probe-wayland-xr30 PRIVATE
+  target_include_directories(plank-probe-wayland-xr30 PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}")
-  target_link_libraries(connect-probe-wayland-xr30 PRIVATE
+  target_link_libraries(plank-probe-wayland-xr30 PRIVATE
     PkgConfig::WAYLAND PkgConfig::EGL PkgConfig::GLESV2 PkgConfig::LIBDRM)
 
   if(GSTREAMER_FOUND AND EXISTS "${PRESENTATION_TIME_XML}")
@@ -129,8 +129,8 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
       COMMAND "${WAYLAND_SCANNER}" private-code "${PRESENTATION_TIME_XML}"
         "${PRESENTATION_TIME_CODE}"
       DEPENDS "${PRESENTATION_TIME_XML}")
-    add_executable(connect-probe-client-pipeline
-      probes/video/connect-probe-client-pipeline.cpp
+    add_executable(plank-probe-client-pipeline
+      probes/video/plank-probe-client-pipeline.cpp
       "${XDG_SHELL_CODE}" "${XDG_SHELL_HEADER}"
       "${PRESENTATION_TIME_CODE}" "${PRESENTATION_TIME_HEADER}")
     if(EXISTS "${COMMIT_TIMING_XML}")
@@ -145,10 +145,10 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
         COMMAND "${WAYLAND_SCANNER}" private-code "${COMMIT_TIMING_XML}"
           "${COMMIT_TIMING_CODE}"
         DEPENDS "${COMMIT_TIMING_XML}")
-      target_sources(connect-probe-client-pipeline PRIVATE
+      target_sources(plank-probe-client-pipeline PRIVATE
         "${COMMIT_TIMING_CODE}" "${COMMIT_TIMING_HEADER}")
-      target_compile_definitions(connect-probe-client-pipeline PRIVATE
-        CONNECT_HAVE_COMMIT_TIMING=1)
+      target_compile_definitions(plank-probe-client-pipeline PRIVATE
+        PLANK_HAVE_COMMIT_TIMING=1)
     endif()
     if(EXISTS "${FIFO_XML}")
       set(FIFO_HEADER "${CMAKE_CURRENT_BINARY_DIR}/fifo-v1-client-protocol.h")
@@ -160,103 +160,103 @@ if(WAYLAND_FOUND AND GLESV2_FOUND AND WAYLAND_SCANNER AND
         COMMAND "${WAYLAND_SCANNER}" private-code "${FIFO_XML}"
           "${FIFO_CODE}"
         DEPENDS "${FIFO_XML}")
-      target_sources(connect-probe-client-pipeline PRIVATE
+      target_sources(plank-probe-client-pipeline PRIVATE
         "${FIFO_CODE}" "${FIFO_HEADER}")
-      target_compile_definitions(connect-probe-client-pipeline PRIVATE
-        CONNECT_HAVE_FIFO=1)
+      target_compile_definitions(plank-probe-client-pipeline PRIVATE
+        PLANK_HAVE_FIFO=1)
     endif()
-    target_compile_features(connect-probe-client-pipeline PRIVATE cxx_std_17)
-    target_compile_options(connect-probe-client-pipeline PRIVATE
+    target_compile_features(plank-probe-client-pipeline PRIVATE cxx_std_17)
+    target_compile_options(plank-probe-client-pipeline PRIVATE
       -Wall -Wextra -Wpedantic -Werror)
-    target_include_directories(connect-probe-client-pipeline PRIVATE
+    target_include_directories(plank-probe-client-pipeline PRIVATE
       "${CMAKE_CURRENT_BINARY_DIR}")
-    target_link_libraries(connect-probe-client-pipeline PRIVATE
+    target_link_libraries(plank-probe-client-pipeline PRIVATE
       PkgConfig::GSTREAMER PkgConfig::WAYLAND PkgConfig::EGL
       PkgConfig::GLESV2 PkgConfig::LIBDRM Threads::Threads)
   endif()
 endif()
 
-add_executable(connect-probe-nvenc probes/nvenc/connect-probe-nvenc.cpp)
-target_compile_features(connect-probe-nvenc PRIVATE cxx_std_17)
-target_compile_options(connect-probe-nvenc PRIVATE -Wall -Wextra -Wpedantic -Werror)
-target_include_directories(connect-probe-nvenc PRIVATE ${FFNVCODEC_INCLUDE_DIR})
-target_link_libraries(connect-probe-nvenc PRIVATE ${CMAKE_DL_LIBS})
+add_executable(plank-probe-nvenc probes/nvenc/plank-probe-nvenc.cpp)
+target_compile_features(plank-probe-nvenc PRIVATE cxx_std_17)
+target_compile_options(plank-probe-nvenc PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_include_directories(plank-probe-nvenc PRIVATE ${FFNVCODEC_INCLUDE_DIR})
+target_link_libraries(plank-probe-nvenc PRIVATE ${CMAKE_DL_LIBS})
 
 if(X264_INCLUDE_DIR AND X264_LIBRARY)
-  add_executable(connect-benchmark-x264
-    probes/video/connect-benchmark-x264.cpp)
-  target_compile_features(connect-benchmark-x264 PRIVATE cxx_std_17)
-  target_compile_options(connect-benchmark-x264 PRIVATE
+  add_executable(plank-benchmark-x264
+    probes/video/plank-benchmark-x264.cpp)
+  target_compile_features(plank-benchmark-x264 PRIVATE cxx_std_17)
+  target_compile_options(plank-benchmark-x264 PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(connect-benchmark-x264 PRIVATE ${X264_INCLUDE_DIR})
-  target_link_libraries(connect-benchmark-x264 PRIVATE
+  target_include_directories(plank-benchmark-x264 PRIVATE ${X264_INCLUDE_DIR})
+  target_link_libraries(plank-benchmark-x264 PRIVATE
     ${X264_LIBRARY} Threads::Threads ${CMAKE_DL_LIBS} m)
 else()
-  message(STATUS "x264 not found; connect-benchmark-x264 will not be built")
+  message(STATUS "x264 not found; plank-benchmark-x264 will not be built")
 endif()
 
 if(NVFBC_INCLUDE_DIR)
-  add_executable(connect-probe-nvfbc probes/nvfbc/connect-probe-nvfbc.cpp)
-  target_compile_features(connect-probe-nvfbc PRIVATE cxx_std_17)
-  target_compile_options(connect-probe-nvfbc PRIVATE -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(connect-probe-nvfbc PRIVATE
+  add_executable(plank-probe-nvfbc probes/nvfbc/plank-probe-nvfbc.cpp)
+  target_compile_features(plank-probe-nvfbc PRIVATE cxx_std_17)
+  target_compile_options(plank-probe-nvfbc PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(plank-probe-nvfbc PRIVATE
     ${NVFBC_INCLUDE_DIR}
     ${FFNVCODEC_INCLUDE_DIR})
-  target_link_libraries(connect-probe-nvfbc PRIVATE ${CMAKE_DL_LIBS})
+  target_link_libraries(plank-probe-nvfbc PRIVATE ${CMAKE_DL_LIBS})
 
-  add_executable(connect-capture-nvfbc-raw
-    probes/nvfbc/connect-capture-nvfbc-raw.cpp)
-  target_compile_features(connect-capture-nvfbc-raw PRIVATE cxx_std_17)
-  target_compile_options(connect-capture-nvfbc-raw PRIVATE
+  add_executable(plank-capture-nvfbc-raw
+    probes/nvfbc/plank-capture-nvfbc-raw.cpp)
+  target_compile_features(plank-capture-nvfbc-raw PRIVATE cxx_std_17)
+  target_compile_options(plank-capture-nvfbc-raw PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(connect-capture-nvfbc-raw PRIVATE
+  target_include_directories(plank-capture-nvfbc-raw PRIVATE
     ${NVFBC_INCLUDE_DIR}
     ${FFNVCODEC_INCLUDE_DIR})
-  target_link_libraries(connect-capture-nvfbc-raw PRIVATE ${CMAKE_DL_LIBS})
+  target_link_libraries(plank-capture-nvfbc-raw PRIVATE ${CMAKE_DL_LIBS})
 
-  add_executable(connect-probe-video-pipeline
-    probes/video/connect-probe-video-pipeline.cpp)
-  target_compile_features(connect-probe-video-pipeline PRIVATE cxx_std_17)
-  target_compile_options(connect-probe-video-pipeline PRIVATE
+  add_executable(plank-probe-video-pipeline
+    probes/video/plank-probe-video-pipeline.cpp)
+  target_compile_features(plank-probe-video-pipeline PRIVATE cxx_std_17)
+  target_compile_options(plank-probe-video-pipeline PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(connect-probe-video-pipeline PRIVATE
+  target_include_directories(plank-probe-video-pipeline PRIVATE
     ${NVFBC_INCLUDE_DIR}
     ${FFNVCODEC_INCLUDE_DIR})
-  target_link_libraries(connect-probe-video-pipeline PRIVATE
+  target_link_libraries(plank-probe-video-pipeline PRIVATE
     ${CMAKE_DL_LIBS} Threads::Threads)
 else()
-  message(STATUS "NvFBC SDK header not found; connect-probe-nvfbc will not be built")
+  message(STATUS "NvFBC SDK header not found; plank-probe-nvfbc will not be built")
 endif()
 
-add_executable(connect-probe-wacom probes/wacom/connect-probe-wacom.cpp)
-target_compile_features(connect-probe-wacom PRIVATE cxx_std_17)
-target_compile_options(connect-probe-wacom PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_executable(plank-probe-wacom probes/wacom/plank-probe-wacom.cpp)
+target_compile_features(plank-probe-wacom PRIVATE cxx_std_17)
+target_compile_options(plank-probe-wacom PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
-add_executable(connect-probe-pam probes/auth/connect-probe-pam.cpp)
-target_compile_features(connect-probe-pam PRIVATE cxx_std_17)
-target_compile_options(connect-probe-pam PRIVATE -Wall -Wextra -Wpedantic -Werror)
-target_include_directories(connect-probe-pam PRIVATE ${PAM_INCLUDE_DIR})
-target_link_libraries(connect-probe-pam PRIVATE ${PAM_LIBRARY})
+add_executable(plank-probe-pam probes/auth/plank-probe-pam.cpp)
+target_compile_features(plank-probe-pam PRIVATE cxx_std_17)
+target_compile_options(plank-probe-pam PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_include_directories(plank-probe-pam PRIVATE ${PAM_INCLUDE_DIR})
+target_link_libraries(plank-probe-pam PRIVATE ${PAM_LIBRARY})
 
-add_executable(connect-probe-uhid probes/wacom/connect-probe-uhid.cpp)
-target_compile_features(connect-probe-uhid PRIVATE cxx_std_17)
-target_compile_options(connect-probe-uhid PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_executable(plank-probe-uhid probes/wacom/plank-probe-uhid.cpp)
+target_compile_features(plank-probe-uhid PRIVATE cxx_std_17)
+target_compile_options(plank-probe-uhid PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
-add_executable(connect-wacom-raw-bridge
-  probes/wacom/connect-wacom-raw-bridge.cpp)
-target_compile_features(connect-wacom-raw-bridge PRIVATE cxx_std_17)
-target_compile_options(connect-wacom-raw-bridge PRIVATE
+add_executable(plank-wacom-raw-bridge
+  probes/wacom/plank-wacom-raw-bridge.cpp)
+target_compile_features(plank-wacom-raw-bridge PRIVATE cxx_std_17)
+target_compile_options(plank-wacom-raw-bridge PRIVATE
   -Wall -Wextra -Wpedantic -Werror)
 
 if(BUILD_TESTING)
-  set(STATIONCONNECT_CLIENT_COMMON_INCLUDE
+  set(PLANK_CLIENT_COMMON_INCLUDE
     "${CMAKE_CURRENT_SOURCE_DIR}/client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src")
-  set(STATIONCONNECT_CLIENT_SOURCE
+  set(PLANK_CLIENT_SOURCE
     "${CMAKE_CURRENT_SOURCE_DIR}/client/moonlight-qt-fork")
   foreach(required_client_qualification_file IN ITEMS
-      "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}/Limelight.h"
-      "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}/StationConnect.h"
-      "${STATIONCONNECT_CLIENT_SOURCE}/app/streaming/videopacketlosswindow.h")
+      "${PLANK_CLIENT_COMMON_INCLUDE}/Limelight.h"
+      "${PLANK_CLIENT_COMMON_INCLUDE}/plank.h"
+      "${PLANK_CLIENT_SOURCE}/app/streaming/videopacketlosswindow.h")
     if(NOT EXISTS "${required_client_qualification_file}")
       message(FATAL_ERROR
         "Root qualification requires the initialized client source tree; "
@@ -293,7 +293,7 @@ if(BUILD_TESTING)
   target_compile_features(session-policy-test PRIVATE cxx_std_20)
   target_compile_options(session-policy-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_link_libraries(session-policy-test PRIVATE stationconnect-session-context)
+  target_link_libraries(session-policy-test PRIVATE plank-session-context)
   add_test(NAME session-policy COMMAND session-policy-test)
 
   add_executable(video-packet-loss-window-test
@@ -302,7 +302,7 @@ if(BUILD_TESTING)
   target_compile_options(video-packet-loss-window-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(video-packet-loss-window-test PRIVATE
-    "${STATIONCONNECT_CLIENT_SOURCE}")
+    "${PLANK_CLIENT_SOURCE}")
   add_test(NAME video-packet-loss-window
     COMMAND video-packet-loss-window-test)
 
@@ -310,53 +310,53 @@ if(BUILD_TESTING)
   target_compile_options(wacom-hid-v2-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(wacom-hid-v2-test PRIVATE
-    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
+    "${PLANK_CLIENT_COMMON_INCLUDE}")
   add_test(NAME wacom-hid-v2 COMMAND wacom-hid-v2-test)
 
   add_executable(local-cursor-v1-test tests/protocol/local-cursor-v1.c)
   target_compile_options(local-cursor-v1-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   target_include_directories(local-cursor-v1-test PRIVATE
-    "${STATIONCONNECT_CLIENT_COMMON_INCLUDE}")
+    "${PLANK_CLIENT_COMMON_INCLUDE}")
   add_test(NAME local-cursor-v1 COMMAND local-cursor-v1-test)
 
-  add_executable(datasmash-control-v1-test
-    tests/protocol/datasmash-control-v1.c)
-  target_compile_options(datasmash-control-v1-test PRIVATE
+  add_executable(plank_transport-control-v1-test
+    tests/protocol/plank-transport-control-v1.c)
+  target_compile_options(plank_transport-control-v1-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(datasmash-control-v1-test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/datasmash-transport/include")
-  add_test(NAME datasmash-control-v1 COMMAND datasmash-control-v1-test)
+  target_include_directories(plank_transport-control-v1-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/plank-transport/include")
+  add_test(NAME plank_transport-control-v1 COMMAND plank_transport-control-v1-test)
 
-  add_executable(datasmash-input-v1-test
-    tests/protocol/datasmash-input-v1.c)
-  target_compile_options(datasmash-input-v1-test PRIVATE
+  add_executable(plank_transport-input-v1-test
+    tests/protocol/plank-transport-input-v1.c)
+  target_compile_options(plank_transport-input-v1-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(datasmash-input-v1-test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/datasmash-transport/include")
-  target_link_libraries(datasmash-input-v1-test PRIVATE m)
-  add_test(NAME datasmash-input-v1 COMMAND datasmash-input-v1-test)
+  target_include_directories(plank_transport-input-v1-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/plank-transport/include")
+  target_link_libraries(plank_transport-input-v1-test PRIVATE m)
+  add_test(NAME plank_transport-input-v1 COMMAND plank_transport-input-v1-test)
 
-  add_executable(datasmash-event-v1-test
-    tests/protocol/datasmash-event-v1.c)
-  target_compile_options(datasmash-event-v1-test PRIVATE
+  add_executable(plank_transport-event-v1-test
+    tests/protocol/plank-transport-event-v1.c)
+  target_compile_options(plank_transport-event-v1-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(datasmash-event-v1-test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/datasmash-transport/include")
-  add_test(NAME datasmash-event-v1 COMMAND datasmash-event-v1-test)
+  target_include_directories(plank_transport-event-v1-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/plank-transport/include")
+  add_test(NAME plank_transport-event-v1 COMMAND plank_transport-event-v1-test)
 
-  add_executable(datasmash-setup-v1-test
-    tests/protocol/datasmash-setup-v1.c)
-  target_compile_options(datasmash-setup-v1-test PRIVATE
+  add_executable(plank_transport-setup-v1-test
+    tests/protocol/plank-transport-setup-v1.c)
+  target_compile_options(plank_transport-setup-v1-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  target_include_directories(datasmash-setup-v1-test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/datasmash-transport/include")
-  add_test(NAME datasmash-setup-v1 COMMAND datasmash-setup-v1-test)
+  target_include_directories(plank_transport-setup-v1-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/plank-transport/include")
+  add_test(NAME plank_transport-setup-v1 COMMAND plank_transport-setup-v1-test)
 
-  add_test(NAME kms-probe-self-test COMMAND connect-probe-kms --self-test)
-  if(TARGET connect-probe-nvfbc)
-    add_test(NAME nvfbc-probe-self-test COMMAND connect-probe-nvfbc --self-test)
+  add_test(NAME kms-probe-self-test COMMAND plank-probe-kms --self-test)
+  if(TARGET plank-probe-nvfbc)
+    add_test(NAME nvfbc-probe-self-test COMMAND plank-probe-nvfbc --self-test)
     add_test(NAME video-pipeline-self-test
-      COMMAND connect-probe-video-pipeline --self-test)
+      COMMAND plank-probe-video-pipeline --self-test)
   endif()
 endif()

@@ -8,12 +8,12 @@ if (($# < 1 || $# > 4)); then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_CLIENT_BUILD_DIR:-"${repo_dir}/build/client-qualification"}
-binary="${build_dir}/connect-probe-vaapi-dmabuf"
+build_dir=${PLANK_CLIENT_BUILD_DIR:-"${repo_dir}/build/client-qualification"}
+binary="${build_dir}/plank-probe-vaapi-dmabuf"
 
 mkdir -p "${build_dir}"
 c++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
-  "${repo_dir}/probes/video/connect-probe-vaapi-dmabuf.cpp" \
+  "${repo_dir}/probes/video/plank-probe-vaapi-dmabuf.cpp" \
   $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-app-1.0 \
     gstreamer-video-1.0 gstreamer-allocators-1.0 egl gbm glesv2 libdrm) \
   -o "${binary}"

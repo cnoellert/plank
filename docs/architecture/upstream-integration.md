@@ -10,9 +10,9 @@ standalone probes as hardware acceptance tests:
 | Sunshine | `v2026.817.185037` | `f0ea53694420d48303c6cfe95b12136c65ed5af5` |
 | Moonlight-Qt | `v6.1.0` | `f786e94c7b2f943e24e65d7d74deb539b827fc84` |
 | moonlight-common-c | Moonlight-pinned | `8599b6042a4ba27749b0f94134dd614b4328a9bc` |
-| Build dependencies | `v2026.724.203728-stationconnect.4` | `4a54a631f8c217318c15c070141e3690a938d3e6` |
+| Build dependencies | `v2026.724.203728-plank.4` | `4a54a631f8c217318c15c070141e3690a938d3e6` |
 
-The pinned releases are the qualified ancestors of the StationConnect branches
+The pinned releases are the qualified ancestors of the PLANK branches
 tracked in `host/sunshine-fork/` and `client/moonlight-qt-fork/`. Initialize and
 validate them with:
 
@@ -23,11 +23,11 @@ git submodule update --init --recursive
 
 Writable `origin` repositories live in the `instinctual` GitHub organization:
 
-- `instinctual/Sunshine`, branch `stationconnect/main`
-- `instinctual/moonlight-qt`, branch `stationconnect/main`
+- `instinctual/Sunshine`, branch `plank/main`
+- `instinctual/moonlight-qt`, branch `plank/main`
 - `instinctual/moonlight-common-c`, with branches based on the distinct
   Sunshine and Moonlight-Qt pins
-- `instinctual/build-deps`, branch `stationconnect/main`, retaining the current
+- `instinctual/build-deps`, branch `plank/main`, retaining the current
   Sunshine dependency bundle while pinning NV codec headers to API 13.0 for the
   qualified NVIDIA 580 driver and keeping its x265 archive compatible with
   Rocky 9's glibc ABI
@@ -57,7 +57,7 @@ Moonlight already provides the client and recovery foundation:
   `ControlStream.c` implement multi-block FEC, loss detection, reference-frame
   invalidation, and IDR escalation.
 
-## StationConnect Delta
+## PLANK Delta
 
 Extend these paths rather than replacing them:
 
@@ -68,7 +68,7 @@ Extend these paths rather than replacing them:
 3. Reuse Sunshine's control/FEC path, but qualify Linux NVENC reference
    invalidation, driver-auto SFE, and the tested 60/30 single-slice refresh wave.
    Sunshine's current direct-backend default of 300/299 is not the qualified
-   StationConnect setting.
+   PLANK setting.
 4. Extend Moonlight's VAAPI/DRM renderer for the proven Y410-as-XR30 identity
    interpretation. Avoid CPU mapping and retain the existing bounded decoder
    and presentation queues.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate two stable EDID blocks for the StationConnect headless probe.
+"""Generate two stable EDID blocks for the PLANK headless probe.
 
 The timing data comes from the qualified Dell U4021QW attached to hardware-test-host. The
 probe changes only identity fields in the base block and recalculates its

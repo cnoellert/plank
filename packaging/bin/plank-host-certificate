@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if (($# < 2 || $# > 3)); then
+  echo "usage: $0 CERTIFICATE_PATH PRIVATE_KEY_PATH [DNS_NAME]" >&2
+  exit 2
+fi
+
+certificate_path=$1
+private_key_path=$2
+dns_name=${3:-}
+
+case ${certificate_path}:${private_key_path} in
+  /*:/*) ;;
+  *)
+    echo "certificate and key paths must be absolute" >&2
+    exit 2
+    ;;
+esac
+
+certificate_directory=$(dirname -- "$certificate_path")
+private_key_directory=$(dirname -- "$private_key_path")
+if [[ $certificate_directory != "$private_key_directory" ||
+      ! -d $certificate_directory ]]; then
+  echo "certificate and key must share an existing directory" >&2
+  exit 2
+fi
+
+valid_dns_name() {
+  [[ $1 =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] &&
+    [[ $1 != *..* ]] && [[ ! $1 =~ ^[0-9.]+$ ]]
+}
+
+if [[ -z $dns_name ]]; then
+  dns_name=$(hostname --fqdn 2>/dev/null || true)
+  if ! valid_dns_name "$dns_name"; then
+    dns_name=$(hostname 2>/dev/null || true)
+  fi
+fi
+if ! valid_dns_name "$dns_name"; then
+  echo "unable to determine a valid DNS name for the host certificate" >&2
+  exit 2
+fi
+
+certificate_matches_profile() {
+  local certificate=$1
+  local private_key=$2
+  local bits certificate_public_key key_public_key sans subject issuer
+
+  [[ -s $certificate && -s $private_key ]] || return 1
+  openssl x509 -in "$certificate" -noout -checkend 0 >/dev/null 2>&1 || return 1
+  openssl verify -CAfile "$certificate" "$certificate" 2>/dev/null |
+    grep -Fq ': OK' || return 1
+
+  subject=$(openssl x509 -in "$certificate" -noout -subject -nameopt RFC2253 2>/dev/null) ||
+    return 1
+  issuer=$(openssl x509 -in "$certificate" -noout -issuer -nameopt RFC2253 2>/dev/null) ||
+    return 1
+  [[ ${subject#subject=} == "${issuer#issuer=}" ]] || return 1
+
+  openssl x509 -in "$certificate" -noout -text 2>/dev/null |
+    grep -Fq 'Public Key Algorithm: rsaEncryption' || return 1
+  bits=$(openssl x509 -in "$certificate" -noout -text 2>/dev/null |
+    sed -n 's/.*Public-Key: (\([0-9][0-9]*\) bit).*/\1/p' | head -n 1)
+  [[ $bits =~ ^[0-9]+$ ]] && ((bits >= 3072)) || return 1
+
+  sans=$(openssl x509 -in "$certificate" -noout -ext subjectAltName 2>/dev/null) ||
+    return 1
+  grep -Fq 'DNS:' <<<"$sans" || return 1
+  if grep -Fq 'IP Address:' <<<"$sans"; then
+    return 1
+  fi
+
+  certificate_public_key=$(openssl x509 -in "$certificate" -pubkey -noout 2>/dev/null |
+    openssl pkey -pubin -outform DER 2>/dev/null |
+    openssl dgst -sha256 2>/dev/null) || return 1
+  key_public_key=$(openssl pkey -in "$private_key" -pubout -outform DER 2>/dev/null |
+    openssl dgst -sha256 2>/dev/null) || return 1
+  [[ $certificate_public_key == "$key_public_key" ]]
+}
+
+if certificate_matches_profile "$certificate_path" "$private_key_path"; then
+  echo "host_certificate=valid"
+  exit 0
+fi
+
+temporary_key=$(mktemp "${private_key_path}.tmp.XXXXXX")
+temporary_certificate=$(mktemp "${certificate_path}.tmp.XXXXXX")
+cleanup() {
+  rm -f -- "$temporary_key" "$temporary_certificate"
+}
+trap cleanup EXIT
+
+openssl req -x509 -newkey rsa:3072 -sha256 -nodes -days 3650 \
+  -subj "/CN=${dns_name}" \
+  -addext "subjectAltName=DNS:${dns_name}" \
+  -keyout "$temporary_key" \
+  -out "$temporary_certificate" >/dev/null 2>&1
+
+certificate_matches_profile "$temporary_certificate" "$temporary_key" || {
+  echo "generated certificate failed the PLANK TLS profile" >&2
+  exit 1
+}
+
+chmod 0640 "$temporary_key"
+chmod 0644 "$temporary_certificate"
+mv -f -- "$temporary_key" "$private_key_path"
+mv -f -- "$temporary_certificate" "$certificate_path"
+trap - EXIT
+echo "host_certificate=generated dns_name=${dns_name}"

@@ -8,11 +8,11 @@ if (($# > 4)); then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
+build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
 output_dir=${1:-"${repo_dir}/artifacts/qualification/video"}
 frame_count=${2:-600}
 loss_frame=${3:-180}
-output_name=${4:-${CONNECT_CAPTURE_OUTPUT:-DP-2}}
+output_name=${4:-${PLANK_CAPTURE_OUTPUT:-DP-2}}
 if [[ ! ${frame_count} =~ ^[0-9]+$ || ! ${loss_frame} =~ ^[0-9]+$ ]]; then
   echo "frame count and loss frame must be positive integers" >&2
   exit 2
@@ -27,8 +27,8 @@ fi
 active_session=$(loginctl show-seat seat0 --property=ActiveSession --value)
 x11_user=$(loginctl show-session "${active_session}" --property=Name --value)
 x11_uid=$(id -u "${x11_user}")
-x11_display=${CONNECT_X11_DISPLAY:-:1}
-x11_authority=${CONNECT_X11_AUTHORITY:-/run/user/${x11_uid}/gdm/Xauthority}
+x11_display=${PLANK_X11_DISPLAY:-:1}
+x11_authority=${PLANK_X11_AUTHORITY:-/run/user/${x11_uid}/gdm/Xauthority}
 if [[ $(loginctl show-session "${active_session}" --property=Type --value) != x11 ]]; then
   echo "video recovery qualification requires the active X11 desktop" >&2
   exit 2
@@ -42,13 +42,13 @@ for command_name in cmake ffprobe loginctl rg sha256sum sudo tee; do
 done
 
 mkdir -p "${output_dir}"
-scratch_dir=$(mktemp -d --tmpdir stationconnect-recovery.XXXXXX)
+scratch_dir=$(mktemp -d --tmpdir plank-recovery.XXXXXX)
 cleanup() {
   rm -rf -- "${scratch_dir}"
 }
 trap cleanup EXIT
 
-cmake --build "${build_dir}" --parallel --target connect-probe-video-pipeline
+cmake --build "${build_dir}" --parallel --target plank-probe-video-pipeline
 sudo -n loginctl unlock-session "${active_session}"
 
 common=(
@@ -65,12 +65,12 @@ common=(
   --simulate-loss-frame "${loss_frame}"
 )
 
-invalidate_stream="${output_dir}/stationconnect-recovery-ref-invalidate.hevc"
-invalidate_reference_stream="${output_dir}/stationconnect-recovery-ref-invalidate-reference.hevc"
+invalidate_stream="${output_dir}/plank-recovery-ref-invalidate.hevc"
+invalidate_reference_stream="${output_dir}/plank-recovery-ref-invalidate-reference.hevc"
 invalidate_log="${scratch_dir}/invalidate.log"
 sudo -n -u "${x11_user}" env DISPLAY="${x11_display}" \
   XAUTHORITY="${x11_authority}" XDG_RUNTIME_DIR="/run/user/${x11_uid}" \
-  "${build_dir}/connect-probe-video-pipeline" "${common[@]}" \
+  "${build_dir}/plank-probe-video-pipeline" "${common[@]}" \
   --invalidate-delay-frames 2 --reference-frames 4 \
   --reference-bitstream "${invalidate_reference_stream}" \
   --bitstream "${invalidate_stream}" | tee "${invalidate_log}"
@@ -78,11 +78,11 @@ rg -q '^bitstream_loss_injection_gate=pass$' "${invalidate_log}"
 rg -q '^reference_invalidation_gate=pass$' "${invalidate_log}"
 rg -q '^integrated_2160p60_robustness_gate=pass$' "${invalidate_log}"
 
-idr_stream="${output_dir}/stationconnect-recovery-forced-idr.hevc"
+idr_stream="${output_dir}/plank-recovery-forced-idr.hevc"
 idr_log="${scratch_dir}/forced-idr.log"
 sudo -n -u "${x11_user}" env DISPLAY="${x11_display}" \
   XAUTHORITY="${x11_authority}" XDG_RUNTIME_DIR="/run/user/${x11_uid}" \
-  "${build_dir}/connect-probe-video-pipeline" "${common[@]}" \
+  "${build_dir}/plank-probe-video-pipeline" "${common[@]}" \
   --no-reference-invalidation --force-idr-frame "${recovery_frame}" \
   --bitstream "${idr_stream}" | tee "${idr_log}"
 rg -q '^bitstream_loss_injection_gate=pass$' "${idr_log}"

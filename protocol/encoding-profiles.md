@@ -1,6 +1,6 @@
-# StationConnect encoding profile negotiation
+# PLANK encoding profile negotiation
 
-Each StationConnect workstation bookmark stores one capture source and one
+Each PLANK workstation bookmark stores one capture source and one
 complete encoding profile. The profile fixes the encoder backend, codec,
 precision, chroma sampling, range, and color transform. The client advertises
 exactly the saved format and the host must either acknowledge and produce that

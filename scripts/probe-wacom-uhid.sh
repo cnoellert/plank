@@ -3,9 +3,9 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
-descriptor=${CONNECT_WACOM_DESCRIPTOR:-/sys/class/hidraw/hidraw2/device/report_descriptor}
-output=$(mktemp --tmpdir connect-wacom-uhid.XXXXXX.log)
+build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
+descriptor=${PLANK_WACOM_DESCRIPTOR:-/sys/class/hidraw/hidraw2/device/report_descriptor}
+output=$(mktemp --tmpdir plank-wacom-uhid.XXXXXX.log)
 probe_pid=
 
 cleanup() {
@@ -26,13 +26,13 @@ if [[ ! -d /sys/module/uhid ]]; then
   exit 3
 fi
 
-sudo -n "${build_dir}/connect-probe-uhid" "${descriptor}" >"${output}" 2>&1 &
+sudo -n "${build_dir}/plank-probe-uhid" "${descriptor}" >"${output}" 2>&1 &
 probe_pid=$!
 sleep 2
 udevadm settle
 
-virtual_device_count=$(sudo -n "${build_dir}/connect-probe-wacom" |
-  grep -c 'StationConnect Virtual Intuos Pro L' || true)
+virtual_device_count=$(sudo -n "${build_dir}/plank-probe-wacom" |
+  grep -c 'PLANK Virtual Intuos Pro L' || true)
 echo "virtual_wacom_event_devices=${virtual_device_count}"
 
 set +e

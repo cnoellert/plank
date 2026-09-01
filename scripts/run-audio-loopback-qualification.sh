@@ -11,7 +11,7 @@ repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 client=$1
 client_sink_id=${2:-}
 tone_seconds=${3:-4}
-host_sink=${STATIONCONNECT_AUDIO_SINK:-sink-sunshine-stereo}
+host_sink=${PLANK_AUDIO_SINK:-sink-sunshine-stereo}
 tone_hz=997
 control_hz=3000
 
@@ -28,11 +28,11 @@ for command_name in awk ffmpeg pactl rg scp ssh; do
 done
 
 ssh_options=(-o BatchMode=yes)
-if [[ -n ${STATIONCONNECT_SSH_CONFIG:-} ]]; then
-  ssh_options+=(-F "$STATIONCONNECT_SSH_CONFIG")
+if [[ -n ${PLANK_SSH_CONFIG:-} ]]; then
+  ssh_options+=(-F "$PLANK_SSH_CONFIG")
 fi
-if [[ -n ${STATIONCONNECT_SSH_KNOWN_HOSTS:-} ]]; then
-  ssh_options+=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=${STATIONCONNECT_SSH_KNOWN_HOSTS}")
+if [[ -n ${PLANK_SSH_KNOWN_HOSTS:-} ]]; then
+  ssh_options+=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=${PLANK_SSH_KNOWN_HOSTS}")
 fi
 
 if [[ -z $client_sink_id ]]; then
@@ -61,10 +61,10 @@ pactl list source-outputs | rg -q 'application\.name = "sunshine"' || {
 
 run_id="$(date +%s)-$$"
 capture_seconds=$((tone_seconds + 4))
-remote_capture="/tmp/stationconnect-audio-loop-${run_id}.wav"
-recorder_log="/tmp/stationconnect-audio-loop-${run_id}.log"
+remote_capture="/tmp/plank-audio-loop-${run_id}.wav"
+recorder_log="/tmp/plank-audio-loop-${run_id}.log"
 artifact_dir="${repo_dir}/artifacts/qualification/audio"
-artifact="${artifact_dir}/stationconnect-audio-loop-${run_id}.wav"
+artifact="${artifact_dir}/plank-audio-loop-${run_id}.wav"
 metrics="${artifact%.wav}.metrics.txt"
 mkdir -p "$artifact_dir"
 

@@ -1,6 +1,6 @@
 # Identity GBR Video Mode
 
-StationConnect transports the approved 8-bit NvFBC BGRA source in an HEVC
+PLANK transports the approved 8-bit NvFBC BGRA source in an HEVC
 Range Extensions 10-bit 4:4:4 stream without a YUV color transform. The CUDA
 conversion writes `Y=G`, `U=B`, and `V=R`. Each 8-bit component is expanded to
 an MSB-aligned 10-bit value using `round(value * 1023 / 255) << 6`.

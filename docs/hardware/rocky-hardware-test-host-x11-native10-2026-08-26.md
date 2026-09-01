@@ -109,14 +109,14 @@ The probe is built from the repository root:
 
 ```bash
 cmake -S . -B build/qualification -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build/qualification --target connect-probe-x11-native10 --parallel
+cmake --build build/qualification --target plank-probe-x11-native10 --parallel
 ```
 
 Run it as the active X11 session owner with the session's `DISPLAY` and
 `XAUTHORITY`:
 
 ```bash
-connect-probe-x11-native10 --shm-frames 600 --get-frames 3
+plank-probe-x11-native10 --shm-frames 600 --get-frames 3
 ```
 
 No captured pixels are written to disk or printed. The probe reports only

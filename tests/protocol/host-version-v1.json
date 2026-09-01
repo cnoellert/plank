@@ -1,9 +1,9 @@
 {
-  "schema": "stationconnect-host-metadata",
+  "schema": "plank-host-metadata",
   "version": 1,
   "serverInfo": {
-    "StationConnectHostMetadataVersion": 1,
-    "StationConnectHostVersion": "0.1.0-0.104"
+    "PlankHostMetadataVersion": 1,
+    "PlankHostVersion": "0.1.0-0.104"
   },
   "expectedOnlineStatus": "Online  ·  0.1.0-0.104",
   "missingMetadataVersionBehavior": "omit-host-version",

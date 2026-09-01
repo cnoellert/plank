@@ -3,11 +3,11 @@
 set -uo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
-authorized_user=${CONNECT_PAM_AUTHORIZED_USER:?Set STATIONCONNECT_PAM_AUTHORIZED_USER for your test environment}
-expected_denied_user=${CONNECT_PAM_EXPECTED_DENIED_USER:-}
-broker_binary=${CONNECT_PAM_BROKER_BINARY:-/usr/libexec/stationconnect/stationconnect-pam-broker}
-config_file=${CONNECT_HOST_CONFIG:-/etc/stationconnect/stationconnect-host.conf}
+build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
+authorized_user=${PLANK_PAM_AUTHORIZED_USER:?Set PLANK_PAM_AUTHORIZED_USER for your test environment}
+expected_denied_user=${PLANK_PAM_EXPECTED_DENIED_USER:-}
+broker_binary=${PLANK_PAM_BROKER_BINARY:-/usr/libexec/plank/plank-pam-broker}
+config_file=${PLANK_HOST_CONFIG:-/etc/plank/host.conf}
 result=0
 
 echo "sssd=$(systemctl is-active sssd.service 2>&1)"
@@ -25,7 +25,7 @@ case $root_policy in
     ;;
 esac
 
-if sudo -n "${build_dir}/connect-probe-pam" --account-only "${authorized_user}"; then
+if sudo -n "${build_dir}/plank-probe-pam" --account-only "${authorized_user}"; then
   echo "authorized_account=${authorized_user} result=pass"
 else
   echo "authorized_account=${authorized_user} result=fail"
@@ -33,7 +33,7 @@ else
 fi
 
 if [[ -n $expected_denied_user ]]; then
-  if sudo -n "${build_dir}/connect-probe-pam" --account-only "${expected_denied_user}"; then
+  if sudo -n "${build_dir}/plank-probe-pam" --account-only "${expected_denied_user}"; then
     echo "external_policy_denial=${expected_denied_user} result=fail (account was accepted)"
     result=1
   else

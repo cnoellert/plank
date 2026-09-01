@@ -2,9 +2,9 @@
 
 set -euo pipefail
 
-size=${CONNECT_NVENC_SIZE:-3840x2160}
-rate=${CONNECT_NVENC_RATE:-60}
-frames=${CONNECT_NVENC_FRAMES:-120}
+size=${PLANK_NVENC_SIZE:-3840x2160}
+rate=${PLANK_NVENC_RATE:-60}
+frames=${PLANK_NVENC_FRAMES:-120}
 output=$(mktemp --tmpdir connect-nvenc.XXXXXX.h265)
 trap 'rm -f -- "${output}"' EXIT
 

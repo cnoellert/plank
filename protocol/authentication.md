@@ -2,19 +2,19 @@
 
 ## Security Boundary
 
-StationConnect replaces persistent GameStream pairing with authentication for
+PLANK replaces persistent GameStream pairing with authentication for
 every new connection. The network-facing Sunshine process never links to PAM,
 runs PAM modules, or stores a password. A root-owned
-`stationconnect-pam-broker` performs PAM operations through the dedicated
-`stationconnect-host` service and exposes only a Unix socket at
-`/run/stationconnect/pam/auth.sock`. The socket and its parent directory are
+`plank-pam-broker` performs PAM operations through the dedicated
+`plank-host` service and exposes only a Unix socket at
+`/run/plank/pam/auth.sock`. The socket and its parent directory are
 owned by root and use modes `0600` and `0700`, respectively.
 
 The broker accepts only local `AF_UNIX` peers, records their kernel-supplied
 UID, and reads `security.allow_root_login` from the root-owned host config.
 Root is denied when the option is absent or false. Enabling it still requires
 the host's PAM, authselect, and SSSD policy, including FreeIPA HBAC, and does
-not bypass active-desktop ownership. StationConnect has no application-specific user allowlist. Prompt responses
+not bypass active-desktop ownership. PLANK has no application-specific user allowlist. Prompt responses
 must never appear in logs, process arguments, environment variables, URLs, or
 crash reports.
 
@@ -22,7 +22,7 @@ crash reports.
 
 Every message starts with the packed 20-byte header in
 `src/auth/pam_broker_protocol.h`. Integer fields are little-endian. The header
-carries magic `SCAP`, version `1`, message type, a nonzero 64-bit transaction
+carries magic `PLAP`, version `1`, message type, a nonzero 64-bit transaction
 ID, and payload length. Payloads are capped at 64 KiB, individual strings at
 4096 bytes, and lists at 64 entries.
 
@@ -48,8 +48,8 @@ the local connection. The local socket is not a client-facing API.
 
 The host refuses to start its network service unless the broker socket is
 available. It has no PIN-pairing or persistent client-certificate path, requires
-TLS 1.3, and exposes `POST /stationconnect/auth/start`
-and `POST /stationconnect/auth/respond`. The first body contains `username`;
+TLS 1.3, and exposes `POST /plank/auth/start`
+and `POST /plank/auth/respond`. The first body contains `username`;
 the second contains an opaque `conversation_id` and a `responses` array.
 Replies are non-cacheable JSON with `challenge`, `authenticated`, or `denied`
 state. Successful authentication returns a 256-bit random bearer token bound
@@ -64,7 +64,7 @@ conversations expire after 120 seconds, and unclaimed tokens after 300 seconds.
 ## TLS and Network Policy
 
 Generate an RSA-3072/SHA-256 certificate with a DNS-only SAN using
-`scripts/generate-stationconnect-certificate.sh`. The client accepts only that
+`scripts/generate-plank-certificate.sh`. The client accepts only that
 self-signed certificate profile and requires TLS 1.3, but it does not classify
 or restrict the network interface selected by the operating system. Production
 deployments must enforce their intended network boundary with interface-scoped

@@ -2,17 +2,17 @@
 #include <stdio.h>
 
 #include "Limelight.h"
-#include "StationConnect.h"
+#include "plank.h"
 
 int main(void) {
-    if (SC_RAW_HID_WIRE_VERSION != 2U) {
+    if (PLANK_RAW_HID_WIRE_VERSION != 2U) {
         fprintf(stderr, "unexpected raw HID wire version: %u\n",
-                (unsigned int)SC_RAW_HID_WIRE_VERSION);
+                (unsigned int)PLANK_RAW_HID_WIRE_VERSION);
         return 1;
     }
-    if (SC_RAW_HID_SUSPEND != 13) {
+    if (PLANK_RAW_HID_SUSPEND != 13) {
         fprintf(stderr, "unexpected raw HID suspend message type: %d\n",
-                SC_RAW_HID_SUSPEND);
+                PLANK_RAW_HID_SUSPEND);
         return 1;
     }
     if (LI_FF_RAW_HID_FOCUS_SUSPEND != UINT32_C(0x20)) {
@@ -20,9 +20,9 @@ int main(void) {
                 LI_FF_RAW_HID_FOCUS_SUSPEND);
         return 1;
     }
-    if (sizeof(SC_RAW_HID_WIRE_HEADER) != 20U) {
+    if (sizeof(PLANK_RAW_HID_WIRE_HEADER) != 20U) {
         fprintf(stderr, "raw HID wire header size changed: %zu\n",
-                sizeof(SC_RAW_HID_WIRE_HEADER));
+                sizeof(PLANK_RAW_HID_WIRE_HEADER));
         return 1;
     }
     return 0;

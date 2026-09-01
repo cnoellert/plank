@@ -3,7 +3,7 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-work_dir=$(mktemp -d --tmpdir stationconnect-av-sync-test.XXXXXX)
+work_dir=$(mktemp -d --tmpdir plank-av-sync-test.XXXXXX)
 cleanup() {
   rm -rf -- "$work_dir"
 }
@@ -15,13 +15,13 @@ skipped_log="${work_dir}/skipped.log"
 for index in $(seq 0 60); do
   elapsed=$((index * 1000))
   drifting_audio_media=$((index * 999))
-  printf 'StationConnect A/V audio clock: media=%d submit=%d queue=10 device=15 pending=0 frame=5 correction=12 skipped=0 raw=%d catchup=1000\n' \
+  printf 'PLANK A/V audio clock: media=%d submit=%d queue=10 device=15 pending=0 frame=5 correction=12 skipped=0 raw=%d catchup=1000\n' \
     "$elapsed" "$((100000 + elapsed))" "$elapsed" >>"$stable_log"
-  printf 'StationConnect A/V video clock: media=%d render=%d queue=0 renderer=5\n' \
+  printf 'PLANK A/V video clock: media=%d render=%d queue=0 renderer=5\n' \
     "$((500 + elapsed))" "$((200000 + elapsed))" >>"$stable_log"
-  printf 'StationConnect A/V audio clock: media=%d submit=%d queue=10 device=15 pending=0 frame=5\n' \
+  printf 'PLANK A/V audio clock: media=%d submit=%d queue=10 device=15 pending=0 frame=5\n' \
     "$drifting_audio_media" "$((100000 + elapsed))" >>"$drifting_log"
-  printf 'StationConnect A/V video clock: media=%d render=%d queue=0 renderer=5\n' \
+  printf 'PLANK A/V video clock: media=%d render=%d queue=0 renderer=5\n' \
     "$((500 + elapsed))" "$((200000 + elapsed))" >>"$drifting_log"
 done
 

@@ -3,8 +3,8 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-helper=${repo_dir}/packaging/bin/stationconnect-host-certificate
-test_directory=$(mktemp -d --tmpdir stationconnect-host-certificate.XXXXXX)
+helper=${repo_dir}/packaging/bin/plank-host-certificate
+test_directory=$(mktemp -d --tmpdir plank-host-certificate.XXXXXX)
 cleanup() {
   rm -rf -- "$test_directory"
 }

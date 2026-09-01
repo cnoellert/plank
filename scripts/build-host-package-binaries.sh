@@ -12,20 +12,20 @@ source_dir="${repo_dir}/host/sunshine-fork"
 package_version=$(<"${repo_dir}/packaging/VERSION")
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 ffmpeg_dir=$(realpath -m -- "${2:-${source_dir}/cmake-build-ffmpeg-x264rgb-install/ffmpeg}")
-build_jobs=${STATIONCONNECT_BUILD_JOBS:-8}
-datasmash_cargo_features=${STATIONCONNECT_DATASMASH_CARGO_FEATURES:-quinn-telemetry}
-case "$datasmash_cargo_features" in
+build_jobs=${PLANK_BUILD_JOBS:-8}
+plank_transport_cargo_features=${PLANK_TRANSPORT_CARGO_FEATURES:-quinn-telemetry}
+case "$plank_transport_cargo_features" in
   quinn-telemetry|quinn-telemetry,quinn-bbr) ;;
   *)
-    echo "unsupported StationConnect datasmash Cargo feature set: ${datasmash_cargo_features}" >&2
+    echo "unsupported PLANK transport Cargo feature set: ${plank_transport_cargo_features}" >&2
     exit 1
     ;;
 esac
-[[ -n ${STATIONCONNECT_BOOST_SOURCE_DIR:-} ]] || {
-  echo "prepared Boost source is required; set STATIONCONNECT_BOOST_SOURCE_DIR" >&2
+[[ -n ${PLANK_BOOST_SOURCE_DIR:-} ]] || {
+  echo "prepared Boost source is required; set PLANK_BOOST_SOURCE_DIR" >&2
   exit 1
 }
-boost_source_dir=$(realpath -e -- "$STATIONCONNECT_BOOST_SOURCE_DIR")
+boost_source_dir=$(realpath -e -- "$PLANK_BOOST_SOURCE_DIR")
 [[ $build_jobs =~ ^[1-9][0-9]*$ ]] || {
   echo "invalid host build job count: ${build_jobs}" >&2
   exit 1
@@ -38,87 +38,87 @@ for command_name in cargo cmake git nm realpath rg rustc; do
   }
 done
 [[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
-  echo "StationConnect datasmash requires rustc 1.89.0" >&2
+  echo "PLANK transport requires rustc 1.89.0" >&2
   exit 1
 }
 [[ $(cargo --version) == "cargo 1.89.0 "* ]] || {
-  echo "StationConnect datasmash requires cargo 1.89.0" >&2
+  echo "PLANK transport requires cargo 1.89.0" >&2
   exit 1
 }
-datasmash_transport_dir="${repo_dir}/protocol/datasmash-transport"
-for datasmash_input in \
+plank_transport_dir="${repo_dir}/protocol/plank-transport"
+for plank_transport_input in \
   Cargo.toml \
   Cargo.lock \
-  include/stationconnect_datasmash.h \
-  include/stationconnect_datasmash_control.h \
-  include/stationconnect_datasmash_event.h \
-  include/stationconnect_datasmash_input.h \
-  include/stationconnect_datasmash_setup.h \
+  include/plank_transport.h \
+  include/plank_transport_control.h \
+  include/plank_transport_event.h \
+  include/plank_transport_input.h \
+  include/plank_transport_setup.h \
   src/lib.rs; do
-  [[ -f ${datasmash_transport_dir}/${datasmash_input} ]] || {
-    echo "datasmash transport input is unavailable: ${datasmash_input}" >&2
+  [[ -f ${plank_transport_dir}/${plank_transport_input} ]] || {
+    echo "PLANK transport input is unavailable: ${plank_transport_input}" >&2
     exit 1
   }
 done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
-  --manifest-path "${datasmash_transport_dir}/Cargo.toml" >/dev/null
-rg -q '^#define SC_DATASMASH_ABI_VERSION 11u$' \
-  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "host requires Datasmash transport ABI 11" >&2
+  --manifest-path "${plank_transport_dir}/Cargo.toml" >/dev/null
+rg -q '^#define PLANK_TRANSPORT_ABI_VERSION 12u$' \
+  "${plank_transport_dir}/include/plank_transport.h" || {
+  echo "host requires PLANK transport ABI 12" >&2
   exit 1
 }
 rg -Fq 'uint32_t max_udp_payload_size;' \
-  "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-  echo "host Datasmash transport is missing the route MTU contract" >&2
+  "${plank_transport_dir}/include/plank_transport.h" || {
+  echo "host PLANK transport is missing the route MTU contract" >&2
   exit 1
 }
 for required_rate_contract in \
   'uint32_t initial_video_bitrate_kbps;' \
-  'sc_datasmash_native_set_video_bitrate('; do
+  'plank_transport_native_set_video_bitrate('; do
   rg -Fq "$required_rate_contract" \
-    "${datasmash_transport_dir}/include/stationconnect_datasmash.h" || {
-    echo "host Datasmash transport is missing the encoder-rate contract: ${required_rate_contract}" >&2
+    "${plank_transport_dir}/include/plank_transport.h" || {
+    echo "host PLANK transport is missing the encoder-rate contract: ${required_rate_contract}" >&2
     exit 1
   }
 done
-echo "host_datasmash_rust_input_gate=pass"
-echo "host_datasmash_cargo_features=${datasmash_cargo_features}"
-for required_datasmash_token in \
-  'StationConnectDatasmashCertificateSha256' \
-  'StationConnectDatasmashToken' \
-  'start_datasmash_data_plane' \
-  'session.datasmash_endpoint' \
-  'sc_datasmash_native_video_send' \
-  'sc_datasmash_native_audio_send' \
-  'sc_datasmash_native_data_send' \
-  'sc_datasmash_native_data_receive' \
-  'SC_DATASMASH_SETUP_LAUNCH_REQUEST' \
+echo "host_plank_transport_rust_input_gate=pass"
+echo "host_plank_transport_cargo_features=${plank_transport_cargo_features}"
+for required_plank_transport_token in \
+  'PlankTransportCertificateSha256' \
+  'PlankTransportToken' \
+  'start_plank_transport_data_plane' \
+  'session.plank_transport_endpoint' \
+  'plank_transport_native_video_send' \
+  'plank_transport_native_audio_send' \
+  'plank_transport_native_data_send' \
+  'plank_transport_native_data_receive' \
+  'PLANK_TRANSPORT_SETUP_LAUNCH_REQUEST' \
   'host_feature_flags' \
   'reference_frame_invalidation' \
   'Native QUIC session negotiation active' \
-  'drain_datasmash_control' \
-  'if (!session->datasmash_endpoint)' \
-  'Confirmed StationConnect encoder target over Datasmash' \
-  'Datasmash native transport'; do
-  rg -Fq "$required_datasmash_token" \
+  'drain_plank_transport_control' \
+  'if (!session->plank_transport_endpoint)' \
+  'Confirmed PLANK encoder target over PlankTransport' \
+  'PlankTransport native transport'; do
+  rg -Fq "$required_plank_transport_token" \
     "$source_dir/src" || {
-    echo "host datasmash negotiation invariant is missing: ${required_datasmash_token}" >&2
+    echo "host plank_transport negotiation invariant is missing: ${required_plank_transport_token}" >&2
     exit 1
   }
 done
-echo "host_datasmash_negotiation_gate=pass"
+echo "host_plank_transport_negotiation_gate=pass"
 for removed_data_plane_selector_token in \
-  'scDataPlane' \
-  'StationConnectDataPlane' \
-  'StationConnectDataPlanes' \
-  'legacy,datasmash'; do
+  'plankDataPlane' \
+  'PlankDataPlane' \
+  'PlankDataPlanes' \
+  'legacy,plank_transport'; do
   if rg -Fq "$removed_data_plane_selector_token" "$source_dir/src"; then
     echo "obsolete host data-plane selector remains: ${removed_data_plane_selector_token}" >&2
     exit 1
   fi
 done
-echo "host_datasmash_selector_absence_gate=pass"
+echo "host_plank_transport_selector_absence_gate=pass"
 for removed_legacy_listener_token in \
   'control_server.bind' \
   'video_sock.bind' \
@@ -129,7 +129,7 @@ for removed_legacy_listener_token in \
     exit 1
   fi
 done
-echo "host_datasmash_legacy_listener_absence_gate=pass"
+echo "host_plank_transport_legacy_listener_absence_gate=pass"
 for removed_legacy_packetizer_token in \
   'control_server_t' \
   'video_packet_raw_t' \
@@ -145,12 +145,12 @@ for removed_legacy_packetizer_token in \
     exit 1
   fi
 done
-echo "host_datasmash_legacy_packetizer_absence_gate=pass"
+echo "host_plank_transport_legacy_packetizer_absence_gate=pass"
 if rg -Fq 'concat_and_insert' "$source_dir/src" "$source_dir/tests"; then
   echo "obsolete host packet-construction helper or test remains: concat_and_insert" >&2
   exit 1
 fi
-echo "host_datasmash_legacy_packetizer_test_absence_gate=pass"
+echo "host_plank_transport_legacy_packetizer_test_absence_gate=pass"
 for removed_host_transport_dependency_token in \
   '<enet/enet.h>' \
   'ENetHost' \
@@ -166,7 +166,7 @@ for removed_host_transport_dependency_token in \
     exit 1
   fi
 done
-echo "host_datasmash_legacy_dependency_absence_gate=pass"
+echo "host_plank_transport_legacy_dependency_absence_gate=pass"
 
 # KyProto encrypts native media, input, event, and runtime session negotiation
 # traffic. Reject dormant GameStream media-encryption and RTSP setup code.
@@ -190,7 +190,7 @@ for removed_rtsp_token in \
 done
 echo "host_rtsp_absence_gate=pass"
 
-# StationConnect bootstraps only through certificate-profile-validated HTTPS
+# PLANK bootstraps only through certificate-profile-validated HTTPS
 # on the configured base port. Reject the retired unauthenticated discovery
 # listener and the old split HTTPS offset.
 for retired_http_token in \
@@ -211,30 +211,30 @@ rg -Fq 'constexpr auto PORT_HTTPS = 0;' "$source_dir/src/nvhttp.h" || {
 echo "host_https_only_bootstrap_gate=pass"
 
 for required_input_transport_token in \
-  'sc_datasmash_native_input_receive' \
+  'plank_transport_native_input_receive' \
   'nativeInputThread' \
   'input::native' \
-  'SC_DATASMASH_INPUT_RAW_HID_WACOM'; do
+  'PLANK_TRANSPORT_INPUT_RAW_HID_WACOM'; do
   rg -Fq "$required_input_transport_token" \
-    "$source_dir/src" "$datasmash_transport_dir/include" || {
+    "$source_dir/src" "$plank_transport_dir/include" || {
     echo "host native input transport invariant is missing: ${required_input_transport_token}" >&2
     exit 1
   }
 done
-echo "host_datasmash_native_input_gate=pass"
+echo "host_plank_transport_native_input_gate=pass"
 for required_event_transport_token in \
-  'send_datasmash_event' \
-  'SC_DATASMASH_EVENT_HDR_MODE' \
-  'SC_DATASMASH_EVENT_RAW_HID_WACOM' \
-  'SC_DATASMASH_EVENT_CURSOR_SHAPE' \
-  'SC_DATASMASH_EVENT_CURSOR_POSITION'; do
+  'send_plank_transport_event' \
+  'PLANK_TRANSPORT_EVENT_HDR_MODE' \
+  'PLANK_TRANSPORT_EVENT_RAW_HID_WACOM' \
+  'PLANK_TRANSPORT_EVENT_CURSOR_SHAPE' \
+  'PLANK_TRANSPORT_EVENT_CURSOR_POSITION'; do
   rg -Fq "$required_event_transport_token" \
-    "$source_dir/src" "$datasmash_transport_dir/include" || {
+    "$source_dir/src" "$plank_transport_dir/include" || {
     echo "host native event transport invariant is missing: ${required_event_transport_token}" >&2
     exit 1
   }
 done
-echo "host_datasmash_native_event_gate=pass"
+echo "host_plank_transport_native_event_gate=pass"
 for compiler in \
   /opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   /opt/rh/gcc-toolset-14/root/usr/bin/g++ \
@@ -256,7 +256,7 @@ done
 }
 echo "host_prepared_boost_gate=pass"
 
-# StationConnect does not fetch remote files or expose mutable application
+# PLANK does not fetch remote files or expose mutable application
 # artwork. Keep the inherited libcurl downloader, application-art endpoint,
 # and shared-temporary first-run credential path out of the host.
 if rg -n 'download_file|url_escape\(|url_get_host|CURL::|CURL_|libcurl|appasset|desktop_image_path|FRESH_STATE|/tmp/Sunshine' \
@@ -279,7 +279,7 @@ done
 echo "host_legacy_http_surface_absence_gate=pass"
 echo "host_secure_credential_write_gate=pass"
 
-# StationConnect's Rocky host accepts workstation keyboard, mouse, normalized
+# PLANK's Rocky host accepts workstation keyboard, mouse, normalized
 # pen, and raw-HID Wacom input only. Keep controller packet routing, feedback,
 # Linux virtual-gamepad integration, launch metadata, and configuration UI out
 # of the production host even though the shared libvirtualhid dependency
@@ -288,7 +288,7 @@ if rg -n \
   'MULTI_CONTROLLER_MAGIC|SS_CONTROLLER_(ARRIVAL|TOUCH|MOTION|BATTERY)_MAGIC|gamepad_feedback|terminate_gamepads|probe_gamepads' \
   "$source_dir/src/input.cpp" "$source_dir/src/input.h" \
   "$source_dir/src/stream.cpp" "$source_dir/src/globals.h"; then
-  echo "controller packet routing or feedback is present in StationConnect host source" >&2
+  echo "controller packet routing or feedback is present in PLANK host source" >&2
   exit 1
 fi
 if rg -n -i \
@@ -332,7 +332,7 @@ for required_scroll_test_token in \
 done
 echo "host_mouse_scroll_compat_gate=pass"
 
-# StationConnect numeric keypads are always numeric. The host must set the
+# PLANK numeric keypads are always numeric. The host must set the
 # XKB state explicitly at connection time, reassert it before dependent keypad
 # keys, and consume client Num Lock transitions so local and remote lock state
 # cannot drift into opposite states.
@@ -353,7 +353,7 @@ if rg -n \
   'enable_sops|SUNSHINE_CLIENT_ENABLE_SOPS|resource\["\^/cancel\$"\]|root\.cancel' \
   "$source_dir/src" \
   --glob '*.{cpp,h}'; then
-  echo "legacy client-controlled display or remote app cancellation is present in StationConnect host" >&2
+  echo "legacy client-controlled display or remote app cancellation is present in PLANK host" >&2
   exit 1
 fi
 echo "host_remote_control_absence_gate=pass"
@@ -362,17 +362,17 @@ if rg -n \
   'root\.mac|get_mac_address|Unable to find MAC address' \
   "$source_dir/src" \
   --glob '*.{cpp,h,mm}'; then
-  echo "Wake-on-LAN MAC metadata is present in StationConnect host source" >&2
+  echo "Wake-on-LAN MAC metadata is present in PLANK host source" >&2
   exit 1
 fi
 echo "host_wake_on_lan_absence_gate=pass"
 
-# StationConnect relies on administrator-managed routing and firewall policy.
+# PLANK relies on administrator-managed routing and firewall policy.
 # Keep inherited Sunshine UPnP discovery, automatic gateway port mappings,
 # IPv6 pinholes, configuration/CLI toggles, and miniupnpc build inputs out of
 # every first-party host target.
 if [[ -e ${source_dir}/src/upnp.cpp || -e ${source_dir}/src/upnp.h ]]; then
-  echo "UPnP implementation files remain in StationConnect host source" >&2
+  echo "UPnP implementation files remain in PLANK host source" >&2
   exit 1
 fi
 if rg -n -i 'miniupnp|upnp' \
@@ -384,31 +384,31 @@ if rg -n -i 'miniupnp|upnp' \
   "$source_dir/docker" \
   "$repo_dir/packaging" \
   --glob '!**/third-party/**'; then
-  echo "UPnP or miniupnpc capability remains in first-party StationConnect host source" >&2
+  echo "UPnP or miniupnpc capability remains in first-party PLANK host source" >&2
   exit 1
 fi
 echo "host_upnp_absence_gate=pass"
 
-# StationConnect delegates human-account authorization to the branded PAM
+# PLANK delegates human-account authorization to the branded PAM
 # service and the host's PAM/SSSD/HBAC policy. The root media worker is the
 # broker's only client, so no service-access or user-allowlist group belongs in
 # the product.
 pam_broker_source="${source_dir}/src/auth/pam_broker.cpp"
-pam_policy="${repo_dir}/packaging/pam/stationconnect-host"
-pam_unit="${repo_dir}/packaging/systemd/stationconnect-pam-broker.service"
-host_spec="${repo_dir}/packaging/rpm/stationconnect-host.spec"
+pam_policy="${repo_dir}/packaging/pam/plank-host"
+pam_unit="${repo_dir}/packaging/systemd/plank-pam-broker.service"
+host_spec="${repo_dir}/packaging/rpm/plank-host.spec"
 [[ -f $pam_policy && ! -e ${repo_dir}/packaging/pam/remote-desktop &&
-   ! -e ${repo_dir}/packaging/sysusers.d/stationconnect.conf ]] || {
-  echo "obsolete StationConnect PAM or sysusers payload remains" >&2
+   ! -e ${repo_dir}/packaging/sysusers.d/plank.conf ]] || {
+  echo "obsolete PLANK PAM or sysusers payload remains" >&2
   exit 1
 }
-if rg -n 'stationconnect-auth|remote-desktop-users|--group' \
+if rg -n 'plank-auth|remote-desktop-users|--group' \
   "$pam_broker_source" "$pam_policy" "$pam_unit" "$host_spec"; then
-  echo "obsolete StationConnect authentication-group policy remains" >&2
+  echo "obsolete PLANK authentication-group policy remains" >&2
   exit 1
 fi
 for required_auth_token in \
-  'constexpr std::string_view pam_service = "stationconnect-host"' \
+  'constexpr std::string_view pam_service = "plank-host"' \
   'auth::load_broker_policy(config_path, policy_error)' \
   'if (username == "root" && !allow_root_login)' \
   'chmod(path.parent_path().c_str(), 0700)' \
@@ -420,7 +420,7 @@ for required_auth_token in \
 done
 rg -Fq 'bool_f(vars, "allow_root_login", broker_allow_root_login)' \
   "$source_dir/src/config.cpp"
-rg -Fxq 'ExecStart=/usr/libexec/stationconnect/stationconnect-pam-broker --socket /run/stationconnect/pam/auth.sock --config /etc/stationconnect/stationconnect-host.conf' \
+rg -Fxq 'ExecStart=/usr/libexec/plank/plank-pam-broker --socket /run/plank/pam/auth.sock --config /etc/plank/host.conf' \
   "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
 rg -Fxq 'auth       substack     system-auth' "$pam_policy"
@@ -436,15 +436,15 @@ if rg -q 'pam_succeed_if|ingroup' "$pam_policy"; then
   exit 1
 fi
 rg -Fxq 'allow_root_login = false' \
-  "$repo_dir/packaging/config/stationconnect-host.conf"
-rg -Fxq '/etc/pam.d/stationconnect-host' "$host_spec"
-rg -Fq 'packaging/pam/stationconnect-host' \
+  "$repo_dir/packaging/config/plank-host.conf"
+rg -Fxq '/etc/pam.d/plank-host' "$host_spec"
+rg -Fq 'packaging/pam/plank-host' \
   "${repo_dir}/scripts/build-host-rpm.sh"
 echo "host_auth_group_absence_gate=pass"
 
-host_wacom_rule="${repo_dir}/packaging/udev/70-stationconnect-host-wacom.rules"
+host_wacom_rule="${repo_dir}/packaging/udev/70-plank-host-wacom.rules"
 [[ -f $host_wacom_rule &&
-   ! -e ${repo_dir}/packaging/udev/70-stationconnect-wacom.rules ]] || {
+   ! -e ${repo_dir}/packaging/udev/70-plank-wacom.rules ]] || {
   echo "host Wacom udev rule identity is stale or ambiguous" >&2
   exit 1
 }
@@ -466,12 +466,12 @@ for required_pc_range_token in \
   'colorspace.full_range ? "PC" : "TV"'; do
   rg -Fq "$required_pc_range_token" \
     "$source_dir/src/video_colorspace.cpp" "$source_dir/src/video.cpp" || {
-    echo "StationConnect PC/full-range encoder terminology is missing: ${required_pc_range_token}" >&2
+    echo "PLANK PC/full-range encoder terminology is missing: ${required_pc_range_token}" >&2
     exit 1
   }
 done
 if rg -n 'Color range:.*JPEG|Color range:.*MPEG' "$source_dir/src/video.cpp"; then
-  echo "legacy JPEG/MPEG color-range terminology remains in the StationConnect encoder log" >&2
+  echo "legacy JPEG/MPEG color-range terminology remains in the PLANK encoder log" >&2
   exit 1
 fi
 echo "host_pc_color_range_gate=pass"
@@ -484,7 +484,7 @@ if rg -n \
   "$source_dir/src/platform/linux/input/virtualhid.cpp" \
   "$source_dir/src/config.cpp" \
   "$source_dir/src/config.h"; then
-  echo "direct touchscreen support is present in StationConnect host" >&2
+  echo "direct touchscreen support is present in PLANK host" >&2
   exit 1
 fi
 echo "host_touchscreen_absence_gate=pass"
@@ -510,8 +510,8 @@ fi
 echo "host_legacy_network_probe_absence_gate=pass"
 
 for required_raw_hid_token in \
-  '#define SC_RAW_HID_WIRE_VERSION 2U' \
-  'SC_RAW_HID_SUSPEND = 13'; do
+  '#define PLANK_RAW_HID_WIRE_VERSION 2U' \
+  'PLANK_RAW_HID_SUSPEND = 13'; do
   rg -Fq "$required_raw_hid_token" "$host_common_dir" || {
     echo "host raw-HID focus-suspend protocol invariant is missing: ${required_raw_hid_token}" >&2
     exit 1
@@ -524,7 +524,7 @@ rg -q '#define[[:space:]]+LI_FF_RAW_HID_FOCUS_SUSPEND[[:space:]]+0x20' \
 }
 for required_raw_hid_token in \
   raw_hid_focus_suspend \
-  SC_RAW_HID_SUSPEND \
+  PLANK_RAW_HID_SUSPEND \
   'Suspended raw HID tablet transport while retaining endpoints'; do
   rg -Fq "$required_raw_hid_token" \
     "$source_dir/src/platform/common.h" \
@@ -537,19 +537,19 @@ done
 echo "host_raw_hid_focus_suspend_gate=pass"
 
 # The qualified X11 host sends exact XFixes cursor images out of band and
-# unconditionally excludes the cursor from StationConnect video. There is no
+# unconditionally excludes the cursor from PLANK video. There is no
 # embedded-cursor compatibility mode.
 for required_cursor_token in \
-  'SC_CURSOR_WIRE_VERSION 1U' \
-  'SC_CURSOR_MAX_CHUNK_SIZE (48U * 1024U)'; do
+  'PLANK_CURSOR_WIRE_VERSION 1U' \
+  'PLANK_CURSOR_MAX_CHUNK_SIZE (48U * 1024U)'; do
   rg -Fq "$required_cursor_token" "$host_common_dir" || {
     echo "host local-cursor protocol invariant is missing: ${required_cursor_token}" >&2
     exit 1
   }
 done
 for required_cursor_token in \
-  SC_DATASMASH_EVENT_CURSOR_SHAPE \
-  SC_DATASMASH_EVENT_CURSOR_POSITION \
+  PLANK_TRANSPORT_EVENT_CURSOR_SHAPE \
+  PLANK_TRANSPORT_EVENT_CURSOR_POSITION \
   localCursorThread \
   send_cursor_shape_control \
   XFixesGetCursorImage \
@@ -557,7 +557,7 @@ for required_cursor_token in \
   XQueryPointer \
   consume_shape_change \
   "16'666'667ns" \
-  'StationConnect local cursor transport is unavailable' \
+  'PLANK local cursor transport is unavailable' \
   'bool capture_cursor = false'; do
   rg -Fq "$required_cursor_token" \
     "$source_dir/src/stream.cpp" \
@@ -605,27 +605,27 @@ for required_tablet_ownership_token in \
 done
 echo "host_raw_hid_fallback_exclusion_gate=pass"
 
-# StationConnect keeps every host runtime setting in one Sunshine config file.
+# PLANK keeps every host runtime setting in one Sunshine config file.
 # mDNS advertisement remains opt-in and defaults to disabled there.
 for required_mdns_token in \
-  stationconnect_mdns_discovery \
-  'StationConnect mDNS advertisement is disabled'; do
+  mdns_discovery \
+  'PLANK mDNS advertisement is disabled'; do
   rg -Fq "$required_mdns_token" "$source_dir/src/main.cpp" || {
     echo "host mDNS default-off invariant is missing: ${required_mdns_token}" >&2
     exit 1
   }
 done
-if rg -q 'STATIONCONNECT_(HOST_OPTIONS|MDNS_DISCOVERY)' \
+if rg -q 'PLANK_(HOST_OPTIONS|MDNS_DISCOVERY)' \
   "$source_dir/src/main.cpp" \
   "$source_dir/src/session/host_supervisor.cpp" \
-  "$repo_dir/packaging/bin/stationconnect-host" \
-  "$repo_dir/packaging/systemd/stationconnect-host.service" \
-  "$repo_dir/packaging/config/stationconnect-host.conf"; then
+  "$repo_dir/packaging/bin/plank-host" \
+  "$repo_dir/packaging/systemd/plank-host.service" \
+  "$repo_dir/packaging/config/plank-host.conf"; then
   echo "legacy host environment configuration is still present" >&2
   exit 1
 fi
-rg -Fxq 'stationconnect_mdns_discovery = false' \
-  "$repo_dir/packaging/config/stationconnect-host.conf" || {
+rg -Fxq 'mdns_discovery = false' \
+  "$repo_dir/packaging/config/plank-host.conf" || {
   echo "host mDNS configuration does not default to disabled" >&2
   exit 1
 }
@@ -634,7 +634,7 @@ for required_mdns_config_doc in \
   'The default is false; manually configured hostname/IP bookmarks continue to' \
   'work when discovery is disabled. Enabling this affects advertisement only'; do
   rg -Fq "$required_mdns_config_doc" \
-    "$repo_dir/packaging/config/stationconnect-host.conf" || {
+    "$repo_dir/packaging/config/plank-host.conf" || {
     echo "host mDNS configuration documentation is incomplete: ${required_mdns_config_doc}" >&2
     exit 1
   }
@@ -645,17 +645,17 @@ echo "host_mdns_default_off_gate=pass"
   echo "legacy host.env remains in the package source" >&2
   exit 1
 }
-[[ ! -e ${repo_dir}/packaging/config/stationconnect.conf ]] || {
+[[ ! -e ${repo_dir}/packaging/config/plank.conf ]] || {
   echo "ambiguous generic host configuration template remains" >&2
   exit 1
 }
-rg -Fq '/etc/stationconnect/stationconnect-host.conf' \
-  "$repo_dir/packaging/bin/stationconnect-host"
-if rg -n '/etc/stationconnect/stationconnect\.conf' \
+rg -Fq '/etc/plank/host.conf' \
+  "$repo_dir/packaging/bin/plank-host"
+if rg -n '/etc/plank/plank\.conf' \
   "$source_dir/src" \
   "$repo_dir/packaging/bin" \
   "$repo_dir/packaging/systemd" \
-  "$repo_dir/packaging/rpm/stationconnect-host.spec"; then
+  "$repo_dir/packaging/rpm/plank-host.spec"; then
   echo "ambiguous generic host configuration path remains" >&2
   exit 1
 fi
@@ -664,7 +664,7 @@ echo "host_single_config_gate=pass"
 for required_network_token in \
   'ping_timeout = 10000'; do
   rg -Fq "$required_network_token" \
-    "$repo_dir/packaging/config/stationconnect-host.conf" || {
+    "$repo_dir/packaging/config/plank-host.conf" || {
     echo "host network configuration is missing: ${required_network_token}" >&2
     exit 1
   }
@@ -678,7 +678,7 @@ for required_network_token in \
   }
 done
 if rg -n 'fec_percentage|fecPercentage' \
-  "$repo_dir/packaging/config/stationconnect-host.conf" \
+  "$repo_dir/packaging/config/plank-host.conf" \
   "$source_dir/src/config.cpp" \
   "$source_dir/src/config.h"; then
   echo "dormant host FEC configuration remains" >&2
@@ -686,11 +686,11 @@ if rg -n 'fec_percentage|fecPercentage' \
 fi
 echo "host_network_config_gate=pass"
 
-# StationConnect accepts a deliberately small host configuration surface.
+# PLANK accepts a deliberately small host configuration surface.
 # Reject reintroduction of inherited Sunshine options for unsupported encoder
 # platforms, consumer features, legacy display control, or product behaviors
 # that are fixed by the client/bookmark protocol.
-rg -Fq 'RuntimeOptionsMatchStationConnectProductPolicy' \
+rg -Fq 'RuntimeOptionsMatchPlankProductPolicy' \
   "$source_dir/tests/integration/test_config_consistency.cpp" || {
   echo "host exact configuration-key policy test is missing" >&2
   exit 1
@@ -701,7 +701,7 @@ rg -Fq 'RuntimeOptionsMatchStationConnectProductPolicy' \
 # a supported override.
 mapfile -t retained_config_options < <(
   awk '
-    /TEST\(ConfigConsistencyTest, RuntimeOptionsMatchStationConnectProductPolicy\)/ {
+    /TEST\(ConfigConsistencyTest, RuntimeOptionsMatchPlankProductPolicy\)/ {
       in_test = 1
     }
     in_test && /const std::set<.*> expected \{/ {
@@ -724,7 +724,7 @@ for retained_config_option in "${retained_config_options[@]}"; do
   retained_config_count=$(
     rg -c \
       "^[[:space:]]*(#[[:space:]]*)?${retained_config_option}[[:space:]]*=" \
-      "$repo_dir/packaging/config/stationconnect-host.conf" || true
+      "$repo_dir/packaging/config/plank-host.conf" || true
   )
   if [[ $retained_config_count != 1 ]]; then
     echo "canonical host configuration must contain exactly one entry for ${retained_config_option}" >&2
@@ -770,11 +770,11 @@ for required_session_authority in \
 done
 echo "host_config_surface_cleanup_gate=pass"
 
-rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/stationconnect-host.conf" || {
+rg -Fxq '[x264-encoder]' "$repo_dir/packaging/config/plank-host.conf" || {
   echo "host configuration is missing the x264-specific encoder section" >&2
   exit 1
 }
-if rg -Fxq '[software-encoder]' "$repo_dir/packaging/config/stationconnect-host.conf"; then
+if rg -Fxq '[software-encoder]' "$repo_dir/packaging/config/plank-host.conf"; then
   echo "host configuration retains the obsolete generic software-encoder section" >&2
   exit 1
 fi
@@ -784,7 +784,7 @@ echo "host_x264_config_section_gate=pass"
 # the old machine-specific global selector out of both the packaged config and
 # Sunshine's static video configuration while retaining session.output_name.
 if rg -n '^[[:space:]]*output_name[[:space:]]*=' \
-  "$repo_dir/packaging/config/stationconnect-host.conf" ||
+  "$repo_dir/packaging/config/plank-host.conf" ||
   rg -n \
     'video_config\.output_name|config::video\.output_name|"output_name",[[:space:]]*video\.output_name' \
     "$source_dir/src" "$source_dir/tests" \
@@ -808,7 +808,7 @@ echo "host_static_capture_selector_absence_gate=pass"
 # contradict the accepted session, so it must not exist in configuration,
 # parser state, documentation, or platform selection code.
 if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
-  "$repo_dir/packaging/config/stationconnect-host.conf" ||
+  "$repo_dir/packaging/config/plank-host.conf" ||
   rg -n \
     'config::video\.(capture|encoder)|std::string[[:space:]]+(capture|encoder);|string_f\(vars,[[:space:]]*"(capture|encoder)"' \
     "$source_dir/src" "$source_dir/tests" --glob '*.{cpp,h}' ||
@@ -822,19 +822,19 @@ for required_backend_invariant in \
   'if (verify_x11())' \
   'validate_encoder(software_cuda' \
   'validate_encoder(nvenc_direct' \
-  'No exact StationConnect encoder backend is available.' \
-  'Requested StationConnect capture source is unavailable' \
+  'No exact PLANK encoder backend is available.' \
+  'Requested PLANK capture source is unavailable' \
   'config.monitor.encoder_backend = launch_session->encoder_backend' \
   'config.monitor.capture_source = video::capture_source_e::nvfbc_8bit' \
   'config.monitor.capture_source = video::capture_source_e::x11_native10'; do
   rg -Fq "$required_backend_invariant" "$source_dir/src" || {
-    echo "StationConnect per-session backend invariant is missing: ${required_backend_invariant}" >&2
+    echo "PLANK per-session backend invariant is missing: ${required_backend_invariant}" >&2
     exit 1
   }
 done
 echo "host_global_video_selector_absence_gate=pass"
 
-# StationConnect exposes exactly two Linux capture paths: qualified NvFBC
+# PLANK exposes exactly two Linux capture paths: qualified NvFBC
 # 8-bit capture and the experimental owner-restricted Native X11/XShm 10-bit
 # path. Keep Sunshine's dormant generic X11 SHM/XGetImage fallbacks out of the
 # first-party host source, including their world-accessible SysV SHM mode.
@@ -844,7 +844,7 @@ if rg -n \
   'struct[[:space:]]+shm_attr_t|IPC_CREAT[[:space:]]*\|[[:space:]]*0777|"XGetImage"|xcb_shm_attach"' \
   "$x11_capture_source" ||
   rg -n 'Screencasting with X11"' "$linux_platform_source"; then
-  echo "legacy generic X11 capture remains in first-party StationConnect host source" >&2
+  echo "legacy generic X11 capture remains in first-party PLANK host source" >&2
   exit 1
 fi
 for required_native_x11_token in \
@@ -858,7 +858,7 @@ for required_native_x11_token in \
   'config_autoselect.capture_source = capture_source_e::nvfbc_8bit'; do
   rg -Fq "$required_native_x11_token" \
     "$x11_capture_source" "$source_dir/src/video.cpp" || {
-    echo "explicit StationConnect capture-source invariant is missing: ${required_native_x11_token}" >&2
+    echo "explicit PLANK capture-source invariant is missing: ${required_native_x11_token}" >&2
     exit 1
   }
 done
@@ -867,7 +867,7 @@ for required_native_x11_x264_token in \
   'Native X11 x264 10-bit scaling:' \
   'validate_h264_high10_444_identity' \
   'video::encoding_mode_available(session.encoding_mode)' \
-  'StationConnectEncodingModes", get_stationconnect_encoding_modes()'; do
+  'PlankEncodingModes", get_plank_encoding_modes()'; do
   rg -Fq "$required_native_x11_x264_token" "$source_dir/src" || {
     echo "Native X11 x264 invariant is missing: ${required_native_x11_x264_token}" >&2
     exit 1
@@ -884,17 +884,17 @@ for required_display_token in \
   'physical = preserve connected monitors' \
   'virtual = initialize one internal 1920x1080 output'; do
   rg -Fq "$required_display_token" \
-    "$repo_dir/packaging/config/stationconnect-host.conf" || {
+    "$repo_dir/packaging/config/plank-host.conf" || {
     echo "host display default is missing: ${required_display_token}" >&2
     exit 1
   }
 done
 for required_display_token in \
   'Before=display-manager.service' \
-  'ExecStart=/usr/libexec/stationconnect/stationconnect-display-prepare' \
+  'ExecStart=/usr/libexec/plank/plank-display-prepare' \
   'ReadWritePaths=/etc/X11/xorg.conf.d'; do
   rg -Fxq "$required_display_token" \
-    "$repo_dir/packaging/systemd/stationconnect-display-prepare.service" || {
+    "$repo_dir/packaging/systemd/plank-display-prepare.service" || {
     echo "host display-preparation unit invariant is missing: ${required_display_token}" >&2
     exit 1
   }
@@ -905,22 +905,22 @@ for required_display_token in \
   'virtual-1.edid' \
   'refusing to change the display topology while the display manager is active'; do
   rg -Fq "$required_display_token" \
-    "$repo_dir/packaging/bin/stationconnect-display-prepare" || {
+    "$repo_dir/packaging/bin/plank-display-prepare" || {
     echo "host display-preparation helper invariant is missing: ${required_display_token}" >&2
     exit 1
   }
 done
-if rg -q 'virtual_mode_[12]' "$repo_dir/packaging/config/stationconnect-host.conf" ||
+if rg -q 'virtual_mode_[12]' "$repo_dir/packaging/config/plank-host.conf" ||
    rg -q 'key != "virtual_mode_[12]"|values\["virtual_mode_[12]"\]' \
-     "$repo_dir/packaging/bin/stationconnect-display-prepare"; then
+     "$repo_dir/packaging/bin/plank-display-prepare"; then
   echo "removed administrator virtual-mode settings remain in display packaging" >&2
   exit 1
 fi
 echo "host_display_startup_layout_gate=pass"
 
 rg -Fxq \
-  'X-StationConnect-ApplicationId=la.instinctual.StationConnect.Host' \
-  "$repo_dir/packaging/systemd/stationconnect-host.service" || {
+  'X-PLANK-ApplicationId=la.instinctual.Plank.Host' \
+  "$repo_dir/packaging/systemd/plank-host.service" || {
   echo "host systemd metadata does not carry the canonical application ID" >&2
   exit 1
 }
@@ -929,16 +929,16 @@ echo "host_application_id_gate=pass"
 # Host runtime diagnostics are written privately to a bounded persistent file
 # while stdout remains attached to journald. systemd owns the writable log
 # directory; the single administrator configuration file owns the log path.
-rg -Fxq 'log_path = /var/log/stationconnect/stationconnect-host.log' \
-  "$repo_dir/packaging/config/stationconnect-host.conf" || {
+rg -Fxq 'log_path = /var/log/plank/host.log' \
+  "$repo_dir/packaging/config/plank-host.conf" || {
   echo "host persistent log path is not configured" >&2
   exit 1
 }
 for required_log_directory_token in \
-  'LogsDirectory=stationconnect' \
+  'LogsDirectory=plank' \
   'LogsDirectoryMode=0700'; do
   rg -Fxq "$required_log_directory_token" \
-    "$repo_dir/packaging/systemd/stationconnect-host.service" || {
+    "$repo_dir/packaging/systemd/plank-host.service" || {
     echo "host private systemd log directory invariant is missing: ${required_log_directory_token}" >&2
     exit 1
   }
@@ -957,13 +957,13 @@ echo "host_persistent_logging_gate=pass"
 
 host_source_commit=$(git -C "$source_dir" rev-parse HEAD)
 env \
-  BRANCH=stationconnect-package \
+  BRANCH=plank-package \
   BUILD_VERSION="$package_version" \
   COMMIT="$host_source_commit" \
   cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \
-  -DSUNSHINE_ASSETS_DIR=share/stationconnect \
+  -DSUNSHINE_ASSETS_DIR=share/plank \
   -DCMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc \
   -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
   -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
@@ -982,31 +982,31 @@ env \
   -DSUNSHINE_ENABLE_WAYLAND=OFF \
   -DSUNSHINE_ENABLE_X11=ON \
   -DSUNSHINE_ENABLE_XDG_PORTAL=OFF \
-  -DSTATIONCONNECT_ENABLE_DATASMASH=ON \
-  -DSTATIONCONNECT_PRODUCT_BUILD=ON \
-  -DSTATIONCONNECT_DATASMASH_TRANSPORT_DIR="$datasmash_transport_dir" \
-  -DSTATIONCONNECT_DATASMASH_CARGO_FEATURES="$datasmash_cargo_features"
+  -DPLANK_ENABLE_TRANSPORT=ON \
+  -DPLANK_PRODUCT_BUILD=ON \
+  -DPLANK_TRANSPORT_DIR="$plank_transport_dir" \
+  -DPLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features"
 cmake --build "$build_dir" --parallel "$build_jobs" \
-  --target sunshine stationconnect-pam-broker stationconnect-host-supervisor
+  --target sunshine plank-pam-broker plank-host-supervisor
 
-nm -C "$build_dir/stationconnect-host" | \
-  rg ' [Tt] sc_datasmash_abi_version$' >/dev/null || {
-  echo "host binary does not link the datasmash transport ABI" >&2
+nm -C "$build_dir/plank-host" | \
+  rg ' [Tt] plank_transport_abi_version$' >/dev/null || {
+  echo "host binary does not link the PLANK transport ABI" >&2
   exit 1
 }
-rg -a -Fq 'StationConnect datasmash transport ABI ' \
-  "$build_dir/stationconnect-host" || {
-  echo "host binary does not report the inactive datasmash boundary" >&2
+rg -a -Fq 'PLANK native transport ABI ' \
+  "$build_dir/plank-host" || {
+  echo "host binary does not report the inactive plank_transport boundary" >&2
   exit 1
 }
-echo "host_datasmash_link_gate=pass"
+echo "host_plank_transport_link_gate=pass"
 
-if rg -a -q '/usr/local/assets' "$build_dir/stationconnect-host"; then
+if rg -a -q '/usr/local/assets' "$build_dir/plank-host"; then
   echo "package binary contains the development asset path" >&2
   exit 1
 fi
-rg -a -q '/usr/share/stationconnect' "$build_dir/stationconnect-host"
-rg -Fxq 'STATIONCONNECT_PRODUCT_BUILD:BOOL=ON' "$build_dir/CMakeCache.txt" || {
+rg -a -q '/usr/share/plank' "$build_dir/plank-host"
+rg -Fxq 'PLANK_PRODUCT_BUILD:BOOL=ON' "$build_dir/CMakeCache.txt" || {
   echo "host product build mode is not enabled" >&2
   exit 1
 }
@@ -1017,16 +1017,16 @@ if find "$build_dir" -maxdepth 1 -type f \
   exit 1
 fi
 for product_identity in \
-  'StationConnectHost' \
+  'PlankHost' \
   'Package Publisher: ' \
   'Instinctual' \
   'https://instinctual.la'; do
-  rg -a -Fq "$product_identity" "$build_dir/stationconnect-host" || {
+  rg -a -Fq "$product_identity" "$build_dir/plank-host" || {
     echo "host binary is missing product identity: ${product_identity}" >&2
     exit 1
   }
 done
-rg -Fq 'PROJECT_FQDN=\"la.instinctual.StationConnect.Host\"' \
+rg -Fq 'PROJECT_FQDN=\"la.instinctual.Plank.Host\"' \
   "$build_dir/CMakeFiles/sunshine.dir/flags.make" || {
   echo "host compiler definitions are missing the product application ID" >&2
   exit 1
@@ -1034,7 +1034,7 @@ rg -Fq 'PROJECT_FQDN=\"la.instinctual.StationConnect.Host\"' \
 for inherited_identity in \
   'dev.lizardbyte.app.Sunshine' \
   'https://app.lizardbyte.dev/support'; do
-  if rg -a -Fq "$inherited_identity" "$build_dir/stationconnect-host"; then
+  if rg -a -Fq "$inherited_identity" "$build_dir/plank-host"; then
     echo "host binary retains inherited identity: ${inherited_identity}" >&2
     exit 1
   fi
@@ -1044,15 +1044,15 @@ echo "host_product_identity_gate=pass"
   echo "host Web UI assets were produced" >&2
   exit 1
 }
-if nm -C "$build_dir/stationconnect-host" | rg -q 'confighttp::'; then
+if nm -C "$build_dir/plank-host" | rg -q 'confighttp::'; then
   echo "host binary still contains the configuration HTTP server" >&2
   exit 1
 fi
-if rg -a -q 'Sunshine - Web UI|Configuration UI available at' "$build_dir/stationconnect-host"; then
+if rg -a -q 'Sunshine - Web UI|Configuration UI available at' "$build_dir/plank-host"; then
   echo "host binary still contains Web UI runtime paths" >&2
   exit 1
 fi
-if nm -C "$build_dir/stationconnect-host" | rg -q 'nvhttp::(pair|pin|unpair_client|getservercert|clientchallenge|clientpairingsecret)'; then
+if nm -C "$build_dir/plank-host" | rg -q 'nvhttp::(pair|pin|unpair_client|getservercert|clientchallenge|clientpairingsecret)'; then
   echo "host binary still contains legacy pairing code" >&2
   exit 1
 fi
@@ -1061,7 +1061,7 @@ for required_desktop_token in \
   'inline constexpr int desktop_app_id = 881448767' \
   'inline constexpr std::string_view desktop_app_name = "Desktop"' \
   'std::atomic<int> _app_id {0}' \
-  'Reserving StationConnect Desktop stream'; do
+  'Reserving PLANK Desktop stream'; do
   rg -Fq "$required_desktop_token" \
     "$source_dir/src/process.h" "$source_dir/src/process.cpp" || {
     echo "fixed Desktop reservation invariant is missing: ${required_desktop_token}" >&2
@@ -1092,11 +1092,11 @@ for removed_app_asset in box.png desktop-alt.png steam.png; do
   fi
 done
 if rg -a -q 'apps\.json|Steam Big Picture|Low Res Desktop|SUNSHINE_APP_ID|SUNSHINE_APP_NAME' \
-  "$build_dir/stationconnect-host"; then
+  "$build_dir/plank-host"; then
   echo "host binary still contains the legacy application catalog or launcher" >&2
   exit 1
 fi
-if nm -C "$build_dir/stationconnect-host" | \
+if nm -C "$build_dir/plank-host" | \
     rg -q 'platf::(run_command|request_process_group_exit|process_group_running|open_url)'; then
   echo "host binary still contains the legacy external-command launcher" >&2
   exit 1
@@ -1107,7 +1107,7 @@ for required_reconnect_token in \
   'std::mutex session_start_mutex' \
   'session_stream::session_count() == 0' \
   'session_stream::launch_session_pending()' \
-  'Clearing orphaned StationConnect Desktop reservation before launch'; do
+  'Clearing orphaned PLANK Desktop reservation before launch'; do
   rg -Fq "$required_reconnect_token" \
     "$source_dir/src/nvhttp.cpp" "$source_dir/src/session_stream.cpp" \
     "$source_dir/src/session_stream.h" || {
@@ -1117,10 +1117,10 @@ for required_reconnect_token in \
 done
 echo "host_rapid_reconnect_cleanup_gate=pass"
 
-"${repo_dir}/scripts/audit-package-runtime.sh" "$build_dir/stationconnect-host" >/dev/null
+"${repo_dir}/scripts/audit-package-runtime.sh" "$build_dir/plank-host" >/dev/null
 
 echo "host_web_ui_absence_gate=pass"
-echo "host_binary=${build_dir}/stationconnect-host"
-echo "pam_broker_binary=${build_dir}/stationconnect-pam-broker"
-echo "host_supervisor_binary=${build_dir}/stationconnect-host-supervisor"
+echo "host_binary=${build_dir}/plank-host"
+echo "pam_broker_binary=${build_dir}/plank-pam-broker"
+echo "host_supervisor_binary=${build_dir}/plank-host-supervisor"
 echo "host_package_binary_gate=pass"

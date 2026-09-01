@@ -11,7 +11,7 @@ results because no fullscreen workload was available.
 | `secondary-hardware-host` | Quadro RTX 8000, 48 GB | Turing TU102 | Yes | 1 |
 
 All three use NVIDIA driver 580.159.04 and report NVENC API 13.0. The repository
-`connect-probe-nvenc` capability query passed on every host:
+`plank-probe-nvenc` capability query passed on every host:
 
 - HEVC Range Extensions profile and 10-bit 4:4:4 input are supported.
 - Intra refresh, single-slice intra refresh, and reference invalidation are

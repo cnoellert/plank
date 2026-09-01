@@ -1,0 +1,10 @@
+#%PAM-1.0
+# PLANK delegates authentication, account authorization, credentials,
+# and session lifecycle to the host's standard PAM/SSSD policy. The broker
+# enforces security.allow_root_login before entering this stack.
+auth       substack     system-auth
+
+account    include      system-auth
+
+session    optional     pam_keyinit.so force revoke
+session    include      system-auth

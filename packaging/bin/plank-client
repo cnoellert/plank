@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+client_binary=${PLANK_CLIENT_BINARY:-/usr/libexec/plank/plank-client}
+
+if [[ ! -x "${client_binary}" ]]; then
+  echo "PLANK client binary is not executable: ${client_binary}" >&2
+  exit 127
+fi
+if [[ -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
+  echo 'PLANK client requires a graphical session' >&2
+  exit 1
+fi
+
+client_dir=$(dirname -- "${client_binary}")
+client_libdir=${PLANK_CLIENT_LIBDIR:-${client_dir}/lib}
+if [[ -d "${client_libdir}" ]]; then
+  export LD_LIBRARY_PATH="${client_libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+fi
+
+exec "${client_binary}" "$@"

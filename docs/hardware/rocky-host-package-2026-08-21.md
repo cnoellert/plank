@@ -1,9 +1,9 @@
 # Rocky Host Development Package Qualification
 
-The unsigned `stationconnect-host` RPM was refreshed on the qualified Rocky 9
+The unsigned `plank-host` RPM was refreshed on the qualified Rocky 9
 workstation from root commit `30c4a5e`. Its packaged Sunshine binary reports
 `0.0.0-30c4a5e` without a dirty-tree marker and embeds
-`/usr/share/stationconnect` as its asset path.
+`/usr/share/plank` as its asset path.
 
 The `0.1.0-0.4.el9` x86-64 RPM is approximately 5.6 MiB compressed and has
 SHA-256:
@@ -23,7 +23,7 @@ modes, asset presence, launcher syntax, and the extracted Sunshine runtime
 closure all passed. Installation on hardware-test-host replaced the obsolete
 `plome-pam-helper` package in the same DNF transaction, preserving the
 identical PAM policy. The packaged PAM broker and Sunshine user service then
-restarted successfully; Sunshine runs from `/usr/libexec/stationconnect/`.
+restarted successfully; Sunshine runs from `/usr/libexec/plank/`.
 The 0.4 upgrade also installs a modules-load entry, reloads the Wacom udev
 rules, loads `uhid`, and retriggers `/dev/uhid`. On hardware-test-host the node received the
 `uaccess` and `seat` tags plus an `operator:rw-` ACL. The host service now starts

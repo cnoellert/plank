@@ -18,7 +18,7 @@ into the qualified packages and may be useful for the planned macOS work.
   services. Bookmark reachability and route-MTU selection remain local to the
   configured workstation path.
 - Removed common-c's dormant STUN implementation and generic multi-port
-  connectivity tester. Connection errors now identify StationConnect's fixed
+  connectivity tester. Connection errors now identify PLANK's fixed
   UDP 47989 endpoint directly instead of preserving GameStream port tables.
 - Removed all client actions that opened upstream Help pages, plus the unused
   browser capability and Help-button plumbing.
@@ -27,8 +27,8 @@ into the qualified packages and may be useful for the planned macOS work.
   the active launch/resume contract and is not a game catalog.
 - Removed the unused running-game roles and generic current-game launcher from
   the QML workstation model. Its active bookmark, authentication, host-status,
-  and StationConnect Desktop-session interfaces remain.
-- Removed NVIDIA GeForce Experience version heuristics. Exact StationConnect
+  and PLANK Desktop-session interfaces remain.
+- Removed NVIDIA GeForce Experience version heuristics. Exact PLANK
   host/profile capability negotiation remains authoritative.
 - Removed the host's unused remote-file downloader, libcurl dependency,
   mutable application-art endpoint, and related tests and packaging inputs.
@@ -37,7 +37,7 @@ into the qualified packages and may be useful for the planned macOS work.
 - Isolated the qualified host from inherited CPack, desktop-entry, AppImage,
   Flatpak, and per-user service metadata. The explicit RPM manifest receives
   only required runtime assets, while the compiled project name, reverse-DNS
-  identifier, publisher, website, and startup log use StationConnect identity.
+  identifier, publisher, website, and startup log use PLANK identity.
 
 ## Security results
 
@@ -90,7 +90,7 @@ expose that exact profile; supported exact HEVC profiles may use hardware.
 - The clean GCC Toolset 14/CUDA 13.0 Host build and RPM manifest gates passed.
   Root CTest passed 18/18. NvFBC CUDA capture met 60 fps and real 2160p60 NVENC
   HEVC Rext 10-bit 4:4:4 encoding passed. The aggregate live qualification is
-  incomplete because hardware-test-host exposes only the virtual StationConnect tablet,
+  incomplete because hardware-test-host exposes only the virtual PLANK tablet,
   not a raw Wacom HID descriptor, and public KMS scanout was unavailable;
   those are recorded limitations rather than false passes. Host `.234` is
   installed on hardware-test-host with all packaged units active; Client `.234` is

@@ -3,20 +3,20 @@
 set -uo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
+build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
 report_file=${1:-"${repo_dir}/qualification-report.md"}
-kms_device=${CONNECT_DRM_DEVICE:-/dev/dri/card0}
+kms_device=${PLANK_DRM_DEVICE:-/dev/dri/card0}
 
 active_session=$(loginctl show-seat seat0 --property=ActiveSession --value 2>/dev/null || true)
 detected_x11_user=
 if [[ -n "${active_session}" ]]; then
   detected_x11_user=$(loginctl show-session "${active_session}" --property=Name --value 2>/dev/null || true)
 fi
-x11_user=${CONNECT_X11_USER:-${detected_x11_user:-gdm}}
+x11_user=${PLANK_X11_USER:-${detected_x11_user:-gdm}}
 x11_uid=$(id -u "${x11_user}")
 detected_x11_display=$(who | awk -v user="${x11_user}" '$1 == user && $2 ~ /^:[0-9]+$/ { print $2; exit }')
-x11_display=${CONNECT_X11_DISPLAY:-${detected_x11_display:-:0}}
-x11_authority=${CONNECT_X11_AUTHORITY:-/run/user/${x11_uid}/gdm/Xauthority}
+x11_display=${PLANK_X11_DISPLAY:-${detected_x11_display:-:0}}
+x11_authority=${PLANK_X11_AUTHORITY:-/run/user/${x11_uid}/gdm/Xauthority}
 
 mkdir -p -- "${build_dir}" "$(dirname -- "${report_file}")"
 
@@ -26,7 +26,7 @@ ctest --test-dir "${build_dir}" --output-on-failure
 
 overall_result=0
 {
-  echo '# StationConnect Host Qualification Report'
+  echo '# PLANK Host Qualification Report'
   echo
   echo "Generated: $(date --iso-8601=seconds)"
   echo
@@ -66,24 +66,24 @@ overall_result=0
     echo 'prerequisite=fail (enable nvidia_drm.modeset=1 and reboot)'
     overall_result=1
   fi
-  if ! "${build_dir}/connect-probe-kms" "${kms_device}" --inventory-only 2>&1; then
+  if ! "${build_dir}/plank-probe-kms" "${kms_device}" --inventory-only 2>&1; then
     echo 'retrying KMS inventory with non-interactive sudo'
-    sudo -n "${build_dir}/connect-probe-kms" "${kms_device}" --inventory-only 2>&1 || overall_result=1
+    sudo -n "${build_dir}/plank-probe-kms" "${kms_device}" --inventory-only 2>&1 || overall_result=1
   fi
   echo '```'
   echo
   echo '## NVIDIA X11 Framebuffer Capture'
   echo
   echo '```text'
-  if [[ ! -x "${build_dir}/connect-probe-nvfbc" ]]; then
+  if [[ ! -x "${build_dir}/plank-probe-nvfbc" ]]; then
     echo 'nvfbc_probe=unavailable (set NVFBC_SDK_ROOT to NVIDIA Capture SDK 9.0)'
     overall_result=1
   elif env DISPLAY="${x11_display}" XAUTHORITY=/dev/null \
-      "${build_dir}/connect-probe-nvfbc" --frames 600 --fps 60 2>&1; then
+      "${build_dir}/plank-probe-nvfbc" --frames 600 --fps 60 2>&1; then
     echo 'nvfbc_operational_gate=pass'
   elif sudo -n -u "${x11_user}" env DISPLAY="${x11_display}" \
       XAUTHORITY="${x11_authority}" \
-      "${build_dir}/connect-probe-nvfbc" --frames 600 --fps 60 2>&1; then
+      "${build_dir}/plank-probe-nvfbc" --frames 600 --fps 60 2>&1; then
     echo 'nvfbc_operational_gate=pass'
   else
     echo 'nvfbc_operational_gate=fail'
@@ -95,7 +95,7 @@ overall_result=0
   echo '## NVENC HEVC FRExt 10-bit 4:4:4'
   echo
   echo '```text'
-  "${build_dir}/connect-probe-nvenc" 2>&1 || overall_result=1
+  "${build_dir}/plank-probe-nvenc" 2>&1 || overall_result=1
   "${repo_dir}/scripts/probe-nvenc-hevc44410.sh" 2>&1 || overall_result=1
   echo '```'
   echo

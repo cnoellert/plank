@@ -6,7 +6,7 @@
   "ordered": true,
   "focus_loss_message": {
     "type": 13,
-    "name": "SC_RAW_HID_SUSPEND",
+    "name": "PLANK_RAW_HID_SUSPEND",
     "interface_id": 0,
     "transaction_id": 0,
     "payload_length": 0,

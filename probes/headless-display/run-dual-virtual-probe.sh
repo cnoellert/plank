@@ -3,8 +3,8 @@
 set -euo pipefail
 
 readonly probe_host="${PLANK_PROBE_HOST:?Set PLANK_PROBE_HOST for the authorized test Host}"
-readonly probe_unit="stationconnect-headless-xorg-probe.service"
-readonly probe_root="/run/stationconnect/headless-probe"
+readonly probe_unit="plank-headless-xorg-probe.service"
+readonly probe_root="/run/plank/headless-probe"
 readonly probe_display=":8"
 readonly probe_socket="/tmp/.X11-unix/X8"
 readonly xorg_config="${1:-${probe_root}/xorg-dual-virtual.conf}"

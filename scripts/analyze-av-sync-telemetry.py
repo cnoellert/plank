@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Analyze opt-in StationConnect client audio/video clock telemetry."""
+"""Analyze opt-in PLANK client audio/video clock telemetry."""
 
 from __future__ import annotations
 
@@ -12,13 +12,13 @@ from dataclasses import dataclass
 
 
 AUDIO_PATTERN = re.compile(
-    r"StationConnect A/V audio clock: media=(\d+) submit=(\d+) "
+    r"PLANK A/V audio clock: media=(\d+) submit=(\d+) "
     r"queue=(-?\d+) device=(-?\d+) pending=(-?\d+) frame=(\d+)"
     r"(?: correction=(-?\d+) skipped=(\d+) raw=(\d+)"
     r"(?: catchup=(-?\d+))?)?"
 )
 VIDEO_PATTERN = re.compile(
-    r"StationConnect A/V video clock: media=(\d+) render=(\d+) "
+    r"PLANK A/V video clock: media=(\d+) render=(\d+) "
     r"queue=(\d+) renderer=(\d+)"
 )
 TICK_WRAP = 1 << 32

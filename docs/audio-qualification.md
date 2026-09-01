@@ -1,17 +1,17 @@
 # Audio Qualification
 
-StationConnect currently streams coupled stereo Opus at 48 kHz using
+PLANK currently streams coupled stereo Opus at 48 kHz using
 `OPUS_APPLICATION_RESTRICTED_LOWDELAY`. The high-quality stereo target is
 512 kbps total for both channels, not 512 kbps per channel. Existing Moonlight
 audio Reed-Solomon recovery remains enabled independently of video FEC.
 
 ## End-to-End Delivery Gate
 
-With a StationConnect session active, run the non-destructive loopback gate
+With a PLANK session active, run the non-destructive loopback gate
 from the repository root:
 
 ```bash
-STATIONCONNECT_SSH_KNOWN_HOSTS=/path/to/known_hosts \
+PLANK_SSH_KNOWN_HOSTS=/path/to/known_hosts \
   ./scripts/run-audio-loopback-qualification.sh user@client
 ```
 
@@ -35,16 +35,16 @@ The NUC opened a 720-sample stereo output buffer at 48 kHz, corresponding to
 15 ms of audio per callback.
 
 The restarted stream also passed the Stage A same-user ownership gate:
-Sunshine, authenticated account `operator`, and the selected StationConnect PAM
+Sunshine, authenticated account `operator`, and the selected PLANK PAM
 session all resolved to UID `540600009`. This proves the permitted live
 path; automated host tests cover rejection and cleanup for a UID mismatch.
 
 ## Clock-Drift Telemetry
 
 Launch the client from a terminal with
-`STATIONCONNECT_AV_SYNC_TELEMETRY=1 stationconnect-client`, then begin a new
+`PLANK_AV_SYNC_TELEMETRY=1 plank-client`, then begin a new
 stream. This diagnostic-only process environment switch is not an
-administrator policy. StationConnect then logs audio media time with its SDL
+administrator policy. PLANK then logs audio media time with its SDL
 queue/device latency and video media time at the renderer call about once per
 second. Collect the persistent client log and analyze it from the repository
 root:
@@ -101,8 +101,8 @@ three decoded 5 ms blocks after a short scheduling burst, despite no packet
 loss, decoder error, or connection failure. Dropping decoded audio violates the
 zero-skip gate even though it immediately reduces queued latency.
 
-Client 0.6 keeps that generic behavior outside StationConnect sessions. A
-StationConnect stream instead applies bounded resampler catch-up above a 15 ms
+Client 0.6 keeps that generic behavior outside PLANK sessions. A
+PLANK stream instead applies bounded resampler catch-up above a 15 ms
 input-queue target, limited to 10,000 ppm with 1,000 ppm update slew, and keeps
 a 100 ms emergency ceiling. A real-content run activated 1,000 ppm catch-up,
 returned to zero, and crossed the earlier failure point without skipping a
@@ -127,14 +127,14 @@ gate; synchronized 0.7 packages still require the full two-hour repeat.
 ### Current handoff — 2026-08-22
 
 - The canonical integration repository is now
-  `https://github.com/instinctual/stationconnect`. Do not publish StationConnect
-  changes to `instinctual/stationconnectOS`; that repository is unrelated.
-  Local `main` tracks `origin/main`, and `stationconnect/wacom-raw-hid` tracks
+  `https://github.com/instinctual/plank`. Do not publish PLANK
+  changes to `instinctual/plankOS`; that repository is unrelated.
+  Local `main` tracks `origin/main`, and `plank/wacom-raw-hid` tracks
   the matching branch on the new repository.
 - Client phase commit `2404550e` and root phase commit `b39d621` are pushed.
 - Synchronized 0.7 packages were built and installed on both targets:
-  `stationconnect-host-0.1.0-0.7.el9.x86_64` on hardware-test-host and
-  `stationconnect-client 0.1.0-0.7` on the NUC. The client package records
+  `plank-host-0.1.0-0.7.el9.x86_64` on hardware-test-host and
+  `plank-client 0.1.0-0.7` on the NUC. The client package records
   Moonlight commit `2404550e` and bundles the private FFmpeg 9.0.1 runtime.
   Both package manifests passed. Artifact SHA-256 values are
   `40d3b4e2281ca64015de00d51ce3a2ee056bf002d1de29151a585de44104876a`
@@ -152,8 +152,8 @@ gate; synchronized 0.7 packages still require the full two-hour repeat.
   checks were not repeated, and the soak was deliberately not started. No
   screen inhibitor or temporary blanking override was installed.
 - The packaged 0.6 soak log is
-  `~/stationconnect-avsync-soak-0.6.log` on the NUC. The
-  phase-prototype log is `stationconnect-avsync-phase-test.log` in the same
+  `~/plank-avsync-soak-0.6.log` on the NUC. The
+  phase-prototype log is `plank-avsync-phase-test.log` in the same
   directory.
 - When an operator is on site, log into hardware-test-host, start the full-screen changing
   Flame loop, and smoke-test authentication, scaled-span, Wacom pressure and

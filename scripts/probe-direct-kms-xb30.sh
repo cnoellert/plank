@@ -9,7 +9,7 @@ if [[ ${1:-} != --confirm-display-outage ]]; then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
+build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
 display_manager_was_active=no
 
 restore_display_manager() {
@@ -30,4 +30,4 @@ if systemctl is-active --quiet display-manager.service; then
 fi
 echo 'Stopping the display manager for the direct XB30 KMS test.'
 sudo -n systemctl stop display-manager.service
-sudo -n "${build_dir}/connect-probe-kms-xb30" /dev/dri/card0
+sudo -n "${build_dir}/plank-probe-kms-xb30" /dev/dri/card0

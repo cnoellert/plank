@@ -3,7 +3,7 @@
 ## Goal
 
 Mirror the Wacom tablet selected on the client instead of presenting a fixed
-StationConnect tablet profile. The host must receive the client's HID report
+PLANK tablet profile. The host must receive the client's HID report
 descriptors and USB identity, create one UHID endpoint per HID interface, and
 let the stock `hid-wacom` stack interpret reports. Never scale or reinterpret
 raw report fields in this path.
@@ -26,8 +26,8 @@ core-pen fallback.
 ## Wire Framing
 
 Production messages use protocol version 2 and begin with the packed 20-byte
-`SC_RAW_HID_WIRE_HEADER` from `StationConnect.h`. All integer fields are
-little-endian. The header carries magic `SCWH`, message type, interface index,
+`PLANK_RAW_HID_WIRE_HEADER` from `plank.h`. All integer fields are
+little-endian. The header carries magic `PLWH`, message type, interface index,
 device generation, transaction ID, and payload length. The client sends the
 variable frame through Moonlight's reliable generic input channel with magic
 `0x55000008`; Sunshine replies with reliable control type `0x5504`. Both paths
@@ -85,7 +85,7 @@ discarded.
 
 ## Reconnect Barrier
 
-Before replacing a StationConnect control stream, the client suspends raw-HID
+Before replacing a PLANK control stream, the client suspends raw-HID
 delivery and closes its physical tablet handles while the old reliable channel
 still exists. The raw-tablet worker remains behind a reconnect barrier during
 authentication, host display transitions, and input-stream initialization. It
@@ -110,7 +110,7 @@ pre-scaling coordinates, preference watchers, or Xorg changes.
 
 ## Qualification Bridge
 
-`connect-wacom-raw-bridge` implements this lifecycle as a one-client hardware
+`plank-wacom-raw-bridge` implements this lifecycle as a one-client hardware
 probe. Its TCP transport is intentionally rejected as a production boundary:
 it is plaintext, has no session authentication, and must run only on an
 isolated qualification network. The PTH-660 live test passed descriptor,

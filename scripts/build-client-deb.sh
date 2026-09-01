@@ -14,8 +14,8 @@ output_dir=$(realpath -m -- "${3:-${repo_dir}/artifacts/packages}")
 moonlight_source_dir=$(realpath -- "${4:-${repo_dir}/client/moonlight-qt-fork}")
 common_source_dir="${moonlight_source_dir}/moonlight-common-c/moonlight-common-c"
 kyber_source_dir="${repo_dir}/third_party/kyber-kymux"
-approved_client_logo="${repo_dir}/branding/assets/stationconnect_logo_circle.png"
-runtime_client_logo="${moonlight_source_dir}/app/res/stationconnect-logo.png"
+approved_client_logo="${repo_dir}/branding/assets/plank-logo.png"
+runtime_client_logo="${moonlight_source_dir}/app/res/plank-logo.png"
 ffmpeg_version=9.0.1
 ffmpeg_sha256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
 ffmpeg_lib_dir="${ffmpeg_work_dir}/install/lib"
@@ -61,11 +61,11 @@ for kyber_license in COPYING.AGPLv3 COPYING.md; do
   }
 done
 [[ -f ${approved_client_logo} ]] || {
-  echo "approved StationConnect client logo is unavailable: ${approved_client_logo}" >&2
+  echo "approved PLANK client logo is unavailable: ${approved_client_logo}" >&2
   exit 1
 }
 cmp --silent "${approved_client_logo}" "${runtime_client_logo}" || {
-  echo "runtime client logo differs from the approved StationConnect artwork" >&2
+  echo "runtime client logo differs from the approved PLANK artwork" >&2
   exit 1
 }
 echo "client_approved_logo_gate=pass"
@@ -110,94 +110,94 @@ moonlight_commit=$(git -C "$moonlight_source_dir" rev-parse HEAD)
 common_commit=$(git -C "$common_source_dir" rev-parse HEAD)
 kyber_commit=$(git -C "$kyber_source_dir" rev-parse HEAD)
 source_epoch=$(git -C "$moonlight_source_dir" log -1 --format=%ct)
-work_dir=$(mktemp -d --tmpdir stationconnect-client-deb.XXXXXX)
+work_dir=$(mktemp -d --tmpdir plank-client-deb.XXXXXX)
 cleanup() {
   rm -rf -- "$work_dir"
 }
 trap cleanup EXIT
-stage_dir="${work_dir}/debian/stationconnect-client"
-private_lib_dir="${stage_dir}/usr/libexec/stationconnect/lib"
+stage_dir="${work_dir}/debian/plank-client"
+private_lib_dir="${stage_dir}/usr/libexec/plank/lib"
 mkdir -p "$stage_dir/DEBIAN" "$private_lib_dir" "$work_dir/debian"
 
 install -D -m 0755 "$moonlight_binary" \
-  "$stage_dir/usr/libexec/stationconnect/stationconnect-client"
-install -D -m 0755 "$repo_dir/packaging/bin/stationconnect-client" \
-  "$stage_dir/usr/bin/stationconnect-client"
-install -D -m 0644 "$repo_dir/packaging/config/stationconnect-client.conf" \
-  "$stage_dir/etc/stationconnect/stationconnect-client.conf"
-printf '%s\n' '/etc/stationconnect/stationconnect-client.conf' \
+  "$stage_dir/usr/libexec/plank/plank-client"
+install -D -m 0755 "$repo_dir/packaging/bin/plank-client" \
+  "$stage_dir/usr/bin/plank-client"
+install -D -m 0644 "$repo_dir/packaging/config/plank-client.conf" \
+  "$stage_dir/etc/plank/client.conf"
+printf '%s\n' '/etc/plank/client.conf' \
   >"$stage_dir/DEBIAN/conffiles"
 install -D -m 0644 \
-  "$repo_dir/packaging/desktop/la.instinctual.StationConnect.Client.desktop" \
-  "$stage_dir/usr/share/applications/la.instinctual.StationConnect.Client.desktop"
+  "$repo_dir/packaging/desktop/la.instinctual.Plank.Client.desktop" \
+  "$stage_dir/usr/share/applications/la.instinctual.Plank.Client.desktop"
 install -D -m 0644 \
-  "$moonlight_source_dir/app/deploy/linux/la.instinctual.StationConnect.Client.appdata.xml" \
-  "$stage_dir/usr/share/metainfo/la.instinctual.StationConnect.Client.appdata.xml"
+  "$moonlight_source_dir/app/deploy/linux/la.instinctual.Plank.Client.appdata.xml" \
+  "$stage_dir/usr/share/metainfo/la.instinctual.Plank.Client.appdata.xml"
 install -D -m 0644 \
-  "$repo_dir/packaging/udev/70-stationconnect-client-wacom.rules" \
-  "$stage_dir/usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules"
+  "$repo_dir/packaging/udev/70-plank-client-wacom.rules" \
+  "$stage_dir/usr/lib/udev/rules.d/70-plank-client-wacom.rules"
 install -m 0755 "$repo_dir/packaging/deb/postinst" \
   "$stage_dir/DEBIAN/postinst"
 install -m 0755 "$repo_dir/packaging/deb/postrm" \
   "$stage_dir/DEBIAN/postrm"
-install -D -m 0644 "$moonlight_source_dir/app/res/stationconnect-logo.png" \
-  "$stage_dir/usr/share/icons/hicolor/512x512/apps/stationconnect-client.png"
+install -D -m 0644 "$moonlight_source_dir/app/res/plank-logo.png" \
+  "$stage_dir/usr/share/icons/hicolor/512x512/apps/plank-client.png"
 install -D -m 0644 "$moonlight_source_dir/LICENSE" \
-  "$stage_dir/usr/share/doc/stationconnect-client/copyright"
+  "$stage_dir/usr/share/doc/plank-client/copyright"
 install -D -m 0644 "$kyber_source_dir/COPYING.AGPLv3" \
-  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.Kyber.AGPLv3"
+  "$stage_dir/usr/share/doc/plank-client/COPYING.Kyber.AGPLv3"
 install -D -m 0644 "$kyber_source_dir/COPYING.md" \
-  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.Kyber.md"
+  "$stage_dir/usr/share/doc/plank-client/COPYING.Kyber.md"
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv2.1" \
-  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.FFmpeg.LGPLv2.1"
+  "$stage_dir/usr/share/doc/plank-client/COPYING.FFmpeg.LGPLv2.1"
 install -D -m 0644 "$ffmpeg_source_dir/COPYING.LGPLv3" \
-  "$stage_dir/usr/share/doc/stationconnect-client/COPYING.FFmpeg.LGPLv3"
+  "$stage_dir/usr/share/doc/plank-client/COPYING.FFmpeg.LGPLv3"
 
 for library in libavcodec libavutil libswscale libswresample; do
   cp -a "${ffmpeg_lib_dir}/${library}.so."* "$private_lib_dir/"
 done
-cmp --silent "$moonlight_source_dir/app/res/stationconnect-logo.png" \
-  "$stage_dir/usr/share/icons/hicolor/512x512/apps/stationconnect-client.png" || {
+cmp --silent "$moonlight_source_dir/app/res/plank-logo.png" \
+  "$stage_dir/usr/share/icons/hicolor/512x512/apps/plank-client.png" || {
   echo "packaged client logo differs from the approved runtime source" >&2
   exit 1
 }
 version_output=$(
   QT_QPA_PLATFORM=offscreen \
     LD_LIBRARY_PATH="$private_lib_dir" \
-    "$stage_dir/usr/libexec/stationconnect/stationconnect-client" --version 2>&1
+    "$stage_dir/usr/libexec/plank/plank-client" --version 2>&1
 )
-grep -Fxq "StationConnect ${package_version}" <<<"$version_output" || {
-  echo "packaged client did not report the expected StationConnect version" >&2
+grep -Fxq "PLANK ${package_version}" <<<"$version_output" || {
+  echo "packaged client did not report the expected PLANK version" >&2
   printf '%s\n' "$version_output" >&2
   exit 1
 }
 echo "client_headless_version_gate=pass"
 echo "client_logo_identity_gate=pass"
 cat >"$work_dir/debian/control" <<'EOF'
-Source: stationconnect-client
+Source: plank-client
 Section: net
 Priority: optional
-Maintainer: StationConnect Engineering <engineering@stationconnect.invalid>
+Maintainer: PLANK Engineering <engineering@instinctual.la>
 Standards-Version: 4.7.0
 
-Package: stationconnect-client
+Package: plank-client
 Architecture: amd64
-Description: StationConnect remote workstation client
+Description: PLANK remote workstation client
 EOF
 cat >"$work_dir/shlibs.local" <<'EOF'
-libavcodec 63 stationconnect-client
-libavutil 61 stationconnect-client
-libswscale 10 stationconnect-client
-libswresample 7 stationconnect-client
+libavcodec 63 plank-client
+libavutil 61 plank-client
+libswscale 10 plank-client
+libswresample 7 plank-client
 EOF
 
 (
   cd "$work_dir"
   mapfile -d '' packaged_elfs < <(
-    find debian/stationconnect-client/usr/libexec/stationconnect \
+    find debian/plank-client/usr/libexec/plank \
       -type f -print0 | sort -z
   )
-  dpkg-shlibdeps -O -Lshlibs.local -xstationconnect-client \
+  dpkg-shlibdeps -O -Lshlibs.local -xplank-client \
     -l"$private_lib_dir" \
     "${packaged_elfs[@]}"
 ) >"$work_dir/shlibdeps"
@@ -207,7 +207,7 @@ depends=$(sed -n 's/^shlibs:Depends=//p' "$work_dir/shlibdeps")
   exit 1
 }
 
-cat >"$stage_dir/usr/share/doc/stationconnect-client/BUILD-INFO" <<EOF
+cat >"$stage_dir/usr/share/doc/plank-client/BUILD-INFO" <<EOF
 Moonlight-Qt commit: ${moonlight_commit}
 moonlight-common-c commit: ${common_commit}
 Kyber kymux commit: ${kyber_commit}
@@ -223,7 +223,7 @@ sed -e "s/@VERSION@/${package_version}/" \
 
 find "$stage_dir" -type d -exec chmod 0755 {} +
 chmod 0644 "$stage_dir/DEBIAN/control" \
-  "$stage_dir/usr/share/doc/stationconnect-client/BUILD-INFO"
+  "$stage_dir/usr/share/doc/plank-client/BUILD-INFO"
 
 (
   cd "$stage_dir"
@@ -233,7 +233,7 @@ chmod 0644 "$stage_dir/DEBIAN/md5sums"
 find "$stage_dir" -exec touch -h -d "@${source_epoch}" {} +
 export SOURCE_DATE_EPOCH="$source_epoch"
 mkdir -p "$output_dir"
-deb_file="${output_dir}/stationconnect-client_${package_version}_amd64.deb"
+deb_file="${output_dir}/plank-client_${package_version}_amd64.deb"
 dpkg-deb --root-owner-group --uniform-compression -Zxz --build "$stage_dir" "$deb_file"
 
 dpkg-deb --info "$deb_file" >/dev/null
@@ -251,18 +251,18 @@ for required_package in \
   }
 done
 package_manifest=$(dpkg-deb --contents "$deb_file")
-grep -Eq '^-rw-r--r-- root/root +[0-9]+ .*\./etc/stationconnect/stationconnect-client\.conf$' \
+grep -Eq '^-rw-r--r-- root/root +[0-9]+ .*\./etc/plank/client\.conf$' \
   <<<"$package_manifest" || {
   echo "client administrator policy does not have root-owned mode 0644" >&2
   exit 1
 }
-grep -Fq './etc/stationconnect/stationconnect-client.conf' \
+grep -Fq './etc/plank/client.conf' \
   <<<"$package_manifest" || {
   echo "client DEB is missing the root-owned administrator policy" >&2
   exit 1
 }
 client_policy=$(dpkg-deb --fsys-tarfile "$deb_file" | \
-  tar -xOf - ./etc/stationconnect/stationconnect-client.conf)
+  tar -xOf - ./etc/plank/client.conf)
 grep -Fxq '[network]' <<<"$client_policy" || {
   echo "client administrator policy is missing its network section" >&2
   exit 1
@@ -275,79 +275,79 @@ grep -Fxq '# mdns_discovery = false' <<<"$client_policy" || {
   echo "client administrator policy does not leave mDNS user-configurable by default" >&2
   exit 1
 }
-control_audit_dir=$(mktemp -d --tmpdir stationconnect-client-control.XXXXXX)
+control_audit_dir=$(mktemp -d --tmpdir plank-client-control.XXXXXX)
 dpkg-deb --control "$deb_file" "$control_audit_dir"
-grep -Fxq '/etc/stationconnect/stationconnect-client.conf' \
+grep -Fxq '/etc/plank/client.conf' \
   "$control_audit_dir/conffiles" || {
   echo "client administrator policy is not registered as a Debian conffile" >&2
   exit 1
 }
 if grep -Eq \
-    '\./(etc/xdg/autostart|usr/lib/systemd/user|usr/share/systemd/user)/.*stationconnect' \
+    '\./(etc/xdg/autostart|usr/lib/systemd/user|usr/share/systemd/user)/.*plank' \
     <<<"$package_manifest"; then
-  echo "client DEB contains a StationConnect autostart entry or user service" >&2
+  echo "client DEB contains a PLANK autostart entry or user service" >&2
   exit 1
 fi
 echo "client_autostart_absence_gate=pass"
-grep -Fq './usr/share/applications/la.instinctual.StationConnect.Client.desktop' \
+grep -Fq './usr/share/applications/la.instinctual.Plank.Client.desktop' \
   <<<"$package_manifest" || {
-  echo "client DEB is missing the canonical StationConnect desktop entry" >&2
+  echo "client DEB is missing the canonical PLANK desktop entry" >&2
   exit 1
 }
-grep -Fq './usr/share/metainfo/la.instinctual.StationConnect.Client.appdata.xml' \
+grep -Fq './usr/share/metainfo/la.instinctual.Plank.Client.appdata.xml' \
     <<<"$package_manifest" || {
-  echo "client DEB is missing the canonical StationConnect AppStream metadata" >&2
+  echo "client DEB is missing the canonical PLANK AppStream metadata" >&2
   exit 1
 }
 desktop_entry=$(dpkg-deb --fsys-tarfile "$deb_file" | \
-  tar -xOf - ./usr/share/applications/la.instinctual.StationConnect.Client.desktop)
-grep -Fxq 'Name=StationConnect Client' <<<"$desktop_entry" || {
-  echo "client desktop metadata does not identify StationConnect Client" >&2
+  tar -xOf - ./usr/share/applications/la.instinctual.Plank.Client.desktop)
+grep -Fxq 'Name=PLANK Client' <<<"$desktop_entry" || {
+  echo "client desktop metadata does not identify PLANK Client" >&2
   exit 1
 }
 appstream_metadata=$(dpkg-deb --fsys-tarfile "$deb_file" | \
-  tar -xOf - ./usr/share/metainfo/la.instinctual.StationConnect.Client.appdata.xml)
-grep -Fq '<name>StationConnect Client</name>' <<<"$appstream_metadata" || {
-  echo "client AppStream metadata does not identify StationConnect Client" >&2
+  tar -xOf - ./usr/share/metainfo/la.instinctual.Plank.Client.appdata.xml)
+grep -Fq '<name>PLANK Client</name>' <<<"$appstream_metadata" || {
+  echo "client AppStream metadata does not identify PLANK Client" >&2
   exit 1
 }
-grep -Fq './usr/share/icons/hicolor/512x512/apps/stationconnect-client.png' \
+grep -Fq './usr/share/icons/hicolor/512x512/apps/plank-client.png' \
     <<<"$package_manifest" || {
-  echo "client DEB is missing the StationConnect application icon" >&2
+  echo "client DEB is missing the PLANK application icon" >&2
   exit 1
 }
-grep -Fq './usr/libexec/stationconnect/stationconnect-client' \
+grep -Fq './usr/libexec/plank/plank-client' \
     <<<"$package_manifest" || {
-  echo "client DEB is missing the branded StationConnect runtime" >&2
+  echo "client DEB is missing the branded PLANK runtime" >&2
   exit 1
 }
-if grep -Fq './usr/libexec/stationconnect/moonlight' <<<"$package_manifest"; then
+if grep -Fq './usr/libexec/plank/moonlight' <<<"$package_manifest"; then
   echo "client DEB still contains the superseded Moonlight runtime name" >&2
   exit 1
 fi
-if grep -Fq './usr/share/applications/stationconnect-client.desktop' \
+if grep -Fq './usr/share/applications/plank-client.desktop' \
     <<<"$package_manifest"; then
   echo "client DEB still contains the superseded desktop entry" >&2
   exit 1
 fi
 if grep -Eq \
-    '\./usr/share/(applications/la\.instinctual\.StationConnect\.desktop|metainfo/la\.instinctual\.StationConnect\.appdata\.xml)' \
+    '\./usr/share/(applications/la\.instinctual\.PLANK\.desktop|metainfo/la\.instinctual\.PLANK\.appdata\.xml)' \
     <<<"$package_manifest"; then
-  echo "client DEB still contains the unsuffixed StationConnect application ID" >&2
+  echo "client DEB still contains the unsuffixed PLANK application ID" >&2
   exit 1
 fi
-grep -Fq './usr/lib/udev/rules.d/70-stationconnect-client-wacom.rules' \
+grep -Fq './usr/lib/udev/rules.d/70-plank-client-wacom.rules' \
   <<<"$package_manifest" || {
   echo "client DEB is missing the Wacom udev access rule" >&2
   exit 1
 }
-if grep -Fq './usr/share/doc/stationconnect-client/COPYING.nanors' \
+if grep -Fq './usr/share/doc/plank-client/COPYING.nanors' \
     <<<"$package_manifest"; then
   echo "client DEB contains a notice for the removed nanors implementation" >&2
   exit 1
 fi
 for kyber_license in COPYING.Kyber.AGPLv3 COPYING.Kyber.md; do
-  grep -Fq "./usr/share/doc/stationconnect-client/${kyber_license}" \
+  grep -Fq "./usr/share/doc/plank-client/${kyber_license}" \
     <<<"$package_manifest" || {
     echo "client DEB is missing the Kyber license file: ${kyber_license}" >&2
     exit 1
@@ -360,14 +360,14 @@ for maintainer_script in postinst postrm; do
   }
   sh -n "${control_audit_dir}/${maintainer_script}"
 done
-if rg -n 'stationconnect-client\.service|deb-systemd-helper|systemctl[[:space:]]+--user' \
+if rg -n 'plank-client\.service|deb-systemd-helper|systemctl[[:space:]]+--user' \
     "$control_audit_dir/postinst" "$control_audit_dir/postrm"; then
   echo "client maintainer scripts retain user-service or autostart handling" >&2
   exit 1
 fi
 rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
-  "$stage_dir/usr/libexec/stationconnect/stationconnect-client" "$private_lib_dir"
+  "$stage_dir/usr/libexec/plank/plank-client" "$private_lib_dir"
 dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'
 dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-cairo'
 if dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-gtk'; then

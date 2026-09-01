@@ -60,7 +60,7 @@ if [[ "${gst_inspect}" != *"video/x-raw(memory:VAMemory)"* || \
 fi
 echo 'gstreamer_va_y410_capability=pass'
 
-gst_log=$(mktemp --tmpdir stationconnect-vaapi.XXXXXX.log)
+gst_log=$(mktemp --tmpdir plank-vaapi.XXXXXX.log)
 cleanup() {
   rm -f -- "${gst_log}"
 }

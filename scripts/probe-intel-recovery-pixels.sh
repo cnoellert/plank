@@ -45,7 +45,7 @@ for element in h265parse vah265dec vapostproc checksumsink; do
   gst-inspect-1.0 "${element}" >/dev/null
 done
 
-scratch_dir=$(mktemp -d --tmpdir stationconnect-recovery-pixels.XXXXXX)
+scratch_dir=$(mktemp -d --tmpdir plank-recovery-pixels.XXXXXX)
 cleanup() {
   rm -rf -- "${scratch_dir}"
 }

@@ -14,19 +14,19 @@ Copy both the Ada driver-auto and SFE-disabled HEVC test streams from
 
 ```bash
 ./scripts/probe-intel-vaapi-decode.sh \
-  artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-auto-paired.hevc \
+  artifacts/qualification/video/plank-flame-loop-150s-sfe-auto-paired.hevc \
   9000
 
 ./scripts/probe-intel-vaapi-decode.sh \
-  artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-disabled.hevc \
+  artifacts/qualification/video/plank-flame-loop-150s-sfe-disabled.hevc \
   9000
 
 ./scripts/probe-intel-vaapi-dmabuf.sh \
-  artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-disabled.hevc \
+  artifacts/qualification/video/plank-flame-loop-150s-sfe-disabled.hevc \
   9000
 
 ./scripts/validate-intel-identity-pixel.sh \
-  artifacts/qualification/video/stationconnect-flame-loop-150s-sfe-disabled.hevc \
+  artifacts/qualification/video/plank-flame-loop-150s-sfe-disabled.hevc \
   600
 
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
@@ -34,17 +34,17 @@ XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
 
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
   ./scripts/probe-intel-client-pipeline.sh \
-  artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc \
+  artifacts/qualification/video/plank-flame-fullscreen-loop-150s-sfe-auto.hevc \
   9000
 
-CONNECT_ALLOW_DISPLAY_STOP=yes \
+PLANK_ALLOW_DISPLAY_STOP=yes \
   ./scripts/run-intel-client-kms-qualification.sh \
-  artifacts/qualification/video/stationconnect-flame-fullscreen-loop-150s-sfe-auto.hevc \
+  artifacts/qualification/video/plank-flame-fullscreen-loop-150s-sfe-auto.hevc \
   300 16000 /dev/dri/card1
 
 ./scripts/probe-intel-recovery-pixels.sh \
-  stationconnect-recovery-ref-invalidate-reference.hevc \
-  stationconnect-recovery-ref-invalidate.hevc 180 600 120
+  plank-recovery-ref-invalidate-reference.hevc \
+  plank-recovery-ref-invalidate.hevc 180 600 120
 ```
 
 The script fails unless VA-API exposes `VAProfileHEVCMain444_10` with the VLD
@@ -94,7 +94,7 @@ capacity for 60 Hz.
 ### Physical Wacom core-pen result — 2026-08-20
 
 A USB PTH-660 (`056a:0357`) exposed separate pen, pad, and touch nodes. The
-StationConnect udev rule granted the active desktop session access only to the
+PLANK udev rule granted the active desktop session access only to the
 pen node. During a focused stream, the Moonlight client opened and exclusively
 grabbed that node, normalized libinput tablet-tool events, and sent them over
 the existing ordered pen protocol. The Rocky host received proximity,
@@ -118,7 +118,7 @@ and suppressed the normalized fallback. The user confirmed full DP-2 reach,
 the Ctrl plus bottom-edge Flame gesture, and working Flame Tablet Margins at
 both 5% and 20%. The path applied only standard output geometry mapping; it did
 not read Flame preferences or pre-scale tablet coordinates. The encrypted
-StationConnect integration then matched both report descriptors, USB identity,
+PLANK integration then matched both report descriptors, USB identity,
 and host event capabilities, cleaned up on disconnect, recreated the group on
 reconnect, and reproduced the Flame gesture and Tablet Margins behavior. The
 standalone plaintext bridge remains a test fixture only.
@@ -126,11 +126,11 @@ standalone plaintext bridge remains a test fixture only.
 A 2026-08-21 packaged-session retest started Flare before the remote raw-HID
 device existed. Native pressure continued to work and Flame persisted 5% on
 all four margin controls, but the host Wacom driver's tablet area remained
-`0 0 44800 29600`. Restarting Flare with StationConnect still connected
+`0 0 44800 29600`. Restarting Flare with PLANK still connected
 restored adjustable Tablet Margins. This confirms an application
 initialization-order issue rather than a raw-HID or scaled-span mapping fault:
 attach the redirected tablet before starting Flame, or restart Flame after a
-late connection. StationConnect continues to forward the physical device
+late connection. PLANK continues to forward the physical device
 unchanged and does not emulate Flame's margins.
 
 ### Authenticated automatic Desktop launch — 2026-08-20
@@ -141,7 +141,7 @@ application chooser or expose Steam. The active session requested
 3840x2160x60 at 100 Mbps and reported
 `8-bit-source/up-converted -> 10-bit H.264 4:4:4 -> 10-bit RGB identity
 presentation`. Because Intel Gen12 does not accelerate H.264 High 4:4:4
-Predictive 10-bit, the StationConnect profile selected FFmpeg software decode
+Predictive 10-bit, the PLANK profile selected FFmpeg software decode
 to `gbrp10le` and retained Vulkan presentation. The route was explicitly
 approved as `enx207bd2039662`; discovery remained available independently of
 that credential-bearing route check.
@@ -188,7 +188,7 @@ decoded surface was never CPU-mapped; readback was limited to the two-pixel
 test output.
 
 The integrated Moonlight client also passed a live Sunshine session. It
-negotiated HEVC Rext 10-bit 4:4:4 plus the StationConnect identity feature,
+negotiated HEVC Rext 10-bit 4:4:4 plus the PLANK identity feature,
 decoded `gbrp10le` through Intel VA-API to Y410, and presented the Y410/XR30
 alias through EGL. Over a 30-second sample it received and decoded 60.05 fps,
 rendered 59.89 fps, reported 0.00% network loss and 0.26% jitter-buffer drops,
@@ -300,7 +300,7 @@ zero-drop gate open. H.264 High 4:4:4 10-bit and native RGB decoding currently
 use FFmpeg software decode; the Intel Vulkan hardware negotiation attempt falls
 back to `gbrp10le` or `gbrp` as expected.
 
-This live pass used a StationConnect FFmpeg 8.0.1 build with
+This live pass used a PLANK FFmpeg 8.0.1 build with
 `AV_PIX_FMT_GBRP10` admitted to the HEVC hardware-format list. Unpatched FFmpeg
 rejects hardware negotiation for the correctly signaled matrix-0 stream and
 falls back to software. Keep this patch explicit until it is replaced by an
@@ -451,13 +451,13 @@ forced_idr_sha256=3c5adf5295c08b0bbe33b4b23f47bcf1111b3a00bf71e6b8be7afb1e8a5a40
 
 ```bash
 ./scripts/probe-intel-recovery-decode.sh \
-  stationconnect-recovery-ref-invalidate.hevc \
-  stationconnect-recovery-forced-idr.hevc \
+  plank-recovery-ref-invalidate.hevc \
+  plank-recovery-forced-idr.hevc \
   599 181
 
 ./scripts/probe-intel-recovery-pixels.sh \
-  stationconnect-recovery-ref-invalidate-reference.hevc \
-  stationconnect-recovery-ref-invalidate.hevc 180 600 120
+  plank-recovery-ref-invalidate-reference.hevc \
+  plank-recovery-ref-invalidate.hevc 180 600 120
 ```
 
 ## Live Transport FEC
@@ -586,7 +586,7 @@ Tablet Margins initially changed a stale RGS virtual tablet instead of the
 redirected Intuos. Removing the still-running RGS sender left only the exact
 UHID Wacom interfaces; Flame then applied its 5% area directly to the Intuos,
 and live testing confirmed that adjustable margins work without a watcher or
-StationConnect-side margin emulation.
+PLANK-side margin emulation.
 
 The bilinear implementation then completed a 7-minute real-content run. It
 received and decoded 59.98 fps and rendered 59.93 fps with zero network loss.
@@ -618,7 +618,7 @@ current behavior deliberately fails closed and requires fresh authentication.
 
 ## Client-Native Stream Resolution — 2026-08-21
 
-Moonlight commit `d543d89b` removes the StationConnect-only hardcoded
+Moonlight commit `d543d89b` removes the PLANK-only hardcoded
 3840x2160 assignment. After SDL video initialization, the client now matches
 the Qt UI to its physical display, requests that display's native safe-area
 resolution, and aspect-fits resolutions above the currently qualified
@@ -710,8 +710,8 @@ the 20 ms drift and 20 ms/hour fitted-drift gates: endpoint relative drift was
 `-290.035 ms/hour`. Correction settled at 84–87 ppm, with zero skipped audio
 blocks and a bounded SDL playback queue. The required two-hour soak remains.
 
-Synchronized `stationconnect-client 0.1.0-0.5` and
-`stationconnect-host 0.1.0-0.5.el9` packages were then installed. A fresh
+Synchronized `plank-client 0.1.0-0.5` and
+`plank-host 0.1.0-0.5.el9` packages were then installed. A fresh
 installed-client launch authenticated, selected scaled-span at 3840x2160p60,
 negotiated the 10-bit H.264 4:4:4 identity path, started adaptive audio
 correction, consumed its one-use token, and initialized input. Host `libinput`
@@ -719,7 +719,7 @@ reported the forwarded Intuos Pro M pen, pad, and finger devices with tablet,
 tablet-pad, pointer, and gesture capabilities. The client user service was
 restored after the smoke test.
 
-The synchronized 0.6 follow-up replaced StationConnect's inherited 30 ms
+The synchronized 0.6 follow-up replaced PLANK's inherited 30 ms
 decoded-audio drop guard with bounded resampler catch-up. Its 7,303.019-second
 post-warmup run skipped no audio and kept the queue bounded, but accumulated
 relative drift reached 26.430 ms despite a passing 12.264 ms/hour fitted rate.
@@ -731,7 +731,7 @@ two-hour repeat remains required.
 ## End-User NUC Thermal Diagnosis — 2026-08-22
 
 Read-only inspection of the fresh NUC13ANKi7 while receiving the native
-5120x2160p60 stream found no unexplained background load. StationConnect's
+5120x2160p60 stream found no unexplained background load. PLANK's
 Moonlight process averaged about 249% CPU over five seconds. Work was
 concentrated in `PacerRender`, three `Session Exec` threads, and `FFDecoder`,
 while the 16-logical-CPU system remained about 82% idle overall. This explains

@@ -3,9 +3,9 @@
 ## Goal
 
 A workstation with connected physical monitors may temporarily present a
-bookmark-selected StationConnect layout without leaving the local console in a
+bookmark-selected PLANK layout without leaving the local console in a
 broken state after disconnect. The host restores the exact pre-session NVIDIA
-MetaMode when the last StationConnect stream ends. A failed exact restore
+MetaMode when the last PLANK stream ends. A failed exact restore
 enables one known connected physical output at a safe native mode. Recovery
 never reboots the workstation and never restarts the display manager merely to
 repair a live user desktop.
@@ -18,7 +18,7 @@ startup_layout = physical
 ```
 
 `startup_layout` accepts `physical` or `virtual`.
-`physical` removes the StationConnect Xorg overlay at boot but permits a
+`physical` removes the PLANK Xorg overlay at boot but permits a
 temporary `single` or `dual-horizontal` bookmark layout. The two virtual
 outputs are initialized only when the policy is `virtual`; one internal
 1920x1080 output is active for login and the bookmark chooses the live layout.
@@ -49,7 +49,7 @@ rollback record; reconstructing a layout from output dimensions would lose
 viewport, panning, primary-output, and positioning details.
 
 Temporary layouts reuse the currently active physical scanout surfaces. Their
-native `ViewPortOut` values remain unchanged while the requested StationConnect
+native `ViewPortOut` values remain unchanged while the requested PLANK
 resolution becomes `ViewPortIn` and the logical panning domain. This gives the
 capture desktop the exact bookmark dimensions without injecting an unqualified
 physical timing. A single layout uses one scanout and a dual-horizontal layout

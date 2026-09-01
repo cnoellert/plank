@@ -3,9 +3,9 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
+build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
 
-sudo -n "${build_dir}/connect-probe-wacom"
+sudo -n "${build_dir}/plank-probe-wacom"
 
 descriptor_count=0
 for hidraw_path in /sys/class/hidraw/hidraw*; do

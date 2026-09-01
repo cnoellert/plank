@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PLANK Client
+Comment=Connect to a PLANK workstation
+Exec=plank-client
+Icon=plank-client
+Terminal=false
+Categories=Network;RemoteAccess;
+StartupNotify=true
+StartupWMClass=la.instinctual.Plank.Client

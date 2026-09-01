@@ -1,7 +1,7 @@
 # Host Session Supervisor
 
-StationConnect revision 0.18 evolves the graphical-login host user service into
-`stationconnect-host.service`, a persistent machine-level Sender supervisor. The
+PLANK revision 0.18 evolves the graphical-login host user service into
+`plank-host.service`, a persistent machine-level Sender supervisor. The
 supervisor starts at boot and asks `systemd-logind` for the active local X11
 session on `seat0`. It accepts only `user` or `greeter` session classes in the
 `active` state; remote, inactive, Wayland, TTY, lock-screen, and non-`seat0`
@@ -16,7 +16,7 @@ Xauthority file belong to the selected UID.
 
 The supervisor owns one machine-level Sender identity and launches its media
 worker as root. The worker
-keeps `HOME=/var/lib/stationconnect`, clears the inherited environment, and
+keeps `HOME=/var/lib/plank`, clears the inherited environment, and
 receives only the selected session's validated X11 and runtime values. For
 audio it receives the selected account's owned PulseAudio socket and cookie;
 neither path is reused after a logind transition. This follows the persistent
@@ -53,22 +53,22 @@ and retries every 500 ms for at most 30 seconds. The wait can be cancelled;
 unrelated launch errors are never retried. This makes rapid manual reconnects
 deterministic without allowing a second client to displace an active session.
 
-StationConnect workers perform their NvFBC and encoder probe before opening the
+PLANK workers perform their NvFBC and encoder probe before opening the
 HTTP interface. They do not repeat Sunshine's generic hotplug probe while a
 Desktop launch or resume is beginning; the supervisor replaces the worker when
 the graphical session changes. This prevents encoder probing from racing active
 NvFBC capture during rapid or collaborative reconnects.
 
 The Sender uses the root-managed state file
-`/var/lib/stationconnect/stationconnect_state.json`. The former per-user
+`/var/lib/plank/plank-state.json`. The former per-user
 state would assign separate workstation UUIDs to GDM and the desktop owner,
 causing the client to reject the post-login worker as a different computer.
 The packaged launcher enforces the machine state path. The TLS identity is
 likewise machine-scoped.
 
 Worker options are system-wide in the sectioned INI file
-`/etc/stationconnect/stationconnect-host.conf`. The package generates a stable TLS
-keypair under `/etc/stationconnect/tls/`; its directory and private key are
+`/etc/plank/host.conf`. The package generates a stable TLS
+keypair under `/etc/plank/tls/`; its directory and private key are
 `root:root` with modes `0700` and `0600`.
 
 Stage B—creating a correctly registered graphical session directly after PAM

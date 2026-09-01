@@ -9,7 +9,7 @@ if [[ ${1:-} != --confirm-display-outage ]]; then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${CONNECT_BUILD_DIR:-"${repo_dir}/build/qualification"}
+build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
 case ${2:---accel=glamor} in
   --accel=glamor)
     config=${repo_dir}/probes/kms/xorg-modesetting-depth30.conf
@@ -22,7 +22,7 @@ case ${2:---accel=glamor} in
     exit 2
     ;;
 esac
-unit=stationconnect-xorg-kms-test.service
+unit=plank-xorg-kms-test.service
 display=:1
 display_manager_was_active=no
 
@@ -74,4 +74,4 @@ DISPLAY="${display}" glxinfo -B |
   sed -n '/direct rendering:/p;/OpenGL vendor string:/p;/OpenGL renderer string:/p'
 
 echo '## DRM scanout'
-sudo -n "${build_dir}/connect-probe-kms" /dev/dri/card0
+sudo -n "${build_dir}/plank-probe-kms" /dev/dri/card0

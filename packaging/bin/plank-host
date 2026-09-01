@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+host_binary=${PLANK_HOST_BINARY:-/usr/libexec/plank/plank-host}
+auth_socket=${PLANK_AUTH_SOCKET:-/run/plank/pam/auth.sock}
+
+if [[ ! -x "${host_binary}" ]]; then
+  echo "PLANK host binary is not executable: ${host_binary}" >&2
+  exit 127
+fi
+if [[ -z "${DISPLAY:-}" || -z "${XAUTHORITY:-}" ]]; then
+  echo 'PLANK host requires DISPLAY and XAUTHORITY from a graphical session' >&2
+  exit 1
+fi
+if [[ ! -r "${auth_socket}" || ! -w "${auth_socket}" ]]; then
+  echo "PLANK PAM broker socket is unavailable: ${auth_socket}" >&2
+  exit 1
+fi
+
+config_file=/etc/plank/host.conf
+if [[ ! -r "${config_file}" ]]; then
+  echo "PLANK host configuration is unavailable: ${config_file}" >&2
+  exit 1
+fi
+
+exec "${host_binary}" "${config_file}" "$@"

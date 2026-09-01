@@ -1,5 +1,5 @@
 {
-  "stationconnect_protocol_version": 10,
+  "plank_protocol_version": 10,
   "required_feature_flag": "0x2000",
   "capture_source": "nvfbc",
   "source_precision_bits": 8,
