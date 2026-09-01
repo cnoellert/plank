@@ -1,5 +1,4 @@
 /build/
-/qualification-report.md
 /artifacts/qualification/video/*.hevc
 /artifacts/qualification/video/*.h264
 /artifacts/qualification/video/*.raw
@@ -9,6 +8,8 @@
 /artifacts/qualification/audio/*.wav
 /artifacts/qualification/audio/*.metrics.txt
 /artifacts/qualification/audio/*.log
+/artifacts/qualification/reports/*.md
+/artifacts/qualification/reports/*.log
 /artifacts/qualification/wacom/raw/
 /artifacts/development/
 /artifacts/packages/

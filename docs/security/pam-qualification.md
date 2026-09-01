@@ -12,7 +12,8 @@ Run the full probe from a local or SSH terminal so PAM can perform challenge and
 response without exposing credentials in process arguments or logs:
 
 ```bash
-sudo ./build/qualification/plank-probe-pam operator
+qualification_build=${PLANK_BUILD_DIR:-"${PLANK_WORK_ROOT:-${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work}/qualification"}
+sudo "$qualification_build/plank-probe-pam" operator
 ```
 
 The probe reads prompts only from `/dev/tty` with echo disabled where requested,
@@ -23,7 +24,8 @@ through chat, shell redirection, an environment variable, or automation.
 Account-policy checks do not require a password:
 
 ```bash
-sudo ./build/qualification/plank-probe-pam --account-only operator
+qualification_build=${PLANK_BUILD_DIR:-"${PLANK_WORK_ROOT:-${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work}/qualification"}
+sudo "$qualification_build/plank-probe-pam" --account-only operator
 ./scripts/probe-pam-policy.sh
 ```
 

@@ -9,7 +9,8 @@ if [[ ${1:-} != --confirm-display-outage ]]; then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
+work_root=${PLANK_WORK_ROOT:-"${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work"}
+build_dir=${PLANK_BUILD_DIR:-"${work_root}/qualification"}
 case ${2:---accel=glamor} in
   --accel=glamor)
     config=${repo_dir}/probes/kms/xorg-modesetting-depth30.conf

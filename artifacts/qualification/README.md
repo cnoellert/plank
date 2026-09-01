@@ -12,6 +12,11 @@ and a 549-byte touch descriptor
 (`95bab52e74774625759a48837061ac17f25ec711068c6f76b23bbb0887e99c8e`).
 Do not commit tablet serial numbers.
 
+Generated Host qualification reports and their test logs are retained under
+`reports/`. They are machine evidence rather than source and are intentionally
+ignored by Git. Record the exact path and SHA-256 of an accepted report in
+`HANDOFF.md` before retiring its candidate build tree.
+
 | File | Split mode | SHA-256 |
 | --- | --- | --- |
 | `video/stationconnect-flame-loop-150s-sfe-auto-paired.hevc` | Driver-auto | `21c2007a97c7fc777b98dd24e5aba9fc1b62f2f2b3453f8bc9d72f1d62118fe1` |

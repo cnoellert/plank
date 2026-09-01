@@ -3,8 +3,9 @@
 set -uo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
-report_file=${1:-"${repo_dir}/qualification-report.md"}
+work_root=${PLANK_WORK_ROOT:-"${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work"}
+build_dir=${PLANK_BUILD_DIR:-"${work_root}/qualification"}
+report_file=${1:-"${repo_dir}/artifacts/qualification/reports/qualification-report.md"}
 kms_device=${PLANK_DRM_DEVICE:-/dev/dri/card0}
 
 active_session=$(loginctl show-seat seat0 --property=ActiveSession --value 2>/dev/null || true)

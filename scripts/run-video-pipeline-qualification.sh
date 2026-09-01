@@ -3,7 +3,8 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
+work_root=${PLANK_WORK_ROOT:-"${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work"}
+build_dir=${PLANK_BUILD_DIR:-"${work_root}/qualification"}
 bitstream=${1:-/tmp/plank-identity-gbr.hevc}
 output_name=${PLANK_CAPTURE_OUTPUT:-DP-2}
 

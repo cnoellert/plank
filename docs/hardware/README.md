@@ -15,7 +15,8 @@ workstation from the repository root:
 ```
 
 The command builds the probes, runs a ten-second 60 fps X11-to-CUDA capture gate
-through NvFBC, and writes `qualification-report.md`. It also performs a
+through NvFBC, and writes
+`artifacts/qualification/reports/qualification-report.md`. It also performs a
 real 2160p60 NVENC HEVC FRExt 10-bit 4:4:4 encode with periodic and single-slice
 intra-refresh enabled; it is not merely an FFmpeg option inventory. Set
 `NVFBC_SDK_ROOT` if CMake cannot find the NVIDIA Capture SDK header.
@@ -97,7 +98,13 @@ The standard host report also inventories attached Wacom event capabilities
 and hashes every physical Wacom HID report descriptor. It does not generate
 input events; run application-level pen tests separately.
 
-Run `sudo ./build/qualification/plank-probe-uhid --self-test-mouse` to verify
+Set the qualification build location once for direct probe invocations:
+
+```bash
+qualification_build=${PLANK_BUILD_DIR:-"${PLANK_WORK_ROOT:-${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work}/qualification"}
+```
+
+Run `sudo "$qualification_build/plank-probe-uhid" --self-test-mouse` to verify
 the UHID transport itself. Then run `./scripts/probe-wacom-uhid.sh` to create an
 eight-second virtual copy from the physical Wacom interface descriptor and
 check whether `hid-wacom` exposes input devices. The Wacom probe deliberately
@@ -110,7 +117,7 @@ parsing only; it does not qualify the Wacom driver or preserve production
 device identity:
 
 ```bash
-sudo ./build/qualification/plank-probe-uhid --generic \
+sudo "$qualification_build/plank-probe-uhid" --generic \
   /sys/class/hidraw/hidraw2/device/report_descriptor
 ```
 
@@ -119,7 +126,7 @@ kernel probes the correct model table. Supply all HID-interface descriptors in
 one invocation so they share physical identity, for example:
 
 ```bash
-sudo ./build/qualification/plank-probe-uhid --product 0357 \
+sudo "$qualification_build/plank-probe-uhid" --product 0357 \
   /sys/class/hidraw/hidraw4/device/report_descriptor \
   /sys/class/hidraw/hidraw6/device/report_descriptor
 ```

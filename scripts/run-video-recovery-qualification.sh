@@ -8,7 +8,8 @@ if (($# > 4)); then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
+work_root=${PLANK_WORK_ROOT:-"${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work"}
+build_dir=${PLANK_BUILD_DIR:-"${work_root}/qualification"}
 output_dir=${1:-"${repo_dir}/artifacts/qualification/video"}
 frame_count=${2:-600}
 loss_frame=${3:-180}

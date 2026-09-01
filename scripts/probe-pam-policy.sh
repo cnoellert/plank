@@ -3,7 +3,8 @@
 set -uo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-build_dir=${PLANK_BUILD_DIR:-"${repo_dir}/build/qualification"}
+work_root=${PLANK_WORK_ROOT:-"${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work"}
+build_dir=${PLANK_BUILD_DIR:-"${work_root}/qualification"}
 authorized_user=${PLANK_PAM_AUTHORIZED_USER:?Set PLANK_PAM_AUTHORIZED_USER for your test environment}
 expected_denied_user=${PLANK_PAM_EXPECTED_DENIED_USER:-}
 broker_binary=${PLANK_PAM_BROKER_BINARY:-/usr/libexec/plank/plank-pam-broker}
