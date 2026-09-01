@@ -45,13 +45,21 @@ or when the session ends; they are never written to settings, arguments,
 environment variables, or logs. A local disconnect does not trigger reconnect.
 
 A new launch synchronously joins any stopped native media session before evaluating the
-process-less Desktop reservation. If no active or pending session still owns the
-reservation, the host clears it and admits the replacement launch immediately.
-If a session really is still active, the client keeps the pre-stream progress
-view open, reports that it is waiting for the previous workstation session,
-and retries every 500 ms for at most 30 seconds. The wait can be cancelled;
-unrelated launch errors are never retried. This makes rapid manual reconnects
-deterministic without allowing a second client to displace an active session.
+process-less Desktop reservation. If no accepted or running session still owns
+the reservation, the host clears it and admits the replacement launch
+immediately. Ownership remains explicit while native setup is queued or
+negotiating, so a second client cannot enter through the interval before media
+starts. A genuinely active owner returns a typed conflict immediately instead
+of triggering a timed poll.
+
+After explicit confirmation, the same authenticated desktop owner may transfer
+the single controlling PLANK session to a different client. The Host revokes
+old input first, sends a reliable displaced-session reason, joins the old
+stream, and then applies the replacement client's display and media request.
+The Host OS login and applications remain intact. The displaced client does
+not reconnect and clearly reports the transfer. A different PAM account still
+cannot take over a desktop it does not own, and unattended clients can never
+initiate a transfer without local confirmation.
 
 PLANK workers perform their NvFBC and encoder probe before opening the
 HTTP interface. They do not repeat Sunshine's generic hotplug probe while a

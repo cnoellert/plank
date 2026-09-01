@@ -1068,6 +1068,22 @@ for required_desktop_token in \
     exit 1
   }
 done
+for required_session_takeover_token in \
+  'feature_session_takeover = 0x8000' \
+  'PLANK workstation session is active' \
+  'plankTakeover' \
+  'PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER' \
+  'launch_owner_' \
+  'plank_transport_native_endpoint_stop(endpoint);'; do
+  rg -Fq "$required_session_takeover_token" \
+    "$source_dir/src/nvhttp.cpp" \
+    "$source_dir/src/plank_topology.h" \
+    "$source_dir/src/session_stream.cpp" || {
+    echo "host active-session takeover invariant is missing: ${required_session_takeover_token}" >&2
+    exit 1
+  }
+done
+echo "host_session_takeover_gate=pass"
 rg -Fq 'if(WIN32 OR APPLE)' \
   "$source_dir/cmake/dependencies/Boost_Sunshine.cmake" || {
   echo "Boost.Process is not gated away from the Linux host build" >&2

@@ -53,6 +53,25 @@ static void check_multiword_message(void) {
     CHECK(plank_transport_control_read_u32(decoded.payload + 8) == 78750);
 }
 
+static void check_session_takeover_reason(void) {
+    uint8_t encoded[PLANK_TRANSPORT_CONTROL_MAX_PACKET_SIZE] = {0};
+    const uint32_t reason = PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER;
+    size_t encoded_size = 0;
+    PlankTransportControlPacket decoded;
+
+    CHECK(plank_transport_control_encode(
+               PLANK_TRANSPORT_CONTROL_HOST_TERMINATE, &reason, 1,
+               encoded, sizeof(encoded), &encoded_size) == 0);
+    CHECK(plank_transport_control_decode(
+               encoded, encoded_size, &decoded) == 0);
+    CHECK(decoded.type == PLANK_TRANSPORT_CONTROL_HOST_TERMINATE);
+    CHECK(decoded.payload_size == sizeof(uint32_t));
+    CHECK(plank_transport_control_read_u32(decoded.payload) ==
+          PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER);
+    CHECK(PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER !=
+          PLANK_TRANSPORT_TERMINATION_GRACEFUL);
+}
+
 static void check_malformed_messages(void) {
     uint8_t encoded[PLANK_TRANSPORT_CONTROL_MAX_PACKET_SIZE] = {0};
     const uint32_t value = 1;
@@ -75,6 +94,7 @@ static void check_malformed_messages(void) {
 int main(void) {
     check_empty_message();
     check_multiword_message();
+    check_session_takeover_reason();
     check_malformed_messages();
     return 0;
 }
