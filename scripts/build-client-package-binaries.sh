@@ -994,6 +994,18 @@ if rg -Fq 'Waiting for previous workstation session to finish...' \
 fi
 echo "client_session_takeover_gate=pass"
 
+for required_topology_retry_token in \
+  'bool Session::configurePlankLaunchGeometry()' \
+  'm_InputHandler->setStreamDimensions' \
+  'PLANK refreshed stale topology and launch geometry; retrying launch:'; do
+  rg -Fq "$required_topology_retry_token" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "stale-topology retry geometry invariant is missing: ${required_topology_retry_token}" >&2
+    exit 1
+  }
+done
+echo "client_topology_retry_geometry_gate=pass"
+
 for required_display_transition_token in \
   'display transition is still pending' \
   'authentication will be refreshed once' \
