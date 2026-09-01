@@ -377,10 +377,16 @@ rg -Fq '$ORIGIN/../lib/plank' <<<"$packaged_dynamic_section" || {
 }
 unmanaged_loader_output=$(env -u LD_LIBRARY_PATH \
   ldd "$stage_dir/usr/bin/plank-client")
-rg -Fq "$private_lib_dir/libavcodec.so.63" <<<"$unmanaged_loader_output" || {
-  echo "client runtime does not resolve private FFmpeg through RUNPATH" >&2
-  exit 1
-}
+for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
+  unmanaged_path=$(awk -v name="$soname" \
+    '$1 == name && $2 == "=>" {print $3}' <<<"$unmanaged_loader_output")
+  [[ -n ${unmanaged_path} ]] &&
+    [[ $(realpath -- "$unmanaged_path") == \
+       $(realpath -- "$private_lib_dir/$soname") ]] || {
+      echo "client runtime does not resolve ${soname} through private RUNPATH" >&2
+      exit 1
+    }
+done
 echo "client_private_runpath_gate=pass"
 dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'
 dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-cairo'
