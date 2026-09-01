@@ -976,6 +976,7 @@ for required_session_takeover_token in \
   'Disconnect the existing client and continue?' \
   'm_WaitingForActiveSessionTakeoverDecision' \
   'PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER' \
+  'Host display layout transition is currently unavailable' \
   'This PLANK session was transferred to another client.'; do
   rg -Fq "$required_session_takeover_token" \
     "$source_dir/app/streaming/session.cpp" \
@@ -1009,6 +1010,8 @@ echo "client_topology_retry_geometry_gate=pass"
 for required_display_transition_token in \
   'display transition is still pending' \
   'authentication will be refreshed once' \
+  'configurePlankLaunchGeometry()' \
+  'retryError.getStatusCode() != 409' \
   'MaximumVirtualCanvasWidth = 8192' \
   'matchesRequestedHostLayout'; do
   rg -Fq "$required_display_transition_token" \
