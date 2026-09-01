@@ -371,7 +371,7 @@ rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
   "$stage_dir/usr/bin/plank-client" "$private_lib_dir"
 packaged_dynamic_section=$(readelf -d "$stage_dir/usr/bin/plank-client")
-rg -Fq '\$ORIGIN/../lib/plank' <<<"$packaged_dynamic_section" || {
+rg -Fq '$ORIGIN/../lib/plank' <<<"$packaged_dynamic_section" || {
   echo "client runtime does not carry its private relative RUNPATH" >&2
   exit 1
 }
