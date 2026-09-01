@@ -375,8 +375,9 @@ rg -Fq '$ORIGIN/../lib/plank' <<<"$packaged_dynamic_section" || {
   echo "client runtime does not carry its private relative RUNPATH" >&2
   exit 1
 }
-env -u LD_LIBRARY_PATH ldd "$stage_dir/usr/bin/plank-client" | \
-  rg -Fq "$private_lib_dir/libavcodec.so.63" || {
+unmanaged_loader_output=$(env -u LD_LIBRARY_PATH \
+  ldd "$stage_dir/usr/bin/plank-client")
+rg -Fq "$private_lib_dir/libavcodec.so.63" <<<"$unmanaged_loader_output" || {
   echo "client runtime does not resolve private FFmpeg through RUNPATH" >&2
   exit 1
 }
