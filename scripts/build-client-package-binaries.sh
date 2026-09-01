@@ -1390,12 +1390,19 @@ for required_mdns_token in \
     exit 1
   }
 done
-if rg -n 'PLANK_MDNS_DISCOVERY|client\.env' \
-  "$source_dir/app" \
-  "$repo_dir/packaging/bin/plank-client"; then
+if rg -n 'PLANK_MDNS_DISCOVERY|client\.env' "$source_dir/app"; then
   echo "client retains the deprecated user-controlled mDNS environment policy" >&2
   exit 1
 fi
+[[ ! -e ${repo_dir}/packaging/bin/plank-client ]] || {
+  echo "client package still carries an unnecessary launcher wrapper" >&2
+  exit 1
+}
+rg -Fq "\\\$\$ORIGIN/../lib/plank" "$source_dir/app/app.pro" || {
+  echo "client build does not define its private relative runtime path" >&2
+  exit 1
+}
+echo "client_direct_runtime_gate=pass"
 client_policy="$repo_dir/packaging/config/plank-client.conf"
 rg -Fxq '[network]' "$client_policy" || {
   echo "client administrator policy is missing its network section" >&2
