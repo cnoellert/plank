@@ -114,8 +114,8 @@ for required_plank_transport_token in \
   'plank_transport_native_audio_receive' \
   'LiSubmitPlankAudioPacket' \
   'LiSetPlankNativeControlSender' \
-  'plank_transportNativeControlSender' \
-  'plank_transportDataReceiveLoop'; do
+  'plankTransportNativeControlSender' \
+  'plankTransportDataReceiveLoop'; do
   rg -Fq "$required_plank_transport_token" \
     "$source_dir/app" || {
     echo "client plank_transport negotiation invariant is missing: ${required_plank_transport_token}" >&2
@@ -200,7 +200,7 @@ echo "client_plank_transport_native_control_sender_gate=pass"
 for required_input_transport_token in \
   'PlankNativeInputSender' \
   'LiSetPlankNativeInputSender' \
-  'plank_transportNativeInputSender' \
+  'plankTransportNativeInputSender' \
   'plank_transport_native_input_send' \
   'PLANK_TRANSPORT_INPUT_RAW_HID_WACOM'; do
   rg -Fq "$required_input_transport_token" \
@@ -232,7 +232,7 @@ for required_control_receiver_token in \
   'LiNotifyPlankVideoBitrateApplied' \
   'LiNotifyPlankHostTermination' \
   'plank_transport_native_data_receive' \
-  'plank_transportDataReceiveLoop'; do
+  'plankTransportDataReceiveLoop'; do
   if ! rg -Fq "$required_control_receiver_token" \
     "$source_dir/moonlight-common-c/moonlight-common-c/src" \
     "$source_dir/app/streaming"; then
