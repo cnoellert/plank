@@ -116,12 +116,10 @@ cleanup() {
 }
 trap cleanup EXIT
 stage_dir="${work_dir}/debian/plank-client"
-private_lib_dir="${stage_dir}/usr/libexec/plank/lib"
+private_lib_dir="${stage_dir}/usr/lib/plank"
 mkdir -p "$stage_dir/DEBIAN" "$private_lib_dir" "$work_dir/debian"
 
 install -D -m 0755 "$moonlight_binary" \
-  "$stage_dir/usr/libexec/plank/plank-client"
-install -D -m 0755 "$repo_dir/packaging/bin/plank-client" \
   "$stage_dir/usr/bin/plank-client"
 install -D -m 0644 "$repo_dir/packaging/config/plank-client.conf" \
   "$stage_dir/etc/plank/client.conf"
@@ -163,8 +161,8 @@ cmp --silent "$moonlight_source_dir/app/res/plank-logo.png" \
 }
 version_output=$(
   QT_QPA_PLATFORM=offscreen \
-    LD_LIBRARY_PATH="$private_lib_dir" \
-    "$stage_dir/usr/libexec/plank/plank-client" --version 2>&1
+    env -u LD_LIBRARY_PATH \
+    "$stage_dir/usr/bin/plank-client" --version 2>&1
 )
 grep -Fxq "PLANK ${package_version}" <<<"$version_output" || {
   echo "packaged client did not report the expected PLANK version" >&2
@@ -194,7 +192,7 @@ EOF
 (
   cd "$work_dir"
   mapfile -d '' packaged_elfs < <(
-    find debian/plank-client/usr/libexec/plank \
+    find debian/plank-client/usr/bin debian/plank-client/usr/lib/plank \
       -type f -print0 | sort -z
   )
   dpkg-shlibdeps -O -Lshlibs.local -xplank-client \
@@ -316,11 +314,15 @@ grep -Fq './usr/share/icons/hicolor/512x512/apps/plank-client.png' \
   echo "client DEB is missing the PLANK application icon" >&2
   exit 1
 }
-grep -Fq './usr/libexec/plank/plank-client' \
+grep -Fq './usr/bin/plank-client' \
     <<<"$package_manifest" || {
   echo "client DEB is missing the branded PLANK runtime" >&2
   exit 1
 }
+if grep -Fq './usr/libexec/plank/plank-client' <<<"$package_manifest"; then
+  echo "client DEB still contains the obsolete private GUI runtime" >&2
+  exit 1
+fi
 if grep -Fq './usr/libexec/plank/moonlight' <<<"$package_manifest"; then
   echo "client DEB still contains the superseded Moonlight runtime name" >&2
   exit 1
@@ -367,7 +369,25 @@ if rg -n 'plank-client\.service|deb-systemd-helper|systemctl[[:space:]]+--user' 
 fi
 rm -rf -- "$control_audit_dir"
 "${repo_dir}/scripts/audit-package-runtime.sh" \
-  "$stage_dir/usr/libexec/plank/plank-client" "$private_lib_dir"
+  "$stage_dir/usr/bin/plank-client" "$private_lib_dir"
+packaged_dynamic_section=$(readelf -d "$stage_dir/usr/bin/plank-client")
+rg -Fq '$ORIGIN/../lib/plank' <<<"$packaged_dynamic_section" || {
+  echo "client runtime does not carry its private relative RUNPATH" >&2
+  exit 1
+}
+unmanaged_loader_output=$(env -u LD_LIBRARY_PATH \
+  ldd "$stage_dir/usr/bin/plank-client")
+for soname in libavcodec.so.63 libavutil.so.61 libswscale.so.10 libswresample.so.7; do
+  unmanaged_path=$(awk -v name="$soname" \
+    '$1 == name && $2 == "=>" {print $3}' <<<"$unmanaged_loader_output")
+  [[ -n ${unmanaged_path} ]] &&
+    [[ $(realpath -- "$unmanaged_path") == \
+       $(realpath -- "$private_lib_dir/$soname") ]] || {
+      echo "client runtime does not resolve ${soname} through private RUNPATH" >&2
+      exit 1
+    }
+done
+echo "client_private_runpath_gate=pass"
 dpkg-deb --field "$deb_file" Depends | rg -q 'libqt6core6'
 dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-cairo'
 if dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-gtk'; then

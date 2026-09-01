@@ -969,25 +969,49 @@ if rg -n -U 'id: uiSettingsGroupBox\n[[:space:]]+parent: settingsColumn2' \
 fi
 echo "client_bookmark_bitrate_gate=pass"
 
-for required_reconnect_wait_token in \
-  'Waiting for previous workstation session to finish...' \
-  'constexpr int RetryIntervalMs = 500;' \
-  'constexpr int MaximumWaitMs = 30000;' \
-  'sessionCleanupWaitChanged' \
-  'cancelConnectionStart()'; do
-  rg -Fq "$required_reconnect_wait_token" \
+for required_session_takeover_token in \
+  'SessionTakeoverFeature = 0x8000' \
+  '&plankTakeover=1' \
+  'PLANK workstation session is active' \
+  'Disconnect the existing client and continue?' \
+  'm_WaitingForActiveSessionTakeoverDecision' \
+  'PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER' \
+  'Host display layout transition is currently unavailable' \
+  'This PLANK session was transferred to another client.'; do
+  rg -Fq "$required_session_takeover_token" \
     "$source_dir/app/streaming/session.cpp" \
+    "$source_dir/app/backend/nvhttp.cpp" \
+    "$source_dir/app/backend/outputtopology.h" \
     "$source_dir/app/streaming/session.h" \
     "$source_dir/app/gui/StreamSegue.qml" || {
-    echo "rapid reconnect client wait invariant is missing: ${required_reconnect_wait_token}" >&2
+    echo "active-session takeover invariant is missing: ${required_session_takeover_token}" >&2
     exit 1
   }
 done
-echo "client_rapid_reconnect_wait_gate=pass"
+if rg -Fq 'Waiting for previous workstation session to finish...' \
+    "$source_dir/app/streaming/session.cpp"; then
+  echo "legacy timed active-session polling remains in the client" >&2
+  exit 1
+fi
+echo "client_session_takeover_gate=pass"
+
+for required_topology_retry_token in \
+  'bool Session::configurePlankLaunchGeometry()' \
+  'm_InputHandler->setStreamDimensions' \
+  'PLANK refreshed stale topology and launch geometry; retrying launch:'; do
+  rg -Fq "$required_topology_retry_token" \
+    "$source_dir/app/streaming/session.cpp" || {
+    echo "stale-topology retry geometry invariant is missing: ${required_topology_retry_token}" >&2
+    exit 1
+  }
+done
+echo "client_topology_retry_geometry_gate=pass"
 
 for required_display_transition_token in \
   'display transition is still pending' \
   'authentication will be refreshed once' \
+  'configurePlankLaunchGeometry()' \
+  'retryError.getStatusCode() != 409' \
   'MaximumVirtualCanvasWidth = 8192' \
   'matchesRequestedHostLayout'; do
   rg -Fq "$required_display_transition_token" \
@@ -1381,12 +1405,19 @@ for required_mdns_token in \
     exit 1
   }
 done
-if rg -n 'PLANK_MDNS_DISCOVERY|client\.env' \
-  "$source_dir/app" \
-  "$repo_dir/packaging/bin/plank-client"; then
+if rg -n 'PLANK_MDNS_DISCOVERY|client\.env' "$source_dir/app"; then
   echo "client retains the deprecated user-controlled mDNS environment policy" >&2
   exit 1
 fi
+[[ ! -e ${repo_dir}/packaging/bin/plank-client ]] || {
+  echo "client package still carries an unnecessary launcher wrapper" >&2
+  exit 1
+}
+rg -Fq '\$$ORIGIN/../lib/plank' "$source_dir/app/app.pro" || {
+  echo "client build does not define its private relative runtime path" >&2
+  exit 1
+}
+echo "client_direct_runtime_gate=pass"
 client_policy="$repo_dir/packaging/config/plank-client.conf"
 rg -Fxq '[network]' "$client_policy" || {
   echo "client administrator policy is missing its network section" >&2

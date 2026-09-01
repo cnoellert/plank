@@ -37,25 +37,26 @@ socket; the service limits itself to 40 total tasks.
 
 ## Host Supervisor and Client Service
 
-Install the public launchers from `packaging/bin/` as
-`/usr/bin/plank-host` and `/usr/bin/plank-client`.
-Production packages place their Sunshine and Moonlight workers under
-`/usr/libexec/plank/`; the systemd-only host supervisor and PAM broker
-also live there. A development environment can override the media-worker binary
-path while invoking a public launcher.
+Install the public Host launcher from `packaging/bin/` as
+`/usr/bin/plank-host`. Install the user-facing Client executable directly as
+`/usr/bin/plank-client`. The Host media worker, systemd-only supervisor, PAM
+broker, and other private helpers remain under `/usr/libexec/plank/`. A Host
+development environment can override the media-worker binary path while
+invoking its public launcher.
 
 Build and bundle the pinned FFmpeg 9 client runtime next to Moonlight before
 packaging it:
 
 ```bash
-./scripts/build-client-ffmpeg.sh /usr/libexec/plank
+./scripts/build-client-ffmpeg.sh /usr/lib/plank
 PKG_CONFIG_PATH=build/client-ffmpeg-9.0.1/install/lib/pkgconfig qmake6 ...
 ```
 
 The script verifies the FFmpeg 9.0.1 source checksum and installs the required
-shared libraries and LGPL license files under `lib/`. The client launcher
-prepends that private directory to `LD_LIBRARY_PATH`, preventing an older
-distribution FFmpeg from being selected at runtime.
+shared libraries and LGPL license files under the private runtime directory.
+The Client executable uses an `$ORIGIN`-relative RUNPATH to select that
+directory, preventing an older distribution FFmpeg from being selected at
+runtime without relying on a shell launcher or `LD_LIBRARY_PATH`.
 
 Install `plank-host.service` in the system unit directory. It starts
 at boot, queries logind for the active local X11 session on `seat0`, validates

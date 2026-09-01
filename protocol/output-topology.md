@@ -2,7 +2,7 @@
 
 ## Scope
 
-Protocol version 12 describes the host desktop after operating-system
+Protocol version 13 describes the host desktop after operating-system
 authentication and lets the client select one capture output or a scaled span
 of the complete desktop. Topology is not available through unauthenticated
 discovery. The same topology snapshot must drive capture, presentation, cursor
@@ -11,8 +11,8 @@ a stream.
 
 ## Feature Negotiation
 
-The host returns `schema_version: 12` and a numeric `feature_flags` field from
-`GET /plank/topology`. Version 12 defines these bits:
+The host returns `schema_version: 13` and a numeric `feature_flags` field from
+`GET /plank/topology`. Version 13 defines these bits:
 
 - `0x1` — output topology publication
 - `0x2` — stable selected-output launch
@@ -29,8 +29,9 @@ The host returns `schema_version: 12` and a numeric `feature_flags` field from
 - `0x1000` — exact per-session encoder-backend and encoding-mode selection
 - `0x2000` — NvFBC 8-bit source expansion into HEVC 10-bit 4:4:4 direct NVENC
 - `0x4000` — one fixed complete QUIC UDP payload ceiling for both endpoints
+- `0x8000` — authenticated transfer of the one active PLANK session between clients
 
-The client sends `plankProtocolVersion=12`, `plankFeatureFlags`, `plankDisplayMode`,
+The client sends `plankProtocolVersion=13`, `plankFeatureFlags`, `plankDisplayMode`,
 `plankHostLayout`, `plankVirtualMode1`, and `plankVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
 `plankTopologyGeneration` returned by the topology endpoint. `single-output` also
@@ -57,7 +58,7 @@ its output count. Each connected output carries its
 opaque `id`, user-facing `name`, desktop `x`/`y`, pixel `width`/`height`,
 clockwise `rotation`, `refresh_millihz`, and `primary` state. Coordinates may be
 negative. Unknown refresh is zero. Each output also carries `virtual` and a
-`configured_mode` and a `source_rect` in composite-source coordinates. Version 12 currently makes the
+`configured_mode` and a `source_rect` in composite-source coordinates. Version 13 currently makes the
 source rectangle identical to the output rectangle relative to the desktop
 origin; keeping it explicit avoids inferring monitor boundaries from a wide
 encoded frame.
@@ -75,7 +76,7 @@ canvas directly to planar GBR10, or performs center-aligned bilinear scaling
 and plane generation in that same CPU pass when the negotiated encode size is
 different. See `protocol/encoding-profiles.md` for the exact allowed tuples.
 
-Protocol version 12 has one data plane: native PlankTransport. The removed
+Protocol version 13 has one data plane: native PlankTransport. The removed
 `plankDataPlane` request and `PlankDataPlane` acknowledgement are not
 accepted compatibility switches. Every successful launch returns a PlankTransport
 port, canonical TLS certificate SHA-256 fingerprint, and canonical one-use
@@ -124,6 +125,19 @@ cleanup so no pen contact, key, or virtual HID device survives against stale
 geometry. Reconnection requires fresh OS authentication; seamless in-stream
 topology acknowledgement is reserved for a later protocol feature.
 
+An accepted launch owns the workstation from HTTPS acceptance through queued
+native setup, in-flight QUIC negotiation, and the running stream. A second
+authenticated client receives status 409 with `PLANK workstation session is
+active`; it must not poll or silently displace that owner. With explicit local
+confirmation, a version-13 client retries the same launch or resume with
+`plankTakeover=1`. The Host accepts that flag only with feature `0x8000`, only
+after PAM authentication, and only when the authenticated account still owns
+the active desktop. It first revokes the old input path, sends reliable
+termination reason `0x80030024`, joins the old stream, and only then starts
+replacement display and media state. The displaced client disables automatic
+reconnect and reports that its session was transferred. No Host OS logout
+occurs, so the user's desktop and applications remain running.
+
 ## Launch and Input Rules
 
 The host rejects an unsupported protocol version, unnegotiated feature bits,
@@ -146,7 +160,7 @@ schema.
 
 ## Test Vector
 
-`tests/protocol/output-topology-v12.json` represents a physical-startup host
+`tests/protocol/output-topology-v13.json` represents a physical-startup host
 temporarily presenting the Flame-style 3840x2160 primary plus 1280x2160
 secondary virtual layout. Parsers must preserve order-independent
 identity, geometry, virtual provenance, source rectangles, exact layout

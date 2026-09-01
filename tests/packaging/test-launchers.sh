@@ -4,11 +4,11 @@ set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 host_launcher=${repo_dir}/packaging/bin/plank-host
-client_launcher=${repo_dir}/packaging/bin/plank-client
 host_profile=${repo_dir}/packaging/config/plank-host.conf
 client_policy=${repo_dir}/packaging/config/plank-client.conf
 client_main=${repo_dir}/client/moonlight-qt-fork/app/main.cpp
 client_path=${repo_dir}/client/moonlight-qt-fork/app/path.cpp
+client_project=${repo_dir}/client/moonlight-qt-fork/app/app.pro
 
 expect_status() {
   local expected=$1
@@ -32,46 +32,14 @@ expect_status 1 env DISPLAY=:99 XAUTHORITY=/does/not/exist \
   PLANK_HOST_BINARY=/bin/true \
   PLANK_AUTH_SOCKET=/does/not/exist "${host_launcher}"
 
-expect_status 127 env PLANK_CLIENT_BINARY=/does/not/exist \
-  DISPLAY=:99 "${client_launcher}"
-expect_status 1 env -u DISPLAY -u WAYLAND_DISPLAY \
-  PLANK_CLIENT_BINARY=/bin/true "${client_launcher}"
-expect_status 0 env PLANK_CLIENT_BINARY=/bin/true \
-  DISPLAY=:99 "${client_launcher}" forwarded-argument
-
-client_environment=$(env -u PLANK_MDNS_DISCOVERY \
-  PLANK_CLIENT_BINARY=/usr/bin/env \
-  PLANK_CLIENT_LIBDIR="${repo_dir}/packaging" \
-  XDG_CONFIG_HOME=/does/not/exist \
-  LD_LIBRARY_PATH=/system/lib DISPLAY=:99 "${client_launcher}")
-if ! grep -Fxq "LD_LIBRARY_PATH=${repo_dir}/packaging:/system/lib" \
-  <<<"${client_environment}"; then
-  echo 'Client launcher did not prefer the private library directory' >&2
+if [[ -e ${repo_dir}/packaging/bin/plank-client ]]; then
+  echo 'Client package still carries an unnecessary launcher wrapper' >&2
   exit 1
 fi
-if grep -q '^PLANK_MDNS_DISCOVERY=' <<<"${client_environment}"; then
-  echo 'Client launcher injected a deprecated mDNS environment override' >&2
+grep -Fq '\$$ORIGIN/../lib/plank' "${client_project}" || {
+  echo 'Client executable does not define its private relative RUNPATH' >&2
   exit 1
-fi
-if rg -n 'client\.env|source[[:space:]]+.*client_env' "${client_launcher}"; then
-  echo 'Client launcher still loads user-controlled shell configuration' >&2
-  exit 1
-fi
-
-client_config_root=$(mktemp -d)
-trap 'rm -rf -- "${client_config_root}"' EXIT
-mkdir -p "${client_config_root}/plank"
-printf '%s\n' 'PLANK_MDNS_DISCOVERY=1' \
-  >"${client_config_root}/plank/client.env"
-client_environment=$(env -u PLANK_MDNS_DISCOVERY \
-  XDG_CONFIG_HOME="${client_config_root}" \
-  PLANK_CLIENT_BINARY=/usr/bin/env \
-  PLANK_CLIENT_LIBDIR=/does/not/exist \
-  DISPLAY=:99 "${client_launcher}")
-if grep -q '^PLANK_MDNS_DISCOVERY=' <<<"${client_environment}"; then
-  echo 'Client launcher loaded the obsolete per-user client.env file' >&2
-  exit 1
-fi
+}
 
 grep -Fxq 'sw_vbv_maxrate_percentage = 150' "${host_profile}"
 grep -Fxq 'sw_vbv_buffer_frames = 4' "${host_profile}"
