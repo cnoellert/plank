@@ -1,5 +1,5 @@
-%{!?plank_version:%global plank_version 0.1.0}
-%{!?plank_release:%global plank_release 0.5}
+%{!?plank_version:%{error:plank_version must be defined by the package builder}}
+%{!?plank_release:%{error:plank_release must be defined by the package builder}}
 
 Name:           plank-host
 Version:        %{plank_version}

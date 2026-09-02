@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(plank_qualification VERSION 0.1.0 LANGUAGES C CXX)
+project(plank_qualification VERSION 1.0.0 LANGUAGES C CXX)
 
 include(CTest)
 find_package(PkgConfig REQUIRED)
@@ -292,6 +292,9 @@ if(BUILD_TESTING)
   add_test(NAME host-version-discovery
     COMMAND bash
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/protocol/test-host-version-discovery.sh)
+  add_test(NAME release-version
+    COMMAND bash
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-release-version.sh)
 
   add_executable(session-policy-test tests/session/test-session-policy.cpp)
   target_compile_features(session-policy-test PRIVATE cxx_std_20)

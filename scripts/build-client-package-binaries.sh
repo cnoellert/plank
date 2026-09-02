@@ -258,11 +258,9 @@ done
 echo "client_plank_transport_legacy_control_bridge_absence_gate=pass"
 echo "client_plank_transport_control_receiver_gate=pass"
 
-package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+(\.[a-z0-9][a-z0-9-]*)?$ && $package_version != *.main ]] || {
-  echo "invalid shared package version: ${package_version}" >&2
-  exit 1
-}
+source "${repo_dir}/scripts/package-version.sh"
+plank_load_package_version "$repo_dir"
+package_version=$PLANK_PACKAGE_VERSION
 
 [[ -f ${source_dir}/moonlight-qt.pro ]] || {
   echo "Moonlight source tree is unavailable: ${source_dir}" >&2

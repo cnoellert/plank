@@ -33,11 +33,9 @@ for archive_candidate in \
     break
   fi
 done
-package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+(\.[a-z0-9][a-z0-9-]*)?$ && $package_version != *.main ]] || {
-  echo "invalid shared package version: ${package_version}" >&2
-  exit 1
-}
+source "${repo_dir}/scripts/package-version.sh"
+plank_load_package_version "$repo_dir"
+package_version=$PLANK_PACKAGE_VERSION
 
 for command_name in cmp dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum tar; do
   command -v "$command_name" >/dev/null || {

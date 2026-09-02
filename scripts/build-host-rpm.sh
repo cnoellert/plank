@@ -10,21 +10,11 @@ fi
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 output_dir=$(realpath -m -- "${2:-${repo_dir}/artifacts/packages}")
-package_version=$(<"${repo_dir}/packaging/VERSION")
-[[ $package_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+(\.[a-z0-9][a-z0-9-]*)?$ && $package_version != *.main ]] || {
-  echo "invalid shared package version: ${package_version}" >&2
-  exit 1
-}
-rpm_version=${package_version%%-*}
-# RPM Release values cannot contain a hyphen. Preserve the shared/displayed
-# PLANK version verbatim, but map branch-name separators to an
-# RPM-safe underscore for package metadata and filenames.
-rpm_release=${package_version#*-}
-rpm_release=${rpm_release//-/_}
-[[ $rpm_release =~ ^[A-Za-z0-9._+]+$ ]] || {
-  echo "invalid RPM release derived from shared version: ${rpm_release}" >&2
-  exit 1
-}
+source "${repo_dir}/scripts/package-version.sh"
+plank_load_package_version "$repo_dir"
+package_version=$PLANK_PACKAGE_VERSION
+rpm_version=$PLANK_RPM_VERSION
+rpm_release=$PLANK_RPM_RELEASE
 
 if [[ -n $(git -C "$repo_dir" status --porcelain --untracked-files=normal) ]]; then
   echo "refusing to package a dirty PLANK source tree" >&2
