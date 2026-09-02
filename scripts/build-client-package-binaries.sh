@@ -30,6 +30,13 @@ rg -Fxq 'PKGCONFIG += sdl3 egl libavcodec libavutil' \
   echo "client EGL qualification test is not using native SDL3" >&2
   exit 1
 }
+for sdl3_egl_header in SDL_egl.h SDL_opengles2.h; do
+  rg -Fq "#include <SDL3/${sdl3_egl_header}>" \
+    "$source_dir/config.tests/EGL/main.cpp" || {
+    echo "client EGL qualification test is not using SDL3 headers" >&2
+    exit 1
+  }
+done
 pkg-config --exists sdl3 egl || {
   echo "client EGL/DMA-BUF build dependencies are unavailable" >&2
   exit 1
