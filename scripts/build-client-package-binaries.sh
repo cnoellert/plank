@@ -13,7 +13,7 @@ ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
 
-for command_name in c++ cargo cmp find git make mktemp nm pkg-config qmake6 readelf realpath rg rustc stat timeout; do
+for command_name in c++ cargo cmp find git make mktemp nm patch pkg-config qmake6 readelf realpath rg rustc stat timeout; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -42,6 +42,23 @@ pkg-config --exists sdl3 egl || {
   exit 1
 }
 echo "client_egl_build_input_gate=pass"
+
+identity_gbr_patch="$source_dir/app/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch"
+identity_gbr_patch_sha256=059cc9c0d585d71e292cd7421a43f239b1e7ce94e8598d0a7427dfe48e55847e
+ffmpeg_identity_source="$ffmpeg_work_dir/ffmpeg-9.0.1/libavcodec/hevc/hevcdec.c"
+[[ -f ${identity_gbr_patch} && -f ${ffmpeg_identity_source} ]] || {
+  echo "client identity-GBR FFmpeg source inputs are unavailable" >&2
+  exit 1
+}
+printf '%s  %s\n' "$identity_gbr_patch_sha256" "$identity_gbr_patch" |
+  sha256sum --check --status
+patch --batch --reverse --dry-run -d "$ffmpeg_work_dir/ffmpeg-9.0.1" -p1 \
+  < "$identity_gbr_patch" >/dev/null 2>&1 || {
+  echo "prepared Client FFmpeg is missing the identity-GBR hardware-decode patch" >&2
+  exit 1
+}
+echo "client_ffmpeg_identity_gbr_patch_gate=pass"
+
 [[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
   echo "PLANK transport requires rustc 1.89.0" >&2
   exit 1
