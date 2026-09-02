@@ -19,6 +19,22 @@ for command_name in c++ cargo cmp find git make mktemp nm pkg-config qmake6 read
     exit 1
   }
 done
+
+# The exact HEVC Main444 10-bit VA-API path depends on the EGL/DMA-BUF
+# frontend. Keep its qmake qualification test on native SDL3 and fail before
+# compilation if a clean builder cannot provide either dependency. A stale
+# SDL2 probe previously disabled HAVE_EGL silently and forced 4K software
+# decoding on otherwise-qualified Intel hardware.
+rg -Fxq 'PKGCONFIG += sdl3 egl libavcodec libavutil' \
+  "$source_dir/config.tests/EGL/EGL.pro" || {
+  echo "client EGL qualification test is not using native SDL3" >&2
+  exit 1
+}
+pkg-config --exists sdl3 egl || {
+  echo "client EGL/DMA-BUF build dependencies are unavailable" >&2
+  exit 1
+}
+echo "client_egl_build_input_gate=pass"
 [[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
   echo "PLANK transport requires rustc 1.89.0" >&2
   exit 1
@@ -1525,6 +1541,12 @@ client_binary="${build_dir}/app/plank-client"
   echo "PLANK client package binary was not produced" >&2
   exit 1
 }
+rg -a -Fq 'Identity GBR requires composed VAAPI layers' \
+  "$client_binary" || {
+  echo "client binary is missing the exact VAAPI EGL identity frontend" >&2
+  exit 1
+}
+echo "client_vaapi_egl_identity_binary_gate=pass"
 nm -C "$client_binary" | rg ' [Tt] plank_transport_abi_version$' >/dev/null || {
   echo "client binary does not link the PLANK transport ABI" >&2
   exit 1
