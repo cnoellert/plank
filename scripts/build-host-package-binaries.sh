@@ -37,6 +37,26 @@ for command_name in cargo cmake git nm realpath rg rustc; do
     exit 1
   }
 done
+
+# The retained Host FFmpeg/x264/x265 source is patched by build-deps. This
+# helper must fail closed: a failed forward check is acceptable only when the
+# exact patch reverses cleanly (already applied). Otherwise a clean bootstrap
+# could silently build incompatible upstream source.
+host_patch_helper="${source_dir}/third-party/build-deps/cmake/apply_git_patch.cmake"
+[[ -f $host_patch_helper ]] || {
+  echo "Host dependency patch helper is unavailable" >&2
+  exit 1
+}
+for required_patch_helper_token in \
+  'git apply -v --ignore-whitespace --reverse --check' \
+  'patch is neither applicable nor already applied'; do
+  rg -Fq "$required_patch_helper_token" "$host_patch_helper" || {
+    echo "Host dependency patch helper is not fail-closed: ${required_patch_helper_token}" >&2
+    exit 1
+  }
+done
+echo "host_dependency_patch_fail_closed_gate=pass"
+"${repo_dir}/scripts/verify-host-dependency-patches.sh"
 [[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
   echo "PLANK transport requires rustc 1.89.0" >&2
   exit 1

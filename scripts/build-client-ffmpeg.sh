@@ -50,15 +50,20 @@ printf '%s  %s\n' "${identity_gbr_patch_sha256}" "${identity_gbr_patch}" |
 # profiles, so the private PLANK FFmpeg build must offer VA-API for them. The
 # old prepared builder tree carried this patch, but the clean bootstrap did
 # not reproduce it until it became an explicit build input here.
-if patch --batch --forward --dry-run -d "${source_dir}" -p1 \
+if patch --batch --forward --no-backup-if-mismatch --dry-run -d "${source_dir}" -p1 \
     < "${identity_gbr_patch}" >/dev/null 2>&1; then
-  patch --batch --forward -d "${source_dir}" -p1 \
+  patch --batch --forward --no-backup-if-mismatch -d "${source_dir}" -p1 \
     < "${identity_gbr_patch}"
-elif patch --batch --reverse --dry-run -d "${source_dir}" -p1 \
+elif patch --batch --reverse --no-backup-if-mismatch --dry-run -d "${source_dir}" -p1 \
     < "${identity_gbr_patch}" >/dev/null 2>&1; then
   echo "Identity-GBR FFmpeg patch is already applied"
 else
   echo "Identity-GBR FFmpeg patch does not apply cleanly" >&2
+  exit 1
+fi
+if find "${source_dir}" -type f \( -name '*.orig' -o -name '*.rej' \) \
+    -print -quit | grep -q .; then
+  echo "Client FFmpeg source contains patch backup or reject files" >&2
   exit 1
 fi
 echo "client_ffmpeg_identity_gbr_patch_gate=pass"

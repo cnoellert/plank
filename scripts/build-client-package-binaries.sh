@@ -13,7 +13,7 @@ ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
 
-for command_name in c++ cargo cmp find git make mktemp nm patch pkg-config qmake6 readelf realpath rg rustc stat timeout; do
+for command_name in c++ cargo cmp diff find git make mktemp nm patch pkg-config qmake6 readelf realpath rg rustc sha256sum stat tar timeout; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -45,18 +45,48 @@ echo "client_egl_build_input_gate=pass"
 
 identity_gbr_patch="$source_dir/app/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch"
 identity_gbr_patch_sha256=059cc9c0d585d71e292cd7421a43f239b1e7ce94e8598d0a7427dfe48e55847e
+ffmpeg_archive_sha256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
+ffmpeg_identity_source_sha256=f3e5ce5ab334c0bc39661dccd68dcc91f90c47fcaae72d3c20511088f71387e8
+ffmpeg_archive="$ffmpeg_work_dir/ffmpeg-9.0.1.tar.xz"
 ffmpeg_identity_source="$ffmpeg_work_dir/ffmpeg-9.0.1/libavcodec/hevc/hevcdec.c"
-[[ -f ${identity_gbr_patch} && -f ${ffmpeg_identity_source} ]] || {
+[[ -f ${identity_gbr_patch} && -f ${ffmpeg_archive} && -f ${ffmpeg_identity_source} ]] || {
   echo "client identity-GBR FFmpeg source inputs are unavailable" >&2
   exit 1
 }
 printf '%s  %s\n' "$identity_gbr_patch_sha256" "$identity_gbr_patch" |
   sha256sum --check --status
-patch --batch --reverse --dry-run -d "$ffmpeg_work_dir/ffmpeg-9.0.1" -p1 \
+patch --batch --reverse --no-backup-if-mismatch --dry-run \
+  -d "$ffmpeg_work_dir/ffmpeg-9.0.1" -p1 \
   < "$identity_gbr_patch" >/dev/null 2>&1 || {
   echo "prepared Client FFmpeg is missing the identity-GBR hardware-decode patch" >&2
   exit 1
 }
+if find "$ffmpeg_work_dir/ffmpeg-9.0.1" -type f \
+    \( -name '*.orig' -o -name '*.rej' \) -print -quit | grep -q .; then
+  echo "prepared Client FFmpeg contains patch backup or reject files" >&2
+  exit 1
+fi
+printf '%s  %s\n' "$ffmpeg_archive_sha256" "$ffmpeg_archive" |
+  sha256sum --check --status
+printf '%s  %s\n' "$ffmpeg_identity_source_sha256" "$ffmpeg_identity_source" |
+  sha256sum --check --status
+ffmpeg_source_audit_dir=$(mktemp -d --tmpdir plank-client-ffmpeg-source-audit.XXXXXX)
+cleanup_ffmpeg_source_audit() {
+  find "$ffmpeg_source_audit_dir" -depth -type f -delete
+  find "$ffmpeg_source_audit_dir" -depth -type l -delete
+  find "$ffmpeg_source_audit_dir" -depth -type d -empty -delete
+}
+trap cleanup_ffmpeg_source_audit EXIT
+tar -xJf "$ffmpeg_archive" -C "$ffmpeg_source_audit_dir"
+if ! diff -qr --exclude=hevcdec.c \
+    "$ffmpeg_source_audit_dir/ffmpeg-9.0.1" \
+    "$ffmpeg_work_dir/ffmpeg-9.0.1"; then
+  echo "prepared Client FFmpeg contains changes beyond the tracked identity-GBR patch" >&2
+  exit 1
+fi
+cleanup_ffmpeg_source_audit
+trap - EXIT
+echo "client_ffmpeg_pristine_source_gate=pass"
 echo "client_ffmpeg_identity_gbr_patch_gate=pass"
 
 [[ $(rustc --version) == "rustc 1.89.0 "* ]] || {
