@@ -1546,7 +1546,7 @@ for required_log_token in \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \
   's_LoggerFileStream << message' \
   '#if !defined(LOG_TO_FILE)' \
-  'QDateTime::currentDateTime().toString(Qt::ISODateWithMs)' \
+  'toOffsetFromUtc(localTime.offsetFromUtc()).toString(Qt::ISODateWithMs)' \
   'Persistent client log:'; do
   rg -Fq "$required_log_token" "$source_dir/app/main.cpp" || {
     echo "client persistent log invariant is missing: ${required_log_token}" >&2

@@ -81,8 +81,8 @@ for required_log_token in \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner' \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \
   's_LoggerFileStream << message' \
-  'QDateTime::currentDateTime().toString(Qt::ISODateWithMs)' \
-  '#if defined(Q_OS_LINUX) || !defined(LOG_TO_FILE)' \
+  'toOffsetFromUtc(localTime.offsetFromUtc()).toString(Qt::ISODateWithMs)' \
+  '#if !defined(LOG_TO_FILE)' \
   'Persistent client log:'; do
   rg -Fq "${required_log_token}" "${client_main}"
 done
