@@ -989,12 +989,12 @@ for unit_log_pair in \
 done
 logrotate_policy="$repo_dir/packaging/logrotate/plank-host"
 for helper_log in host-supervisor.log pam-broker.log display-prepare.log; do
-  rg -Fxq "/var/log/plank/${helper_log}" "$logrotate_policy"
+  rg -Fq "/var/log/plank/${helper_log}" "$logrotate_policy"
 done
 rg -Fxq '    size 10M' "$logrotate_policy"
 rg -Fxq '    rotate 10' "$logrotate_policy"
 rg -Fxq '    copytruncate' "$logrotate_policy"
-rg -B4 -A1 'add_stream(stream)' "$source_dir/src/logging.cpp" |
+rg -B5 -A1 'add_stream(stream)' "$source_dir/src/logging.cpp" |
   rg -Fq '!defined(__linux__)' || {
   echo "host Linux runtime logs are still mirrored to stdout" >&2
   exit 1

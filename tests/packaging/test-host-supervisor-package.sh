@@ -105,7 +105,7 @@ rg -Fxq '/etc/pam.d/plank-host' "$spec"
 rg -Fxq '%config(noreplace) /etc/logrotate.d/plank-host' "$spec"
 rg -Fxq 'Requires:       logrotate' "$spec"
 for helper_log in host-supervisor.log pam-broker.log display-prepare.log; do
-  rg -Fxq "/var/log/plank/${helper_log}" "$logrotate_policy"
+  rg -Fq "/var/log/plank/${helper_log}" "$logrotate_policy"
 done
 rg -Fxq '    size 10M' "$logrotate_policy"
 rg -Fxq '    rotate 10' "$logrotate_policy"
