@@ -42,6 +42,13 @@ headroom, but it does not claim native 10-bit capture precision. H.264 10-bit
 NVENC is not offered because the qualified Ampere and Turing hosts do not
 support it.
 
+H.264 NVENC is limited to a maximum encoded dimension of `4096x2160`. The
+Client disables `5120x2160` in both bookmark editors while an H.264 NVENC
+profile is selected and moves an existing incompatible selection to
+`4096x2160`. Software x264 and HEVC NVENC profiles retain the qualified
+`5120x2160` mode. Bookmark persistence independently rejects an explicit
+virtual-display mode that exceeds the selected H.264 NVENC profile limit.
+
 `tests/protocol/nvfbc-hevc10-nvenc-v1.json` is the exact negotiation and
 pipeline test vector for this tuple. Hosts must reject it when feature `0x2000`
 is absent or when the direct NVENC HEVC Rext 10-bit 4:4:4 probe fails.
