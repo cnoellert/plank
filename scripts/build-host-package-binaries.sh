@@ -9,7 +9,9 @@ fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 source_dir="${repo_dir}/host/sunshine-fork"
-package_version=$(<"${repo_dir}/packaging/VERSION")
+source "${repo_dir}/scripts/package-version.sh"
+plank_load_package_version "$repo_dir"
+package_version=$PLANK_PACKAGE_VERSION
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 ffmpeg_dir=$(realpath -m -- "${2:-${source_dir}/cmake-build-ffmpeg-x264rgb-install/ffmpeg}")
 build_jobs=${PLANK_BUILD_JOBS:-8}
