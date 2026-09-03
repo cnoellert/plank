@@ -5,11 +5,13 @@ set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 unit=${repo_dir}/packaging/systemd/plank-host.service
 pam_unit=${repo_dir}/packaging/systemd/plank-pam-broker.service
+display_unit=${repo_dir}/packaging/systemd/plank-display-prepare.service
 pam_policy=${repo_dir}/packaging/pam/plank-host
 host_wacom_rule=${repo_dir}/packaging/udev/70-plank-host-wacom.rules
 spec=${repo_dir}/packaging/rpm/plank-host.spec
 builder=${repo_dir}/scripts/build-host-rpm.sh
 firewalld_service=${repo_dir}/packaging/firewalld/plank.xml
+logrotate_policy=${repo_dir}/packaging/logrotate/plank-host
 
 rg -Fxq 'ExecStart=/usr/libexec/plank/plank-host-supervisor' "$unit"
 rg -Fxq 'WantedBy=multi-user.target' "$unit"
@@ -22,6 +24,10 @@ rg -Fxq 'CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE' "$unit"
 rg -Fxq 'ProtectHome=read-only' "$unit"
 rg -Fxq 'RuntimeDirectory=plank/host' "$unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$unit"
+rg -Fxq 'LogsDirectory=plank' "$unit"
+rg -Fxq 'LogsDirectoryMode=0700' "$unit"
+rg -Fxq 'StandardOutput=append:/var/log/plank/host-supervisor.log' "$unit"
+rg -Fxq 'StandardError=append:/var/log/plank/host-supervisor.log' "$unit"
 if rg -q '47990' "$firewalld_service"; then
   echo 'firewalld service still exposes the removed Web UI port' >&2
   exit 1
@@ -34,7 +40,15 @@ if rg -q '47984|47989|48010|47998|47999|48000' "$firewalld_service"; then
 fi
 rg -Fxq 'RuntimeDirectory=plank/pam' "$pam_unit"
 rg -Fxq 'RuntimeDirectoryMode=0700' "$pam_unit"
+rg -Fxq 'LogsDirectory=plank' "$pam_unit"
+rg -Fxq 'LogsDirectoryMode=0700' "$pam_unit"
+rg -Fxq 'StandardOutput=append:/var/log/plank/pam-broker.log' "$pam_unit"
+rg -Fxq 'StandardError=append:/var/log/plank/pam-broker.log' "$pam_unit"
 rg -Fxq 'ExecStart=/usr/libexec/plank/plank-pam-broker --socket /run/plank/pam/auth.sock --config /etc/plank/host.conf' "$pam_unit"
+rg -Fxq 'LogsDirectory=plank' "$display_unit"
+rg -Fxq 'LogsDirectoryMode=0700' "$display_unit"
+rg -Fxq 'StandardOutput=append:/var/log/plank/display-prepare.log' "$display_unit"
+rg -Fxq 'StandardError=append:/var/log/plank/display-prepare.log' "$display_unit"
 rg -Fq '/run/plank/pam/auth.sock' \
   "$repo_dir/packaging/bin/plank-host"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
@@ -88,6 +102,14 @@ rg -Fxq 'file_state = /var/lib/plank/plank-state.json' \
 rg -Fxq 'allow_root_login = false' \
   "$repo_dir/packaging/config/plank-host.conf"
 rg -Fxq '/etc/pam.d/plank-host' "$spec"
+rg -Fxq '%config(noreplace) /etc/logrotate.d/plank-host' "$spec"
+rg -Fxq 'Requires:       logrotate' "$spec"
+for helper_log in host-supervisor.log pam-broker.log display-prepare.log; do
+  rg -Fxq "/var/log/plank/${helper_log}" "$logrotate_policy"
+done
+rg -Fxq '    size 10M' "$logrotate_policy"
+rg -Fxq '    rotate 10' "$logrotate_policy"
+rg -Fxq '    copytruncate' "$logrotate_policy"
 test -f "$host_wacom_rule"
 test ! -e "$repo_dir/packaging/udev/70-plank-wacom.rules"
 rg -Fq '/usr/lib/udev/rules.d/70-plank-host-wacom.rules' "$spec"

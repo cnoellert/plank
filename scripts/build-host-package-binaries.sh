@@ -948,9 +948,9 @@ rg -Fxq \
 }
 echo "host_application_id_gate=pass"
 
-# Host runtime diagnostics are written privately to a bounded persistent file
-# while stdout remains attached to journald. systemd owns the writable log
-# directory; the single administrator configuration file owns the log path.
+# Host runtime diagnostics are written privately to a bounded persistent file.
+# Helper stdout/stderr uses separate product logs rather than journald. systemd
+# owns the writable directory; logrotate bounds the low-volume helper logs.
 rg -Fxq 'log_path = /var/log/plank/host.log' \
   "$repo_dir/packaging/config/plank-host.conf" || {
   echo "host persistent log path is not configured" >&2
@@ -975,6 +975,30 @@ for required_log_rotation_token in \
     exit 1
   }
 done
+for unit_log_pair in \
+  'plank-host.service:host-supervisor.log' \
+  'plank-pam-broker.service:pam-broker.log' \
+  'plank-display-prepare.service:display-prepare.log'; do
+  unit_name=${unit_log_pair%%:*}
+  log_name=${unit_log_pair#*:}
+  unit_path="$repo_dir/packaging/systemd/$unit_name"
+  rg -Fxq 'LogsDirectory=plank' "$unit_path"
+  rg -Fxq 'LogsDirectoryMode=0700' "$unit_path"
+  rg -Fxq "StandardOutput=append:/var/log/plank/${log_name}" "$unit_path"
+  rg -Fxq "StandardError=append:/var/log/plank/${log_name}" "$unit_path"
+done
+logrotate_policy="$repo_dir/packaging/logrotate/plank-host"
+for helper_log in host-supervisor.log pam-broker.log display-prepare.log; do
+  rg -Fxq "/var/log/plank/${helper_log}" "$logrotate_policy"
+done
+rg -Fxq '    size 10M' "$logrotate_policy"
+rg -Fxq '    rotate 10' "$logrotate_policy"
+rg -Fxq '    copytruncate' "$logrotate_policy"
+rg -B4 -A1 'add_stream(stream)' "$source_dir/src/logging.cpp" |
+  rg -Fq '!defined(__linux__)' || {
+  echo "host Linux runtime logs are still mirrored to stdout" >&2
+  exit 1
+}
 echo "host_persistent_logging_gate=pass"
 
 host_source_commit=$(git -C "$source_dir" rev-parse HEAD)

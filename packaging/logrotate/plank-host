@@ -1,0 +1,13 @@
+/var/log/plank/host-supervisor.log
+/var/log/plank/pam-broker.log
+/var/log/plank/display-prepare.log {
+    su root root
+    size 10M
+    rotate 10
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    create 0600 root root
+}

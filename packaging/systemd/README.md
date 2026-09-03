@@ -130,22 +130,24 @@ while `network.mdns_discovery` is omitted or commented in
 `[network]` section only to impose an administrator-managed value. Saved and
 manually entered workstations continue to connect when mDNS is disabled.
 
-The Linux client mirrors its already-redacted stderr/journal output to private,
+The Linux client writes its already-redacted runtime output to private,
 persistent per-user files under `$XDG_STATE_HOME/plank/logs/`, or
 `~/.local/state/plank/logs/` when `XDG_STATE_HOME` is unset or not an
 absolute path. The directory is mode `0700`; each timestamped
 `plank-client-*.log` is mode `0600`, capped at 10 MiB, and only the
-newest 10 files are retained. Continue using
-Use these files as the primary client diagnostic record; an explicitly launched
-process may also be visible in the desktop session's user journal.
+newest 10 files are retained. Use these files as the primary client diagnostic
+record. Only startup failures that prevent creation of the private log fall
+back to stderr and may appear in the desktop session's user journal.
 
-The host writes its streaming runtime diagnostics to
-`/var/log/plank/host.log` while continuing to mirror
-the same output to `journalctl -u plank-host.service`. systemd creates
+The host writes its streaming runtime diagnostics only to
+`/var/log/plank/host.log`. Supervisor, PAM-broker, and display-preparation
+output is retained separately as `host-supervisor.log`, `pam-broker.log`, and
+`display-prepare.log` in the same directory. systemd creates
 the root-only log directory with mode `0700`, and the service umask creates log
 files with mode `0600`. The active file rotates at 10 MiB and retains
-`plank-host.log.1` through `.10`. Supervisor messages that occur
-outside the media worker remain available in the service journal.
+`plank-host.log.1` through `.10`; logrotate applies the same size and retention
+limits to the three helper logs. The system journal retains service lifecycle
+state without duplicating routine PLANK application output.
 
 The PLANK host is built without Sunshine's browser configuration
 server, frontend assets, or legacy RTSP listener. There is no listener on the

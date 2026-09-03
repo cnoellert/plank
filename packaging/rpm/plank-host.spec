@@ -17,6 +17,7 @@ Requires:       firewalld-filesystem
 Requires:       openssl-libs
 Requires:       libXcomposite
 Requires:       libXext
+Requires:       logrotate
 Requires:       xorg-x11-server-Xorg
 Requires:       xorg-x11-server-utils
 Requires(post): systemd systemd-udev kmod
@@ -74,6 +75,7 @@ fi
 %doc /usr/share/doc/plank-host/README.md
 /etc/pam.d/plank-host
 %config(noreplace) /etc/plank/host.conf
+%config(noreplace) /etc/logrotate.d/plank-host
 %dir %attr(0755,root,root) /etc/plank
 %dir %attr(0700,root,root) /etc/plank/tls
 %ghost %config(noreplace) %attr(0644,root,root) /etc/plank/tls/cert.pem

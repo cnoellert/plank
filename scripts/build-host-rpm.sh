@@ -66,6 +66,8 @@ install -D -m 0644 "$repo_dir/packaging/pam/plank-host" \
   "$payload_dir/etc/pam.d/plank-host"
 install -D -m 0644 "$repo_dir/packaging/config/plank-host.conf" \
   "$payload_dir/etc/plank/host.conf"
+install -D -m 0644 "$repo_dir/packaging/logrotate/plank-host" \
+  "$payload_dir/etc/logrotate.d/plank-host"
 if rg -n '^\[video\]$|^[[:space:]]*(capture|encoder)[[:space:]]*=' \
   "$payload_dir/etc/plank/host.conf"; then
   echo "host RPM payload still contains global capture or encoder selectors" >&2
@@ -158,6 +160,8 @@ rpm -qpl "$rpm_file" | rg -q '/usr/libexec/plank/plank-display-prepare$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/plank-host\.service$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/plank-display-prepare\.service$'
 rpm -qpl "$rpm_file" | rg -q '/etc/plank/host\.conf$'
+rpm -qpl "$rpm_file" | rg -q '/etc/logrotate\.d/plank-host$'
+rpm -qpR "$rpm_file" | rg -qx 'logrotate'
 if rpm -qpl "$rpm_file" | rg -q '/etc/plank/plank\.conf$'; then
   echo "host RPM still contains the ambiguous generic configuration path" >&2
   exit 1

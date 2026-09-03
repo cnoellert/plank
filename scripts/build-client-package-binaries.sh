@@ -1528,8 +1528,8 @@ done
 echo "client_mdns_default_off_gate=pass"
 
 # Linux client diagnostics must survive a reboot and remain readable without
-# root access. Keep the same redacted output in both the user journal and a
-# private XDG state log, with bounded file size and retention.
+# root access. Keep the redacted output in a private XDG state log without
+# duplicating routine records into the user journal.
 for required_log_token in \
   XDG_STATE_HOME \
   '.local/state' \
@@ -1545,7 +1545,7 @@ for required_log_token in \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner' \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \
   's_LoggerFileStream << message' \
-  '#if defined(Q_OS_LINUX) || !defined(LOG_TO_FILE)' \
+  '#if !defined(LOG_TO_FILE)' \
   'Persistent client log:'; do
   rg -Fq "$required_log_token" "$source_dir/app/main.cpp" || {
     echo "client persistent log invariant is missing: ${required_log_token}" >&2
