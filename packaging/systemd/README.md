@@ -143,8 +143,9 @@ The host writes its streaming runtime diagnostics only to
 `/var/log/plank/host.log`. Supervisor, PAM-broker, and display-preparation
 output is retained separately as `host-supervisor.log`, `pam-broker.log`, and
 `display-prepare.log` in the same directory. systemd creates
-the root-only log directory with mode `0700`, and the service umask creates log
-files with mode `0600`. The active file rotates at 10 MiB and retains
+the root-only log directory with mode `0700`; the main runtime, supervisor, and
+PAM-broker logs are mode `0600`, while the display helper log remains private
+through that directory. The active file rotates at 10 MiB and retains
 `plank-host.log.1` through `.10`; logrotate applies the same size and retention
 limits to the three helper logs. The system journal retains service lifecycle
 state without duplicating routine PLANK application output.
