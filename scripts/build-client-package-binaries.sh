@@ -1546,6 +1546,7 @@ for required_log_token in \
   'QFileDevice::ReadOwner | QFileDevice::WriteOwner' \
   's_LoggerFileStream << message' \
   '#if !defined(LOG_TO_FILE)' \
+  'QDateTime::currentDateTime().toString(Qt::ISODateWithMs)' \
   'Persistent client log:'; do
   rg -Fq "$required_log_token" "$source_dir/app/main.cpp" || {
     echo "client persistent log invariant is missing: ${required_log_token}" >&2
@@ -1675,6 +1676,7 @@ if [[ -z $runtime_log ]] ||
    [[ $(stat -c '%a' "$log_runtime_dir") != 700 ]] ||
    [[ $(stat -c '%a' "$runtime_log") != 600 ]] ||
    ! rg -Fq 'Persistent client log:' "$runtime_log" ||
+   ! rg -q '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}(Z|[+-][0-9]{2}:[0-9]{2}) - ' "$runtime_log" ||
    rg -Fq 'Persistent client log:' <<<"$log_runtime_output"; then
   printf '%s\n' "$log_runtime_output" >&2
   echo "client persistent log path, permissions, content, or journal isolation is invalid" >&2
