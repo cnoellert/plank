@@ -1675,9 +1675,9 @@ if [[ -z $runtime_log ]] ||
    [[ $(stat -c '%a' "$log_runtime_dir") != 700 ]] ||
    [[ $(stat -c '%a' "$runtime_log") != 600 ]] ||
    ! rg -Fq 'Persistent client log:' "$runtime_log" ||
-   ! rg -Fq 'Persistent client log:' <<<"$log_runtime_output"; then
+   rg -Fq 'Persistent client log:' <<<"$log_runtime_output"; then
   printf '%s\n' "$log_runtime_output" >&2
-  echo "client persistent log path, permissions, content, or stderr mirror is invalid" >&2
+  echo "client persistent log path, permissions, content, or journal isolation is invalid" >&2
   exit 1
 fi
 rm -rf -- "$log_runtime_root"
