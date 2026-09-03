@@ -994,7 +994,7 @@ done
 rg -Fxq '    size 10M' "$logrotate_policy"
 rg -Fxq '    rotate 10' "$logrotate_policy"
 rg -Fxq '    copytruncate' "$logrotate_policy"
-rg -B5 -A1 'add_stream(stream)' "$source_dir/src/logging.cpp" |
+rg -F -B5 -A1 'add_stream(stream)' "$source_dir/src/logging.cpp" |
   rg -Fq '!defined(__linux__)' || {
   echo "host Linux runtime logs are still mirrored to stdout" >&2
   exit 1
