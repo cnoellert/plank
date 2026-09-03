@@ -6,15 +6,16 @@ repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source "${repo_dir}/scripts/package-version.sh"
 plank_load_package_version "$repo_dir"
 
-version=$PLANK_PACKAGE_VERSION
-test "$PLANK_RPM_VERSION" = "$version"
-test "$PLANK_RPM_RELEASE" = 1
-rg -Fxq "project(plank_qualification VERSION ${version} LANGUAGES C CXX)" \
-  "${repo_dir}/CMakeLists.txt"
-rg -Fxq "version = \"${version}\"" \
-  "${repo_dir}/protocol/plank-transport/Cargo.toml"
-rg -Fxq "__version__ = \"${version}\"" \
-  "${repo_dir}/plank-relay/plank_relay/__init__.py"
+base_version=$(<"${repo_dir}/packaging/VERSION")
+test "$PLANK_BASE_VERSION" = "$base_version"
+if test "$PLANK_BUILD_BRANCH_RESOLVED" = main; then
+  test "$PLANK_PACKAGE_VERSION" = "$base_version"
+  test "$PLANK_RPM_RELEASE" = 1
+else
+  test "$PLANK_PACKAGE_VERSION" = "${base_version}-${PLANK_BUILD_BRANCH_RESOLVED}"
+  test "$PLANK_RPM_RELEASE" = "0.${PLANK_BUILD_BRANCH_RESOLVED//-/_}.1"
+fi
+test "$PLANK_RPM_VERSION" = "$base_version"
 rg -Fxq 'Version: @VERSION@' \
   "${repo_dir}/plank-relay/packaging/control"
 rg -Fxq '%{!?plank_version:%{error:plank_version must be defined by the package builder}}' \

@@ -15,14 +15,33 @@ plank_load_package_version() {
     return 1
   }
 
-  PLANK_PACKAGE_VERSION=$(<"$version_file")
-  [[ $PLANK_PACKAGE_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-    echo "invalid shared package version: ${PLANK_PACKAGE_VERSION}" >&2
+  PLANK_BASE_VERSION=$(<"$version_file")
+  [[ $PLANK_BASE_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+    echo "invalid shared package version: ${PLANK_BASE_VERSION}" >&2
     return 1
   }
 
-  # RPM requires a Release even though it is not part of PLANK's displayed
-  # product version. A new PLANK SemVer always starts at packaging release 1.
-  PLANK_RPM_VERSION=$PLANK_PACKAGE_VERSION
+  local build_branch=${PLANK_BUILD_BRANCH:-}
+  if [[ -z $build_branch ]]; then
+    build_branch=$(git -C "$repository_root" symbolic-ref --quiet --short HEAD) || {
+      echo "detached build requires PLANK_BUILD_BRANCH=main or the feature branch name" >&2
+      return 1
+    }
+  fi
+  build_branch=${build_branch#refs/heads/}
+  [[ $build_branch =~ ^[a-z0-9][a-z0-9-]*$ ]] || {
+    echo "invalid PLANK build branch qualifier: ${build_branch}" >&2
+    return 1
+  }
+
+  PLANK_BUILD_BRANCH_RESOLVED=$build_branch
+  PLANK_PACKAGE_VERSION=$PLANK_BASE_VERSION
+  PLANK_RPM_VERSION=$PLANK_BASE_VERSION
   PLANK_RPM_RELEASE=1
+  if [[ $build_branch != main ]]; then
+    PLANK_PACKAGE_VERSION="${PLANK_BASE_VERSION}-${build_branch}"
+    # Feature candidates must compare older than the final main RPM for the
+    # same base SemVer. RPM Release values cannot contain hyphens.
+    PLANK_RPM_RELEASE="0.${build_branch//-/_}.1"
+  fi
 }
