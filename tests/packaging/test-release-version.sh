@@ -18,6 +18,8 @@ fi
 test "$PLANK_RPM_VERSION" = "$base_version"
 rg -Fxq 'Version: @VERSION@' \
   "${repo_dir}/plank-relay/packaging/control"
+rg -Fxq 'Version: @VERSION@' \
+  "${repo_dir}/plank-wake-agent/packaging/control"
 rg -Fxq '%{!?plank_version:%{error:plank_version must be defined by the package builder}}' \
   "${repo_dir}/packaging/rpm/plank-host.spec"
 rg -Fxq '%{!?plank_release:%{error:plank_release must be defined by the package builder}}' \
