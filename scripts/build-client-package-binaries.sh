@@ -1412,16 +1412,35 @@ if rg -n 'DetailsRole|showPcDetailsDialog|View Details|Running Game ID|MAC Addre
 fi
 echo "client_workstation_details_absence_gate=pass"
 
-# PLANK workstations are expected to be available through their
-# approved network path. Do not retain Moonlight's Wake-on-LAN UI, MAC-address
-# persistence, CLI auto-wake, or magic-packet transport.
-if rg -n 'Wake PC|WakeableRole|wakeComputer|macAddress|SER_MAC|wolPayload|STATIC_WOL_PORTS|DYNAMIC_WOL_PORTS|computer->wake\(\)' \
+# Wake PC is a narrow request to PLANK Relay. The Client must not regain the
+# inherited local MAC persistence, magic-packet generation, port fan-out, or
+# automatic wake behavior.
+if rg -n 'WakeableRole|wakeComputer|macAddress|SER_MAC|wolPayload|STATIC_WOL_PORTS|DYNAMIC_WOL_PORTS|computer->wake\(\)' \
   "$source_dir/app" \
   --glob '!**/languages/**'; then
-  echo "Wake-on-LAN support is present in PLANK client" >&2
+  echo "legacy local Wake-on-LAN support is present in PLANK client" >&2
   exit 1
 fi
-echo "client_wake_on_lan_absence_gate=pass"
+echo "client_legacy_wake_on_lan_absence_gate=pass"
+for required_relay_wake_token in \
+  'Wake PC' \
+  requestRelayWake \
+  relayWakePort \
+  'connectToHost(m_Address, m_Port)' \
+  'manualBookmark &&' \
+  'relay_wake_port'; do
+  rg -Fq "$required_relay_wake_token" \
+    "$source_dir/app" "$repo_dir/packaging/config/plank-client.conf" || {
+    echo "relay-mediated Wake PC invariant is missing: ${required_relay_wake_token}" >&2
+    exit 1
+  }
+done
+if rg -n 'QUdpSocket|writeDatagram|QNetworkDatagram' \
+  "$source_dir/app/backend/relaywakeclient."{cpp,h}; then
+  echo "Client must not transmit Wake-on-LAN datagrams itself" >&2
+  exit 1
+fi
+echo "client_relay_wake_gate=pass"
 
 # Native KyProto owns media packetization. Keep the retired GameStream packet
 # size preference and its misleading UI out of the Client.
@@ -1495,12 +1514,25 @@ rg -Fxq 'port = 28989' "$client_policy" || {
   echo "client administrator policy does not define the product network port" >&2
   exit 1
 }
+rg -Fxq 'relay_wake_port = 28988' "$client_policy" || {
+  echo "client administrator policy does not define the Relay wake port" >&2
+  exit 1
+}
 for required_port_token in \
   'network/port' \
   'policy.networkPort()' \
   'PlankClientPolicy().networkPort()'; do
   rg -Fq "$required_port_token" "$source_dir/app" || {
     echo "client configured network-port path is missing: ${required_port_token}" >&2
+    exit 1
+  }
+done
+for required_wake_port_token in \
+  'network/relay_wake_port' \
+  'relayWakePort()' \
+  'PlankClientPolicy().relayWakePort()'; do
+  rg -Fq "$required_wake_port_token" "$source_dir/app" || {
+    echo "client configured Relay wake-port path is missing: ${required_wake_port_token}" >&2
     exit 1
   }
 done
@@ -1519,7 +1551,9 @@ if rg -q '^[[:space:]]*mdns_discovery[[:space:]]*=' "$client_policy"; then
 fi
 for policy_test_file in \
   tests/plankclientpolicy/plankclientpolicy.pro \
-  tests/plankclientpolicy/test_plankclientpolicy.cpp; do
+  tests/plankclientpolicy/test_plankclientpolicy.cpp \
+  tests/relaywakeclient/relaywakeclient.pro \
+  tests/relaywakeclient/test_relaywakeclient.cpp; do
   [[ -f ${source_dir}/${policy_test_file} ]] || {
     echo "client administrator policy test is missing: ${policy_test_file}" >&2
     exit 1
@@ -1570,6 +1604,22 @@ QT_QPA_PLATFORM=offscreen "$policy_test_build/plankclientpolicy"
 cleanup_policy_test
 trap - EXIT
 echo "client_administrator_policy_test=pass"
+
+wake_test_build=$(mktemp -d --tmpdir plank-client-relay-wake-test.XXXXXX)
+cleanup_wake_test() {
+  if [[ -d ${wake_test_build} ]]; then
+    find "$wake_test_build" -xdev -depth -mindepth 1 -delete
+    rmdir "$wake_test_build"
+  fi
+}
+trap cleanup_wake_test EXIT
+qmake6 "$source_dir/tests/relaywakeclient/relaywakeclient.pro" \
+  -o "$wake_test_build/Makefile"
+make -C "$wake_test_build" -j"$(nproc)"
+QT_QPA_PLATFORM=offscreen "$wake_test_build/relaywakeclient"
+cleanup_wake_test
+trap - EXIT
+echo "client_relay_wake_test=pass"
 
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
