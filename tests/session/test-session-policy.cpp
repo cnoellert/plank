@@ -32,6 +32,28 @@ namespace {
 }  // namespace
 
 int main() {
+  const auto attached = valid_session();
+  auto active = attached;
+  if (session::desktop_stage(attached, active) != "user") return 20;
+  active.session_class = "greeter";
+  if (session::desktop_stage(active, active) != "greeter" ||
+      session::desktop_stage(attached, active) != "unknown") return 21;
+  active = attached;
+  active.id = "replacement";
+  if (session::desktop_stage(attached, active) != "unknown") return 22;
+  active = attached;
+  active.uid++;
+  if (session::desktop_stage(attached, active) != "unknown") return 23;
+  active = attached;
+  active.state = "closing";
+  if (session::desktop_stage(attached, active) != "unknown") return 24;
+  active = attached;
+  active.active = false;
+  if (session::desktop_stage(attached, active) != "unknown") return 25;
+  active = attached;
+  active.remote = true;
+  if (session::desktop_stage(attached, active) != "unknown") return 26;
+  if (session::confirmed_desktop_stage() != "unknown") return 27;
   auto descriptor = valid_session();
   if (!session::eligible_graphical_session(descriptor)) {
     std::cerr << "active local seat0 X11 user was rejected\n";

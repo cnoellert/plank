@@ -1621,6 +1621,21 @@ cleanup_wake_test
 trap - EXIT
 echo "client_relay_wake_test=pass"
 
+stage_test_build=$(mktemp -d --tmpdir plank-client-desktop-stage-test.XXXXXX)
+cleanup_stage_test() {
+  if [[ -d ${stage_test_build} ]]; then
+    find "$stage_test_build" -xdev -depth -mindepth 1 -delete
+    rmdir "$stage_test_build"
+  fi
+}
+trap cleanup_stage_test EXIT
+qmake6 "$source_dir/tests/desktopstage/desktopstage.pro" -o "$stage_test_build/Makefile"
+make -C "$stage_test_build" -j"$(nproc)"
+QT_QPA_PLATFORM=offscreen "$stage_test_build/desktopstage"
+cleanup_stage_test
+trap - EXIT
+echo "client_authenticated_desktop_stage_test=pass"
+
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 [[ $(pkg-config --modversion libavcodec) == 63.* ]] || {

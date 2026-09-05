@@ -31,6 +31,7 @@ The host returns `schema_version: 13` and a numeric `feature_flags` field from
 - `0x4000` — one fixed complete QUIC UDP payload ceiling for both endpoints
 - `0x8000` — authenticated transfer of the one active PLANK session between clients
 - `0x10000` — explicit GDM-to-user desktop handoff notice on the native control channel
+- `0x20000` — authenticated desktop stage for reconnect progress
 
 ### Expected desktop handoff status
 
@@ -53,6 +54,26 @@ is taking longer to respond...` and the existing Wait/Disconnect policy applies.
 Success clears the notice and restores the normal status color. An abrupt X
 failure can prevent delivery; it must fall back to ordinary reconnect, never
 guess from the previous screen or suppress a real timeout.
+
+With `0x20000`, a successful PAM HTTPS response additionally includes
+`desktop_stage`: `greeter`, `user`, or `unknown`. It is never included in a
+challenge or denied response, nor in public discovery. The worker reports a
+concrete stage only when its supervisor-attested session ID, UID and class
+match the currently active eligible local seat0 X11 session. A closing,
+missing, replaced or unmatched session reports `unknown`.
+
+Logout can destroy the desktop X server before its worker sends any final
+packet. During reconnect, a successful reauthentication reporting `greeter`
+therefore changes the Client status to neutral `Returning to the sign-in
+screen...` while topology, launch and transport are restored. Until that
+confirmation, ordinary interruption status remains; neither a network outage
+nor a lost X server is assumed to mean logout. A greeter-to-greeter recovery
+may use the same wording. The notice is UI-only, carries no user/session
+identity, grants no access, and does not change any PAM, desktop-ownership,
+shutdown or launch checks. Rendering updates stay on the SDL event thread.
+The existing timeout always takes precedence, even if reauthentication finishes
+late; completion clears the pending status. No Xlib fatal-handler work, extra
+worker, polling loop or fixed delay is introduced.
 
 The client sends `plankProtocolVersion=13`, `plankFeatureFlags`, `plankDisplayMode`,
 `plankHostLayout`, `plankVirtualMode1`, and `plankVirtualMode2` on `/launch`. A client negotiating `0x10`
