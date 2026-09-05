@@ -67,14 +67,15 @@ Logout can destroy the desktop X server before its worker sends any final
 packet. During reconnect, a successful reauthentication reporting `greeter`
 therefore changes the Client status to neutral `Returning to the sign-in
 screen...` while topology, launch and transport are restored. Until that
-confirmation, ordinary interruption status remains; neither a network outage
+confirmation, neutral `Waiting for workstation...` status remains; neither a network outage
 nor a lost X server is assumed to mean logout. A greeter-to-greeter recovery
 may use the same wording. The notice is UI-only, carries no user/session
 identity, grants no access, and does not change any PAM, desktop-ownership,
 shutdown or launch checks. Rendering updates stay on the SDL event thread.
 The existing timeout always takes precedence, even if reauthentication finishes
-late; completion clears the pending status. No Xlib fatal-handler work, extra
-worker, polling loop or fixed delay is introduced.
+late; completion clears the pending status. Stage reporting itself introduces
+no Xlib fatal-handler work or fixed delay; the bounded replacement probe below
+is separate from authenticated stage reporting.
 
 Reconnect status must not depend on decoded video frames. The Client pauses
 decoding and empties its frame queue during reconnect, so video-overlay text
