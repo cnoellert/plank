@@ -122,8 +122,14 @@ NVIDIA encoding remains active. A bounded live stack snapshot confirms NVIDIA
 exit cleanup waiting on a driver thread while the video thread blocks inside
 the driver. The existing shutdown watchdog eventually terminates the worker;
 the supervisor recovers. This is not a PAM delegation wait. See `HANDOFF.md`
-for the precise evidence and proposed failed-worker retirement boundary.
-The shutdown repair, takeover and full hardware matrix remain pending.
+for the precise evidence. Candidate 1.0.27 installs a fatal Xlib I/O handler
+that retires only the failed worker via `_Exit(74)`, bypassing driver exit
+handlers. Live logout confirmed prompt worker replacement and PAM closure,
+without the ten-second watchdog or a new core. It exposed false malformed
+request logging on control-socket EOF; candidate 1.0.28 retires that descriptor
+without skipping worker reaping or display-lease recovery. Its standalone
+socket regression passes; live validation remains pending. Takeover and the
+full hardware matrix also remain pending.
 This is not completion of the overall privilege drop.
 
 - Real/effective/saved/filesystem media UID/GID are non-root; capabilities and

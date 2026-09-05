@@ -310,6 +310,12 @@ if(BUILD_TESTING)
   target_link_libraries(pam-broker-channel-test PRIVATE Threads::Threads)
   add_test(NAME pam-broker-channel COMMAND pam-broker-channel-test)
 
+  add_executable(worker-control-test tests/session/test-worker-control.cpp)
+  target_compile_features(worker-control-test PRIVATE cxx_std_20)
+  target_compile_options(worker-control-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(worker-control-test PRIVATE host/sunshine-fork/src)
+  add_test(NAME worker-control COMMAND worker-control-test)
+
   if(X11_FOUND)
     add_executable(x11-worker-exit-test tests/session/test-x11-worker-exit.cpp)
     target_compile_features(x11-worker-exit-test PRIVATE cxx_std_20)

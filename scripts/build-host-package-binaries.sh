@@ -484,6 +484,14 @@ rg -Fq 'SetIOErrorHandler(retire_failed_x11_worker)' "$source_dir/src/platform/l
 "$build_dir/plank-security-tests/x11-worker-exit-test"
 echo "host_x11_worker_exit_gate=pass"
 
+rg -Fq 'plank::session::receive_worker_control(' "$source_dir/src/session/host_supervisor.cpp"
+/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
+  -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+  -I"$source_dir/src" "$repo_dir/tests/session/test-worker-control.cpp" \
+  -o "$build_dir/plank-security-tests/worker-control-test"
+"$build_dir/plank-security-tests/worker-control-test"
+echo "host_worker_control_eof_gate=pass"
+
 host_wacom_rule="${repo_dir}/packaging/udev/70-plank-host-wacom.rules"
 [[ -f $host_wacom_rule &&
    ! -e ${repo_dir}/packaging/udev/70-plank-wacom.rules ]] || {
