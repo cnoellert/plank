@@ -12,13 +12,18 @@ boundaries. This is not a switch back to per-desktop-user machine identities.
 Do not change the working capture, encoding, transport, cursor, or Wacom
 algorithms as part of this effort. Do not deploy a partial identity conversion.
 
-On 2026-09-04, read-only inspection of the qualified Host confirmed:
+On 2026-09-04, read-only inspection of the shared hardware-test Host confirmed:
 
 - Supervisor: UID/GID 0, effective/permitted/bounding capability mask `0x80004`
   (`DAC_READ_SEARCH`, `SYS_PTRACE`), no ambient/inheritable capabilities.
 - Media worker: UID/GID 0, effective/permitted `0x4` (`DAC_READ_SEARCH`),
   bounding `0x80004`, no ambient/inheritable capabilities.
 - Both inherit `NoNewPrivileges=1`.
+
+That Host was subsequently identified as running PLANK2 `2.0.0-dev.11`, not
+the current PLANK 1.x RPM. Treat the runtime observation as a reference, not
+exact-package validation. The current PLANK 1.x source has the same explicit
+worker capability reduction.
 
 The worker does not have all capabilities, but its root identity and arbitrary
 file-read capability remain meaningful exposure. No compromise was observed.
@@ -100,6 +105,13 @@ modified, and no trace was attached.
    UIDs/capability sets and negative access tests before functional acceptance.
 
 ## Acceptance gates
+
+Stage 1 source and clean Host package `1.0.26-host-privilege-separation` pass
+the standalone descriptor protocol tests and package gates. A synthetic
+root-to-`nobody` descriptor transfer also passed on the hardware target without
+touching real PAM credentials or its running services. Live installation and
+login testing await an available PLANK 1.x Host: do not overwrite the active
+PLANK2 installation. This is not completion of the overall privilege drop.
 
 - Real/effective/saved/filesystem media UID/GID are non-root; capabilities and
   supplementary groups match the minimal documented policy after actual exec.
