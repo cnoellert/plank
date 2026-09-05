@@ -310,6 +310,15 @@ if(BUILD_TESTING)
   target_link_libraries(pam-broker-channel-test PRIVATE Threads::Threads)
   add_test(NAME pam-broker-channel COMMAND pam-broker-channel-test)
 
+  if(X11_FOUND)
+    add_executable(x11-worker-exit-test tests/session/test-x11-worker-exit.cpp)
+    target_compile_features(x11-worker-exit-test PRIVATE cxx_std_20)
+    target_compile_options(x11-worker-exit-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_include_directories(x11-worker-exit-test PRIVATE host/sunshine-fork/src ${X11_INCLUDE_DIR})
+    target_link_libraries(x11-worker-exit-test PRIVATE Threads::Threads ${X11_LIBRARIES})
+    add_test(NAME x11-worker-exit COMMAND x11-worker-exit-test)
+  endif()
+
   add_executable(video-packet-loss-window-test
     tests/protocol/video-packet-loss-window.cpp)
   target_compile_features(video-packet-loss-window-test PRIVATE cxx_std_17)

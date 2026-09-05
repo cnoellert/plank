@@ -10,8 +10,16 @@ runs PAM modules, or stores a password. A root-owned
 `/run/plank/pam/auth.sock`. The socket and its parent directory are
 owned by root and use modes `0600` and `0700`, respectively.
 
-The broker accepts only local `AF_UNIX` peers, records their kernel-supplied
-UID, and reads `security.allow_root_login` from the root-owned host config.
+The root supervisor connects to the fixed broker endpoint and delegates the
+connected descriptor to its media worker through a private inherited
+`SOCK_SEQPACKET` channel. The worker never opens the broker path directly;
+there is no direct-connect fallback. Credentials flow between the worker and
+broker over the delegated connection, not through the supervisor. The broker
+accepts only root `AF_UNIX` connecting peers and validates their kernel-supplied
+credentials before forking a conversation handler. That connecting UID is the
+supervisor's, not the authenticated desktop user's.
+
+The broker reads `security.allow_root_login` from the root-owned host config.
 Root is denied when the option is absent or false. Enabling it still requires
 the host's PAM, authselect, and SSSD policy, including FreeIPA HBAC, and does
 not bypass active-desktop ownership. PLANK has no application-specific user allowlist. Prompt responses

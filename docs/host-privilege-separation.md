@@ -32,7 +32,7 @@ file-read capability remain meaningful exposure. No compromise was observed.
 
 | Resource | Current dependency | Intended boundary / qualification |
 | --- | --- | --- |
-| PAM | Worker opens root-only broker socket | Supervisor connects only the fixed broker endpoint and passes that connected descriptor; credentials flow directly to PAM, not through the supervisor. |
+| PAM | Stage 1: supervisor delegates a connected root-only broker socket | Credentials flow directly to PAM, not through the supervisor. Keep this boundary during the media identity change. |
 | Session/display | Root supervisor inspects logind and session processes, applies validated layouts | Retain inherited private channel, independently validate active seat/generation/owner; no arbitrary command or path requests. |
 | X11 | Worker reads selected user's Xauthority | Supervisor stages only the validated session's credential; never relax home or runtime-directory permissions. |
 | Native 10-bit SHM | Worker assigns SysV SHM ownership to X server's account | Qualify X11 FD-based SHM sharing before dropping UID; do not use world-accessible SHM or silently fall back to 8-bit capture. |
@@ -109,9 +109,22 @@ modified, and no trace was attached.
 Stage 1 source and clean Host package `1.0.26-host-privilege-separation` pass
 the standalone descriptor protocol tests and package gates. A synthetic
 root-to-`nobody` descriptor transfer also passed on the hardware target without
-touching real PAM credentials or its running services. Live installation and
-login testing await an available PLANK 1.x Host: do not overwrite the active
-PLANK2 installation. This is not completion of the overall privilege drop.
+touching real PAM credentials or its running services. The exact RPM is now
+installed on the user-authorized alternative Host security-test-host, not the active PLANK2
+Host hardware-test-host. Installed hashes, private permissions and configuration preservation
+pass. Startup exercised real broker delegation, and four credential-free root
+login requests were denied through HTTPS/PAM. Repeated requests retained the
+same worker/supervisor descriptor counts and both services have zero restarts.
+The user subsequently reported normal operation; logs confirm four successful
+PAM authentications and corresponding closures, desktop transition and reconnect.
+Logout exposed Xlib fatal I/O calling `exit()` from the cursor thread while
+NVIDIA encoding remains active. A bounded live stack snapshot confirms NVIDIA
+exit cleanup waiting on a driver thread while the video thread blocks inside
+the driver. The existing shutdown watchdog eventually terminates the worker;
+the supervisor recovers. This is not a PAM delegation wait. See `HANDOFF.md`
+for the precise evidence and proposed failed-worker retirement boundary.
+The shutdown repair, takeover and full hardware matrix remain pending.
+This is not completion of the overall privilege drop.
 
 - Real/effective/saved/filesystem media UID/GID are non-root; capabilities and
   supplementary groups match the minimal documented policy after actual exec.

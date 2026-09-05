@@ -474,6 +474,16 @@ mkdir -p "$build_dir/plank-security-tests"
 "$build_dir/plank-security-tests/pam-broker-channel-test"
 echo "host_pam_delegation_protocol_gate=pass"
 
+# A fatal X-server disconnect must not run NVIDIA atexit handlers from the
+# cursor/capture thread while the encoder is still alive.
+rg -Fq 'SetIOErrorHandler(retire_failed_x11_worker)' "$source_dir/src/platform/linux/x11grab.cpp"
+/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
+  -std=c++20 -Wall -Wextra -Wpedantic -Werror -pthread \
+  -I"$source_dir/src" "$repo_dir/tests/session/test-x11-worker-exit.cpp" \
+  -lX11 -o "$build_dir/plank-security-tests/x11-worker-exit-test"
+"$build_dir/plank-security-tests/x11-worker-exit-test"
+echo "host_x11_worker_exit_gate=pass"
+
 host_wacom_rule="${repo_dir}/packaging/udev/70-plank-host-wacom.rules"
 [[ -f $host_wacom_rule &&
    ! -e ${repo_dir}/packaging/udev/70-plank-wacom.rules ]] || {
