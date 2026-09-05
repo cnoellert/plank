@@ -253,6 +253,10 @@ target_compile_options(plank-wacom-raw-bridge PRIVATE
   -Wall -Wextra -Wpedantic -Werror)
 
 if(BUILD_TESTING)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_test(NAME encoder-probe-order
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-encoder-probe-order.py)
   set(PLANK_CLIENT_COMMON_INCLUDE
     "${CMAKE_CURRENT_SOURCE_DIR}/client/moonlight-qt-fork/moonlight-common-c/moonlight-common-c/src")
   set(PLANK_CLIENT_SOURCE

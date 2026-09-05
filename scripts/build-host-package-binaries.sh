@@ -492,6 +492,9 @@ rg -Fq 'plank::session::receive_worker_control(' "$source_dir/src/session/host_s
 "$build_dir/plank-security-tests/worker-control-test"
 echo "host_worker_control_eof_gate=pass"
 
+python3 "$repo_dir/tests/packaging/test-encoder-probe-order.py" "$source_dir/src/video.cpp"
+echo "host_encoder_probe_order_gate=pass"
+
 host_wacom_rule="${repo_dir}/packaging/udev/70-plank-host-wacom.rules"
 [[ -f $host_wacom_rule &&
    ! -e ${repo_dir}/packaging/udev/70-plank-wacom.rules ]] || {
