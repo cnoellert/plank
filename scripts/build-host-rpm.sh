@@ -101,6 +101,9 @@ fi
 echo "host_rpm_x264_config_section_gate=pass"
 install -d -m 0700 "$payload_dir/etc/plank/tls"
 install -d -m 0750 "$payload_dir/var/lib/plank"
+# systemd 252 opens append: output before creating LogsDirectory=. The RPM
+# must provide this parent directory before the first service invocation.
+install -d -m 0700 "$payload_dir/var/log/plank"
 install -D -m 0644 "$repo_dir/packaging/udev/70-plank-host-wacom.rules" \
   "$payload_dir/usr/lib/udev/rules.d/70-plank-host-wacom.rules"
 install -D -m 0644 "$repo_dir/packaging/modules-load.d/plank.conf" \
@@ -161,6 +164,12 @@ rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/plank-host\.service$'
 rpm -qpl "$rpm_file" | rg -q '/usr/lib/systemd/system/plank-display-prepare\.service$'
 rpm -qpl "$rpm_file" | rg -q '/etc/plank/host\.conf$'
 rpm -qpl "$rpm_file" | rg -q '/etc/logrotate\.d/plank-host$'
+rpm -qp --qf '[%{FILENAMES} %{FILEMODES:perms} %{FILEUSERNAME} %{FILEGROUPNAME}\n]' \
+  "$rpm_file" | rg -Fxq '/var/log/plank drwx------ root root' || {
+  echo "host RPM must own /var/log/plank as a root:root mode 0700 directory" >&2
+  exit 1
+}
+echo "host_rpm_log_directory_gate=pass"
 rpm -qpR "$rpm_file" | rg -qx 'logrotate'
 if rpm -qpl "$rpm_file" | rg -q '/etc/plank/plank\.conf$'; then
   echo "host RPM still contains the ambiguous generic configuration path" >&2

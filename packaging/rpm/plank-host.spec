@@ -81,6 +81,7 @@ fi
 %ghost %config(noreplace) %attr(0644,root,root) /etc/plank/tls/cert.pem
 %ghost %config(noreplace) %attr(0600,root,root) /etc/plank/tls/key.pem
 %dir %attr(0750,root,root) /var/lib/plank
+%dir %attr(0700,root,root) /var/log/plank
 %ghost %attr(0600,root,root) /var/lib/plank/plank-state.json
 /usr/bin/plank-host
 /usr/libexec/plank/plank-host

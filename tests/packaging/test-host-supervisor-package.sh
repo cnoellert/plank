@@ -104,6 +104,9 @@ rg -Fxq 'allow_root_login = false' \
 rg -Fxq '/etc/pam.d/plank-host' "$spec"
 rg -Fxq '%config(noreplace) /etc/logrotate.d/plank-host' "$spec"
 rg -Fxq 'Requires:       logrotate' "$spec"
+rg -Fxq '%dir %attr(0700,root,root) /var/log/plank' "$spec"
+rg -Fq 'install -d -m 0700 "$payload_dir/var/log/plank"' "$builder"
+rg -Fq 'host_rpm_log_directory_gate=pass' "$builder"
 for helper_log in host-supervisor.log pam-broker.log display-prepare.log; do
   rg -Fq "/var/log/plank/${helper_log}" "$logrotate_policy"
 done

@@ -142,8 +142,10 @@ back to stderr and may appear in the desktop session's user journal.
 The host writes its streaming runtime diagnostics only to
 `/var/log/plank/host.log`. Supervisor, PAM-broker, and display-preparation
 output is retained separately as `host-supervisor.log`, `pam-broker.log`, and
-`display-prepare.log` in the same directory. systemd creates
-the root-only log directory with mode `0700`; the main runtime, supervisor, and
+`display-prepare.log` in the same directory. The RPM creates and owns
+the root-only log directory with mode `0700` before services start. On systemd
+252, `append:` output is opened before `LogsDirectory=` is processed, so the
+directory must already exist on a fresh installation. The main runtime, supervisor, and
 PAM-broker logs are mode `0600`, while the display helper log remains private
 through that directory. The active file rotates at 10 MiB and retains
 `plank-host.log.1` through `.10`; logrotate applies the same size and retention
