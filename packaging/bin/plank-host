@@ -3,7 +3,6 @@
 set -euo pipefail
 
 host_binary=${PLANK_HOST_BINARY:-/usr/libexec/plank/plank-host}
-auth_socket=${PLANK_AUTH_SOCKET:-/run/plank/pam/auth.sock}
 
 if [[ ! -x "${host_binary}" ]]; then
   echo "PLANK host binary is not executable: ${host_binary}" >&2
@@ -13,8 +12,8 @@ if [[ -z "${DISPLAY:-}" || -z "${XAUTHORITY:-}" ]]; then
   echo 'PLANK host requires DISPLAY and XAUTHORITY from a graphical session' >&2
   exit 1
 fi
-if [[ ! -r "${auth_socket}" || ! -w "${auth_socket}" ]]; then
-  echo "PLANK PAM broker socket is unavailable: ${auth_socket}" >&2
+if [[ ! ${PLANK_PAM_CHANNEL_FD:-} =~ ^[0-9]+$ ]]; then
+  echo 'PLANK host requires the private supervisor PAM channel' >&2
   exit 1
 fi
 

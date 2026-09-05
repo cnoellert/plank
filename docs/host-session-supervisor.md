@@ -85,6 +85,15 @@ password, inject GDM keystrokes, enable autologin, restart Xorg, or attach to a
 desktop owned by another user. The client may briefly show its reconnect overlay
 while logind and Xorg publish the replacement desktop.
 
+PAM connections are now opened only by the supervisor at the fixed root-only
+broker path. A separate inherited `SOCK_SEQPACKET` channel accepts only a
+single-byte connection request and returns one connected broker descriptor
+using `SCM_RIGHTS`. The worker checks the root supervisor peer and the root
+broker peer, and receives descriptors close-on-exec. It sends credentials
+directly through that socket; the supervisor never parses PAM messages. A
+normal refusal leaves the channel usable; malformed, truncated, timed-out or
+unexpected-descriptor exchanges fail closed. No socket permission is widened.
+
 The Sunshine Sender still combines network, capture, media, and input functions
 and therefore runs privileged. PAM remains a separate minimal broker. Root
 remote login is denied by default and may be enabled only through the

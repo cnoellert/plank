@@ -49,7 +49,7 @@ rg -Fxq 'LogsDirectory=plank' "$display_unit"
 rg -Fxq 'LogsDirectoryMode=0700' "$display_unit"
 rg -Fxq 'StandardOutput=append:/var/log/plank/display-prepare.log' "$display_unit"
 rg -Fxq 'StandardError=append:/var/log/plank/display-prepare.log' "$display_unit"
-rg -Fq '/run/plank/pam/auth.sock' \
+rg -Fq 'PLANK_PAM_CHANNEL_FD' \
   "$repo_dir/packaging/bin/plank-host"
 rg -Fxq 'account    include      system-auth' "$pam_policy"
 rg -Fxq 'auth       substack     system-auth' "$pam_policy"
@@ -290,7 +290,6 @@ if rg -n -i 'miniupnp|upnp' \
   "$repo_dir/host/sunshine-fork/scripts" \
   "$repo_dir/host/sunshine-fork/packaging" \
   "$repo_dir/host/sunshine-fork/docs" \
-  "$repo_dir/host/sunshine-fork/.github" \
   "$repo_dir/host/sunshine-fork/docker" \
   "$repo_dir/packaging" \
   --glob '!**/third-party/**'; then
@@ -378,7 +377,17 @@ fi
 rg -Fq 'PLANK PAM broker is unavailable; refusing to start session negotiation' \
   "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
 rg -Fq '/run/plank/pam/auth.sock' \
-  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp"
+  "$repo_dir/host/sunshine-fork/src/auth/pam_broker_channel.h"
+rg -Fq 'broker_channel::request_connection()' \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp" \
+  "$repo_dir/host/sunshine-fork/src/auth/pam_client.cpp"
+if rg -q 'connect_broker|auth.sock|PLANK_AUTH_SOCKET' \
+  "$repo_dir/host/sunshine-fork/src/auth/pam_client.cpp" \
+  "$repo_dir/host/sunshine-fork/src/nvhttp.cpp" \
+  "$repo_dir/packaging/bin/plank-host"; then
+  echo 'media worker still opens a privileged PAM filesystem socket' >&2
+  exit 1
+fi
 
 client_session="$repo_dir/client/moonlight-qt-fork/app/streaming/session.cpp"
 client_http="$repo_dir/client/moonlight-qt-fork/app/backend/nvhttp.cpp"

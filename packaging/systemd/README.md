@@ -19,7 +19,10 @@ FreeIPA deployments use the exact PAM service identifier
 then require no PLANK host or client update. Local service accounts
 must retain locked passwords because IPA HBAC does not govern local identities.
 
-The root media worker is the broker's only local client. The broker runtime
+The root supervisor is the broker's only local connector. It delegates a
+connected socket to the media worker through a private inherited channel;
+passwords and PAM responses flow directly to the broker, never through the
+supervisor. The broker runtime
 directory and socket are therefore `root:root` mode `0700` and `0600` instead
 of being exposed through a supplementary group. After package installation,
 run:
@@ -29,8 +32,9 @@ systemctl enable --now plank-pam-broker.service
 systemctl status plank-pam-broker.service
 ```
 
-Sunshine activates PLANK authentication only when it can read and
-write `/run/plank/pam/auth.sock`. The broker forks one bounded worker for
+The media worker activates PLANK authentication only after a successful
+delegated broker-connection probe. Missing, malformed or untrusted channels
+fail closed; there is no direct filesystem-socket fallback. The broker forks one bounded worker for
 each PAM conversation so the worker, rather than the persistent listener, owns
 the logind session. The worker exits when its stream releases the authentication
 socket; the service limits itself to 40 total tasks.
@@ -60,9 +64,12 @@ runtime without relying on a shell launcher or `LD_LIBRARY_PATH`.
 
 Install `plank-host.service` in the system unit directory. It starts
 at boot, queries logind for the active local X11 session on `seat0`, validates
-the discovered Xauthority file against the session UID, and drops root before
-executing the media host. At GDM it launches as the discovered greeter UID; it
-does not hardcode `gdm`, a numeric UID, `DISPLAY`, or an Xauthority path. On a
+the discovered Xauthority file against the session UID, and currently executes
+the media worker as root with only `CAP_DAC_READ_SEARCH` effective/permitted.
+Removing that remaining privilege is staged in
+`docs/host-privilege-separation.md`; PAM descriptor delegation alone is not a
+completed unprivileged worker. The supervisor does not hardcode `gdm`, a numeric
+session UID, `DISPLAY`, or an Xauthority path. On a
 GDM-to-user transition it stops the old worker before starting the new one.
 
 This is Stage A session handling: an authenticated client can see GDM, and the

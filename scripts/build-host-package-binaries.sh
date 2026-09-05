@@ -464,6 +464,16 @@ rg -Fq 'packaging/pam/plank-host' \
   "${repo_dir}/scripts/build-host-rpm.sh"
 echo "host_auth_group_absence_gate=pass"
 
+# Exercise the actual Unix descriptor protocol before producing a package;
+# source-token checks alone cannot detect FD leaks or ancillary truncation.
+mkdir -p "$build_dir/plank-security-tests"
+/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
+  -std=c++20 -Wall -Wextra -Wpedantic -Werror -pthread \
+  -I"$source_dir/src" "$repo_dir/tests/session/test-pam-broker-channel.cpp" \
+  -o "$build_dir/plank-security-tests/pam-broker-channel-test"
+"$build_dir/plank-security-tests/pam-broker-channel-test"
+echo "host_pam_delegation_protocol_gate=pass"
+
 host_wacom_rule="${repo_dir}/packaging/udev/70-plank-host-wacom.rules"
 [[ -f $host_wacom_rule &&
    ! -e ${repo_dir}/packaging/udev/70-plank-wacom.rules ]] || {

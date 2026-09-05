@@ -303,6 +303,13 @@ if(BUILD_TESTING)
   target_link_libraries(session-policy-test PRIVATE plank-session-context)
   add_test(NAME session-policy COMMAND session-policy-test)
 
+  add_executable(pam-broker-channel-test tests/session/test-pam-broker-channel.cpp)
+  target_compile_features(pam-broker-channel-test PRIVATE cxx_std_20)
+  target_compile_options(pam-broker-channel-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(pam-broker-channel-test PRIVATE host/sunshine-fork/src)
+  target_link_libraries(pam-broker-channel-test PRIVATE Threads::Threads)
+  add_test(NAME pam-broker-channel COMMAND pam-broker-channel-test)
+
   add_executable(video-packet-loss-window-test
     tests/protocol/video-packet-loss-window.cpp)
   target_compile_features(video-packet-loss-window-test PRIVATE cxx_std_17)
