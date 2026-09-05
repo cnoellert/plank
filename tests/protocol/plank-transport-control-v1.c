@@ -91,10 +91,26 @@ static void check_malformed_messages(void) {
                encoded, PLANK_TRANSPORT_CONTROL_HEADER_SIZE, &encoded_size) == -1);
 }
 
+static void check_desktop_handoff_notice(void) {
+    const uint8_t expected[] = {0x50, 0x4c, 0x44, 0x31, 0x00, 0x07, 0x00, 0x00};
+    uint8_t packet[PLANK_TRANSPORT_CONTROL_MAX_PACKET_SIZE] = {0};
+    size_t size = 0;
+    PlankTransportControlPacket decoded;
+    CHECK(plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_HOST_DESKTOP_HANDOFF,
+          NULL, 0, packet, sizeof(packet), &size) == 0);
+    CHECK(size == sizeof(expected));
+    CHECK(memcmp(packet, expected, size) == 0);
+    CHECK(plank_transport_control_decode(packet, size, &decoded) == 0);
+    CHECK(decoded.type == PLANK_TRANSPORT_CONTROL_HOST_DESKTOP_HANDOFF);
+    CHECK(decoded.payload_size == 0);
+    CHECK(plank_transport_control_decode(packet, size + 1, &decoded) != 0);
+}
+
 int main(void) {
     check_empty_message();
     check_multiword_message();
     check_session_takeover_reason();
+    check_desktop_handoff_notice();
     check_malformed_messages();
     return 0;
 }

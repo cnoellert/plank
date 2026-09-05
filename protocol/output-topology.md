@@ -30,6 +30,29 @@ The host returns `schema_version: 13` and a numeric `feature_flags` field from
 - `0x2000` — NvFBC 8-bit source expansion into HEVC 10-bit 4:4:4 direct NVENC
 - `0x4000` — one fixed complete QUIC UDP payload ceiling for both endpoints
 - `0x8000` — authenticated transfer of the one active PLANK session between clients
+- `0x10000` — explicit GDM-to-user desktop handoff notice on the native control channel
+
+### Expected desktop handoff status
+
+With `0x10000`, Host-to-Client `PLD1` control type 7 has no payload. Its exact
+wire vector is `50 4c 44 31 00 07 00 00`. The root supervisor issues a private
+`PLANK-DESKTOP-HANDOFF-1` record only when replacing its greeter worker with a
+confirmed active user desktop. The root-authenticated inherited channel lets
+that worker announce the handoff before invoking its normal SIGTERM path;
+the existing bounded supervisor shutdown remains the fallback. No credentials
+or new network listener are introduced.
+
+The notice is advisory: it cannot authorize a session, trigger a reconnect,
+transfer ownership or substitute for fresh PAM and topology validation. A
+Client accepts only a zero-length notice from the authenticated Host channel
+advertising this feature. It is consumed by the next transport close within
+five seconds, producing neutral `Opening your desktop...` text. Without the
+notice, reconnect shows `Connection interrupted - reconnecting...`. If the
+existing unreachable decision timeout expires, status changes to `Workstation
+is taking longer to respond...` and the existing Wait/Disconnect policy applies.
+Success clears the notice and restores the normal status color. An abrupt X
+failure can prevent delivery; it must fall back to ordinary reconnect, never
+guess from the previous screen or suppress a real timeout.
 
 The client sends `plankProtocolVersion=13`, `plankFeatureFlags`, `plankDisplayMode`,
 `plankHostLayout`, `plankVirtualMode1`, and `plankVirtualMode2` on `/launch`. A client negotiating `0x10`

@@ -26,6 +26,8 @@ typedef enum PlankTransportControlType {
     PLANK_TRANSPORT_CONTROL_INVALIDATE_REFERENCE_FRAMES = 4,
     PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE = 5,
     PLANK_TRANSPORT_CONTROL_VIDEO_BITRATE_APPLIED = 6,
+    /* Host-only, zero payload; advisory, never authentication or launch authority. */
+    PLANK_TRANSPORT_CONTROL_HOST_DESKTOP_HANDOFF = 7,
 } PlankTransportControlType;
 
 typedef struct PlankTransportControlPacket {
