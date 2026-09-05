@@ -32,6 +32,7 @@ The host returns `schema_version: 13` and a numeric `feature_flags` field from
 - `0x8000` — authenticated transfer of the one active PLANK session between clients
 - `0x10000` — explicit GDM-to-user desktop handoff notice on the native control channel
 - `0x20000` — authenticated desktop stage for reconnect progress
+- `0x40000` — opaque media-worker instance identity for early replacement detection
 
 ### Expected desktop handoff status
 
@@ -48,7 +49,7 @@ transfer ownership or substitute for fresh PAM and topology validation. A
 Client accepts only a zero-length notice from the authenticated Host channel
 advertising this feature. It is consumed by the next transport close within
 five seconds, producing neutral `Opening your desktop...` text. Without the
-notice, reconnect shows `Connection interrupted - reconnecting...`. If the
+notice, reconnect shows neutral `Waiting for workstation...`. If the
 existing unreachable decision timeout expires, status changes to `Workstation
 is taking longer to respond...` and the existing Wait/Disconnect policy applies.
 Success clears the notice and restores the normal status color. An abrupt X
@@ -84,6 +85,32 @@ buttons, Keep Waiting restores progress, and completion hides the surface.
 The parent-relative prompt geometry is retained throughout, without requiring
 a new video-frame commit. Other presentation platforms retain their existing
 overlay fallback; the qualified Wayland path never shows both at once.
+
+### Early replacement detection
+
+With `0x40000`, successful launch/resume and HTTPS `serverinfo` responses
+include `PlankWorkerInstance`: a nonzero UUID generated once per media-worker
+process. This is not the persistent workstation ID, a user/session identifier,
+or an authorization token. It publishes no desktop stage through discovery.
+
+After at least one video frame has arrived, one second without a received
+video frame permits a credential-free HTTPS `serverinfo` probe. At most one
+probe is outstanding, with a one-second request deadline and at least one
+second between completed probes. Nothing polls HTTPS during normal video flow.
+The Client compares the returned worker UUID with the one bound to its
+successful launch and pins the HTTPS leaf certificate SHA-256 to the
+certificate already used by that stream's QUIC endpoint. Profile-valid TLS
+alone, a timeout, a malformed response, an unchanged UUID or a mismatched
+certificate is not proof of replacement and must not tear down the stream.
+
+A changed UUID with the pinned certificate, continuing video silence, and an
+unchanged local connection baseline triggers the existing reconnect path
+without waiting for QUIC idle expiry. Fresh PAM authentication, desktop-owner
+checks, topology binding and native launch remain mandatory. New video cancels
+the early waiting UI; takeover/disconnect disable recovery. The probe owns only
+address and public identity snapshots, not credentials or pointers to session
+state. Its result is applied on the SDL event thread. Normal QUIC timeouts,
+configured Wait/Disconnect policy and the safe fatal-X11 exit are unchanged.
 
 The client sends `plankProtocolVersion=13`, `plankFeatureFlags`, `plankDisplayMode`,
 `plankHostLayout`, `plankVirtualMode1`, and `plankVirtualMode2` on `/launch`. A client negotiating `0x10`

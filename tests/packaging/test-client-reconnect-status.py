@@ -8,6 +8,7 @@ source = pathlib.Path(sys.argv.pop(1))
 session = (source / "app/streaming/session.cpp").read_text()
 toolbar = (source / "app/streaming/planktoolbar.cpp").read_text()
 wayland = (source / "app/streaming/plankwaylandtoolbar.cpp").read_text()
+http = (source / "app/backend/nvhttp.cpp").read_text()
 
 
 def between(text, start, end):
@@ -15,6 +16,34 @@ def between(text, start, end):
 
 
 class ReconnectPresentation(unittest.TestCase):
+    def test_probe_is_credential_free_and_pinned(self):
+        probe = between(http, "bool NvHTTP::probeWorkerReplacement", "QString NvHTTP::authenticate")
+        self.assertIn("if (!m_SessionToken.isEmpty()) return false", probe)
+        self.assertIn('m_BaseUrlHttps, "serverinfo", nullptr', probe)
+        self.assertIn("1000, NvLogLevel::NVLL_NONE", probe)
+        self.assertIn("peerCertificate().digest(QCryptographicHash::Sha256)", probe)
+        self.assertIn("PlankHostRecovery::replacementConfirmed", probe)
+        worker = between(session, "class PlankWorkerProbeThread", "class PlankReconnectThread")
+        self.assertIn("NvHTTP http(m_Address)", worker)
+        self.assertNotIn("authenticate(", worker)
+        self.assertNotIn("Session*", worker)
+
+    def test_replacement_requires_video_silence_and_current_instance(self):
+        check = between(session, "if (workerProbe != nullptr && workerProbe->isFinished())", "if (m_PlankToolbar) {")
+        self.assertIn("workerProbe->wait()", check)
+        self.assertIn("videoSilent && workerProbe->instance() == m_PlankWorkerInstance && workerProbe->replacement()", check)
+        self.assertIn("workerProbe == nullptr && now >= nextWorkerProbe", check)
+        self.assertIn('setPlankReconnectStatus("", false)', check)
+
+    def test_duplicate_reconnect_requests_do_not_quit(self):
+        callback = between(session, "void Session::clConnectionTerminated", "void Session::clLogMessage")
+        self.assertIn("m_ReconnectRequested.load() || s_ActiveSession->m_Reconnecting.load()", callback)
+
+    def test_initial_status_is_neutral(self):
+        begin = between(session, "bool Session::beginPlankReconnect", "bool Session::runPlankReconnect")
+        self.assertIn('"Waiting for workstation...", false', begin)
+        self.assertNotIn('"Connection interrupted', begin)
+
     def test_status_is_published_before_decoder_suspension(self):
         begin = between(session, "bool Session::beginPlankReconnect", "bool Session::runPlankReconnect")
         self.assertLess(begin.index("setPlankReconnectStatus("), begin.index("suspendForReconnect()"))
