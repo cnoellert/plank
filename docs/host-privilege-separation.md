@@ -128,8 +128,9 @@ handlers. Live logout confirmed prompt worker replacement and PAM closure,
 without the ten-second watchdog or a new core. It exposed false malformed
 request logging on control-socket EOF; candidate 1.0.28 retires that descriptor
 without skipping worker reaping or display-lease recovery. Its standalone
-socket regression passes; live validation remains pending. Takeover and the
-full hardware matrix also remain pending.
+socket regression and live logout validation pass: zero malformed EOF messages,
+PAM closure, prompt replacement, no watchdog/new core and successful streaming
+after reauthentication. Takeover and the full hardware matrix remain pending.
 This is not completion of the overall privilege drop.
 
 - Real/effective/saved/filesystem media UID/GID are non-root; capabilities and
