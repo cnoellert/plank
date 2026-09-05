@@ -1635,6 +1635,8 @@ QT_QPA_PLATFORM=offscreen "$stage_test_build/desktopstage"
 cleanup_stage_test
 trap - EXIT
 echo "client_authenticated_desktop_stage_test=pass"
+python3 "$repo_dir/tests/packaging/test-client-reconnect-status.py" "$source_dir"
+echo "client_no_video_reconnect_status_gate=pass"
 
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"

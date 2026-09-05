@@ -75,6 +75,16 @@ The existing timeout always takes precedence, even if reauthentication finishes
 late; completion clears the pending status. No Xlib fatal-handler work, extra
 worker, polling loop or fixed delay is introduced.
 
+Reconnect status must not depend on decoded video frames. The Client pauses
+decoding and empties its frame queue during reconnect, so video-overlay text
+alone cannot reliably display these messages. On Wayland, progress and timeout
+status use the existing desynchronized local reconnect-prompt surface. Progress
+has no action buttons; the configured timeout exposes the existing decision
+buttons, Keep Waiting restores progress, and completion hides the surface.
+The parent-relative prompt geometry is retained throughout, without requiring
+a new video-frame commit. Other presentation platforms retain their existing
+overlay fallback; the qualified Wayland path never shows both at once.
+
 The client sends `plankProtocolVersion=13`, `plankFeatureFlags`, `plankDisplayMode`,
 `plankHostLayout`, `plankVirtualMode1`, and `plankVirtualMode2` on `/launch`. A client negotiating `0x10`
 also sends the exact
