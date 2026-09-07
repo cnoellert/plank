@@ -21,11 +21,12 @@ common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Iprotocol/plank-transport/include
     -framework Foundation -framework Security -framework SystemConfiguration -framework CoreFoundation
     -framework CoreGraphics -framework AppKit -framework Network -framework CoreMedia
-    -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox)
+    -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox)
 sources=(host/macos/auth/authentication-session.m host/macos/auth/desktop-authority.m
     host/macos/control/http-request.m host/macos/control/server-information.m
     host/macos/control/fixed-capture.m host/macos/control/https-auth-server.m
     host/macos/media/native-video.m host/macos/media/preview-session.m host/macos/media/screen-capture.m
+    host/macos/media/native-audio.m host/macos/media/opus-encoder.m
     probes/macos/https-auth.m)
 xcrun clang "${common[@]}" -DPLANK_MAC_PREVIEW_TEST -DPLANK_SYNTHETIC_AUTH_TEST \
     "${sources[@]}" "$archive" -lpthread -lm -o "$preview_build/preview-synthetic"
@@ -34,6 +35,7 @@ xcrun clang "${common[@]}" probes/macos/preview-receive.m "$archive" -lpthread -
 preview_app="$preview_build/PLANK Host Probe.app"
 mkdir -p "$preview_app/Contents/MacOS"
 install -m 0644 probes/macos/Info.plist "$preview_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 49' "$preview_app/Contents/Info.plist"
 xcrun clang "${common[@]}" -DPLANK_MAC_PREVIEW_TEST "${sources[@]}" \
     host/macos/auth/account-verifier.m host/macos/auth/account-channel.m -framework OpenDirectory \
     "$archive" -lpthread -lm -o "$preview_app/Contents/MacOS/plank-host-probe"

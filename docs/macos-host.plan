@@ -50,14 +50,20 @@ Host-audio component gates now pass: incremental/reset Apple Opus output is
 byte-identical to the fixture decoded by the unchanged Ubuntu libopus layout;
 live SCK captures planar 48-kHz stereo in 20-ms chunks and Apple encodes four
 5-ms packets per chunk. Native packet delivery/revocation passes 3239 checks.
-No new codec dependency or Client implementation was needed. Next integrate
-these components under the authenticated Host capture owner, qualify priming
-and source-clock alignment, then integrated A/V timing/cleanup. See
-`macos-audio.md`; this is not yet complete Host audio or A/V synchronization.
+No new codec dependency or Client implementation was needed. These components
+are now integrated under the authenticated Host capture owner: system audio and
+video share the SCStream, authorization and drain lifetime. The production
+encoder passes 3646 tests, including partial inputs, stop/error latching and
+hardware-clock timestamp quantization; the unchanged Ubuntu decoder measures
+311 frames of synthetic delay versus Apple's reported 312. Combined 1080p A/V
+loopback passes short runs; see HANDOFF for exact results and earlier failures.
+Next qualify longer/loss/ownership transitions and native input/cursor before
+the ordinary Client integration. See `macos-audio.md`; audible A/V synchronization
+and LoginWindow behavior are still separate acceptance gates.
 
 The clock audit also corrected the experimental video adapter from microseconds
 to the existing Client's 90-kHz PTS contract. Real 1080p/4K native-video tests
-(180 checks each) and the 213-check capture-owner lifecycle suite pass again.
+(180 checks each) and the now 222-check A/V capture-owner lifecycle suite pass.
 The earlier opaque-PTS loopback had not tested the correct Client clock unit.
 
 ## Objective and baseline

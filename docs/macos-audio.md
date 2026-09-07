@@ -95,8 +95,64 @@ Apple packets were received byte-identically with 240-frame duration and exact
 millisecond PTS, including a fractional source-clock origin. Pending lease,
 invalid PTS, duplicate/gap, topology denial and latched desktop revocation were
 checked; no packet arrived after the completed revocation test. Authentication
-is synthetic in the test only. This adapter is **not yet wired into the capture
-session owner**. No Client change or new audio feature is advertised yet.
+is synthetic in the test only. The adapter is now wired into the capture owner
+as described below. Public discovery and the ordinary Client remain gated.
+
+## Authenticated Host integration
+
+`media/opus-encoder.m` is the reusable AudioToolbox implementation. It validates
+ready PCM sample buffers, exact rate/channels/precision, finite samples, buffer
+bounds and source timing. It accepts at most 8192 frames per callback, borrows
+the retained CoreMedia audio buffers through the final starvation callback,
+and bounds output draining to 40 calls. CoreMedia may copy to meet its requested
+16-byte alignment; this is not a zero-copy audio claim. The encoder adds no
+PCM queue, worker, resampler or fabricated silence channel.
+
+Output PTS starts at source PTS minus the encoder-reported priming duration,
+then advances exactly 240/48000 seconds per packet. Input timing is derived
+from the original source time and total samples, not rounded chunk increments.
+Allow only hardware-clock representation error at the two endpoints, calculated
+using `mach_timebase_info` plus nanosecond CMTime rounding. The constructor
+rejects a clock whose tolerance would reach half an audio sample. A missing or
+overlapping sample, source-format change or sink failure stops the encoder and
+latches failure. Do not silently synthesize timestamps to hide real gaps.
+
+The production-encoder test passes **3646 checks**. Interleaved, planar and
+uneven-chunk encodes are byte-identical; 96000 source frames produce 400 packets
+before stop, with no EOF flush. Source gaps/overlaps, format changes, non-finite
+input, oversized chunks and sink failure all latch stop. The uneven-chunk case
+also reproduces a 41-nanosecond source timestamp offset, without changing output
+timestamps or accepting the separately tested full-sample gap. A fresh encoder
+is required for a new session. Ubuntu's unchanged Opus decoder accepts all 400
+packets. A 100-ms synthetic-waveform comparison estimates **311 frames** of
+delay, within one sample of Apple's reported **312**; this supports the priming
+correction but is not capture-to-speaker synchronization acceptance.
+
+`preview-session.m` creates both native media adapters only after QUIC is ready
+and the lease is activated. `screen-capture.m` supplies audio and video from the
+same SCStream, using the same serial owner queue and source-clock basis. Audio
+is 48-kHz stereo, microphone is explicitly off, and the Host's own process audio
+is excluded. Disconnect/revocation stops native submission first, stops and
+disposes the audio encoder without flushing, then drains SCK/video callbacks
+before freeing the borrowed endpoint. Both adapters survive abandoned-owner
+cleanup until the asynchronous drain completes. The extended lifecycle suite
+passes **222 checks/9 scenarios**, including audio revoked before stop.
+
+The loopback qualification launch now reports `services.audio=true`; its strict
+receiver verifies actual 240-frame packets and five-millisecond PTS increments
+alongside video. The paused Client launch draft still expects video-only and is
+intentionally not updated: it is not a working product path. Do not lift its gate
+or call its historical manifest-test results acceptance of the current Host.
+
+Early live integration passed a three-second A/V connection, then showed an
+intermittent longer-run stop. Probe 48's narrow failure diagnostics identified
+an actual source timestamp offset of **41 nanoseconds**, consistent with the
+dedicated Mac's hardware clock granularity. The earlier one-nanosecond tolerance
+was incorrect. Probe 49 uses the clock-derived tolerance above, not a larger
+audio queue or relaxed whole-sample continuity. See HANDOFF for final run results.
+The first uninstrumented stop had insufficient diagnostics to prove the cause;
+the subsequent reproduced failure and its regression test establish the clock
+issue without asserting that every possible stop is solved.
 
 ## Reproduce
 
@@ -138,15 +194,11 @@ macOS 27 release before accepting the Apple encoder as a product dependency.
 
 ## Next Host gates
 
-1. Move qualified SCK/AudioConverter handling behind the Host session owner,
-   reusing the native audio adapter. Keep the standalone probe from becoming a
-   second product capture/encoder implementation. Maintain bounded buffers,
-   microphone off, and capture restricted to the authenticated desktop.
-2. Measure decoded priming/sample alignment and retain a shared source-clock
-   origin with video. Qualify real source gaps, reset and session/topology
+1. Extend authenticated combined audio/video qualification: retained source
+   clocks, real source gaps, reset and session/topology
    revocation: stop submissions and drop old-user samples before a new owner.
-3. Qualify integrated live audio over QUIC, loss/discontinuity behavior and
+2. Qualify integrated live audio over QUIC, loss/discontinuity behavior and
    bounded receive queues. The fixture loopback is not an induced-loss test.
-4. Validate audible playback, synchronization and sustained A/V drift using the
+3. Validate audible playback, synchronization and sustained A/V drift using the
    ordinary Client after the complete Host contract is ready. Offline codec
    compatibility is not end-to-end audio acceptance.

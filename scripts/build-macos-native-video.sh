@@ -28,6 +28,7 @@ export MACOSX_DEPLOYMENT_TARGET=27.0
 cd "$source_root"
 shasum -a 256 "$transport_library" host/macos/media/native-video.{h,m} \
     host/macos/media/preview-session.{h,m} host/macos/media/screen-capture.{h,m} \
+    host/macos/media/native-audio.{h,m} host/macos/media/opus-encoder.{h,m} \
     host/macos/auth/authentication-session.{h,m} tests/auth/macos-native-video.m \
     tests/auth/macos-preview-session.m tests/protocol/macos-preview-launch-v1.json
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
@@ -41,11 +42,11 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Iprotocol/plank-transport/include \
     host/macos/auth/authentication-session.m host/macos/control/fixed-capture.m \
     host/macos/media/native-video.m host/macos/media/preview-session.m \
-    host/macos/media/screen-capture.m \
+    host/macos/media/screen-capture.m host/macos/media/native-audio.m host/macos/media/opus-encoder.m \
     tests/auth/macos-preview-session.m "$transport_library" \
     -framework Foundation -framework Security -framework SystemConfiguration \
     -framework CoreFoundation -framework CoreMedia -framework CoreGraphics \
-    -framework CoreVideo -framework VideoToolbox -framework ScreenCaptureKit \
+    -framework CoreVideo -framework VideoToolbox -framework ScreenCaptureKit -framework AudioToolbox \
     -lpthread -lm -o "$video_build/preview-session"
 umask 077
 certificate_dir=$(mktemp -d "$video_build/tls.XXXXXX")

@@ -15,8 +15,9 @@
 @end
 @implementation PLANKNoPixelCapture
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
+                   audio:(PLANKMacNativeAudio *)audio
     queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
-    (void)topology; (void)video; (void)queue; (void)failed; started(bitrate * 2);
+    (void)topology; (void)video; (void)audio; (void)queue; (void)failed; started(bitrate * 2);
 }
 - (BOOL)setBitrate:(uint32_t)bitrate peak:(uint32_t *)peak { *peak = bitrate * 2; return YES; }
 - (void)stopWithCompletion:(void (^)(void))completion { completion(); }
@@ -114,7 +115,7 @@ int main(int argc, const char *argv[]) {
             if (!active) { *status = 503; return nil; }
             NSDictionary *reply = @{@"schema_version": @1, @"state": @"connecting", @"transport_token": active.transportToken,
                 @"udp_port": @(port), @"max_udp_payload_size": request[@"max_udp_payload_size"],
-                @"capture": topology()[@"capture"], @"services": @{@"audio": @NO, @"input": @NO, @"cursor": @"embedded"}};
+                @"capture": topology()[@"capture"], @"services": @{@"audio": @YES, @"input": @NO, @"cursor": @"embedded"}};
             [active start];
             *status = 200;
             return reply;

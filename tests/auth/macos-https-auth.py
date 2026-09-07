@@ -116,7 +116,7 @@ def authenticate(tls, port, username, password):
     return token, topology
 
 
-def preview(tls, port, token, topology, receiver, media):
+def preview(tls, port, token, topology, receiver, media, seconds=3):
     capture = topology["capture"]
     body = {"schema_version": 1, "capture_generation": topology["generation"], "capture_id": capture["id"],
             "width": capture["width"], "height": capture["height"], "encoding_mode": "hevc-10-420-videotoolbox",
@@ -136,12 +136,12 @@ def preview(tls, port, token, topology, receiver, media):
     assert status == 200 and reply["schema_version"] == 1 and reply["state"] == "connecting"
     assert reply["udp_port"] == port and reply["max_udp_payload_size"] == 1200
     assert reply["capture"] == capture and reply["transport_token"] != token
-    assert reply["services"] == {"audio": False, "input": False, "cursor": "embedded"}
+    assert reply["services"] == {"audio": True, "input": False, "cursor": "embedded"}
     assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
     fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()
-    command = [str(receiver), fingerprint] + ([] if media else ["--no-media"])
+    command = [str(receiver), fingerprint] + (["--seconds", str(seconds)] if media else ["--no-media"])
     # No launch/transport credential in argv, environment, files or diagnostics.
-    result = subprocess.run(command, input=json.dumps(reply).encode(), capture_output=True, timeout=18)
+    result = subprocess.run(command, input=json.dumps(reply).encode(), capture_output=True, timeout=seconds + 15)
     assert result.returncode == 0, "Native preview receiver failed: " + result.stderr.decode(errors="replace")
     print(result.stdout.decode().strip())
 
@@ -161,7 +161,7 @@ def create_identity(temporary, config):
     return cert
 
 
-def aqua(executable, config, receiver=None):
+def aqua(executable, config, receiver=None, seconds=3):
     if not os.isatty(0) or os.geteuid() == 0:
         raise AssertionError("Aqua qualification requires the desktop user's TTY")
     domain = f"gui/{os.geteuid()}"
@@ -195,10 +195,19 @@ def aqua(executable, config, receiver=None):
             token, topology = authenticate(context(cert), port, getpass.getuser(), password)
             password = None
             if receiver:
-                preview(context(cert), port, token, topology, receiver, True)
+                preview(context(cert), port, token, topology, receiver, True, seconds)
                 print("macos_https_aqua_preview=pass tls13_verified=1 live_owner=1 authenticated_capture=1 native_quic=1")
             else:
                 print("macos_https_aqua_account=pass tls13_verified=1 live_owner=1 replay_denied=1 authenticated_topology=1 desktop_granted=0")
+        except Exception:
+            # Narrow numeric/stage-only diagnostics; never dump server stderr,
+            # which could gain account/session details in a future dependency.
+            error_file = stage / "stderr"
+            if error_file.exists():
+                for line in error_file.read_text(errors="replace").splitlines():
+                    if re.fullmatch(r"macos_(?:opus|capture)_failure stage=[a-z-]+(?: (?:gap_ns|code)=[0-9.+-]+)?", line):
+                        print(line, flush=True)
+            raise
         finally:
             password = None
             subprocess.run(["launchctl", "bootout", f"{domain}/{label}"], stdout=subprocess.DEVNULL,
@@ -288,11 +297,12 @@ def main():
     parser.add_argument("--certificate", type=Path)
     parser.add_argument("--aqua", action="store_true")
     parser.add_argument("--preview-receiver", type=Path)
+    parser.add_argument("--preview-seconds", type=int, choices=range(3, 31), default=3)
     args = parser.parse_args()
     if args.aqua:
         if not args.server or not args.config:
             parser.error("Aqua mode requires the real --server and --config")
-        aqua(args.server, args.config, args.preview_receiver)
+        aqua(args.server, args.config, args.preview_receiver, args.preview_seconds)
     elif args.real_port:
         if not args.certificate or not os.isatty(0):
             parser.error("Real verification requires a TTY and the exact certificate")

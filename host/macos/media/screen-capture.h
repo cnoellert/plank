@@ -3,6 +3,7 @@
 #import "preview-session.h"
 
 // Dedicated macOS 27 preview backend. No display creation, consent prompts,
-// audio or remote input. Existing capture consent must already be granted.
+// or remote input. Includes system audio, never microphone capture.
+// Existing capture consent must already be granted.
 @interface PLANKMacScreenCapture : NSObject <PLANKMacPreviewCapture>
 @end

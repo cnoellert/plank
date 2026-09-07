@@ -46,5 +46,10 @@ lifecycle/control timer, capture startup and ordered revocation/cleanup.
 `media/screen-capture.m` connects the exact ScreenCaptureKit display to hardware
 VideoToolbox Main10 using IOSurfaces; `media/native-video.m` validates and sends
 complete Annex-B samples through the existing transport. This path has passed
-short authenticated loopback capture tests, not an existing-Client playback,
+combined system-audio capture using `media/opus-encoder.m` and authorized native
+Opus submission through `media/native-audio.m`. Audio and video share the capture
+owner's serial queue and revocation/drain lifetime; microphone capture is off.
+The qualification launch now includes audio, but ordinary Client work remains
+paused until the Host service contract is complete. These are short authenticated
+loopback capture tests, not existing-Client playback,
 performance soak or LoginWindow product lifecycle. Linux is unchanged.

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "screen-capture.h"
+#import "opus-encoder.h"
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 #import <VideoToolbox/VideoToolbox.h>
 #include <time.h>
@@ -11,6 +12,8 @@
 @implementation PLANKMacScreenCapture {
     dispatch_queue_t _queue;
     PLANKMacNativeVideo *_video;
+    PLANKMacNativeAudio *_audio;
+    PLANKMacOpusEncoder *_audioEncoder;
     SCStream *_stream;
     VTCompressionSessionRef _encoder;
     void (^_failed)(void);
@@ -63,9 +66,17 @@
     return valid;
 }
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
+                   audio:(PLANKMacNativeAudio *)audio
                    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
-    if (_queue || !queue || !video || !started || !failed) { if (failed) failed(); return; }
-    _queue = queue; _video = video; _failed = [failed copy];
+    if (_queue || !queue || !video || !audio || !started || !failed) { if (failed) failed(); return; }
+    _queue = queue; _video = video; _audio = audio; _failed = [failed copy];
+    __weak typeof(self) weakSelf = self;
+    _audioEncoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts) {
+        typeof(self) capture = weakSelf;
+        if (!capture || capture->_stopping) return NO;
+        int32_t sent = [capture->_audio sendOpusPacket:packet presentationTime:pts];
+        return sent == PLANK_TRANSPORT_OK || sent == PLANK_TRANSPORT_DROPPED;
+    }];
     _lastPTS = kCMTimeInvalid;
     _width = [topology[@"capture"][@"width"] unsignedIntegerValue];
     _height = [topology[@"capture"][@"height"] unsignedIntegerValue];
@@ -95,9 +106,12 @@
             config.captureDynamicRange = SCCaptureDynamicRangeSDR; config.colorSpaceName = kCGColorSpaceSRGB;
             // Initial video-only preview carries the visible host cursor in
             // pixels. It must not claim the Linux separate-cursor capability.
-            config.showsCursor = YES; config.capturesAudio = NO;
+            config.showsCursor = YES; config.capturesAudio = YES;
+            config.captureMicrophone = NO; config.sampleRate = 48000; config.channelCount = 2;
+            config.excludesCurrentProcessAudio = YES;
             self->_stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:self];
-            if (![self->_stream addStreamOutput:self type:SCStreamOutputTypeScreen sampleHandlerQueue:self->_queue error:NULL]) {
+            if (![self->_stream addStreamOutput:self type:SCStreamOutputTypeScreen sampleHandlerQueue:self->_queue error:NULL] ||
+                ![self->_stream addStreamOutput:self type:SCStreamOutputTypeAudio sampleHandlerQueue:self->_queue error:NULL]) {
                 self->_failed(); return;
             }
             self->_starting = YES;
@@ -114,7 +128,16 @@
 }
 - (void)stream:(SCStream *)stream didOutputSampleBuffer:(CMSampleBufferRef)sample ofType:(SCStreamOutputType)type {
     (void)stream;
-    if (_stopping || type != SCStreamOutputTypeScreen || !CMSampleBufferIsValid(sample)) return;
+    if (_stopping) return;
+    if (type == SCStreamOutputTypeAudio) {
+        PLANKMacOpusEncoder *encoder = _audioEncoder;
+        if (![encoder encodeSample:sample]) {
+            fprintf(stderr, "macos_capture_failure stage=audio\n");
+            _failed();
+        }
+        return;
+    }
+    if (type != SCStreamOutputTypeScreen || !CMSampleBufferIsValid(sample)) return;
     NSArray *attachments = (__bridge NSArray *)CMSampleBufferGetSampleAttachmentsArray(sample, false);
     NSNumber *status = attachments.firstObject[SCStreamFrameInfoStatus];
     if (![status isKindOfClass:NSNumber.class] || status.integerValue != SCFrameStatusComplete) return;
@@ -124,7 +147,9 @@
         CVPixelBufferGetHeight(pixel) != _height ||
         CVPixelBufferGetPixelFormatType(pixel) != kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
         !CMTIME_IS_NUMERIC(pts) || pts.value < 0 ||
-        (CMTIME_IS_VALID(_lastPTS) && CMTimeCompare(pts, _lastPTS) <= 0)) { _failed(); return; }
+        (CMTIME_IS_VALID(_lastPTS) && CMTimeCompare(pts, _lastPTS) <= 0)) {
+        fprintf(stderr, "macos_capture_failure stage=video-sample\n"); _failed(); return;
+    }
     _lastPTS = pts;
     if (_inFlight >= 3) return; // drop before encoding; no reference-frame dependency
     // Explicit qualified SDK-27 x420 input interpretation, distinct from the
@@ -155,12 +180,14 @@
     if (result) { --_inFlight; _failed(); }
 }
 - (void)stream:(SCStream *)stream didStopWithError:(NSError *)error {
-    (void)stream; (void)error;
+    (void)stream;
+    fprintf(stderr, "macos_capture_failure stage=stream code=%ld\n", (long)error.code);
     dispatch_async(_queue, ^{ if (!self->_stopping) self->_failed(); });
 }
 - (void)stopWithCompletion:(void (^)(void))completion {
     if (_stopping) return; // owner calls once and fans out its own completions
     _stopping = YES; _failed = nil; _drained = [completion copy];
+    [_audioEncoder stop]; _audioEncoder = nil;
     if (!_starting) [self stopCapture];
 }
 - (void)stopCapture {
@@ -173,7 +200,7 @@
 - (void)finishStop {
     if (!_stopping || !_captureStopped || _inFlight) return;
     if (_encoder) { VTCompressionSessionInvalidate(_encoder); CFRelease(_encoder); _encoder = NULL; }
-    _stream = nil; _video = nil;
+    _stream = nil; _video = nil; _audio = nil;
     void (^completion)(void) = _drained; _drained = nil;
     if (completion) completion();
 }

@@ -18,6 +18,11 @@ if lsof -nP -iUDP:47493 >/dev/null 2>&1; then
 fi
 mkdir "$output"
 cd "$source_root"
+shasum -a 256 host/macos/media/opus-encoder.{h,m} tests/audio/macos-opus-encoder.m
+xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/media host/macos/media/opus-encoder.m tests/audio/macos-opus-encoder.m \
+    -framework Foundation -framework CoreMedia -framework AudioToolbox -o "$output/opus-encoder"
+"$output/opus-encoder" "$output/streaming.pao"
 shasum -a 256 host/macos/media/native-audio.{h,m} tests/audio/macos-native-audio.m "$archive" "$fixture"
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/auth -Ihost/macos/media -Iprotocol/plank-transport/include \
@@ -34,4 +39,4 @@ openssl x509 -in "$certificate_dir/cert.pem" -outform DER -out "$certificate_dir
 certificate_hash=$(shasum -a 256 "$certificate_dir/cert.der")
 certificate_hash=${certificate_hash%% *}
 "$output/native-audio" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" "$certificate_hash" "$fixture"
-shasum -a 256 "$output/native-audio"
+shasum -a 256 "$output/native-audio" "$output/opus-encoder" "$output/streaming.pao"

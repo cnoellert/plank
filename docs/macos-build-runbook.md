@@ -125,6 +125,19 @@ checks exact packets/timestamps/revocation, and removes its private TLS material
 No Rust rebuild is needed: reuse the qualified native ABI-12 archive. These
 copied/hash-verified standalone sources are not clean release-package snapshots.
 
+The same runner also compiles the production `media/opus-encoder.m` and runs
+`tests/audio/macos-opus-encoder.m`, producing `streaming.pao` (400 packets,
+deliberately no stop-time EOF flush). Transfer/hash-check that synthetic fixture
+on linux-client-builder and run `macos-opus-compatibility streaming.pao --measure-priming`.
+This uses the unchanged system libopus decoder, not new Client functionality.
+
+SDK-27 buffer-list qualification detail: pass exactly `sizeof(AudioBufferList)`
+for interleaved stereo, and the two-buffer list size for planar stereo.
+Passing the larger two-buffer capacity for interleaved PCM returned
+`kCMSampleBufferError_ArrayTooSmall` even though the queried requirement was
+only 24 bytes. Both formats now have a production-module test. Do not paper
+over this with an unbounded allocation or assume all CoreMedia audio is planar.
+
 ## Historical first interactive preview boundary (superseded by Host first)
 
 After this portability gate, implement in this order:
@@ -185,6 +198,12 @@ not the older command-line chart/input probe. Preserve the previously installed
 probe app before replacing it on the dedicated Mac. Do not install on the
 read-only reference Mac or change TCC/keychain trust policy to make it work.
 
+Current output is **Probe 49**, the authenticated combined audio/video entry
+point. Its source list includes `native-audio.m` and `opus-encoder.m`, linked
+with AudioToolbox. The older standalone audio-only Probe 46 does not accept the
+HTTPS runner's arguments; do not confuse installed app versions. Public product
+discovery remains gated. The qualification launch's audio service is now true.
+
 If signing fails with `errSecInternalComponent` despite a valid identity,
 unlock the login keychain interactively and run signing/build **within the same
 SSH TTY session**. A separate unlock-only SSH session may succeed, yet signing
@@ -211,6 +230,15 @@ receives live HEVC in memory for three seconds, tests the existing bitrate
 acknowledgement, and sends a native disconnect. No desktop image is written.
 Finally it removes its exact Aqua job and temporary TLS material. Do not use
 Screen Sharing to launch this test or modify login state.
+
+The receiver now drains audio alongside video (bounded nonblocking batches),
+checking 240-frame packet sizes, continuous millisecond PTS and a shared source
+clock. `--preview-seconds 30` runs a bounded 30-second qualification; values
+3–30 are accepted. This is not a Client playback or multi-hour sync soak.
+Failure reporting copies only allowlisted stage/numeric capture diagnostics,
+never the full Host stderr or credential-bearing requests. Do not compile while
+collecting timing measurements. Keep unexplained stops in the qualification
+record even if a later run passes.
 
 A successful receiver checks framing, codec identifier, timestamps and clean
 disconnect; it does **not** decode or present those live frames. The independent

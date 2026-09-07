@@ -24,14 +24,18 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
 @property BOOL deferStart, failStart, deferStop, revokedBeforeStop;
 @property uint32_t bitrate;
 @property PLANKMacNativeVideo *video;
+@property PLANKMacNativeAudio *audio;
 @property dispatch_queue_t queue;
 @property(copy) void (^pendingStop)(void);
 @end
 @implementation PLANKFakeCapture
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
+                   audio:(PLANKMacNativeAudio *)audio
                    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
     (void)topology; self.queue = queue;
     self.starts++; self.bitrate = bitrate; self.video = video;
+    self.audio = audio;
+    CHECK(audio != nil);
     if (self.failStart) failed();
     else if (!self.deferStart) started(2 * bitrate);
 }
@@ -40,7 +44,9 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
 }
 - (void)stopWithCompletion:(void (^)(void))completion {
     self.revokedBeforeStop = [self.video sendSample:NULL processingLatency:0] == PLANK_TRANSPORT_ERROR_INVALID_STATE;
+    self.revokedBeforeStop &= [self.audio sendOpusPacket:nil presentationTime:kCMTimeZero] == PLANK_TRANSPORT_ERROR_INVALID_STATE;
     self.stops++; self.video = nil;
+    self.audio = nil;
     if (self.deferStop) self.pendingStop = completion;
     else completion();
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #import "native-video.h"
+#import "native-audio.h"
 
 BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *topology);
 
@@ -8,7 +9,8 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 // complete only after capture and encoder callbacks have drained. No UI waits.
 @protocol PLANKMacPreviewCapture <NSObject>
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate
-                   video:(PLANKMacNativeVideo *)video queue:(dispatch_queue_t)queue
+                   video:(PLANKMacNativeVideo *)video audio:(PLANKMacNativeAudio *)audio
+                   queue:(dispatch_queue_t)queue
                  started:(void (^)(uint32_t peakBitrate))started
                   failed:(void (^)(void))failed;
 - (BOOL)setBitrate:(uint32_t)bitrate peak:(uint32_t *)peakBitrate;

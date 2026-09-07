@@ -54,6 +54,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     NSDictionary *_selected;
     id<PLANKMacPreviewCapture> _capture;
     PLANKMacNativeVideo *_video;
+    PLANKMacNativeAudio *_audio;
     PlankTransportNativeEndpoint *_endpoint;
     dispatch_queue_t _queue;
     dispatch_source_t _watch;
@@ -136,10 +137,15 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                     typeof(self) owner = weakSelf;
                     return owner && [owner->_selected isEqual:owner->_topology()];
                 }];
-            if (!_video) { [self stopOnQueue]; return; }
+            _audio = [[PLANKMacNativeAudio alloc] initWithEndpoint:_endpoint sessions:_sessions lease:_lease
+                validity:^BOOL {
+                    typeof(self) owner = weakSelf;
+                    return owner && [owner->_selected isEqual:owner->_topology()];
+                }];
+            if (!_video || !_audio) { [self stopOnQueue]; return; }
             _captureStarted = YES;
             _captureDeadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 5 * NSEC_PER_SEC;
-            [_capture startWithTopology:_selected bitrate:_bitrate video:_video queue:_queue
+            [_capture startWithTopology:_selected bitrate:_bitrate video:_video audio:_audio queue:_queue
                 started:^(uint32_t peak) {
                     typeof(self) owner = weakSelf;
                     if (!owner || owner.state != PLANKMacPreviewConnecting) return;
@@ -217,6 +223,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 - (void)finishStop {
     if (self.state != PLANKMacPreviewStopping) return;
     _video = nil;
+    _audio = nil;
     if (_endpoint) { plank_transport_native_endpoint_destroy(_endpoint); _endpoint = NULL; }
     _capture = nil;
     self.state = PLANKMacPreviewStopped;
@@ -232,10 +239,12 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     if (_captureStarted && _capture && _queue) {
         id<PLANKMacPreviewCapture> capture = _capture;
         PLANKMacNativeVideo *video = _video;
+        PLANKMacNativeAudio *audio = _audio;
         dispatch_async(_queue, ^{
             if (endpoint) plank_transport_native_endpoint_stop(endpoint);
             [capture stopWithCompletion:^{
                 (void)video;
+                (void)audio;
                 if (endpoint) plank_transport_native_endpoint_destroy(endpoint);
             }];
         });
