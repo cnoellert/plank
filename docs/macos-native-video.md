@@ -105,6 +105,11 @@ change and disconnected cleanly, without storing any desktop pixels.
 
 ## Ordinary Client integration — remaining gates
 
+**Paused by operator direction, September 7.** The checklist below is historical
+preview integration work, not the current execution order. Complete normal Mac
+Host services first per `macos-host.plan`; retain only reusable Client changes
+when integrating the complete Host. Do not remove the existing readiness gate.
+
 The Client has a typed schema-1 request/manifest helper and common-c now has
 explicit service flags. The Linux PLS1 response still requires audio and local
 cursor support; its caller selects audio/input/local-cursor. The Mac manifest

@@ -11,6 +11,47 @@ presentation still need Session wiring before lifting the gate. Visible
 LoginWindow cursor/input is unverified and deferred by the operator.
 See macos-host-investigation.md for measured results and remaining gates.
 
+## September 7 direction change — Host first
+
+The operator explicitly rejected spending more time adapting the Client to a
+temporary, video-only Mac Host. This section supersedes the preview-first
+execution/resume instructions below. Pause the new Client launch workflow and
+its optional-service integration. Preserve checkpoints; do not merge, install,
+delete, or automatically revert them. The latest NvHTTP launch draft and its
+HTTPS test harness are unqualified work in progress, not a passed capability.
+
+Complete the Mac Host's normal services using standalone qualification tools:
+
+1. System audio: ScreenCaptureKit 48 kHz stereo, encode to the existing Opus
+   transport contract, preserve source timestamps and bounded queues, and prove
+   decode compatibility with the unchanged Ubuntu decoder. First inspect Apple's
+   native Opus encoder availability and supported packet duration; if it cannot
+   meet the contract, qualify a pinned libopus dependency rather than changing
+   the Client or substituting a different audio codec. No microphone capture.
+2. Keyboard/mouse/scroll and cursor: implement the existing normalized input and
+   cursor shape/position semantics behind native Mac APIs. Keep scope to general
+   desktop use. Visible LoginWindow input was previously deferred by the user;
+   coordinate that test instead of injecting unattended login-screen events.
+3. Complete machine-service/graphical-agent ownership, authentication,
+   login/logout/lock transitions and cleanup. Login-screen access remains an
+   essential product gate; an auto-logged-in desktop is not a replacement.
+4. Then integrate the ordinary Ubuntu Client once against the complete Host
+   contract. Retain useful Apple profile/color/geometry work; decide the fate of
+   preview-only launch scaffolding from the final contract, not by layering
+   permanent special cases over a temporary Host.
+
+Reuse the existing native video/audio/input/control protocols wherever they
+fit. Linux-specific capture/display/PAM implementation stays platform-specific;
+do not fabricate Linux flags on the Mac to satisfy a Client check. Do not change
+the shared transport, FEC, audio codec or packet duration just for this probe.
+No new Client release is needed for the next Host-side qualification steps.
+
+First Host-audio gate now passes: native Apple Opus actually encodes synthetic
+48-kHz stereo into 5-ms packets that the unchanged Ubuntu libopus layout decodes
+correctly. No additional Mac codec dependency was needed. Next qualify streaming
+input/priming behavior, SCK audio capture and source timestamp alignment. See
+`macos-audio.md`; neither live capture nor A/V synchronization is accepted yet.
+
 ## Objective and baseline
 
 Add a performant macOS Host to the current PLANK repository, initially served
@@ -495,7 +536,7 @@ and topology replacement. Test physical Host tablets coexisting with remote pen.
 
 ## Execution sequence and acceptance gates
 
-Current priority: finish the bounded mixed-cadence comparison, then move to the
+Historical preview-first sequence (superseded by **Host first** above): finish the bounded mixed-cadence comparison, then move to the
 first authenticated end-to-end preview instead of further isolated encoder
 tuning. Qualify the unchanged native transport on the dedicated Mac using
 `docs/macos-build-runbook.md`, then implement account/session authorization,
@@ -617,8 +658,12 @@ already works. Record exact hardware/OS and actual results alongside each gate.
 
 ## Stopping point and resume checklist
 
-**Current September 7 integration priority (supersedes the historical checklist
-below):** one-use stream claims, typed HTTPS launch, idle/topology revocation,
+**Current priority: Host first, as specified at the top of this plan.** Preserve
+the Client checkpoints and stop preview-only integration. Next qualify system
+audio on development-mac using the existing audio transport/decoder contract, then native
+input/cursor and complete session lifecycle. No new Client build/deployment.
+
+Earlier September 7 preview checkpoint (historical): one-use stream claims, typed HTTPS launch, idle/topology revocation,
 capture/transport lifecycle, native bitrate/control handling and actual
 ScreenCaptureKit → hardware VideoToolbox → native QUIC now pass component and
 short authenticated live loopback tests. No desktop pixels were persisted.
