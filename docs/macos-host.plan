@@ -63,7 +63,7 @@ and LoginWindow behavior are still separate acceptance gates.
 
 The clock audit also corrected the experimental video adapter from microseconds
 to the existing Client's 90-kHz PTS contract. Real 1080p/4K native-video tests
-(180 checks each) and the now 222-check A/V capture-owner lifecycle suite pass.
+(180 checks each) and the now 300-check A/V/input capture-owner lifecycle suite pass.
 The earlier opaque-PTS loopback had not tested the correct Client clock unit.
 
 Native input components now pass 1826 Quartz event-construction checks and 129
@@ -73,8 +73,14 @@ Probe 52 requests activation after AppKit finishes launching, preserving the
 per-event focus guard and unchanged mapper. Two fresh Aqua runs passed all ten
 tagged input event classes (1023/1023) and absolute pointer agreement. No
 unattended LoginWindow input was attempted; it remains a separate gate. The
-installed app was restored to tested A/V Probe 49. The input components are not
-yet wired into the A/V session owner or advertised to the Client. See
+installed app was initially restored to tested A/V Probe 49. Probe 53 then
+passed both sides of all four modifiers, Shift-key/click and deliberate held
+key/modifier/button cleanup, including OS private-source state verification.
+The input components are now wired into the A/V owner: one blocking native
+receiver hands off at most one packet to the serial owner; cleanup releases
+authorized held input before revocation and drains the receiver before endpoint
+destruction. The synthetic owner suite passes 300 checks/11 scenarios. Signed
+Probe 54 adds this input path; live A/V checks send no desktop input. See
 `macos-input.md` for scope, release ordering, unsupported key/text paths and the
 SDK-27 deprecated global-cursor-image API finding. Custom cursor handling and
 full session lifecycle remain gates; Client work stays paused.

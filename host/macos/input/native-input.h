@@ -5,7 +5,8 @@
 #include "plank_transport.h"
 
 // Authorized delivery of an already received native InputPacket. The capture
-// owner drains the existing input API on its serial queue (no extra worker).
+// owner's blocking native receiver hands off at most one packet to its serial
+// session queue. This adapter adds no worker, input queue, or retry mechanism.
 // Endpoint, mapper and desktop validity must describe the same captured lease.
 @interface PLANKMacNativeInput : NSObject
 - (instancetype)initWithEndpoint:(PlankTransportNativeEndpoint *)endpoint

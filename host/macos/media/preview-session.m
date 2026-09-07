@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "preview-session.h"
 #import "fixed-capture.h"
+#import "native-input.h"
 #include "plank_transport_control.h"
+#include "plank_transport_input.h"
 #include <math.h>
 #include <time.h>
 
@@ -55,6 +57,10 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     id<PLANKMacPreviewCapture> _capture;
     PLANKMacNativeVideo *_video;
     PLANKMacNativeAudio *_audio;
+    id<PLANKMacInputDevice> _inputDevice;
+    PLANKMacNativeInput *_input;
+    dispatch_group_t _inputGroup;
+    BOOL _captureDrained;
     PlankTransportNativeEndpoint *_endpoint;
     dispatch_queue_t _queue;
     dispatch_source_t _watch;
@@ -68,8 +74,9 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                            token:(NSString *)token peer:(NSData *)peer
                          request:(NSDictionary *)request topology:(NSDictionary *(^)(void))topology
                           config:(const PlankTransportConfig *)config
-                         capture:(id<PLANKMacPreviewCapture>)capture {
-    if (!sessions || !topology || !capture || !config ||
+                         capture:(id<PLANKMacPreviewCapture>)capture
+                           input:(id<PLANKMacInputDevice>)input {
+    if (!sessions || !topology || !capture || !input || !config ||
         config->struct_size != sizeof(*config) || config->abi_version != PLANK_TRANSPORT_ABI_VERSION ||
         config->mode != PLANK_TRANSPORT_MODE_SERVER || config->session_mode != PLANK_TRANSPORT_SESSION_ACTIVE)
         return nil;
@@ -85,6 +92,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     _bitrate = [request[@"bitrate_kbps"] unsignedIntValue];
     _queue = dispatch_queue_create("la.instinctual.PLANK.Host.preview", DISPATCH_QUEUE_SERIAL);
     _stopCallbacks = [NSMutableArray array];
+    _inputDevice = input; _inputGroup = dispatch_group_create();
     _lease = [sessions claimToken:token peer:peer];
     if (!_lease) return nil;
     PlankTransportConfig configuration = *config;
@@ -142,7 +150,14 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                     typeof(self) owner = weakSelf;
                     return owner && [owner->_selected isEqual:owner->_topology()];
                 }];
-            if (!_video || !_audio) { [self stopOnQueue]; return; }
+            PLANKMacInputEvents *events = [_inputDevice eventsForTopology:_selected];
+            id<PLANKMacInputDevice> device = _inputDevice;
+            _input = [[PLANKMacNativeInput alloc] initWithEndpoint:_endpoint sessions:_sessions lease:_lease
+                events:events validity:^BOOL {
+                    typeof(self) owner = weakSelf;
+                    return owner && [owner->_selected isEqual:owner->_topology()] && [device available];
+                } deliver:^(CGEventRef event) { [device postEvent:event]; }];
+            if (!_video || !_audio || !_input) { [self stopOnQueue]; return; }
             _captureStarted = YES;
             _captureDeadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 5 * NSEC_PER_SEC;
             [_capture startWithTopology:_selected bitrate:_bitrate video:_video audio:_audio queue:_queue
@@ -154,15 +169,51 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                         [owner stopOnQueue]; return;
                     }
                     owner.state = PLANKMacPreviewStreaming;
+                    [owner startInputReceiver];
                 }
                 failed:^{ [weakSelf stopOnQueue]; }];
         } else if (_captureStarted && !active) {
             [self stopOnQueue]; return;
         }
+        if (_captureStarted && ![_inputDevice available]) { [self stopOnQueue]; return; }
         if (_captureStarted && self.state == PLANKMacPreviewConnecting &&
             clock_gettime_nsec_np(CLOCK_MONOTONIC) >= _captureDeadline) { [self stopOnQueue]; return; }
         if (self.state == PLANKMacPreviewStreaming) [self receiveControls];
     }
+}
+
+- (void)startInputReceiver {
+    // Native receive sleeps on the transport's condition variable, not on a
+    // polling timer. At most one received packet awaits the serial owner queue;
+    // no extra input backlog and no input latency from the 20-ms watchdog.
+    __weak typeof(self) weakSelf = self;
+    PlankTransportNativeEndpoint *endpoint = _endpoint;
+    dispatch_queue_t ownerQueue = _queue;
+    dispatch_group_async(_inputGroup, dispatch_queue_create("la.instinctual.PLANK.Host.input", DISPATCH_QUEUE_SERIAL), ^{
+        BOOL running = YES;
+        while (running) @autoreleasepool {
+            uint8_t bytes[PLANK_TRANSPORT_INPUT_MAX_PAYLOAD_SIZE], type = 0; size_t size = 0;
+            int32_t result = plank_transport_native_input_receive(endpoint, &type, bytes, sizeof(bytes), &size, 1000);
+            const uint8_t *payload = bytes;
+            // The synchronous handoff bounds outstanding work to one packet.
+            // It also prevents input from racing capture/control teardown.
+            __block BOOL keepGoing = NO;
+            dispatch_sync(ownerQueue, ^{
+                typeof(self) owner = weakSelf;
+                if (!owner || owner.state != PLANKMacPreviewStreaming) return;
+                if (result == PLANK_TRANSPORT_TIMEOUT) { keepGoing = YES; return; }
+                if (result != PLANK_TRANSPORT_OK) { [owner stopOnQueue]; return; }
+                PLANKMacInputResult delivered = [owner->_input consumeType:type
+                    payload:[NSData dataWithBytes:payload length:size] time:clock_gettime_nsec_np(CLOCK_UPTIME_RAW)];
+                if (delivered == PLANKMacInputMalformed || delivered == PLANKMacInputDenied || delivered == PLANKMacInputStopped) {
+                    [owner stopOnQueue]; return;
+                }
+                keepGoing = YES; // Unsupported platform-specific keys do not become unrelated keys.
+            });
+            running = keepGoing;
+        }
+    });
+    dispatch_group_notify(_inputGroup, _queue, ^{ [weakSelf finishStop]; });
 }
 
 - (void)receiveControls {
@@ -212,18 +263,21 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 - (void)stopOnQueue {
     if (self.state == PLANKMacPreviewStopping || self.state == PLANKMacPreviewStopped) return;
     self.state = PLANKMacPreviewStopping;
+    [_input stop]; // authorized releases first; never release into a replacement desktop
     [_sessions endStreamLease:_lease]; // revoke before any asynchronous drain
     if (_watch) { dispatch_source_cancel(_watch); _watch = nil; }
     // Close the network even if a framework stop callback stalls. Keep the
     // allocated endpoint until drain so no borrowed callback sees freed memory.
     if (_endpoint) plank_transport_native_endpoint_stop(_endpoint);
-    if (_captureStarted) [_capture stopWithCompletion:^{ [self finishStop]; }];
-    else [self finishStop];
+    if (_captureStarted) [_capture stopWithCompletion:^{ self->_captureDrained = YES; [self finishStop]; }];
+    else { _captureDrained = YES; [self finishStop]; }
 }
 - (void)finishStop {
-    if (self.state != PLANKMacPreviewStopping) return;
+    if (self.state != PLANKMacPreviewStopping || !_captureDrained ||
+        dispatch_group_wait(_inputGroup, DISPATCH_TIME_NOW) != 0) return;
     _video = nil;
     _audio = nil;
+    _input = nil; _inputDevice = nil;
     if (_endpoint) { plank_transport_native_endpoint_destroy(_endpoint); _endpoint = NULL; }
     _capture = nil;
     self.state = PLANKMacPreviewStopped;
@@ -236,15 +290,19 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     // Fail closed even if a caller abandons the owner: retain the borrowed
     // endpoint/video until asynchronous capture drain, without capturing self.
     PlankTransportNativeEndpoint *endpoint = _endpoint;
+    // Wake the condition-variable receiver before waiting for its bounded
+    // handoff. Never block the serial owner queue waiting for that handoff.
+    if (endpoint) plank_transport_native_endpoint_stop(endpoint);
     if (_captureStarted && _capture && _queue) {
         id<PLANKMacPreviewCapture> capture = _capture;
         PLANKMacNativeVideo *video = _video;
         PLANKMacNativeAudio *audio = _audio;
-        dispatch_async(_queue, ^{
-            if (endpoint) plank_transport_native_endpoint_stop(endpoint);
+        PLANKMacNativeInput *input = _input;
+        dispatch_group_notify(_inputGroup, _queue, ^{
             [capture stopWithCompletion:^{
                 (void)video;
                 (void)audio;
+                (void)input;
                 if (endpoint) plank_transport_native_endpoint_destroy(endpoint);
             }];
         });

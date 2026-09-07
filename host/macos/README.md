@@ -57,7 +57,11 @@ performance soak or LoginWindow product lifecycle. Linux is unchanged.
 `input/input-events.m` translates existing native input payloads to Quartz
 events with dynamic point/pixel mapping and transactional held-state tracking.
 `input/native-input.m` qualifies delivery through the existing revocable lease;
-tests use a non-posting sink and real native QUIC. Neither is wired into the
-A/V owner yet. Two own-window live tests pass on the unlocked desktop. See
+tests use a non-posting sink and real native QUIC. `input/quartz-input.m` uses a
+private public-API event source and existing control permission. All are now
+wired into the A/V owner with a blocking native receiver, a single bounded
+handoff, authorized input release and receiver drain before endpoint destruction.
+The integrated owner passes 300 checks/11 scenarios. Own-window live tests pass
+on the unlocked desktop, including left/right modifiers and held-state cleanup. See
 `docs/macos-input.md`; do not advertise keyboard/mouse/cursor readiness from
 component tests alone.

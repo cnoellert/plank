@@ -11,6 +11,7 @@
 #endif
 
 #if defined(PLANK_MAC_PREVIEW_TEST) && defined(PLANK_SYNTHETIC_AUTH_TEST)
+#import "macos-fake-input.h"
 @interface PLANKNoPixelCapture : NSObject <PLANKMacPreviewCapture>
 @end
 @implementation PLANKNoPixelCapture
@@ -107,15 +108,17 @@ int main(int argc, const char *argv[]) {
             config.idle_timeout_ms = 10000; config.keep_alive_interval_ms = 1000;
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
             id<PLANKMacPreviewCapture> source = [PLANKNoPixelCapture new];
+            id<PLANKMacInputDevice> input = [PLANKFakeInput new];
 #else
             id<PLANKMacPreviewCapture> source = [PLANKMacScreenCapture new];
+            id<PLANKMacInputDevice> input = [PLANKMacQuartzInput new];
 #endif
             active = [[PLANKMacPreviewSession alloc] initWithSessions:sessions token:token peer:peer request:request
-                topology:topology config:&config capture:source];
+                topology:topology config:&config capture:source input:input];
             if (!active) { *status = 503; return nil; }
             NSDictionary *reply = @{@"schema_version": @1, @"state": @"connecting", @"transport_token": active.transportToken,
                 @"udp_port": @(port), @"max_udp_payload_size": request[@"max_udp_payload_size"],
-                @"capture": topology()[@"capture"], @"services": @{@"audio": @YES, @"input": @NO, @"cursor": @"embedded"}};
+                @"capture": topology()[@"capture"], @"services": @{@"audio": @YES, @"input": @YES, @"cursor": @"embedded"}};
             [active start];
             *status = 200;
             return reply;

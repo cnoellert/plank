@@ -136,7 +136,7 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
     assert status == 200 and reply["schema_version"] == 1 and reply["state"] == "connecting"
     assert reply["udp_port"] == port and reply["max_udp_payload_size"] == 1200
     assert reply["capture"] == capture and reply["transport_token"] != token
-    assert reply["services"] == {"audio": True, "input": False, "cursor": "embedded"}
+    assert reply["services"] == {"audio": True, "input": True, "cursor": "embedded"}
     assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
     fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()
     command = [str(receiver), fingerprint] + (["--seconds", str(seconds)] if media else ["--no-media"])

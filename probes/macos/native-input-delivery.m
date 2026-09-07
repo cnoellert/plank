@@ -17,6 +17,12 @@ static void finish(void) {
 }
 @interface PLANKNativeInputView : NSView
 @property unsigned received;
+@property unsigned modifiersDown;
+@property unsigned modifiersUp;
+@property BOOL cleanupPhase;
+@property unsigned cleanupReleased;
+@property BOOL shiftClick;
+@property BOOL shiftKey;
 @end
 @implementation PLANKNativeInputView
 - (BOOL)acceptsFirstResponder { return YES; }
@@ -26,17 +32,47 @@ static void finish(void) {
         self.received |= bit; // No user input/contents/coordinates are recorded.
 }
 - (void)mouseMoved:(NSEvent *)event { [self record:event bit:1]; }
-- (void)mouseDown:(NSEvent *)event { [self record:event bit:2]; }
+- (BOOL)isTagged:(NSEvent *)event {
+    return event.CGEvent && CGEventGetIntegerValueField(event.CGEvent, kCGEventSourceUserData) == tag;
+}
+- (void)mouseDown:(NSEvent *)event {
+    [self record:event bit:2];
+    if (self.cleanupPhase && [self isTagged:event] && (event.modifierFlags & NSEventModifierFlagShift))
+        self.shiftClick = YES;
+}
 - (void)mouseDragged:(NSEvent *)event { [self record:event bit:4]; }
-- (void)mouseUp:(NSEvent *)event { [self record:event bit:8]; }
+- (void)mouseUp:(NSEvent *)event {
+    [self record:event bit:8];
+    if (self.cleanupPhase && [self isTagged:event]) self.cleanupReleased |= 4;
+}
 - (void)rightMouseDown:(NSEvent *)event { [self record:event bit:16]; }
 - (void)rightMouseUp:(NSEvent *)event { [self record:event bit:32]; }
 - (void)scrollWheel:(NSEvent *)event {
     if (event.scrollingDeltaY != 0) [self record:event bit:64];
     if (event.scrollingDeltaX != 0) [self record:event bit:512];
 }
-- (void)keyDown:(NSEvent *)event { [self record:event bit:128]; }
-- (void)keyUp:(NSEvent *)event { [self record:event bit:256]; }
+- (void)keyDown:(NSEvent *)event {
+    [self record:event bit:128];
+    if (self.cleanupPhase && [self isTagged:event] && event.keyCode == 0 &&
+        (event.modifierFlags & NSEventModifierFlagShift)) self.shiftKey = YES;
+}
+- (void)keyUp:(NSEvent *)event {
+    [self record:event bit:256];
+    if (self.cleanupPhase && [self isTagged:event] && event.keyCode == 0) self.cleanupReleased |= 1;
+}
+- (void)flagsChanged:(NSEvent *)event {
+    if (![self isTagged:event]) return;
+    const unsigned codes[] = {56, 60, 59, 62, 58, 61, 55, 54};
+    const NSEventModifierFlags flags[] = {NSEventModifierFlagShift, NSEventModifierFlagControl,
+        NSEventModifierFlagOption, NSEventModifierFlagCommand};
+    for (unsigned i = 0; i < 8; ++i) if (event.keyCode == codes[i]) {
+        if (event.modifierFlags & flags[i / 2]) self.modifiersDown |= 1u << i;
+        else {
+            self.modifiersUp |= 1u << i;
+            if (self.cleanupPhase && event.keyCode == 56) self.cleanupReleased |= 2;
+        }
+    }
+}
 @end
 int main(int argc, const char **argv) {
     if (argc != 2 || strcmp(argv[1], "--input") || getuid() == 0) return 2;
@@ -94,6 +130,7 @@ int main(int argc, const char **argv) {
             return post(1, data, sizeof(data));
         };
         __block unsigned ticks = 0; __block BOOL passed = YES, moved = NO, positionMatch = NO;
+        __block BOOL heldStateVerified = NO, cleanupStateVerified = NO;
         __block int result = 5;
         dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
         dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC),
@@ -130,9 +167,48 @@ int main(int argc, const char **argv) {
                     passed &= post(5, (uint8_t[]){0x80, 0x41, 1, 0, 0}, 5);
                     passed &= post(5, (uint8_t[]){0x80, 0x41, 0, 0, 0}, 5); break;
                 default:
-                    if (view.received == 1023 || ticks >= 30) {
-                        result = passed && positionMatch && view.received == 1023 ? 0 : 5; finish();
-                    } break;
+                    if (ticks <= 21) {
+                        // Each left/right modifier is held for one timer tick.
+                        // No letter is posted while Command/Option/Control is held.
+                        unsigned index = (ticks - 6) / 2; BOOL down = !(ticks & 1);
+                        const uint8_t keys[] = {0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0x5b, 0x5c};
+                        uint8_t bytes[] = {0x80, keys[index], down, down ? (1u << (index / 2)) : 0, 0};
+                        passed &= post(5, bytes, sizeof(bytes));
+                    } else if (ticks == 22) {
+                        view.cleanupPhase = YES;
+                        passed &= post(5, (uint8_t[]){0x80, 0xa0, 1, 1, 0}, 5);
+                        passed &= post(5, (uint8_t[]){0x80, 0x41, 1, 1, 0}, 5);
+                        passed &= post(2, (uint8_t[]){1, 1}, 2);
+                    } else if (ticks == 23) {
+                        CGEventSourceStateID state = CGEventSourceGetSourceStateID(source);
+                        heldStateVerified = CGEventSourceKeyState(state, 0) &&
+                            CGEventSourceButtonState(state, kCGMouseButtonLeft) &&
+                            (CGEventSourceFlagsState(state) & kCGEventFlagMaskShift);
+                        NSArray *releases = [mapper stopAndCopyReleaseEvents];
+                        passed &= releases.count == 3;
+                        for (id value in releases) if (ownedFocus()) {
+                            CGEventRef event = (__bridge CGEventRef)value;
+                            CGEventSetIntegerValueField(event, kCGEventSourceUserData, tag);
+                            CGEventPost(kCGHIDEventTap, event);
+                        } else passed = NO;
+                        passed &= [mapper stopAndCopyReleaseEvents].count == 0;
+                        passed &= [mapper consumeType:5 payload:[NSData dataWithBytes:(uint8_t[]){0x80, 0x41, 1, 0, 0} length:5]
+                            time:clock_gettime_nsec_np(CLOCK_UPTIME_RAW) accept:^BOOL(CGEventRef event) {
+                                (void)event; return NO;
+                            }] == PLANKMacInputStopped;
+                    } else {
+                        CGEventSourceStateID state = CGEventSourceGetSourceStateID(source);
+                        cleanupStateVerified = !CGEventSourceKeyState(state, 0) &&
+                            !CGEventSourceButtonState(state, kCGMouseButtonLeft) &&
+                            !(CGEventSourceFlagsState(state) & (kCGEventFlagMaskShift | kCGEventFlagMaskControl |
+                                kCGEventFlagMaskAlternate | kCGEventFlagMaskCommand));
+                        BOOL complete = view.received == 1023 && view.modifiersDown == 255 && view.modifiersUp == 255 &&
+                            view.cleanupReleased == 7 && view.shiftClick && view.shiftKey && cleanupStateVerified;
+                        if (complete || ticks >= 35) {
+                            result = passed && positionMatch && heldStateVerified && complete ? 0 : 5; finish();
+                        }
+                    }
+                    break;
             }
         });
         dispatch_resume(timer); [NSApp run]; dispatch_source_cancel(timer);
@@ -148,6 +224,8 @@ int main(int argc, const char **argv) {
         if (previous && previous.processIdentifier != NSProcessInfo.processInfo.processIdentifier)
             [previous activateWithOptions:0];
         printf("native_input_delivery received_mask=%u expected_mask=1023 position_match=%d result=%d\n", view.received, positionMatch, result);
+        printf("native_input_modifiers down=%u up=%u expected=255 shift_key=%d shift_click=%d held=%d cleanup_received=%u expected_cleanup=7 released=%d\n",
+            view.modifiersDown, view.modifiersUp, view.shiftKey, view.shiftClick, heldStateVerified, view.cleanupReleased, cleanupStateVerified);
         return result;
     }
 }

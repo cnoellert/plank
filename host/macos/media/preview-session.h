@@ -2,6 +2,7 @@
 #pragma once
 #import "native-video.h"
 #import "native-audio.h"
+#import "quartz-input.h"
 
 BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *topology);
 
@@ -33,7 +34,8 @@ typedef NS_ENUM(unsigned, PLANKMacPreviewState) {
                          request:(NSDictionary *)request
                         topology:(NSDictionary *(^)(void))topology
                           config:(const PlankTransportConfig *)config
-                         capture:(id<PLANKMacPreviewCapture>)capture;
+                         capture:(id<PLANKMacPreviewCapture>)capture
+                           input:(id<PLANKMacInputDevice>)input;
 @property(atomic, readonly) PLANKMacPreviewState state;
 // Secret for the authenticated HTTPS launch reply only; never log/persist.
 @property(atomic, readonly, copy) NSString *transportToken;

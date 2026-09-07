@@ -2,6 +2,7 @@
 // Synthetic capture/account, actual native QUIC; no desktop pixels or changes.
 #import "preview-session.h"
 #import "fixed-capture.h"
+#import "macos-fake-input.h"
 #include "plank_transport_control.h"
 #include <unistd.h>
 #include <sys/resource.h>
@@ -103,20 +104,22 @@ int main(int argc, const char **argv) {
         NSData *wrongPeer = [NSData dataWithBytes:"nope" length:4];
         NSString *token = authenticate(auth, peer);
         PLANKFakeCapture *source = [PLANKFakeCapture new];
+        PLANKFakeInput *input = [PLANKFakeInput new];
         CHECK(![[PLANKMacPreviewSession alloc] initWithSessions:auth token:token peer:wrongPeer request:request
-            topology:snapshot config:&cfg capture:source]);
+            topology:snapshot config:&cfg capture:source input:input]);
         CHECK(![[PLANKMacPreviewSession alloc] initWithSessions:auth token:token peer:peer request:extra
-            topology:snapshot config:&cfg capture:source]);
+            topology:snapshot config:&cfg capture:source input:input]);
         PLANKMacAccountIdentity identity = {0};
         CHECK([auth authorizeToken:token peer:peer identity:&identity]);
-        for (unsigned scenario = 0; scenario < 9; ++scenario) {
+        for (unsigned scenario = 0; scenario < 11; ++scenario) {
             if (scenario) token = authenticate(auth, peer);
             source = [PLANKFakeCapture new];
+            input = [PLANKFakeInput new];
             source.failStart = scenario == 4;
             source.deferStart = scenario == 5;
             source.deferStop = scenario == 8;
             PLANKMacPreviewSession *session = [[PLANKMacPreviewSession alloc] initWithSessions:auth token:token peer:peer
-                request:request topology:snapshot config:&cfg capture:source];
+                request:request topology:snapshot config:&cfg capture:source input:input];
             CHECK(session && session.state == PLANKMacPreviewPrepared);
             CHECK(![auth authorizeToken:token peer:peer identity:&identity]);
             NSString *transportToken = session.transportToken;
@@ -133,6 +136,10 @@ int main(int argc, const char **argv) {
             if (scenario < 4 || scenario >= 6) {
                 CHECK(until(^BOOL { return session.state == PLANKMacPreviewStreaming; }));
                 CHECK(source.starts == 1 && source.bitrate == 50000);
+                CHECK(plank_transport_native_input_send(client, 5, (uint8_t[]){0x80, 0x41, 1, 0, 0}, 5) == PLANK_TRANSPORT_OK);
+                CHECK(plank_transport_native_input_send(client, 2, (uint8_t[]){1, 1}, 2) == PLANK_TRANSPORT_OK);
+                CHECK(until(^BOOL { return input.delivered == 2; }));
+                CHECK(input.releases == 0);
             }
             uint8_t control[20]; size_t length = 0;
             if (scenario == 0) {
@@ -175,9 +182,15 @@ int main(int argc, const char **argv) {
                 dispatch_async(source.queue, ^{
                     void (^completion)(void) = source.pendingStop; source.pendingStop = nil; completion();
                 });
+            } else if (scenario == 9) {
+                input.availableFlag = NO;
+                CHECK(plank_transport_native_input_send(client, 1, (uint8_t[]){0, 1, 0, 1, 0, 10, 0, 10}, 8) == PLANK_TRANSPORT_OK);
+            } else if (scenario == 10) {
+                CHECK(plank_transport_native_input_send(client, 2, (uint8_t[]){1, 2}, 2) == PLANK_TRANSPORT_OK);
             }
             CHECK(until(^BOOL { return session.state == PLANKMacPreviewStopped; }));
             CHECK(source.stops == 1 && source.revokedBeforeStop && session.transportToken == nil);
+            CHECK(input.releases == ((scenario == 0 || scenario == 3 || scenario == 8 || scenario == 10) ? 2u : 0u));
             dispatch_semaphore_t stopped = dispatch_semaphore_create(0);
             [session stopWithCompletion:^{ dispatch_semaphore_signal(stopped); }];
             CHECK(dispatch_semaphore_wait(stopped, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)) == 0);
@@ -189,6 +202,6 @@ int main(int argc, const char **argv) {
             }
         }
         [auth revokeAll];
-        printf("macos_preview_session=pass checks=%u scenarios=9 synthetic_capture=1 real_quic=1 cleanup=1\n", checks);
+        printf("macos_preview_session=pass checks=%u scenarios=11 synthetic_capture=1 real_quic=1 cleanup=1\n", checks);
     }
 }

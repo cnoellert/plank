@@ -35,8 +35,8 @@ bash "$source_root/scripts/build-macos-input-delivery.sh" "$source_root" \
   "$PLANK_WORK_ROOT/input-delivery-candidate"
 ```
 
-The current delivery app is Probe **52**, accepts only `--input`, and is not the
-authenticated A/V app. Preserve/hash-verify installed Probe 49 and its signed
+The current delivery app is Probe **53**, accepts only `--input`, and is not the
+authenticated A/V app. Preserve/hash-verify the installed A/V app and its signed
 backup before temporarily replacing it at the approved application path.
 Verify installed ownership root/755, signature and executable hash, then run as
 the actual desktop UID (never assume 501):
@@ -47,9 +47,11 @@ bash "$source_root/probes/macos/run-graphical-probe.sh" "gui/$(id -u)" \
   "$source_root/probes/macos/probe-agent.plist" --input
 ```
 
-The expected mask is 1023 with `position_match=1`, result/exit zero. Focus denial
+The expected base mask is 1023 with `position_match=1`, modifier down/up masks
+255/255, Shift-key/click true, held=true, cleanup_received=7 and released=true,
+result/exit zero. Focus denial
 is a safety refusal, not proof the OS rejected input. Restore and hash-verify
-the tested A/V Probe 49 after the test; ensure the temporary agent is gone.
+the tested A/V app after the test; ensure the temporary agent is gone.
 Request test-window activation from `NSApplicationDidFinishLaunchingNotification`,
 not before `[NSApp run]`. Probe 51 still failed focus on an unlocked desktop;
 moving that one activation to the launch notification produced two fresh Probe
@@ -57,7 +59,7 @@ moving that one activation to the launch notification produced two fresh Probe
 with repeated activation attempts or inject input into another app.
 The input test link retains the qualified `__CGPreLoginApp/__cgpreloginapp`
 Mach-O marker. Carry that gate into any later app that incorporates input; the
-current A/V-only build does not yet include it. The marker does not bypass TCC
+current A/V/input Probe 54 includes it too. The marker does not bypass TCC
 or qualify LoginWindow delivery. See `macos-input.md` for remaining gates.
 
 ## Transport qualification
@@ -237,8 +239,10 @@ range, BT.709 matrix/primaries and sRGB transfer. This is a component gate;
 actual Client hardware decode and presentation still require a hardware target.
 
 The native-video runner also compiles `preview-session.m`/`screen-capture.m`
-and runs the synthetic-capture lifecycle suite on loopback UDP 47492. Include
-`plank_transport_control.h`, both new modules and
+and runs the synthetic-capture/input lifecycle suite on loopback UDP 47492.
+Current expectation is 300 checks/11 scenarios. Include the `host/macos/input`
+headers/sources, `tests/input/macos-fake-input.{h,m}`, `plank_transport_input.h`,
+`plank_transport_control.h`, both media modules and
 `tests/protocol/macos-preview-launch-v1.json` in standalone staged inputs.
 This is not a new transport-library build. Each lifecycle test remains bounded.
 
@@ -253,11 +257,16 @@ not the older command-line chart/input probe. Preserve the previously installed
 probe app before replacing it on the dedicated Mac. Do not install on the
 read-only reference Mac or change TCC/keychain trust policy to make it work.
 
-Current output is **Probe 49**, the authenticated combined audio/video entry
-point. Its source list includes `native-audio.m` and `opus-encoder.m`, linked
-with AudioToolbox. The older standalone audio-only Probe 46 does not accept the
+Current output is **Probe 54**, the authenticated combined audio/video/input
+entry point. Its source list includes the native input adapters and public
+Quartz device, linked with Carbon/ApplicationServices and the qualified pre-login
+marker, alongside `native-audio.m`/`opus-encoder.m` and AudioToolbox. The fake
+input device is linked only into the synthetic executable, never the signed
+real-account app. The older standalone audio-only Probe 46 does not accept the
 HTTPS runner's arguments; do not confuse installed app versions. Public product
-discovery remains gated. The qualification launch's audio service is now true.
+discovery remains gated. The qualification launch's audio and input services
+are true; its cursor remains embedded. Live receiver qualification sends no
+mouse/key input, so it can validate A/V without acting on the desktop.
 
 If signing fails with `errSecInternalComponent` despite a valid identity,
 unlock the login keychain interactively and run signing/build **within the same

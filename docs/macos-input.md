@@ -1,7 +1,7 @@
 # Native Mac input qualification
 
-Experimental macOS/SDK 27 components, not enabled in the ordinary Client or the
-authenticated A/V capture owner yet. Linux input and shared wire types are
+Experimental macOS/SDK 27 components, integrated with the authenticated A/V
+capture owner but not the ordinary Client. Linux input and shared wire types are
 unchanged. General desktop keyboard/mouse is the scope; Wacom comes later.
 
 ## Boundary
@@ -34,7 +34,22 @@ requests no permission and uses no inherited GameStream packet wrapper.
 endpoint readiness checks. Event construction happens outside the auth lock;
 only a bounded internal delivery sink runs under the revocation boundary.
 Topology and permission validity are checked again immediately before delivery.
-There is no private input queue/worker or retry after revocation.
+This adapter adds no private input queue/worker or retry after revocation.
+
+The session owner now runs one native blocking receiver on a serial dispatch
+queue. The existing transport condition variable wakes it immediately on input
+or stop, with a one-second timeout only to recheck ownership. Each packet is
+synchronously handed to the serial capture/session queue; at most one packet
+awaits that handoff. Input is not polled by the 20-ms lifecycle timer and no
+second input backlog is introduced. Framework/capture queue contention still
+needs performance measurement; no end-to-end latency guarantee follows.
+
+`quartz-input.m` supplies a private Quartz event source and uses only public
+CGEvent posting with existing consent. The owner requires a valid mapper before
+capture starts, checks permission during lifecycle and delivery, and drains both
+capture and the input receiver before destroying the shared native endpoint.
+Owner abandonment revokes first and retains the endpoint until both drains;
+the receiver never strongly owns the session between deliveries.
 
 Orderly teardown must call input stop **before** ending the lease. Transport
 loss alone does not prevent releasing held input while the same desktop is
@@ -74,9 +89,25 @@ delivery into AppKit: move, left down/drag/up, right down/up, both scroll axes,
 key down/up. The test restored pointer and prior foreground app. The temporary
 agent exited/was removed; signed A/V Probe 49 was restored and hash-verified.
 
-This is not an ordinary Client session, modifier/held-state cleanup acceptance,
-multi-display or HiDPI live qualification, or custom cursor extraction. Next
-extend owned-window checks to those input cases before A/V owner integration.
+Probe 53 extends the live guard to all eight left/right modifiers and deliberate
+held-input cleanup. It passes: base mask 1023, modifier down/up masks 255/255,
+Shift-key and Shift-click, private-source held-state confirmation, then receipt
+of all three generated cleanup releases (key, Shift, left button) and cleared
+private-source state. Repeated stop is empty and the stopped mapper refuses new
+input. No generated shortcut is sent into a foreign application.
+
+The integrated owner now passes **300 checks / 11 scenarios** using real QUIC
+and a non-posting synthetic device. These add actual native input reception,
+authorized releases before revocation, no releases into a changed desktop,
+permission loss, malformed input and receiver drain/owner abandonment. The
+unchanged hardware-video tests still pass 180 checks each at 1080p and 4K.
+Signed Probe 54 includes the real Quartz input device with authenticated A/V;
+its qualification manifest sets both audio and input true. Synthetic HTTPS
+security/admission tests pass. Live A/V qualification does not inject any input;
+see HANDOFF for its measured results. The Client draft stays paused.
+
+These tests are not an ordinary Client session, an agent-replacement cleanup
+test, multi-display/HiDPI live qualification, or custom cursor extraction.
 Do not run it in LoginWindow or send credentials; LoginWindow input remains a
 separate operator-coordinated acceptance gate.
 
