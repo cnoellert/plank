@@ -102,3 +102,43 @@ failure/timeout, launch-delivery cancellation, owner abandonment and delayed
 capture drain. Authenticated HTTPS qualification checks launch validation and
 replay too. The real Aqua variant has received live HEVC frames, applied a bitrate
 change and disconnected cleanly, without storing any desktop pixels.
+
+## Ordinary Client integration — remaining gates
+
+The Client has a typed schema-1 request/manifest helper and common-c now has
+explicit service flags. The Linux PLS1 response still requires audio and local
+cursor support; its caller selects audio/input/local-cursor. The Mac manifest
+selects none of those services, while retaining the documented bitrate control.
+Common-c skips absent audio/input workers and balances failure cleanup. The Qt
+Client also skips the native audio receiver when audio was not negotiated.
+These changes pass standalone state-machine/manifest tests and a full
+uninstalled Ubuntu Client build. They do **not** remove the Mac readiness gate.
+
+Complete these boundaries before making a testable Client candidate:
+
+1. Add authenticated `NvHTTP` POST `/plank/launch`, keeping credentials/tokens out
+   of URLs/logs and preserving the authenticated TLS leaf fingerprint for QUIC.
+   Consume the HTTP token on launch; do not redirect or automatically retry the
+   one-shot request. Validate the manifest before starting the native endpoint.
+2. Feed the fixed capture's **pixel** dimensions into Session decode and
+   presentation geometry, not its logical-point bounds or the Client monitor's
+   resolution. Do not invoke Linux host-layout mutation for this capture.
+3. Use the manifest's exact Main10 profile for decoder qualification and local
+   SERVER_INFORMATION. Public discovery's zero capabilities remain honest;
+   only authenticated launch establishes this experimental stream capability.
+4. Skip the Linux PLS1 setup exchange for this typed preview only. Do not bypass
+   Linux's response checks or local-cursor requirement globally. Avoid the
+   current unconditional audio-device test for this explicit video-only launch.
+5. Keep the compositor cursor and toolbar locally usable, disable remote input
+   forwarding for the preview, and accept the cursor embedded in captured
+   pixels without waiting for separate cursor events. Do not start raw-HID
+   forwarding or hide the local pointer on the strength of a platform name.
+6. Qualify failure/cancellation, disconnect, reconnect with fresh authorization,
+   topology replacement, real decode/presentation and live bitrate control.
+   The Mac runner is still loopback-only; expose only a deliberate authenticated
+   development listener for the actual Client test, not public discovery flags.
+
+Only then remove the early Mac Session gate, build a new versioned DEB on
+linux-client-builder, and install that exact artifact on the authorized test target.
+Audio, general input and LoginWindow transitions remain subsequent Mac product
+gates, not capabilities supplied by this video-only preview.

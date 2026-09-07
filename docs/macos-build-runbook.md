@@ -333,6 +333,31 @@ hardware decode, renderer output and stream integration are separate gates.
 Keep partial copied standalone qualification inputs explicitly identified;
 full Client builds still require exact committed, clean worktrees and bundles.
 
+For `tests/outputtopology/outputtopology.pro`, set `PLANK_REPO_ROOT` to the exact
+root source worktree when running its binary. Without that environment value,
+the fixture-dependent tests fail to open JSON vectors; that is a runner error,
+not a topology or compiler regression.
+
+### Native optional services and typed preview launch
+
+On linux-client-builder, import a verified unpublished **common-c bundle before Client,
+then Client before root**, always using `--recurse-submodules=no`. Create clean
+detached worktrees and run:
+
+```bash
+bash "$root_worktree/scripts/test-client-native-services.sh" \
+  "$root_worktree" "$client_worktree" "$common_worktree" \
+  "$PLANK_WORK_ROOT/native-services-candidate"
+```
+
+The output must not already exist. This compiles actual common-c Connection.c
+with test-only device/network boundaries and the real Qt typed manifest parser.
+It starts no service, media stream, input device or network listener. Current
+expectation: 291 state-machine checks and 110 manifest checks. Full Client
+link qualification remains separate; these are not hardware acceptance tests.
+Do not run an old Client against a new common-c header/library: service flags
+are an explicit internal struct contract, with no old-ABI inference.
+
 For an uninstalled full-GUI startup diagnostic on linux-client-builder, keep isolated
 XDG config/state/cache/runtime directories and use both
 `QT_QPA_PLATFORM=offscreen` and `SDL_VIDEODRIVER=offscreen`. The SDL `dummy`

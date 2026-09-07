@@ -58,7 +58,15 @@ order. Malformed/unsupported controls fail the session. No separate cursor,
 audio, raw-HID or generic input capability is claimed by this video-only preview.
 The native library itself retains its shared Linux endpoint implementation.
 
-The ordinary Client still needs explicit optional-service handling before it
-can consume this manifest. Do not invent mandatory Linux audio/local-cursor
-fields to bypass that work. Tests currently use a standalone native receiver,
-not the user-facing Qt/SDL Client.
+The Client now has a typed manifest parser and explicit native service flags.
+Audio/input/local-cursor are absent for this manifest, while schema-1's bitrate
+controls set `LI_FF_DYNAMIC_VIDEO_BITRATE`. Common-c skips absent service workers;
+the Client does not start an audio receiver without negotiated audio. Linux
+PLS1 setup explicitly retains all three services and its existing checks.
+This internal Client/common-c struct change is not a transport wire ABI change;
+the two must be rebuilt together, without an old-struct fallback.
+
+The parser is not yet called by the ordinary HTTPS/Session launch flow. Keep its
+Mac gate until authenticated POST, approved certificate continuity, fixed pixel
+geometry and embedded-cursor presentation are wired and tested. Live capture
+tests currently use a standalone native receiver, not the user-facing Client.

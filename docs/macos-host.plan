@@ -4,7 +4,10 @@ Date: 2026-09-06
 Status: macos-host branch; dedicated-Mac capture/display probes, account/control
 integration, gated Apple Client profile and hardware-encoder/native-QUIC adapter
 tests pass. Authenticated live capture now passes a short native loopback test;
-the ordinary Client is not connected yet. Visible
+the Client's explicit optional-service state machine and typed launch manifest
+pass standalone tests and the uninstalled Client build passes. The ordinary
+Client is not connected yet: HTTPS launch, fixed geometry and embedded-cursor
+presentation still need Session wiring before lifting the gate. Visible
 LoginWindow cursor/input is unverified and deferred by the operator.
 See macos-host-investigation.md for measured results and remaining gates.
 
