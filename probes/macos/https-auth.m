@@ -5,6 +5,23 @@
 #import "fixed-capture.h"
 #include <sys/resource.h>
 #include <unistd.h>
+#ifdef PLANK_MAC_PREVIEW_TEST
+#import "preview-session.h"
+#import "screen-capture.h"
+#endif
+
+#if defined(PLANK_MAC_PREVIEW_TEST) && defined(PLANK_SYNTHETIC_AUTH_TEST)
+@interface PLANKNoPixelCapture : NSObject <PLANKMacPreviewCapture>
+@end
+@implementation PLANKNoPixelCapture
+- (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
+    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
+    (void)topology; (void)video; (void)queue; (void)failed; started(bitrate * 2);
+}
+- (BOOL)setBitrate:(uint32_t)bitrate peak:(uint32_t *)peak { *peak = bitrate * 2; return YES; }
+- (void)stopWithCompletion:(void (^)(void))completion { completion(); }
+@end
+#endif
 
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
 // Linked ONLY into the synthetic test executable, never the real verifier.
@@ -72,8 +89,39 @@ int main(int argc, const char *argv[]) {
             initWithName:@"PLANK Mac qualification" workstationUUID:
                 [[NSUUID alloc] initWithUUIDString:@"f92140f5-8740-4b3b-82f7-74db5353de27"]
             version:@"macos-host-qualification"];
+        PLANKMacLaunchHandler launch = nil;
+#ifdef PLANK_MAC_PREVIEW_TEST
+        // Qualification-only orchestration: no public capability advertisement,
+        // no wildcard bind, no installable service and no unauthenticated capture.
+        __block PLANKMacPreviewSession *active = nil;
+        launch = ^NSDictionary *(NSDictionary *request, NSString *token, NSData *peer, uint16_t port, unsigned *status) {
+            if (!PLANKMacPreviewRequestMatchesTopology(request, topology())) { *status = 400; return nil; }
+            if (active && active.state != PLANKMacPreviewStopped) { *status = 409; return nil; }
+            PlankTransportConfig config = {0};
+            config.struct_size = sizeof(config); config.abi_version = PLANK_TRANSPORT_ABI_VERSION;
+            config.mode = PLANK_TRANSPORT_MODE_SERVER;
+            config.bind_address = [NSString stringWithFormat:@"127.0.0.1:%u", port].UTF8String;
+            config.certificate_path = [directory stringByAppendingPathComponent:@"cert.pem"].UTF8String;
+            config.private_key_path = [directory stringByAppendingPathComponent:@"key.pem"].UTF8String;
+            config.idle_timeout_ms = 10000; config.keep_alive_interval_ms = 1000;
+#ifdef PLANK_SYNTHETIC_AUTH_TEST
+            id<PLANKMacPreviewCapture> source = [PLANKNoPixelCapture new];
+#else
+            id<PLANKMacPreviewCapture> source = [PLANKMacScreenCapture new];
+#endif
+            active = [[PLANKMacPreviewSession alloc] initWithSessions:sessions token:token peer:peer request:request
+                topology:topology config:&config capture:source];
+            if (!active) { *status = 503; return nil; }
+            NSDictionary *reply = @{@"schema_version": @1, @"state": @"connecting", @"transport_token": active.transportToken,
+                @"udp_port": @(port), @"max_udp_payload_size": request[@"max_udp_payload_size"],
+                @"capture": topology()[@"capture"], @"services": @{@"audio": @NO, @"input": @NO, @"cursor": @"embedded"}};
+            [active start];
+            *status = 200;
+            return reply;
+        };
+#endif
         PLANKMacHTTPSAuthServer *server = [[PLANKMacHTTPSAuthServer alloc] initWithIdentity:identity
-            sessions:sessions information:information topology:topology];
+            sessions:sessions information:information topology:topology launch:launch];
         CFRelease(identity);
         if (![server startOnAddress:@"127.0.0.1" port:0 ready:^(uint16_t port) {
             printf("macos_https_auth_ready port=%u desktop_active=%d\n", port, snapshot().active);

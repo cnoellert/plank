@@ -5,8 +5,16 @@
 #import "authentication-session.h"
 #import "server-information.h"
 
+// Optional authenticated launch adapter. It must validate the exact request,
+// consume the token into a lease, retain/start its stream owner and return only
+// the launch manifest. It runs on the bounded auth lane, never the network loop.
+// QUIC must bind the supplied control port and use the same certificate as TLS.
+typedef NSDictionary *(^PLANKMacLaunchHandler)(NSDictionary *request, NSString *token,
+    NSData *peer, uint16_t port, unsigned *status);
+
 // Native TLS 1.3 discovery/authentication/authorized-topology adapter.
-// No pixel capture/input endpoint. Topology provider must be bounded and must
+// No implicit streaming capability. A nil launch handler leaves launch absent.
+// Topology provider must be bounded and must
 // not change displays. It runs only after auth and is followed by an owner recheck.
 // Caller supplies an administrator-controlled TLS identity and explicit local
 // IPv4 bind address/port; no implicit wildcard and no insecure fallback.
@@ -14,7 +22,8 @@
 @interface PLANKMacHTTPSAuthServer : NSObject
 - (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions
                     information:(PLANKMacServerInformation *)information
-                       topology:(NSDictionary *(^)(void))topology;
+                       topology:(NSDictionary *(^)(void))topology
+                         launch:(PLANKMacLaunchHandler)launch;
 - (BOOL)startOnAddress:(NSString *)address port:(uint16_t)port
                 ready:(void (^)(uint16_t boundPort))ready;
 - (void)stop;

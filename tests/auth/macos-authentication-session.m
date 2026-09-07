@@ -4,11 +4,14 @@
 #undef NDEBUG
 #endif
 #include <assert.h>
+#include <unistd.h>
+#include <dispatch/dispatch.h>
 #import "authentication-session.h"
 
 static PLANKMacDesktopIdentity desktop = {true, 1, {123, {1}}};
 static unsigned verifications;
 static unsigned checks;
+static dispatch_semaphore_t verificationEntered, verificationRelease;
 #define CHECK(value) do { assert((value)); ++checks; } while (0)
 
 PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
@@ -18,6 +21,10 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
     *output = (PLANKMacAccountIdentity){123, {1}};
     if ([name isEqualToString:@"wrong-owner"]) output->uid = 456;
     if ([name isEqualToString:@"replace"]) ++desktop.generation;
+    if ([name isEqualToString:@"blocked"]) {
+        dispatch_semaphore_signal(verificationEntered);
+        dispatch_semaphore_wait(verificationRelease, DISPATCH_TIME_FOREVER);
+    }
     return PLANKMacAuthenticationVerified;
 }
 
@@ -30,6 +37,7 @@ static NSDictionary *respond(PLANKMacAuthenticationSession *sessions, NSData *pe
 }
 
 int main(void) {
+    alarm(15);
     @autoreleasepool {
         NSData *peer = [NSData dataWithBytes:"abcd" length:4];
         NSData *other = [NSData dataWithBytes:"efgh" length:4];
@@ -90,6 +98,81 @@ int main(void) {
         for (int i = 0; i < 16; ++i)
             CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"challenge"]);
         CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"denied"]);
+        [sessions revokeAll];
+
+        start = [sessions startForPeer:peer username:@"test"];
+        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        CHECK([sessions claimToken:token peer:other] == nil);
+        CHECK([sessions authorizeToken:token peer:peer identity:&identity]);
+        PLANKMacStreamLease *lease = [sessions claimToken:token peer:peer];
+        CHECK(lease != nil && lease.transportToken.length == 44);
+        CHECK(![lease.transportToken isEqual:token]);
+        CHECK(![sessions authorizeToken:token peer:peer identity:&identity]);
+        CHECK([sessions claimToken:token peer:peer] == nil);
+        CHECK(![sessions authorizeStreamLease:lease identity:&identity] && identity.uid == 0);
+        CHECK(![sessions activateStreamLease:[PLANKMacStreamLease new]]);
+        CHECK([sessions activateStreamLease:lease]);
+        CHECK(![sessions activateStreamLease:lease]);
+        __block unsigned enqueues = 0;
+        CHECK([sessions performWithStreamLease:lease action:^{ ++enqueues; }]);
+        CHECK(enqueues == 1);
+        CHECK([sessions authorizeStreamLease:lease identity:&identity] && identity.uid == 123);
+        // A claimed lease must not inherit the five-minute setup-token expiry.
+        [[lease valueForKey:@"record"] setValue:@0 forKey:@"expires"];
+        [lease setValue:@0 forKey:@"activateBefore"];
+        CHECK([sessions authorizeStreamLease:lease identity:&identity]);
+        start = [sessions startForPeer:peer username:@"test"];
+        NSString *second = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        CHECK([sessions claimToken:second peer:peer] == nil); // no implicit takeover
+        [sessions endStreamLease:[PLANKMacStreamLease new]];
+        CHECK([sessions authorizeStreamLease:lease identity:&identity]);
+        [sessions revokeToken:token]; // failed launch response still revokes its claim
+        CHECK(![sessions performWithStreamLease:lease action:^{ ++enqueues; }]);
+        CHECK(enqueues == 1);
+        CHECK(![sessions authorizeStreamLease:lease identity:&identity]);
+        CHECK(lease.transportToken == nil);
+        lease = [sessions claimToken:second peer:peer];
+        CHECK(lease != nil);
+        [lease setValue:@0 forKey:@"activateBefore"];
+        CHECK(![sessions activateStreamLease:lease]);
+        CHECK(lease.transportToken == nil);
+        CHECK([sessions claimToken:second peer:peer] == nil);
+
+        start = [sessions startForPeer:peer username:@"test"];
+        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        lease = [sessions claimToken:token peer:peer];
+        CHECK([sessions activateStreamLease:lease]);
+        ++desktop.generation;
+        CHECK(![sessions authorizeStreamLease:lease identity:&identity]);
+        --desktop.generation;
+        CHECK(![sessions authorizeStreamLease:lease identity:&identity]); // revoked stays revoked
+
+        start = [sessions startForPeer:peer username:@"test"];
+        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        lease = [sessions claimToken:token peer:peer];
+        CHECK([sessions activateStreamLease:lease]);
+        verificationEntered = dispatch_semaphore_create(0);
+        verificationRelease = dispatch_semaphore_create(0);
+        dispatch_semaphore_t verificationFinished = dispatch_semaphore_create(0);
+        start = [sessions startForPeer:peer username:@"blocked"];
+        __block NSDictionary *lateResponse;
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+            NSMutableData *password = [NSMutableData dataWithBytes:"test" length:4];
+            lateResponse = [sessions respondForPeer:peer conversation:start[@"conversation_id"] password:password];
+            dispatch_semaphore_signal(verificationFinished);
+        });
+        CHECK(dispatch_semaphore_wait(verificationEntered, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC)) == 0);
+        // This must complete while verification is blocked, not wait for the
+        // helper's multi-second timeout. The outer alarm detects a lock regression.
+        CHECK([sessions authorizeStreamLease:lease identity:&identity]);
+        [sessions revokeAll];
+        CHECK(![sessions authorizeStreamLease:lease identity:&identity]);
+        dispatch_semaphore_signal(verificationRelease);
+        CHECK(dispatch_semaphore_wait(verificationFinished, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC)) == 0);
+        CHECK([lateResponse[@"state"] isEqual:@"denied"]); // no grant after revokeAll
+        CHECK([[sessions valueForKey:@"tokens"] count] == 0);
+        start = [sessions startForPeer:peer username:@"test"];
+        CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"authenticated"]);
         [sessions revokeAll];
         printf("macos_authentication_session=pass checks=%u synthetic_only=1\n", checks);
     }

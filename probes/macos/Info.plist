@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key><string>PLANK Host Probe</string>
     <key>CFBundleExecutable</key><string>plank-host-probe</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleVersion</key><string>42</string>
+    <key>CFBundleVersion</key><string>44</string>
     <key>LSMinimumSystemVersion</key><string>27.0</string>
     <key>LSUIElement</key><true/>
 </dict>

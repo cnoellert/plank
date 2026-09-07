@@ -13,10 +13,23 @@
 @implementation PLANKMacAuthRecord
 @end
 
+@interface PLANKMacStreamLease ()
+@property(readwrite, copy) NSString *transportToken;
+@property(strong) PLANKMacAuthRecord *record;
+@property(copy) NSString *claimedToken;
+@property uint64_t activateBefore;
+@property BOOL active;
+@end
+@implementation PLANKMacStreamLease
+@end
+
 @implementation PLANKMacAuthenticationSession {
     PLANKMacDesktopSnapshot _snapshot;
     NSMutableDictionary<NSString *, PLANKMacAuthRecord *> *_pending;
     NSMutableDictionary<NSString *, PLANKMacAuthRecord *> *_tokens;
+    PLANKMacStreamLease *_lease;
+    uint64_t _revocationGeneration;
+    BOOL _verifying;
 }
 
 static uint64_t monotonicSeconds(void) {
@@ -63,6 +76,10 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
                 [records removeObjectForKey:key];
         }
     }
+    if (_lease && ((!_lease.active && _lease.activateBefore <= now) ||
+            !plank_macos_account_may_attach(_lease.record.account, _lease.record.desktop, current))) {
+        [self endStreamLease:_lease];
+    }
 }
 
 - (NSDictionary *)startForPeer:(NSData *)peer username:(NSString *)username {
@@ -91,25 +108,39 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
 - (NSDictionary *)respondForPeer:(NSData *)peer conversation:(NSString *)conversation
                        password:(NSMutableData *)password {
     @try {
+        PLANKMacAuthRecord *record;
+        uint64_t generation;
         @synchronized(self) {
             if (!validPeer(peer) || ![conversation isKindOfClass:NSString.class] || conversation.length != 44)
                 return denied();
             [self prune];
-            PLANKMacAuthRecord *record = _pending[conversation];
+            record = _pending[conversation];
             if (!record || ![record.peer isEqual:peer]) return denied();
             // Consume BEFORE any verification. A response can never be replayed.
             [_pending removeObjectForKey:conversation];
+            if (_verifying || _tokens.count >= 16) return denied();
+            _verifying = YES;
+            generation = _revocationGeneration;
+        }
+        // Open Directory/helper waits must not hold the lock needed to revoke
+        // or validate an active stream. Recheck the revocation epoch afterward.
+        @try {
             PLANKMacAccountIdentity account = {0};
-            if (_tokens.count >= 16 || PLANKMacVerifyAccountIsolated(record.username, password, &account) !=
-                    PLANKMacAuthenticationVerified ||
-                !plank_macos_account_may_attach(account, record.desktop, _snapshot())) return denied();
-            NSString *token = randomToken();
-            if (!token || _tokens[token]) return denied();
-            record.account = account;
-            record.username = nil;
-            record.expires = monotonicSeconds() + 300;
-            _tokens[token] = record;
-            return @{@"state": @"authenticated", @"session_token": token};
+            PLANKMacAuthenticationResult result = PLANKMacVerifyAccountIsolated(record.username, password, &account);
+            @synchronized(self) {
+                if (generation != _revocationGeneration || _tokens.count >= 16 ||
+                        result != PLANKMacAuthenticationVerified ||
+                        !plank_macos_account_may_attach(account, record.desktop, _snapshot())) return denied();
+                NSString *token = randomToken();
+                if (!token || _tokens[token]) return denied();
+                record.account = account;
+                record.username = nil;
+                record.expires = monotonicSeconds() + 300;
+                _tokens[token] = record;
+                return @{@"state": @"authenticated", @"session_token": token};
+            }
+        } @finally {
+            @synchronized(self) { _verifying = NO; }
         }
     } @finally {
         [password resetBytesInRange:NSMakeRange(0, password.length)];
@@ -132,14 +163,76 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
 
 - (void)revokeAll {
     @synchronized(self) {
+        ++_revocationGeneration;
         [_pending removeAllObjects];
         [_tokens removeAllObjects];
+        [self endStreamLease:_lease];
     }
 }
 
 - (void)revokeToken:(NSString *)token {
     @synchronized(self) {
-        if ([token isKindOfClass:NSString.class]) [_tokens removeObjectForKey:token];
+        if ([token isKindOfClass:NSString.class]) {
+            [_tokens removeObjectForKey:token];
+            if ([_lease.claimedToken isEqual:token]) [self endStreamLease:_lease];
+        }
+    }
+}
+
+- (PLANKMacStreamLease *)claimToken:(NSString *)token peer:(NSData *)peer {
+    @synchronized(self) {
+        [self prune];
+        PLANKMacAccountIdentity account = {0};
+        if (_lease || ![self authorizeToken:token peer:peer identity:&account]) return nil;
+        NSString *transportToken = randomToken();
+        if (!transportToken || [transportToken isEqual:token]) return nil;
+        PLANKMacStreamLease *lease = [PLANKMacStreamLease new];
+        lease.record = _tokens[token];
+        lease.claimedToken = token;
+        lease.transportToken = transportToken;
+        lease.activateBefore = monotonicSeconds() + 15;
+        [_tokens removeObjectForKey:token];
+        _lease = lease;
+        return lease;
+    }
+}
+
+- (BOOL)activateStreamLease:(PLANKMacStreamLease *)lease {
+    @synchronized(self) {
+        [self prune];
+        if (!lease || lease != _lease || lease.active) return NO;
+        lease.active = YES;
+        return YES;
+    }
+}
+
+- (BOOL)authorizeStreamLease:(PLANKMacStreamLease *)lease identity:(PLANKMacAccountIdentity *)identity {
+    if (identity) memset(identity, 0, sizeof(*identity));
+    @synchronized(self) {
+        [self prune];
+        if (!identity || !lease || lease != _lease || !lease.active) return NO;
+        *identity = lease.record.account;
+        return YES;
+    }
+}
+
+- (void)endStreamLease:(PLANKMacStreamLease *)lease {
+    @synchronized(self) {
+        if (!lease || lease != _lease) return;
+        lease.active = NO;
+        lease.transportToken = nil;
+        lease.claimedToken = nil;
+        lease.record = nil;
+        _lease = nil;
+    }
+}
+
+- (BOOL)performWithStreamLease:(PLANKMacStreamLease *)lease action:(void (^)(void))action {
+    @synchronized(self) {
+        [self prune];
+        if (!action || !lease || lease != _lease || !lease.active) return NO;
+        action();
+        return YES;
     }
 }
 @end

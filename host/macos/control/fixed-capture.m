@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "fixed-capture.h"
 #include <math.h>
+#include <stdatomic.h>
+
+// One process-lifetime observer; no object pointer can outlive its owner and
+// no polling thread or per-frame WindowServer query is introduced. The low
+// bit denotes reconfiguration in progress; other bits identify each event.
+static atomic_uint_fast64_t displayRevision = 0;
+static BOOL displayObservationAvailable;
+static void displayChanged(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *context) {
+    (void)display; (void)context;
+    uint64_t previous = atomic_load(&displayRevision);
+    uint64_t next;
+    do {
+        next = ((previous + 2) & ~UINT64_C(1)) |
+            ((flags & kCGDisplayBeginConfigurationFlag) ? 1 : 0);
+    } while (!atomic_compare_exchange_weak(&displayRevision, &previous, next));
+}
 
 NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *identifier,
         size_t width, size_t height, CGRect bounds) {
@@ -28,8 +44,17 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
     NSDictionary *_previous;
     NSString *_generation;
 }
+- (instancetype)init {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        displayObservationAvailable = CGDisplayRegisterReconfigurationCallback(displayChanged, NULL) == kCGErrorSuccess;
+    });
+    return displayObservationAvailable ? [super init] : nil;
+}
 - (NSDictionary *)snapshot {
     @synchronized(self) {
+        uint64_t revision = atomic_load(&displayRevision);
+        if (revision & 1) { _previous = nil; _generation = nil; return nil; }
         CGDirectDisplayID display = CGMainDisplayID();
         if (!display || !CGDisplayIsActive(display)) { _previous = nil; _generation = nil; return nil; }
         CGDisplayModeRef mode = CGDisplayCopyDisplayMode(display);
@@ -42,13 +67,14 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
         BOOL stable = check && display == CGMainDisplayID() && CGDisplayIsActive(display) &&
             modeID == CGDisplayModeGetIODisplayModeID(check) &&
             width == CGDisplayModeGetPixelWidth(check) && height == CGDisplayModeGetPixelHeight(check) &&
-            CGRectEqualToRect(bounds, CGDisplayBounds(display));
+            CGRectEqualToRect(bounds, CGDisplayBounds(display)) &&
+            revision == atomic_load(&displayRevision);
         if (check) CGDisplayModeRelease(check);
         if (!stable) { _previous = nil; _generation = nil; return nil; }
         NSString *identifier = [NSString stringWithFormat:@"cgdisplay:%u", display];
         // Refresh/mode identity is part of the generation even if pixel size
         // is unchanged. No guessed point-to-pixel ratio or monitor provenance.
-        NSDictionary *fingerprint = @{@"display": @(display), @"mode": @(modeID),
+        NSDictionary *fingerprint = @{@"display": @(display), @"mode": @(modeID), @"revision": @(revision),
             @"width": @(width), @"height": @(height), @"bounds": [NSValue valueWithRect:NSRectFromCGRect(bounds)]};
         if (![_previous isEqual:fingerprint]) {
             _generation = NSUUID.UUID.UUIDString.lowercaseString;

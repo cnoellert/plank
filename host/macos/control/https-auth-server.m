@@ -23,6 +23,8 @@
     PLANKMacServerInformation *_information;
     NSData *_serverInformationXML;
     NSDictionary *(^_topology)(void);
+    PLANKMacLaunchHandler _launch;
+    uint16_t _controlPort;
     nw_listener_t _listener;
     dispatch_queue_t _networkQueue;
     dispatch_queue_t _authQueue;
@@ -33,7 +35,8 @@
 }
 
 - (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions
-                    information:(PLANKMacServerInformation *)information topology:(NSDictionary *(^)(void))topology {
+                    information:(PLANKMacServerInformation *)information topology:(NSDictionary *(^)(void))topology
+                         launch:(PLANKMacLaunchHandler)launch {
     if (!identity || !sessions || !information || !topology) return nil;
     struct rlimit core;
     if (getrlimit(RLIMIT_CORE, &core) || core.rlim_cur != 0) return nil;
@@ -44,6 +47,7 @@
         _sessions = sessions;
         _information = information;
         _topology = [topology copy];
+        _launch = [launch copy];
         _requests = [NSMutableSet set];
         _networkQueue = dispatch_queue_create("la.instinctual.PLANK.Host.https", DISPATCH_QUEUE_SERIAL);
         _authQueue = dispatch_queue_create("la.instinctual.PLANK.Host.authentication", DISPATCH_QUEUE_SERIAL);
@@ -89,15 +93,18 @@
                type:@"application/json" token:object[@"session_token"] status:status request:request];
 }
 
-- (void)handlePath:(NSString *)path body:(NSMutableData *)body request:(PLANKMacHTTPSRequest *)request {
+- (void)handlePath:(NSString *)path body:(NSMutableData *)body authorization:(NSString *)authorization
+          request:(PLANKMacHTTPSRequest *)request {
     // Body and Foundation's transient JSON values never enter a log. Mutable
     // buffers are wiped; framework-managed NSString copies cannot be promised
     // erased. Bound them to this per-request autorelease pool.
     @autoreleasepool {
+        NSString *potentialClaim = nil;
         @try {
             if (request.finished) return;
             id value = [NSJSONSerialization JSONObjectWithData:body options:0 error:NULL];
             NSDictionary *reply = @{@"state": @"denied"};
+            NSString *claimedToken = nil;
             unsigned status = 400;
             if ([value isKindOfClass:NSDictionary.class]) {
                 if ([path isEqual:@"/plank/auth/start"] && [value count] == 1 &&
@@ -111,11 +118,28 @@
                     NSMutableData *password = [[value[@"responses"][0] dataUsingEncoding:NSUTF8StringEncoding] mutableCopy];
                     reply = [_sessions respondForPeer:request.peer conversation:value[@"conversation_id"] password:password];
                     status = 200;
+                } else if ([path isEqual:@"/plank/launch"] && _launch) {
+                    NSString *token = [authorization hasPrefix:@"Bearer "] && authorization.length == 51 ?
+                        [authorization substringFromIndex:7] : nil;
+                    PLANKMacAccountIdentity identity = {0};
+                    status = 401;
+                    if (token && [_sessions authorizeToken:token peer:request.peer identity:&identity]) {
+                        status = 503;
+                        potentialClaim = token;
+                        reply = _launch(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
+                        if (status == 200) claimedToken = token;
+                    }
                 }
             }
-            dispatch_async(_networkQueue, ^{ [self reply:reply status:status request:request]; });
+            dispatch_async(_networkQueue, ^{
+                if (claimedToken) {
+                    [self replyBytes:[NSJSONSerialization dataWithJSONObject:reply options:0 error:NULL]
+                        type:@"application/json" token:claimedToken status:status request:request];
+                } else [self reply:reply status:status request:request];
+            });
         } @catch (NSException *exception) {
             (void)exception;
+            if (potentialClaim) [_sessions revokeToken:potentialClaim];
             dispatch_async(_networkQueue, ^{ [self reply:@{@"state": @"denied"} status:400 request:request]; });
         } @finally {
             [body resetBytesInRange:NSMakeRange(0, body.length)];
@@ -186,7 +210,8 @@
                     [owner reply:@{@"state": @"denied"} status:503 request:request];
                     return;
                 }
-                if (![path isEqual:@"/plank/auth/start"] && ![path isEqual:@"/plank/auth/respond"]) {
+                if (![path isEqual:@"/plank/auth/start"] && ![path isEqual:@"/plank/auth/respond"] &&
+                    !([path isEqual:@"/plank/launch"] && owner->_launch)) {
                     [owner reply:@{@"state": @"denied"} status:404 request:request];
                     return;
                 }
@@ -194,7 +219,7 @@
                 [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
                 request.bytes = nil;
                 owner->_authBusy = YES;
-                dispatch_async(owner->_authQueue, ^{ [owner handlePath:path body:body request:request]; });
+                dispatch_async(owner->_authQueue, ^{ [owner handlePath:path body:body authorization:authorization request:request]; });
             } else if (complete) {
                 [owner finish:request];
             } else [owner receive:request];
@@ -254,6 +279,7 @@
         if (!owner) return;
         if (state == nw_listener_state_ready) {
             uint16_t boundPort = nw_listener_get_port(owner->_listener);
+            owner->_controlPort = boundPort;
             owner->_serverInformationXML = [owner->_information XMLForControlPort:boundPort];
             if (!owner->_serverInformationXML) { [owner stop]; return; }
             ready(boundPort);

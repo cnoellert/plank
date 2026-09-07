@@ -5,6 +5,9 @@
 
 // Authenticated metadata only. Caller must recheck desktop authority before
 // and after snapshot. This neither starts capture nor grants remote input.
+// Construction fails if display-change observation cannot be installed.
+// Every observed reconfiguration changes generation, including change-back.
+// The eventual stream owner must compare this generation and stop on change.
 @interface PLANKMacFixedCapture : NSObject
 - (NSDictionary *)snapshot;
 @end

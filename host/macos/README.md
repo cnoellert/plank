@@ -25,18 +25,26 @@ are cleared; framework-internal secret copies cannot be guaranteed erased.
 conversation shapes and expiring, address-bound tokens. It requires trusted
 desktop snapshots before verification and on every authorization. Tests cover
 replay, expiry, peer mismatch, ownership replacement and bounded state. It is
-now wired to the native HTTPS authentication adapter and live Aqua desktop
-authority; it is not yet connected to QUIC stream lifetime.
+now wired to the native HTTPS adapter and live Aqua desktop authority, with
+one-use claims and revocable native QUIC stream leases.
 LoginWindow authority, continuous stream revocation, deployment signing and
 account-policy failure qualification remain gates before product acceptance.
 
 `control/https-auth-server.m` uses Apple's Network/Security frameworks for the
 existing start/respond contract over TLS 1.3. The narrow HTTP parser bounds
 input and rejects ambiguous framing. `auth/desktop-authority.m` requires a real
-matching Aqua session and never reactivates revoked authority. No discovery,
-topology, capture or input endpoint is exposed by this adapter yet. See
+matching Aqua session and never reactivates revoked authority. Public discovery,
+authenticated fixed topology and an optional typed launch handler are implemented.
+Discovery still advertises no ready media service. See
 `docs/macos-control-plane.md` for limits and measured qualification results.
 
 Build/test instructions: `docs/macos-build-runbook.md`. Overall architecture and
-remaining gates: `docs/macos-host.plan`. No capture, encoder or transport policy
-is changed by this module.
+remaining gates: `docs/macos-host.plan`.
+
+`media/preview-session.m` owns an authenticated one-shot native endpoint,
+lifecycle/control timer, capture startup and ordered revocation/cleanup.
+`media/screen-capture.m` connects the exact ScreenCaptureKit display to hardware
+VideoToolbox Main10 using IOSurfaces; `media/native-video.m` validates and sends
+complete Annex-B samples through the existing transport. This path has passed
+short authenticated loopback capture tests, not an existing-Client playback,
+performance soak or LoginWindow product lifecycle. Linux is unchanged.

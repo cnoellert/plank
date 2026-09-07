@@ -5,6 +5,12 @@
 // Supplied by the trusted graphical-session owner, never by request JSON.
 typedef PLANKMacDesktopIdentity (^PLANKMacDesktopSnapshot)(void);
 
+// Opaque, process-local authorization. Only its issuing session can activate
+// it. Never log/serialize this object or persist its short-lived transport key.
+@interface PLANKMacStreamLease : NSObject
+@property(readonly, copy) NSString *transportToken;
+@end
+
 // Existing HTTPS start/respond conversation state for the desktop preview.
 // Its HTTPS adapter must enforce TLS, body limits, no-cache responses,
 // and obtain the canonical peer IP bytes from its accepted connection (not a
@@ -17,6 +23,20 @@ typedef PLANKMacDesktopIdentity (^PLANKMacDesktopSnapshot)(void);
                        password:(NSMutableData *)password;
 - (BOOL)authorizeToken:(NSString *)token peer:(NSData *)peer
              identity:(PLANKMacAccountIdentity *)identity;
+// After validating the requested capture/profile/geometry, atomically consume
+// the HTTP token. At most one pending/active lease exists; no implicit takeover.
+- (PLANKMacStreamLease *)claimToken:(NSString *)token peer:(NSData *)peer;
+// Call only after this lease's token-authenticated QUIC endpoint becomes ready.
+// Pending leases expire after 15 seconds; activation does not renew old tokens.
+- (BOOL)activateStreamLease:(PLANKMacStreamLease *)lease;
+// Check before media/input work and on the lifecycle watchdog. Desktop loss
+// latches revocation; caller must stop the endpoint/capture on failure.
+- (BOOL)authorizeStreamLease:(PLANKMacStreamLease *)lease
+                   identity:(PLANKMacAccountIdentity *)identity;
+// Linearize a bounded, nonblocking media enqueue with revocation. Do not do
+// encoding, socket waits, callbacks into UI, or account verification in action.
+- (BOOL)performWithStreamLease:(PLANKMacStreamLease *)lease action:(void (^)(void))action;
+- (void)endStreamLease:(PLANKMacStreamLease *)lease;
 - (void)revokeToken:(NSString *)token;
 - (void)revokeAll;
 @end

@@ -2,6 +2,7 @@
 """Loopback TLS/auth qualification. Synthetic credentials only by default."""
 import argparse
 import getpass
+import hashlib
 import http.client
 import io
 import json
@@ -112,6 +113,37 @@ def authenticate(tls, port, username, password):
     assert status == 200 and repeated == topology
     # Same request shape, unknown token; never echo it or any account data.
     assert request(tls, port, {}, raw=raw.replace(token.encode(), b"x" * 44))[0] == 401
+    return token, topology
+
+
+def preview(tls, port, token, topology, receiver, media):
+    capture = topology["capture"]
+    body = {"schema_version": 1, "capture_generation": topology["generation"], "capture_id": capture["id"],
+            "width": capture["width"], "height": capture["height"], "encoding_mode": "hevc-10-420-videotoolbox",
+            "frame_rate": 60, "bitrate_kbps": 50000, "max_udp_payload_size": 1200}
+
+    def launch(value, bearer):
+        encoded = json.dumps(value).encode()
+        raw = (f"POST /plank/launch HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
+               f"Authorization: Bearer {bearer}\r\nContent-Length: {len(encoded)}\r\n\r\n").encode() + encoded
+        return request(tls, port, {}, raw=raw)
+
+    assert launch(body, "x" * 44)[0] == 401
+    assert launch(dict(body, width=1), token)[0] == 400
+    assert launch(dict(body, encoding_mode="hevc-10-444-nvenc"), token)[0] == 400
+    assert launch(dict(body, capture_generation=str(uuid.uuid4())), token)[0] == 400
+    status, reply = launch(body, token)
+    assert status == 200 and reply["schema_version"] == 1 and reply["state"] == "connecting"
+    assert reply["udp_port"] == port and reply["max_udp_payload_size"] == 1200
+    assert reply["capture"] == capture and reply["transport_token"] != token
+    assert reply["services"] == {"audio": False, "input": False, "cursor": "embedded"}
+    assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
+    fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()
+    command = [str(receiver), fingerprint] + ([] if media else ["--no-media"])
+    # No launch/transport credential in argv, environment, files or diagnostics.
+    result = subprocess.run(command, input=json.dumps(reply).encode(), capture_output=True, timeout=18)
+    assert result.returncode == 0, "Native preview receiver failed: " + result.stderr.decode(errors="replace")
+    print(result.stdout.decode().strip())
 
 
 def create_identity(temporary, config):
@@ -129,7 +161,7 @@ def create_identity(temporary, config):
     return cert
 
 
-def aqua(executable, config):
+def aqua(executable, config, receiver=None):
     if not os.isatty(0) or os.geteuid() == 0:
         raise AssertionError("Aqua qualification requires the desktop user's TTY")
     domain = f"gui/{os.geteuid()}"
@@ -160,16 +192,20 @@ def aqua(executable, config):
             assert match, "Aqua HTTPS readiness/desktop ownership failed"
             port = int(match[1])
             discovery(context(cert), port)
-            authenticate(context(cert), port, getpass.getuser(), password)
+            token, topology = authenticate(context(cert), port, getpass.getuser(), password)
             password = None
-            print("macos_https_aqua_account=pass tls13_verified=1 live_owner=1 replay_denied=1 authenticated_topology=1 desktop_granted=0")
+            if receiver:
+                preview(context(cert), port, token, topology, receiver, True)
+                print("macos_https_aqua_preview=pass tls13_verified=1 live_owner=1 authenticated_capture=1 native_quic=1")
+            else:
+                print("macos_https_aqua_account=pass tls13_verified=1 live_owner=1 replay_denied=1 authenticated_topology=1 desktop_granted=0")
         finally:
             password = None
             subprocess.run(["launchctl", "bootout", f"{domain}/{label}"], stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL, check=False)
 
 
-def synthetic(executable, config):
+def synthetic(executable, config, receiver=None):
     with tempfile.TemporaryDirectory(prefix="plank-https-qualification-") as temporary:
         cert = create_identity(temporary, config)
         process = subprocess.Popen([str(executable), temporary], stdout=subprocess.PIPE,
@@ -184,7 +220,9 @@ def synthetic(executable, config):
             port = int(match[1])
             tls = context(cert)
             discovery(tls, port)
-            authenticate(tls, port, "synthetic", "test")
+            token, topology = authenticate(tls, port, "synthetic", "test")
+            if receiver:
+                preview(tls, port, token, topology, receiver, False)
             status, start = request(tls, port, {"username": "synthetic"})
             status, denied = request(tls, port, {"conversation_id": start["conversation_id"],
                                                "responses": ["wrong-synthetic-secret"]}, "/plank/auth/respond")
@@ -249,11 +287,12 @@ def main():
     parser.add_argument("--real-port", type=int)
     parser.add_argument("--certificate", type=Path)
     parser.add_argument("--aqua", action="store_true")
+    parser.add_argument("--preview-receiver", type=Path)
     args = parser.parse_args()
     if args.aqua:
         if not args.server or not args.config:
             parser.error("Aqua mode requires the real --server and --config")
-        aqua(args.server, args.config)
+        aqua(args.server, args.config, args.preview_receiver)
     elif args.real_port:
         if not args.certificate or not os.isatty(0):
             parser.error("Real verification requires a TTY and the exact certificate")
@@ -264,7 +303,7 @@ def main():
     else:
         if not args.server or not args.config:
             parser.error("Synthetic suite requires --server and --config")
-        synthetic(args.server, args.config)
+        synthetic(args.server, args.config, args.preview_receiver)
 
 
 if __name__ == "__main__":

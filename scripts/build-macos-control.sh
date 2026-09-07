@@ -25,6 +25,8 @@ xcrun clang "${common[@]}" "$source_root/host/macos/control/server-information.m
     "$source_root/tests/auth/macos-server-information.m" -o "$control_output/server-information-test"
 xcrun clang "${common[@]}" "$source_root/host/macos/control/fixed-capture.m" \
     "$source_root/tests/auth/macos-fixed-capture.m" -o "$control_output/fixed-capture-test"
+xcrun clang "${common[@]}" "$source_root/host/macos/control/fixed-capture.m" \
+    "$source_root/tests/auth/macos-fixed-capture-lifecycle.m" -o "$control_output/fixed-capture-lifecycle-test"
 xcrun clang "${common[@]}" -DPLANK_SYNTHETIC_AUTH_TEST "${control_sources[@]}" \
     -o "$control_output/https-auth-synthetic"
 xcrun clang "${common[@]}" "${control_sources[@]}" -framework OpenDirectory \
@@ -33,5 +35,7 @@ xcrun clang "${common[@]}" "${control_sources[@]}" -framework OpenDirectory \
 "$control_output/http-request-test"
 "$control_output/server-information-test" "$source_root/tests/protocol/macos-server-information.xml"
 "$control_output/fixed-capture-test" "$source_root/tests/protocol/fixed-capture-v13.json"
+"$control_output/fixed-capture-lifecycle-test"
+"$control_output/fixed-capture-lifecycle-test" --registration-failure
 "$control_output/https-auth"
 shasum -a 256 "$control_output/https-auth" "$control_output/https-auth-synthetic"
