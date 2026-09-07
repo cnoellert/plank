@@ -12,10 +12,13 @@ static BOOL token(NSString *value) {
     return YES;
 }
 
-PLANKMacHTTPParseResult PLANKMacParseAuthRequest(NSData *bytes, NSString **path, NSRange *body) {
+PLANKMacHTTPParseResult PLANKMacParseControlRequest(NSData *bytes, NSString **method, NSString **path,
+                                                 NSRange *body, NSString **authorization) {
+    if (authorization) *authorization = nil;
+    if (method) *method = nil;
     if (path) *path = nil;
     if (body) *body = NSMakeRange(0, 0);
-    if (!path || !body || bytes.length > PLANKMacHTTPHeaderLimit + PLANKMacHTTPBodyLimit)
+    if (!method || !path || !body || !authorization || bytes.length > PLANKMacHTTPHeaderLimit + PLANKMacHTTPBodyLimit)
         return PLANKMacHTTPInvalid;
     NSRange delimiter = [bytes rangeOfData:[NSData dataWithBytes:"\r\n\r\n" length:4]
                                  options:0 range:NSMakeRange(0, MIN(bytes.length, PLANKMacHTTPHeaderLimit))];
@@ -28,7 +31,8 @@ PLANKMacHTTPParseResult PLANKMacParseAuthRequest(NSData *bytes, NSString **path,
     NSString *head = [[NSString alloc] initWithBytes:raw length:delimiter.location encoding:NSASCIIStringEncoding];
     NSArray<NSString *> *lines = [head componentsSeparatedByString:@"\r\n"];
     NSArray *request = [lines.firstObject componentsSeparatedByString:@" "];
-    if (request.count != 3 || ![request[0] isEqual:@"POST"] || ![request[2] isEqual:@"HTTP/1.1"] ||
+    if (request.count != 3 || (![request[0] isEqual:@"POST"] && ![request[0] isEqual:@"GET"]) ||
+        ![request[2] isEqual:@"HTTP/1.1"] ||
         [request[1] length] > 1024 || ![request[1] hasPrefix:@"/"] ||
         [request[1] rangeOfCharacterFromSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].location != NSNotFound)
         return PLANKMacHTTPInvalid;
@@ -46,19 +50,23 @@ PLANKMacHTTPParseResult PLANKMacParseAuthRequest(NSData *bytes, NSString **path,
         headers[name] = value;
     }
     NSString *length = headers[@"content-length"];
-    if (![headers[@"host"] length] || ![headers[@"content-type"] isEqual:@"application/json"] ||
+    BOOL get = [request[0] isEqual:@"GET"];
+    if (![headers[@"host"] length] || (!get && ![headers[@"content-type"] isEqual:@"application/json"]) ||
         headers[@"transfer-encoding"] || headers[@"expect"] || headers[@"upgrade"] ||
-        !length.length || length.length > 5) return PLANKMacHTTPInvalid;
+        ((!get || length != nil) && !length.length) || length.length > 5) return PLANKMacHTTPInvalid;
     NSUInteger contentLength = 0;
     for (NSUInteger i = 0; i < length.length; ++i) {
         unichar c = [length characterAtIndex:i];
         if (c < '0' || c > '9') return PLANKMacHTTPInvalid;
         contentLength = contentLength * 10 + c - '0';
     }
-    if (!contentLength || contentLength > PLANKMacHTTPBodyLimit) return PLANKMacHTTPInvalid;
+    if ((get && contentLength != 0) || (!get && !contentLength) ||
+        contentLength > PLANKMacHTTPBodyLimit) return PLANKMacHTTPInvalid;
     NSUInteger start = NSMaxRange(delimiter);
     if (bytes.length > start + contentLength) return PLANKMacHTTPInvalid;
     if (bytes.length < start + contentLength) return PLANKMacHTTPIncomplete;
+    *method = request[0];
+    *authorization = headers[@"authorization"];
     *path = request[1];
     *body = NSMakeRange(start, contentLength);
     return PLANKMacHTTPComplete;

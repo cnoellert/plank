@@ -150,6 +150,18 @@ The qualification flag is present only in `https-auth-synthetic`; it is not
 linked into `https-auth` or a product binary. The normal executable dispatches
 its private verifier argument before initializing any graphical/network code.
 
+The runner also builds the native fixed-capture serializer/provider and verifies
+`tests/protocol/fixed-capture-v13.json`. The encrypted synthetic and real Aqua
+tests now exercise authorized topology, repeated geometry, and invalid/missing
+Bearer rejection. The real query reads existing geometry only; it must never
+start a stream, change a display or grant input as part of this control gate.
+For Client validation on linux-client-builder, run the existing
+`client/moonlight-qt-fork/tests/outputtopology/outputtopology.pro` suite with
+`PLANK_REPO_ROOT` identifying both the Linux and fixed-capture JSON fixtures.
+Keep `QT_QPA_PLATFORM=offscreen`. Unpublished standalone module/test inputs must
+be SHA-256-verified separately; this is not a substitute for the required clean
+worktree and full Client DEB/decoder gates before deploying a candidate.
+
 The no-argument `https-auth` probe reports authority and immediately revokes it.
 Over SSH it must print `active=0 revocation_pass=1`; use the existing temporary
 graphical-probe runner in the user's `gui/UID` domain to verify `active=1` and
@@ -195,5 +207,55 @@ Known tool constraints, not product TLS failures:
   fixture as an OpenSSL trust anchor; leave that separately qualified fixture
   unchanged. No trust-store change or insecure flag is needed.
 
-This gate is not Client UI approval, server discovery, profile negotiation or
-video playback. See `docs/macos-control-plane.md` for next integration steps.
+The suite now also exercises public server discovery before and after
+authentication. It is not Client UI approval, profile negotiation or video
+playback. See `docs/macos-control-plane.md` for next integration steps.
+
+## Existing Client discovery parser qualification
+
+Run this only on linux-client-builder with Qt 6.10.2, not on the Mac or linux-host-builder. Reuse a
+verified clean Client worktree at the root gitlink and its exact common-c
+checkout. This is a small uninstalled parser harness, not a Client DEB build;
+neither FFmpeg compilation nor a GUI/test session is required. The harness
+compiles the real `NvHTTP`/`NvComputer` implementation and discards unrelated
+unused operations at link time; it contains no replacement discovery parser.
+
+```bash
+source ~/.config/plank-builder/paths.env
+# Set these to verified exact-commit worktrees, not inferred old candidates:
+test -f "$PLANK_CLIENT_SOURCE/app/backend/nvhttp.cpp"
+test -f "$PLANK_COMMON_SOURCE/src/Limelight.h"
+discovery_build=$(mktemp -d "$PLANK_WORK_ROOT/macos-client-discovery.XXXXXX")
+cd "$discovery_build"
+qmake6 "$PLANK_SOURCE_ROOT/tests/protocol/macos-client-discovery.pro" \
+  PLANK_CLIENT_SOURCE="$PLANK_CLIENT_SOURCE" \
+  PLANK_COMMON_SOURCE="$PLANK_COMMON_SOURCE"
+make -j4
+QT_QPA_PLATFORM=offscreen ./macos-client-discovery \
+  "$PLANK_SOURCE_ROOT/tests/protocol/macos-server-information.xml"
+```
+
+Record Client/common-c commits, harness/fixture hashes and output binary hash.
+For unpublished qualification files, copy only the three test files into the
+temporary test build directory and SHA-256-check them; use its `.pro` and XML
+paths instead of pretending they belong to the clean source commit. The native
+Mac metadata test consumes the same fixture. No builder package installation
+or test-target deployment is part of this check. Remove the exact temporary
+test build after its source checkpoint and qualification record are retained.
+
+## Apple profile component qualification — linux-client-builder
+
+Run the Client `tests/plankbitrate/plankbitrate.pro` and
+`tests/applevideoprofile/applevideoprofile.pro` in separate shadow build
+directories. The former uses Qt 6.10.2; the latter uses the retained private
+FFmpeg. Set `PKG_CONFIG_PATH=$PLANK_CLIENT_FFMPEG_WORK/install/lib/pkgconfig`
+before qmake, and `LD_LIBRARY_PATH=$PLANK_CLIENT_FFMPEG_WORK/install/lib` when
+running the decoder test. Its `.pro` includes libswresample for private
+libavcodec's transitive link requirement. Never link a distro FFmpeg instead.
+
+The embedded fixture is a synthetic VideoToolbox Main10 chart, not a desktop
+capture or generic HDR HEVC sample. Its Client test README records provenance
+and SHA-256. Passing proves software decode and strict format validation only;
+hardware decode, renderer output and stream integration are separate gates.
+Keep partial copied standalone qualification inputs explicitly identified;
+full Client builds still require exact committed, clean worktrees and bundles.

@@ -20,6 +20,9 @@
 @implementation PLANKMacHTTPSAuthServer {
     sec_identity_t _identity;
     PLANKMacAuthenticationSession *_sessions;
+    PLANKMacServerInformation *_information;
+    NSData *_serverInformationXML;
+    NSDictionary *(^_topology)(void);
     nw_listener_t _listener;
     dispatch_queue_t _networkQueue;
     dispatch_queue_t _authQueue;
@@ -29,8 +32,9 @@
     dispatch_source_t _expiryTimer;
 }
 
-- (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions {
-    if (!identity || !sessions) return nil;
+- (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions
+                    information:(PLANKMacServerInformation *)information topology:(NSDictionary *(^)(void))topology {
+    if (!identity || !sessions || !information || !topology) return nil;
     struct rlimit core;
     if (getrlimit(RLIMIT_CORE, &core) || core.rlim_cur != 0) return nil;
     self = [super init];
@@ -38,6 +42,8 @@
         _identity = sec_identity_create(identity);
         if (!_identity) return nil;
         _sessions = sessions;
+        _information = information;
+        _topology = [topology copy];
         _requests = [NSMutableSet set];
         _networkQueue = dispatch_queue_create("la.instinctual.PLANK.Host.https", DISPATCH_QUEUE_SERIAL);
         _authQueue = dispatch_queue_create("la.instinctual.PLANK.Host.authentication", DISPATCH_QUEUE_SERIAL);
@@ -55,16 +61,16 @@
     [_requests removeObject:request];
 }
 
-- (void)reply:(NSDictionary *)object status:(unsigned)status request:(PLANKMacHTTPSRequest *)request {
+- (void)replyBytes:(NSData *)bytes type:(NSString *)type token:(NSString *)token
+           status:(unsigned)status request:(PLANKMacHTTPSRequest *)request {
     if (request.finished) {
-        if (object[@"session_token"]) dispatch_async(_authQueue, ^{ [self->_sessions revokeToken:object[@"session_token"]]; });
+        if (token) dispatch_async(_authQueue, ^{ [self->_sessions revokeToken:token]; });
         return;
     }
-    NSData *json = [NSJSONSerialization dataWithJSONObject:object options:0 error:NULL];
-    NSString *header = [NSString stringWithFormat:@"HTTP/1.1 %u %@\r\nContent-Type: application/json\r\nContent-Length: %lu\r\nCache-Control: no-store\r\nPragma: no-cache\r\nConnection: close\r\n\r\n",
-        status, status == 200 ? @"OK" : @"Rejected", (unsigned long)json.length];
+    NSString *header = [NSString stringWithFormat:@"HTTP/1.1 %u %@\r\nContent-Type: %@\r\nContent-Length: %lu\r\nCache-Control: no-store\r\nPragma: no-cache\r\nConnection: close\r\n\r\n",
+        status, status == 200 ? @"OK" : @"Rejected", type, (unsigned long)bytes.length];
     NSMutableData *response = [[header dataUsingEncoding:NSASCIIStringEncoding] mutableCopy];
-    [response appendData:json];
+    [response appendData:bytes];
     dispatch_data_t content = dispatch_data_create(response.bytes, response.length, _networkQueue, ^{
         [response resetBytesInRange:NSMakeRange(0, response.length)];
     });
@@ -72,10 +78,15 @@
     nw_connection_send(request.connection, content, NW_CONNECTION_DEFAULT_MESSAGE_CONTEXT, true,
         ^(nw_error_t error) {
             typeof(self) owner = weakSelf;
-            if (error && owner && object[@"session_token"])
-                dispatch_async(owner->_authQueue, ^{ [owner->_sessions revokeToken:object[@"session_token"]]; });
+            if (error && owner && token)
+                dispatch_async(owner->_authQueue, ^{ [owner->_sessions revokeToken:token]; });
             [owner finish:request];
         });
+}
+
+- (void)reply:(NSDictionary *)object status:(unsigned)status request:(PLANKMacHTTPSRequest *)request {
+    [self replyBytes:[NSJSONSerialization dataWithJSONObject:object options:0 error:NULL]
+               type:@"application/json" token:object[@"session_token"] status:status request:request];
 }
 
 - (void)handlePath:(NSString *)path body:(NSMutableData *)body request:(PLANKMacHTTPSRequest *)request {
@@ -127,13 +138,50 @@
                 [request.bytes appendBytes:bytes length:size];
                 return true;
             });
-            NSString *path;
+            NSString *path, *method, *authorization;
             NSRange range;
-            PLANKMacHTTPParseResult result = PLANKMacParseAuthRequest(request.bytes, &path, &range);
+            PLANKMacHTTPParseResult result = PLANKMacParseControlRequest(request.bytes, &method, &path, &range, &authorization);
             if (result == PLANKMacHTTPInvalid) {
                 [owner reply:@{@"state": @"denied"} status:400 request:request];
             } else if (result == PLANKMacHTTPComplete) {
                 request.dispatched = YES;
+                if ([method isEqual:@"GET"]) {
+                    if (PLANKMacIsServerInformationTarget(path) && owner->_serverInformationXML) {
+                        [owner replyBytes:owner->_serverInformationXML type:@"application/xml; charset=utf-8"
+                                    token:nil status:200 request:request];
+                    } else if (PLANKMacIsTopologyTarget(path)) {
+                        if (owner->_authBusy) { [owner reply:@{@"state": @"denied"} status:503 request:request]; return; }
+                        [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
+                        request.bytes = nil;
+                        owner->_authBusy = YES;
+                        dispatch_async(owner->_authQueue, ^{
+                            @autoreleasepool {
+                                NSDictionary *topology = nil;
+                                unsigned status = 401;
+                                @try {
+                                    NSString *token = [authorization hasPrefix:@"Bearer "] && authorization.length == 51 ?
+                                        [authorization substringFromIndex:7] : nil;
+                                    PLANKMacAccountIdentity before = {0}, after = {0};
+                                    if (token && [owner->_sessions authorizeToken:token peer:request.peer identity:&before]) {
+                                        topology = owner->_topology();
+                                        status = topology ? 200 : 503;
+                                        if (![owner->_sessions authorizeToken:token peer:request.peer identity:&after] ||
+                                            before.uid != after.uid || memcmp(before.uuid, after.uuid, sizeof(before.uuid))) {
+                                            topology = nil; status = 401;
+                                        }
+                                    }
+                                } @catch (NSException *exception) {
+                                    (void)exception; topology = nil; status = 503;
+                                }
+                                dispatch_async(owner->_networkQueue, ^{
+                                    [owner reply:topology ?: @{@"state": @"denied"} status:status request:request];
+                                    owner->_authBusy = NO;
+                                });
+                            }
+                        });
+                    } else [owner reply:@{@"state": @"denied"} status:404 request:request];
+                    return;
+                }
                 if (owner->_authBusy) {
                     [owner reply:@{@"state": @"denied"} status:503 request:request];
                     return;
@@ -204,7 +252,12 @@
         (void)error;
         typeof(self) owner = weakSelf;
         if (!owner) return;
-        if (state == nw_listener_state_ready) ready(nw_listener_get_port(owner->_listener));
+        if (state == nw_listener_state_ready) {
+            uint16_t boundPort = nw_listener_get_port(owner->_listener);
+            owner->_serverInformationXML = [owner->_information XMLForControlPort:boundPort];
+            if (!owner->_serverInformationXML) { [owner stop]; return; }
+            ready(boundPort);
+        }
         else if (state == nw_listener_state_failed) [owner stop];
     });
     // One watchdog for at most eight admitted requests. Do not retain a timer

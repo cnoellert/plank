@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import time
 import uuid
+import xml.etree.ElementTree as ET
 
 
 def context(certificate):
@@ -38,7 +39,7 @@ class ResponseBytes:
         return io.BytesIO(self.value)
 
 
-def request(tls, port, body, path="/plank/auth/start", raw=None):
+def request(tls, port, body, path="/plank/auth/start", raw=None, xml=False):
     encoded = json.dumps(body).encode()
     message = raw if raw is not None else (
         f"POST {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
@@ -51,7 +52,38 @@ def request(tls, port, body, path="/plank/auth/start", raw=None):
     reply.begin()
     assert reply.getheader("Cache-Control") == "no-store"
     assert reply.getheader("Connection") == "close"
-    return reply.status, json.loads(reply.read())
+    content = reply.read()
+    if xml:
+        assert reply.getheader("Content-Type") == "application/xml; charset=utf-8"
+        return reply.status, ET.fromstring(content)
+    return reply.status, json.loads(content)
+
+
+def discovery(tls, port):
+    # Exact current Client request shape, including its optional cache busters.
+    target = "/serverinfo?uniqueid=0123456789ABCDEF&uuid=" + uuid.uuid4().hex
+    raw = f"GET {target} HTTP/1.1\r\nHost: localhost\r\n\r\n".encode()
+    status, root = request(tls, port, {}, raw=raw, xml=True)
+    assert status == 200 and root.tag == "root" and root.attrib == {"status_code": "200"}
+    expected = {"hostname": "PLANK Mac qualification",
+                "uniqueid": "f92140f5-8740-4b3b-82f7-74db5353de27",
+                "HttpsPort": str(port), "PlankHostMetadataVersion": "1",
+                "PlankHostVersion": "macos-host-qualification", "PlankAuth": "1",
+                "ServerCodecModeSupport": "0", "PlankTopologyVersion": "0",
+                "PlankFeatureFlags": "0", "PairStatus": "0"}
+    assert len(root) == len(expected) and {node.tag: node.text for node in root} == expected
+    # Discovery is public, but must neither expose session state nor create an
+    # alternative GET authentication path. Reject bearer tokens in query strings.
+    for path in ["/plank/auth/start", "/plank/auth/respond", "/serverinfo?session_token=abc",
+                 "/serverinfo?uuid=abc&uuid=def", "/serverinfo?uuid=%61"]:
+        raw = f"GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n".encode()
+        assert request(tls, port, {}, raw=raw)[0] == 404
+    assert request(tls, port, {}, "/serverinfo")[0] == 404
+    assert request(tls, port, {}, raw=b"GET /plank/topology HTTP/1.1\r\nHost: localhost\r\n\r\n")[0] == 401
+    for extra in ["Content-Length: 1\r\n", "Transfer-Encoding: chunked\r\n",
+                  "Expect: 100-continue\r\n", "Content-Length: 0\r\nContent-Length: 0\r\n"]:
+        raw = ("GET /serverinfo HTTP/1.1\r\nHost: localhost\r\n" + extra + "\r\n").encode()
+        assert request(tls, port, {}, raw=raw)[0] == 400
 
 
 def authenticate(tls, port, username, password):
@@ -62,9 +94,24 @@ def authenticate(tls, port, username, password):
     status, result = request(tls, port, response, "/plank/auth/respond")
     assert status == 200 and result["state"] == "authenticated"
     assert len(result["session_token"]) == 44
+    token = result["session_token"]
     # No token or credential is printed or written to a file.
     status, replay = request(tls, port, response, "/plank/auth/respond")
     assert status == 200 and replay["state"] == "denied"
+    raw = ("GET /plank/topology?uniqueid=0123456789ABCDEF&uuid=abc HTTP/1.1\r\nHost: localhost\r\n"
+           "Authorization: Bearer " + token + "\r\n\r\n").encode()
+    status, topology = request(tls, port, {}, raw=raw)
+    assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 524401
+    capture = topology["capture"]
+    assert 2 <= capture["width"] <= 8192 and capture["width"] % 2 == 0
+    assert 2 <= capture["height"] <= 8192 and capture["height"] % 2 == 0
+    assert capture["logical_bounds"]["width"] > 0 and capture["logical_bounds"]["height"] > 0
+    assert capture["encoding_profile"]["encoding_mode"] == "hevc-10-420-videotoolbox"
+    assert capture["encoding_profile"]["rgb_identity"] is False
+    status, repeated = request(tls, port, {}, raw=raw)
+    assert status == 200 and repeated == topology
+    # Same request shape, unknown token; never echo it or any account data.
+    assert request(tls, port, {}, raw=raw.replace(token.encode(), b"x" * 44))[0] == 401
 
 
 def create_identity(temporary, config):
@@ -112,9 +159,10 @@ def aqua(executable, config):
                 time.sleep(0.1)
             assert match, "Aqua HTTPS readiness/desktop ownership failed"
             port = int(match[1])
+            discovery(context(cert), port)
             authenticate(context(cert), port, getpass.getuser(), password)
             password = None
-            print("macos_https_aqua_account=pass tls13_verified=1 live_owner=1 replay_denied=1 desktop_granted=0")
+            print("macos_https_aqua_account=pass tls13_verified=1 live_owner=1 replay_denied=1 authenticated_topology=1 desktop_granted=0")
         finally:
             password = None
             subprocess.run(["launchctl", "bootout", f"{domain}/{label}"], stdout=subprocess.DEVNULL,
@@ -135,6 +183,7 @@ def synthetic(executable, config):
                 raise AssertionError("HTTPS listener did not report ready: " + line.strip())
             port = int(match[1])
             tls = context(cert)
+            discovery(tls, port)
             authenticate(tls, port, "synthetic", "test")
             status, start = request(tls, port, {"username": "synthetic"})
             status, denied = request(tls, port, {"conversation_id": start["conversation_id"],
@@ -180,8 +229,9 @@ def synthetic(executable, config):
                     connection.close()
             time.sleep(0.2)
             authenticate(tls, port, "synthetic", "test")
+            discovery(tls, port)  # No public metadata change after authentication.
             # No desktop/capture endpoint or real account is used by this suite.
-            print("macos_https_auth=pass tls13=1 tls12_rejected=1 trust_enforced=1 plaintext_rejected=1 replay_denied=1 framing_rejected=1 slow_request_closed=1 admission_bounded=1 recovery_pass=1 synthetic_only=1")
+            print("macos_https_auth=pass discovery=1 authenticated_topology=1 invalid_topology_token_rejected=1 no_media_claim=1 tls13=1 tls12_rejected=1 trust_enforced=1 plaintext_rejected=1 replay_denied=1 framing_rejected=1 slow_request_closed=1 admission_bounded=1 recovery_pass=1 synthetic_only=1")
         finally:
             process.terminate()
             try:

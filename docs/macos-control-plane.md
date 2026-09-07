@@ -1,6 +1,6 @@
 # macOS native control interface
 
-Status: authentication-only component qualified over loopback TLS 1.3, including
+Status: discovery/authentication component qualified over loopback TLS 1.3, including
 a real account in the live Aqua session. Not an installable Mac Host or an
 existing-Client streaming connection. Linux Host/Client behavior is unchanged.
 
@@ -13,15 +13,17 @@ There is no implicit wildcard listener, plaintext fallback or automatic firewall
 change. TLS is exactly 1.3 and the advertised application protocol is HTTP/1.1.
 Core dumps must be disabled before constructing the interface.
 
-Only `POST /plank/auth/start` and `POST /plank/auth/respond` are implemented.
+Implemented routes are `GET /serverinfo`, `POST /plank/auth/start` and
+`POST /plank/auth/respond`, plus authenticated `GET /plank/topology`.
 The response JSON retains the current Client contract. Peer binding comes from
 the accepted connection's actual IP address; IPv4-mapped IPv6 is normalized.
 Forwarded headers cannot select the peer identity. No request, account, password
 or token is logged. Responses use `Cache-Control: no-store`, `Pragma: no-cache`
 and `Connection: close`.
 
-The parser accepts one HTTP/1.1 POST with a decimal Content-Length and
-`application/json`, with a 4096-byte header cap and 32768-byte body cap. The body
+The parser accepts one HTTP/1.1 bodyless GET (absent or zero Content-Length),
+or POST with a positive decimal Content-Length and `application/json`, with a
+4096-byte header cap and 32768-byte body cap. The body
 bound accommodates escaped JSON for the verifier's 4096-byte UTF-8 password
 limit. It rejects duplicate/folded headers, ambiguous framing, Transfer-Encoding,
 Expect, protocol upgrades, invalid header bytes and coalesced trailing requests.
@@ -37,6 +39,55 @@ revokes all tokens after in-flight work. Completion clears mutable buffers and
 breaks connection callback ownership cycles. Foundation/Network may retain
 internal plaintext copies temporarily; complete framework-memory wiping is not
 claimed. No raw request is persisted.
+
+## Public discovery boundary
+
+`server-information.m` builds the existing metadata-v1 XML contract with Apple's
+XML serializer. Its immutable inputs are an operator-selected display name,
+persisted workstation UUID and effective build version. The qualification
+executable supplies a synthetic name/UUID/version, never the developer's machine
+name or hardware identity. Persistent service state is still a future gate.
+The advertised control port is the actual bound listener port, not a copied
+default. There are no alternate address or port-discovery rules.
+
+Discovery does not consult or disclose the active account, session state,
+desktop geometry, tokens or hardware serials. Its only optional query keys are
+the current Client's ignored `uniqueid`/`uuid` cache busters, with bounded
+hex/hyphen values and no duplicates. Unknown keys, percent-encoded values and
+credentials in URLs are rejected. GET cannot invoke an authentication route.
+Discovery serialization is cached at listener readiness and does not occupy
+the authentication worker queue.
+
+`PlankAuth=1` describes the implemented authentication conversation, not a
+desktop grant. `ServerCodecModeSupport=0`, `PlankTopologyVersion=0` and
+`PlankFeatureFlags=0` deliberately declare that media launch/topology are not
+ready. Omitting the codec field would make the existing Client assume H.264.
+Do not advertise Apple media or Linux display/takeover features before their
+end-to-end implementation. The original Client's actual `NvHTTP`/`NvComputer`
+parser accepts this response as online metadata with no codec capability and
+rejects a mismatched advertised control port. This does not qualify streaming.
+
+## Authenticated fixed capture description
+
+The topology GET uses the existing Client's Bearer header. The parser rejects
+duplicate Authorization headers; only the real accepted peer address and a
+valid desktop-bound token authorize the provider. The adapter checks ownership
+again after querying geometry and never returns it on an invalid/expired token.
+No account identity is placed in the response. This shares the bounded serial
+authentication lane rather than adding another worker/queue.
+
+The native provider reads the current main display's actual pixel mode and
+desktop point bounds, with a second consistency read, and maintains a generation
+for observed geometry/mode changes. It does not configure a monitor, create a
+display, read image pixels or grant input. The explicit fixed-capture extension
+and Apple encoding tuple are documented in `protocol/output-topology.md`.
+Public codec/readiness flags remain zero while stream integration is unfinished.
+
+The shared fixed-capture fixture passes on both Mac and Client; the Client's
+existing Linux topology cases also pass. The live Aqua HTTPS test now reads
+authorized actual geometry, verifies stable repeated metadata and rejects an
+unknown token. Synthetic TLS tests reject unauthenticated geometry. These are
+not capture/decoder, logout/fast-switch race or full-stream tests.
 
 ## Desktop authority
 
@@ -65,7 +116,9 @@ probe results do not automatically qualify this new integration.
 Build with `scripts/build-macos-control.sh` as documented in the macOS build
 runbook. It also runs the previous authentication tests. Current gates pass:
 
-- 120 framing assertions, including every truncated prefix of a valid request;
+- 215 framing assertions, including every truncated prefix of valid GET/POST requests;
+- escaped XML, immutable metadata, exact public-field allowlist, query validation,
+  and the shared `tests/protocol/macos-server-information.xml` fixture;
 - 53 authentication-state assertions, including individual-token revocation;
 - TLS 1.3 authentication, rejection of TLS 1.2/plaintext/untrusted certificates,
   replay and malformed requests, slow-request expiry, eight-connection admission
@@ -73,6 +126,12 @@ runbook. It also runs the previous authentication tests. Current gates pass:
 - real account verification through the isolated helper over loopback TLS in
   the actual Aqua context, with live owner matching and replay denial;
 - actual Aqua authority present, explicit revocation latched, and SSH denied.
+
+On linux-client-builder, the separate `tests/protocol/macos-client-discovery.pro` harness
+compiles the unchanged Client parser from its exact clean worktree against that
+same fixture. Qt 6.10.2 passes online identity/version parsing, explicit zero
+capabilities and wrong-port rejection. It does not open a connection or install
+an application, and is not a full Client integration/decoder qualification.
 
 The qualification executable binds only `127.0.0.1` on an ephemeral port and
 expires after 60 seconds. The runner removes its own temporary job, certificates,
@@ -84,9 +143,16 @@ UI, hostname policy or native QUIC launch.
 
 ## Next integration gate
 
-Implement discovery/server information, topology and the explicit Apple
-VideoToolbox HEVC Main10 **4:2:0** capability in the existing Client contract.
-Then claim the authenticated session into native QUIC stream lifetime and feed
+The Client now has an explicit per-bookmark ScreenCaptureKit/VideoToolbox Main10
+**4:2:0** preview profile and an actual Apple-encoded synthetic decoder fixture.
+Existing Linux profile IDs and bitrate values remain intact. Its launch is
+explicitly disabled: a bookmark/profile and decoder-format test do not establish
+working native media. The shared color validator checks limited BT.709 and sRGB,
+including storage metadata for hardware surfaces without downloading pixels.
+This is not yet hardware decoder or presentation qualification.
+
+Connect fixed capture geometry to authenticated Mac launch, then claim the session
+into native QUIC stream lifetime and feed
 the qualified capture/encode path. Do not label Apple output as NVENC, 4:4:4 or
 RGB identity. Keep takeover, input ownership and cleanup gates explicit.
 Persistent administrator configuration, protected TLS-key loading, packaged

@@ -6,7 +6,7 @@
 typedef PLANKMacDesktopIdentity (^PLANKMacDesktopSnapshot)(void);
 
 // Existing HTTPS start/respond conversation state for the desktop preview.
-// The future HTTPS adapter must enforce TLS, body limits, no-cache responses,
+// Its HTTPS adapter must enforce TLS, body limits, no-cache responses,
 // and obtain the canonical peer IP bytes from its accepted connection (not a
 // forwarded header). Calls belong on a background authentication queue.
 // This component opens no socket and does not log or retain passwords.

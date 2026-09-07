@@ -7,9 +7,12 @@ typedef NS_ENUM(unsigned int, PLANKMacHTTPParseResult) {
     PLANKMacHTTPIncomplete, PLANKMacHTTPComplete, PLANKMacHTTPInvalid
 };
 
-// Narrow HTTP/1.1, exactly one Content-Length-framed POST per connection.
+// Narrow HTTP/1.1: one bodyless GET or Content-Length-framed POST per connection.
 // No chunking, pipelining, request smuggling, folded/duplicate headers or URLs
 // carrying credentials. Only header values are decoded here; the body remains
 // caller-owned mutable bytes until the authentication adapter consumes it.
-PLANKMacHTTPParseResult PLANKMacParseAuthRequest(NSData *bytes, NSString **path,
-                                               NSRange *body);
+// The target is deliberately not URL-decoded. The router validates the exact
+// path and its allowed query keys; query values never establish identity.
+PLANKMacHTTPParseResult PLANKMacParseControlRequest(NSData *bytes, NSString **method,
+                                                  NSString **target, NSRange *body,
+                                                  NSString **authorization);

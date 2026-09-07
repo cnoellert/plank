@@ -360,8 +360,23 @@ TLS 1.3 authentication adapter and live Aqua authority now pass loopback tests,
 including the real account through the isolated helper. SSH is denied authority;
 replay, malformed framing, old TLS, plaintext, untrusted certificate, stalled
 requests and admission overflow fail closed. No existing-Client authentication
-or stream is qualified yet. Next implement server information/topology and
-explicit Apple capabilities, then claim authorization into native QUIC lifetime.
+or stream is qualified yet. Public server information now passes native TLS and
+the actual existing Client metadata parser on linux-client-builder (Qt 6.10.2), using a
+shared XML fixture. It advertises authentication but explicitly no media or
+topology capability yet; account/session/display data remain private. No Client
+runtime changes were needed for this gate. Next implement authenticated topology
+and explicit Apple capabilities, then claim authorization into native QUIC lifetime.
+The Client now parses an explicit fixed-capture feature extension without
+requiring the Mac to advertise Linux-specific layout/input/takeover features.
+The original Linux feature mask, fixture and checks remain unchanged. Native
+authenticated topology, the shared Apple profile descriptor and real Aqua
+geometry tests pass; bookmark selection, stream launch and actual decoder
+activation are still unwired. Public discovery therefore retains zero media
+readiness. The new bit must not enter the Linux launch feature mask. Also retain
+the color distinction already measured: the probe's x420 input uses a BT.601
+sample-matrix declaration, while VideoToolbox output is requested/qualified as
+BT.709 primaries/matrix, sRGB transfer and video range. Input attachments are not
+an output-bitstream contract; revalidate the integrated output and decoder.
 See `docs/macos-control-plane.md` for the exact scope and lifecycle limits.
 Reserved setup operation IDs are
 not evidence that the current Client uses them for account authentication.

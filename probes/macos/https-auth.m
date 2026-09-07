@@ -2,6 +2,7 @@
 // Loopback-only, 60-second qualification executable; not an installed service.
 #import "https-auth-server.h"
 #import "desktop-authority.h"
+#import "fixed-capture.h"
 #include <sys/resource.h>
 #include <unistd.h>
 
@@ -56,7 +57,23 @@ int main(int argc, const char *argv[]) {
         PLANKMacDesktopSnapshot snapshot = ^{ return [authority snapshot]; };
 #endif
         PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc] initWithDesktopSnapshot:snapshot];
-        PLANKMacHTTPSAuthServer *server = [[PLANKMacHTTPSAuthServer alloc] initWithIdentity:identity sessions:sessions];
+#ifdef PLANK_SYNTHETIC_AUTH_TEST
+        NSDictionary *(^topology)(void) = ^{
+            return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
+                3840, 2160, CGRectMake(-1920, 0, 1920, 1080));
+        };
+#else
+        PLANKMacFixedCapture *capture = [PLANKMacFixedCapture new];
+        NSDictionary *(^topology)(void) = ^{ return [capture snapshot]; };
+#endif
+        // Explicit synthetic workstation metadata, even for the real-account
+        // test. Never publish the developer's machine name or hardware UUID.
+        PLANKMacServerInformation *information = [[PLANKMacServerInformation alloc]
+            initWithName:@"PLANK Mac qualification" workstationUUID:
+                [[NSUUID alloc] initWithUUIDString:@"f92140f5-8740-4b3b-82f7-74db5353de27"]
+            version:@"macos-host-qualification"];
+        PLANKMacHTTPSAuthServer *server = [[PLANKMacHTTPSAuthServer alloc] initWithIdentity:identity
+            sessions:sessions information:information topology:topology];
         CFRelease(identity);
         if (![server startOnAddress:@"127.0.0.1" port:0 ready:^(uint16_t port) {
             printf("macos_https_auth_ready port=%u desktop_active=%d\n", port, snapshot().active);

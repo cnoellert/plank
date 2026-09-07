@@ -240,6 +240,55 @@ published source rectangles in synchronized local windows. Synchronized
 per-output streams remain a future feature and must not be inferred from this
 schema.
 
+## Experimental fixed-capture preview extension
+
+The `macos-host` work adds `FixedCaptureFeature = 0x80000` within schema 13.
+This is a distinct fixed-capture description, **not** permission to relax the
+existing Linux topology requirements. Its exact current feature mask is
+`524401` (`0x80071`): fixed capture, output topology, topology generation,
+layout metadata and composite source geometry. All other bits are rejected
+for this preview. It is deliberately excluded from the Client's Linux
+`SupportedFeatureFlags` launch mask.
+
+`tests/protocol/fixed-capture-v13.json` is the shared Host/Client fixture.
+The four root fields are `schema_version`, `feature_flags`, `generation`
+(canonical nonzero UUID), and `capture`. The latter contains exactly:
+
+- `id`: a bounded opaque capture-display identifier, not a persistent machine ID;
+- `width`/`height`: positive even video pixel dimensions, each at most 8192;
+- `logical_bounds`: finite macOS desktop-coordinate `x`, `y`, `width`, `height`;
+- `encoding_profile`: the exact experimental Apple tuple described below.
+
+Pixel dimensions and desktop coordinates are intentionally separate. A
+3840x2160 capture may cover 1920x1080 desktop points with a negative origin.
+Do not assume a 1:1 or fixed 2:1 mapping. This report does not grant input, and
+does not claim the capture display is physical, PLANK-owned, or newly created.
+The Client represents its single video surface as `layoutKind="fixed"`, with
+no virtual modes; Linux bookmark layout changes are not allowed for it.
+
+The explicit tuple is ScreenCaptureKit (`screencapturekit`) → VideoToolbox
+(`videotoolbox`), mode `hevc-10-420-videotoolbox`: HEVC Main10, 10-bit 4:2:0,
+limited/video range, BT.709 matrix and primaries, sRGB transfer, no RGB identity.
+No tuple substitution, NVENC naming, Linux 4:4:4 interpretation or HDR inference
+is allowed. This declares the preview contract, not successful encoder/decoder
+activation. Public Mac discovery still advertises zero codecs and zero topology
+readiness until launch/Client integration is complete. Hardware capability and
+encoded stream metadata must be verified again when activating media.
+
+`GET /plank/topology` retains HTTPS and the current `Authorization: Bearer`
+header. The Mac checks the address-bound token and live desktop owner before
+reading its main display and again afterward. Missing/invalid authorization
+returns 401 without querying geometry; unavailable geometry returns 503.
+Cache-busting query identifiers never authorize access. Generation changes
+when observed display identity, mode or bounds change. Consistent double reads
+reject an observed reconfiguration during the snapshot. Continuous topology
+monitoring and matching the actual ScreenCaptureKit frame are required before
+media/input launch; this metadata-only check is not that lifecycle gate.
+
+There is no resizing, multi-display selection, takeover, keyboard/mouse/Wacom
+or media permission in this extension. Adding these requires explicit feature
+negotiation and tests. The Linux schema-13 fixture and checks remain unchanged.
+
 ## Test Vector
 
 `tests/protocol/output-topology-v13.json` represents a physical-startup host
