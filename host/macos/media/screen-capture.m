@@ -104,8 +104,8 @@
             config.minimumFrameInterval = CMTimeMake(1, 60); config.queueDepth = 3;
             config.pixelFormat = kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
             config.captureDynamicRange = SCCaptureDynamicRangeSDR; config.colorSpaceName = kCGColorSpaceSRGB;
-            // Initial video-only preview carries the visible host cursor in
-            // pixels. It must not claim the Linux separate-cursor capability.
+            // macOS uses ScreenCaptureKit's embedded system/application cursor.
+            // This is the Mac contract, not a Linux separate-cursor fallback.
             config.showsCursor = YES; config.capturesAudio = YES;
             config.captureMicrophone = NO; config.sampleRate = 48000; config.channelCount = 2;
             config.excludesCurrentProcessAudio = YES;

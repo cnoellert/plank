@@ -62,6 +62,32 @@ Mach-O marker. Carry that gate into any later app that incorporates input; the
 current A/V/input Probe 54 includes it too. The marker does not bypass TCC
 or qualify LoginWindow delivery. See `macos-input.md` for remaining gates.
 
+## Embedded cursor qualification
+
+Build `bash scripts/build-macos-embedded-cursor.sh SOURCE_ROOT EMPTY_OUTPUT`
+on the dedicated Mac, in the same signing/keychain TTY. This produces **Probe
+55**, accepting only `--cursor`, not the authenticated A/V entry point. Copy
+and hash-check the new source, script and updated graphical runner together.
+Temporarily install at the consented app path only after verifying the retained
+Probe 54 backup; restore and hash-check that backup after the test.
+
+Run the existing graphical runner in `gui/$(id -u)` with `--cursor`. LoginWindow
+is refused. This test requires an unlocked desktop and existing capture/input
+consent; it never prompts, logs in or changes TCC. It requests focus once after
+AppKit launch, checks owned focus before movement and capture analysis, posts
+motion only, and restores pointer/foreground app when still safe. The SCK filter
+includes only its own test window; no audio, credentials, saved images, clicks
+or keys. It stops after 18 seconds with a 30-second hard process deadline.
+
+Expected: phases 0–4 each report match=1, completed=5 and result=0. The phases
+prove cursor-disabled absence, custom shape/hotspot, changed position, changed
+shape, and disabled absence again. Two matching samples are required per phase.
+The changing gray test background forces fresh capture updates. Coordinates use
+the actual display's point/pixel ratio; this is not a qualification of every
+display configuration. The check inspects BGRA before encoding; it does not
+measure cursor latency, HEVC decoded quality or ordinary Client presentation.
+Two independent launches passed on September 7. Exact hashes are in HANDOFF.
+
 ## Transport qualification
 
 The first integration build reuses `protocol/plank-transport` and its exact

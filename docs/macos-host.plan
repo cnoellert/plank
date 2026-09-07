@@ -28,9 +28,11 @@ Complete the Mac Host's normal services using standalone qualification tools:
    native Opus encoder availability and supported packet duration; if it cannot
    meet the contract, qualify a pinned libopus dependency rather than changing
    the Client or substituting a different audio codec. No microphone capture.
-2. Keyboard/mouse/scroll and cursor: implement the existing normalized input and
-   cursor shape/position semantics behind native Mac APIs. Keep scope to general
-   desktop use. Visible LoginWindow input was previously deferred by the user;
+2. Keyboard/mouse/scroll and cursor: implement the existing normalized input
+   behind native Mac APIs. The September 7 accepted Mac cursor design is
+   ScreenCaptureKit's embedded system/application cursor, with video-path
+   latency; do not implement the Linux separate-cursor protocol on Mac. Keep
+   scope to general desktop use. Visible LoginWindow input was deferred by the user;
    coordinate that test instead of injecting unattended login-screen events.
 3. Complete machine-service/graphical-agent ownership, authentication,
    login/logout/lock transitions and cleanup. Login-screen access remains an
@@ -82,8 +84,46 @@ authorized held input before revocation and drains the receiver before endpoint
 destruction. The synthetic owner suite passes 300 checks/11 scenarios. Signed
 Probe 54 adds this input path; live A/V checks send no desktop input. See
 `macos-input.md` for scope, release ordering, unsupported key/text paths and the
-SDK-27 deprecated global-cursor-image API finding. Custom cursor handling and
-full session lifecycle remain gates; Client work stays paused.
+SDK-27 deprecated global-cursor-image API finding. The operator accepted embedded
+cursors; ordinary Client cursor presentation and full session lifecycle remain
+gates. Client work stays paused.
+
+Embedded custom-cursor capture now passes two fresh signed Probe 55 launches:
+disabled baseline, visible custom shape/hotspot, movement, changed shape, then
+disabled absence. These are owned-window BGRA pixel checks, not an encoded
+Client presentation test. Probe 54 A/V/input is restored on the development Mac.
+
+### Next gate: LoginWindow input, then authenticated agent replacement
+
+The lifecycle review confirms that current `desktop-authority.m` positively
+requires the calling non-root Aqua account and irrevocably revokes on ownership
+loss. `account-policy.h` cannot authorize LoginWindow, and the temporary
+`run-session-handoff.py` controller is administrator-scoped qualification, not
+an authenticated product service. Do not widen the Aqua predicate to permit
+root, treat console observation as authorization, or carry a desktop stream
+lease into a new graphical session.
+
+Before installing a persistent coordinator, resume the previously deferred
+operator-visible LoginWindow input test. The passing desktop input and separate
+LoginWindow capture probes do not prove that combined requirement. No unattended
+login-screen keystrokes or password injection. Then implement the typed local
+agent boundary with verified peer identity and a fresh generation per attachment:
+
+1. Machine observation selects a candidate graphical scope; that agent must
+   independently prove its own session and permissions before readiness.
+2. An ownership/phase change revokes the old input/media lease immediately.
+   Drain capture/input, retire its display owner and verify removal before
+   granting the replacement scope. Late old-generation callbacks cannot revive it.
+3. Bind the replacement to the verified account and freshly observed desktop
+   and topology. A different logged-in account must fail closed, even if an
+   earlier LoginWindow connection authenticated successfully.
+4. Keep media outside the privileged coordinator. Do not move capture/encoding
+   into root solely to preserve a socket. Qualify the existing bounded,
+   authenticated reconnect/window-retention approach before promising seamless
+   transport continuity. Lock, fast-user-switch, crash and timeout remain tests.
+
+The next operator request is availability to observe the LoginWindow test, not
+a request to install an Ubuntu Client or enable automatic login.
 
 ## Objective and baseline
 
@@ -126,6 +166,9 @@ until the feasibility gates below pass.
   final production dependency decision. No private capture/input bypass.
 - Prefer ScreenCaptureKit, direct VideoToolbox hardware encoding, shared
   CVPixelBuffer/IOSurface storage, and Metal where conversion is necessary.
+- Use ScreenCaptureKit's embedded cursor on Mac, accepting video-path cursor
+  latency. No deprecated/private global-cursor extraction, generic-arrow
+  substitution or changes to Linux's qualified local-cursor behavior.
 - macOS need not preserve the Linux 4:4:4 RGB-identity contract. Performance
   takes priority, but negotiated precision, range, and color must be honest.
 - Start by qualifying HEVC 10-bit 4:2:0 hardware encoding; compare H.264 8-bit

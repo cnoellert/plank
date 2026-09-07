@@ -111,7 +111,22 @@ test, multi-display/HiDPI live qualification, or custom cursor extraction.
 Do not run it in LoginWindow or send credentials; LoginWindow input remains a
 separate operator-coordinated acceptance gate.
 
-## Cursor decision still open
+## Accepted Mac cursor contract — September 7
+
+The operator approved ScreenCaptureKit's embedded cursor as the Mac Host
+design, not a temporary preview fallback. The stream carries the actual system
+and application cursor in its video pixels. Cursor motion and shape changes
+therefore inherit capture/encode/network/decode latency; there is no independent
+low-latency cursor channel or local prediction. Linux remains unchanged.
+
+The authenticated launch must explicitly declare `cursor: "embedded"` and must
+not claim the Linux separate-shape/position capability. When ordinary Client
+integration resumes, suppress its local pointer over remote video only; retain
+a visible local pointer over the toolbar, dialogs, letterboxing and other local
+UI. Do not warp coordinates, inject toolbar events into the Host, or infer the
+cursor policy from codec, bit depth or a missing capability. Preserve the local
+pointer during disconnect, timeout and session transitions. These Client gates
+remain paused until the Host lifecycle is complete.
 
 SDK 27's `NSCursor.h` marks `currentSystemCursor` deprecated and says it will
 always return nil in a future macOS version. Apple's public documentation
@@ -124,6 +139,17 @@ The SDK's checked SCStream API exposes cursor inclusion, not a cursor-image
 output. This is not an exhaustive proof that no alternative exists. Do not
 implement a deprecated global-image poller, private API workaround, or fake
 generic-arrow replacement as if custom-cursor extraction were qualified.
-Existing Mac A/V qualification still embeds the cursor. The Linux local-cursor
-contract and working toolbar behavior are unchanged. Resolve the Mac cursor
-contract before ordinary Client integration; no permanent fallback was selected.
+Existing Mac A/V capture already sets `showsCursor = YES`; no runtime change is
+required to adopt this decision. Custom-shape/movement capture qualification is
+separate from the earlier event-posting tests. The Linux local-cursor contract
+and working toolbar behavior are unchanged.
+
+Signed Probe 55 passed two fresh Aqua launches: cursor-disabled baseline,
+custom two-color cursor at the expected hotspot, movement to a second position,
+reversed custom shape, then cursor-disabled absence again. Each phase requires
+two matching samples. The capture filter includes only the probe's own window;
+analysis reads BGRA pixels in memory and never persists images. No clicks,
+keys, audio or network are involved. The app restores its pointer/focus and the
+tested authenticated Probe 54 was restored after qualification. This proves
+embedded shape/movement before encoding, not end-to-end latency, arbitrary
+application cursor animation or the paused Client's presentation behavior.

@@ -5,6 +5,12 @@ the Linux-only root qualification CMake project or change its dependency gates.
 See `docs/macos-host.plan` for phase order and acceptance requirements.
 macOS 27 and SDK 27 or newer are required; all binaries target macOS 27.0.
 
+The focused embedded-cursor app is built separately with
+`scripts/build-macos-embedded-cursor.sh` and accepts only `--cursor` in Aqua.
+See `docs/macos-build-runbook.md` for the five-phase owned-window pixel test,
+signing, installed-app backup/restoration and limits. It is not a new Client or
+the authenticated A/V probe, and must not run in LoginWindow.
+
 The newer standalone system-audio probe uses
 `scripts/build-macos-audio-probe.sh`, not `build-probes.sh`. Its installed app
 accepts `--audio` only and temporarily replaces the approved Probe app entry

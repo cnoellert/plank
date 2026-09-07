@@ -1,7 +1,7 @@
 # Local Cursor Protocol
 
-PLANK presents the host pointer as a compositor-owned cursor on the
-client. The host cursor is never composited into negotiated PLANK
+For Linux Hosts, PLANK presents the host pointer as a compositor-owned cursor
+on the client. The host cursor is never composited into negotiated PLANK
 video frames. This gives the streamed desktop and the native toolbar one local
 pointer and removes any remote/local cursor handoff at the toolbar boundary.
 
@@ -11,6 +11,11 @@ PLANK cursor protocol: shape, hotspot, and host-authoritative tablet
 position. Both are mandatory. A missing bit is a connection error; there is no
 embedded-video cursor fallback, compatibility mode, configuration switch, or
 migration path.
+
+The experimental macOS Host has a distinct, explicitly negotiated embedded
+cursor contract; see `docs/macos-input.md`. It does not advertise these local
+cursor bits. This platform choice does not relax either Linux requirement or
+permit a missing Linux cursor capability to select an embedded fallback.
 
 Cursor images travel on the encrypted, reliable control stream as message
 `0x5507`. Each payload begins with `PLANK_CURSOR_WIRE_HEADER` from

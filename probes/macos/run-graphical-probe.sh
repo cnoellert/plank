@@ -11,6 +11,7 @@ case $probe_mode in
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) probe_deadline=210 ;;
 esac
 case $probe_mode in
+    --cursor) ;;
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) ;;
     --audio|--capture|--capture-virtual|--input|--pointer|--pointer-session|--encode-h264|--encode-hevc|--encode-h264-owned|--encode-hevc-owned|--encode-owned-replace|--encode-owned-crash|--encode-session|--encode-session-revoke|--pattern-h264|--pattern-hevc|--pattern-h264-2160|--pattern-hevc-2160|--pattern-hevc-2160-speed|--select-mode|--restore-mode|--descriptor-comparison|--hidpi-comparison) ;;
     *) echo "Unsupported probe mode." >&2; exit 2 ;;
@@ -24,6 +25,9 @@ elif [[ $# == 4 && $2 != '/Applications/PLANK Host Probe.app/Contents/MacOS/plan
     exit 2
 fi
 probe_domain=$1
+if [[ $probe_mode == --cursor && $probe_domain == loginwindow ]]; then
+    echo "The owned-window cursor test requires an unlocked Aqua desktop." >&2; exit 2
+fi
 probe_session=Aqua
 if [[ $probe_domain == loginwindow && $(id -u) == 0 ]]; then
     probe_session=LoginWindow

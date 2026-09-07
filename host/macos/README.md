@@ -65,3 +65,9 @@ The integrated owner passes 300 checks/11 scenarios. Own-window live tests pass
 on the unlocked desktop, including left/right modifiers and held-state cleanup. See
 `docs/macos-input.md`; do not advertise keyboard/mouse/cursor readiness from
 component tests alone.
+
+The accepted Mac cursor contract is ScreenCaptureKit's embedded system/custom
+cursor, with video-path latency. It is explicitly distinct from Linux local
+cursor negotiation, not a fallback or codec inference. Own-window shape/motion
+pixel checks pass; ordinary Client presentation and LoginWindow input remain
+gates. See `docs/macos-input.md` and the next lifecycle section in the Mac plan.
