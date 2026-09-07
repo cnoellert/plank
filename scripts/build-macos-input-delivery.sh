@@ -1,5 +1,5 @@
 #!/bin/bash
-# Own-window delivery qualification app. No installation, login or TCC changes.
+# Own-window and scoped LoginWindow-motion tests. No login or TCC changes.
 set -euo pipefail
 if [[ $# != 2 || $1 != /* || $2 != /* ]]; then
     echo "Usage: $0 /absolute/source /absolute/empty-output" >&2; exit 2
@@ -18,15 +18,17 @@ cd "$source_root"
 app="$output/PLANK Host Probe.app"
 mkdir -p "$app/Contents/MacOS"
 install -m 0644 probes/macos/Info.plist "$app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 53' "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 56' "$app/Contents/Info.plist"
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/input -Iprotocol/plank-transport/include \
-    host/macos/input/input-events.m probes/macos/native-input-delivery.m \
+    host/macos/input/input-events.m probes/macos/native-input-delivery.m probes/macos/login-pointer.m \
     -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit \
-    -framework ApplicationServices -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null \
+    -framework ApplicationServices -framework Security -framework SystemConfiguration \
+    -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null \
     -o "$app/Contents/MacOS/plank-host-probe"
 codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY" --timestamp=none \
     --identifier la.instinctual.PLANK.Host.Probe "$app"
 codesign --verify --strict "$app"
 shasum -a 256 host/macos/input/input-events.{h,m} probes/macos/native-input-delivery.m \
+    probes/macos/login-pointer.m probes/macos/session-boundary.h \
     "$app/Contents/MacOS/plank-host-probe"

@@ -111,6 +111,18 @@ test, multi-display/HiDPI live qualification, or custom cursor extraction.
 Do not run it in LoginWindow or send credentials; LoginWindow input remains a
 separate operator-coordinated acceptance gate.
 
+After operator logout, signed Probe 56's separate `--login-pointer` mode passed
+the strict LoginWindow identity/permission guard and posted two motion-only
+packets through the unchanged production mapper/private source. Both targets
+and restoration matched the OS-reported position: matches=3, restored=1,
+no_held_input=1, result=0. Non-root SSH and root Background invocations both
+failed closed before posting. The temporary LoginWindow agent exited and the
+authenticated A/V Probe 54 was restored. The operator was observing through
+Screen Sharing and cannot confirm cursor visibility; these counters alone do
+not establish it. No clicks,
+keys, login, capture or display changes were performed. LoginWindow keyboard/
+button delivery and authenticated session replacement remain unqualified.
+
 ## Accepted Mac cursor contract — September 7
 
 The operator approved ScreenCaptureKit's embedded cursor as the Mac Host

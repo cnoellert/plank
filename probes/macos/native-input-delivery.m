@@ -8,6 +8,8 @@
 #include <time.h>
 #include <unistd.h>
 
+int PLANKRunNativeLoginPointer(void);
+
 static const int64_t tag = 0x504c414e4b;
 static void finish(void) {
     [NSApp stop:nil];
@@ -75,6 +77,7 @@ static void finish(void) {
 }
 @end
 int main(int argc, const char **argv) {
+    if (argc == 2 && !strcmp(argv[1], "--login-pointer")) return PLANKRunNativeLoginPointer();
     if (argc != 2 || strcmp(argv[1], "--input") || getuid() == 0) return 2;
     alarm(30);
     @autoreleasepool {

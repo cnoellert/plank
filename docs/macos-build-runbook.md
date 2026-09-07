@@ -35,8 +35,9 @@ bash "$source_root/scripts/build-macos-input-delivery.sh" "$source_root" \
   "$PLANK_WORK_ROOT/input-delivery-candidate"
 ```
 
-The current delivery app is Probe **53**, accepts only `--input`, and is not the
-authenticated A/V app. Preserve/hash-verify the installed A/V app and its signed
+The current delivery app is Probe **56**, with separate `--input` and
+`--login-pointer` modes, and is not the authenticated A/V app. The ordinary
+owned-window input mode remains non-root/Aqua-only. Preserve/hash-verify the installed A/V app and its signed
 backup before temporarily replacing it at the approved application path.
 Verify installed ownership root/755, signature and executable hash, then run as
 the actual desktop UID (never assume 501):
@@ -61,6 +62,36 @@ The input test link retains the qualified `__CGPreLoginApp/__cgpreloginapp`
 Mach-O marker. Carry that gate into any later app that incorporates input; the
 current A/V/input Probe 54 includes it too. The marker does not bypass TCC
 or qualify LoginWindow delivery. See `macos-input.md` for remaining gates.
+
+### Operator-observed LoginWindow pointer
+
+Probe 56 adds `probes/macos/login-pointer.m` and the existing
+`session-boundary.h` to the input-delivery build. Copy/hash-check those plus the
+updated build script, entry point and graphical runner. The source still uses
+the unchanged production input mapper and private Quartz source. Require positive
+LoginWindow identity and existing consent before creating input; recheck session,
+display identity, point/pixel geometry and consent before every post. Background
+SSH, including root, is not LoginWindow. Never weaken these predicates.
+
+With the operator watching and the Mac actually **logged out**, temporarily
+install the verified signed Probe 56 and run:
+
+```bash
+sudo bash "$source_root/probes/macos/run-graphical-probe.sh" loginwindow \
+  "/Applications/PLANK Host Probe.app/Contents/MacOS/plank-host-probe" \
+  "$source_root/probes/macos/probe-agent.plist" --login-pointer
+```
+
+It moves to approximately 25%/25%, then 75%/75%, then restores the original
+position, with two seconds to observe each. No click, key, capture, login action
+or permission request. A session/geometry change stops delivery; it will not
+restore into a newly logged-in user's session. Expected: three observed matches,
+restored=1, no_held_input=1, result=0. This is numerical event-position evidence;
+ask the operator separately whether the cursor was visible. It does not prove
+LoginWindow button/keyboard delivery or authenticated cross-session handoff.
+Restore/signature/hash-check the retained A/V Probe 54 afterward. Probe 56's
+new mode passed numerically on September 7; its unchanged `--input` path was
+compiled but not rerun while the operator remained logged out.
 
 ## Embedded cursor qualification
 

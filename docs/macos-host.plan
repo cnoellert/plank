@@ -122,8 +122,14 @@ agent boundary with verified peer identity and a fresh generation per attachment
    authenticated reconnect/window-retention approach before promising seamless
    transport continuity. Lock, fast-user-switch, crash and timeout remain tests.
 
-The next operator request is availability to observe the LoginWindow test, not
-a request to install an Ubuntu Client or enable automatic login.
+The operator has now logged out for this test. Signed Probe 56 passed strict
+LoginWindow motion/restoration (three numeric position matches) through the
+unchanged production mapper. Non-root and root Background invocations fail
+closed. Operator observation through Screen Sharing is inconclusive; no
+LoginWindow clicks/keys were sent. Do not repeat that observation as if it can
+close the visibility gate. Proceed with the machine/agent implementation and
+final ordinary Client integration contract; visibility and keyboard/buttons
+must be qualified through the actual product before acceptance.
 
 ## Objective and baseline
 
