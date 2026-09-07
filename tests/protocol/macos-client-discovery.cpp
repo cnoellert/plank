@@ -3,6 +3,7 @@
 #include "backend/nvcomputer.h"
 #include <QCoreApplication>
 #include <QFile>
+#include <QTemporaryDir>
 #include <cstdio>
 
 int main(int argc, char **argv)
@@ -31,6 +32,39 @@ int main(int argc, char **argv)
         try { NvComputer invalid(wrongPort, xml); }
         catch (const GfeHttpResponseException& exception) { rejectedPort = exception.getStatusCode() == 400; }
         if (!rejectedPort) return 1;
+        QTemporaryDir temporary;
+        if (!temporary.isValid()) return 2;
+        QSettings saved(temporary.filePath(QStringLiteral("bookmark.ini")), QSettings::IniFormat);
+        saved.setValue(QStringLiteral("plank-video-profile"), 7);
+        saved.setValue(QStringLiteral("plank-capture-source"), 2);
+        saved.setValue(QStringLiteral("plank-host-layout"), QStringLiteral("fixed"));
+        saved.setValue(QStringLiteral("plank-profile-bitrates-kbps"),
+                       QVariantList{76500, 68500, 99000, 10000, 150000, 42500, 51000});
+        NvComputer bookmark(saved);
+        if (bookmark.plankVideoProfile != 7 || bookmark.plankCaptureSource != 2 ||
+                bookmark.plankHostLayout != QStringLiteral("fixed") ||
+                bookmark.plankProfileBitratesKbps.size() != 8 ||
+                bookmark.plankProfileBitratesKbps[0] != 76500 ||
+                bookmark.plankProfileBitratesKbps[6] != 51000 ||
+                bookmark.plankProfileBitratesKbps[7] != 50000) return 1;
+        bookmark.plankProfileBitratesKbps[7] = 62500;
+        bookmark.serialize(saved, false);
+        saved.sync();
+        if (saved.status() != QSettings::NoError) return 1;
+        QSettings reloaded(temporary.filePath(QStringLiteral("bookmark.ini")), QSettings::IniFormat);
+        NvComputer restored(reloaded);
+        if (restored.plankVideoProfile != 7 || restored.plankCaptureSource != 2 ||
+                restored.plankHostLayout != QStringLiteral("fixed") ||
+                restored.plankProfileBitratesKbps != bookmark.plankProfileBitratesKbps ||
+                !restored.sessionToken.isEmpty()) return 1;
+        // Corrupt cross-platform tuples must not silently become a Linux codec.
+        saved.setValue(QStringLiteral("plank-capture-source"), 0);
+        NvComputer invalidTuple(saved);
+        if (invalidTuple.plankVideoProfile != 7 ||
+                StreamingPreferences::isPlankProfileValidForCaptureSource(
+                    invalidTuple.plankVideoProfile, invalidTuple.plankCaptureSource) ||
+                invalidTuple.plankHostLayout != NvOutputTopology::MatchClientHostLayout) return 1;
+        std::puts("macos_client_bookmark=pass persistence=1 existing_bitrates_preserved=1 invalid_tuple_not_substituted=1");
         std::puts("macos_client_discovery=pass actual_client_parser=1 online_metadata=1 no_media_claim=1 mismatched_port_rejected=1");
         return 0;
     } catch (const std::exception&) {

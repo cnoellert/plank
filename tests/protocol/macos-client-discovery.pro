@@ -8,6 +8,8 @@ isEmpty(PLANK_COMMON_SOURCE): error(Set PLANK_COMMON_SOURCE to its exact common-
 SOURCES += $$PWD/macos-client-discovery.cpp \
     $$PLANK_CLIENT_SOURCE/app/backend/nvhttp.cpp \
     $$PLANK_CLIENT_SOURCE/app/backend/nvcomputer.cpp \
+    $$PLANK_CLIENT_SOURCE/app/backend/nvapp.cpp \
+    $$PLANK_CLIENT_SOURCE/app/settings/plankclientpolicy.cpp \
     $$PLANK_CLIENT_SOURCE/app/backend/nvaddress.cpp \
     $$PLANK_CLIENT_SOURCE/app/backend/outputtopology.cpp
 HEADERS += $$PLANK_CLIENT_SOURCE/app/backend/nvhttp.h
