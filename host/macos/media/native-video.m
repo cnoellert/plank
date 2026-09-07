@@ -4,10 +4,10 @@
 static const size_t maximumFrameBytes = 64 * 1024 * 1024; // native transport ceiling
 
 NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
-                         BOOL *keyFrame, uint64_t *ptsMicroseconds) {
+                         BOOL *keyFrame, uint64_t *pts90Khz) {
     if (keyFrame) *keyFrame = NO;
-    if (ptsMicroseconds) *ptsMicroseconds = 0;
-    if (!sample || !keyFrame || !ptsMicroseconds || width <= 0 || height <= 0 ||
+    if (pts90Khz) *pts90Khz = 0;
+    if (!sample || !keyFrame || !pts90Khz || width <= 0 || height <= 0 ||
             width > 8192 || height > 8192 || (width & 1) || (height & 1) ||
             !CMSampleBufferIsValid(sample) || !CMSampleBufferDataIsReady(sample) ||
             CMSampleBufferGetNumSamples(sample) != 1) return nil;
@@ -18,7 +18,9 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
     if (dimensions.width != width || dimensions.height != height) return nil;
     CMTime pts = CMSampleBufferGetPresentationTimeStamp(sample);
     if (!CMTIME_IS_NUMERIC(pts) || pts.epoch != 0 || pts.value < 0) return nil;
-    pts = CMTimeConvertScale(pts, 1000000, kCMTimeRoundingMethod_RoundTowardZero);
+    // Match the existing Linux sender and Client frame assembler. Native
+    // transport preserves this opaque value; it does not convert clock units.
+    pts = CMTimeConvertScale(pts, 90000, kCMTimeRoundingMethod_RoundTowardZero);
     if (!CMTIME_IS_NUMERIC(pts) || pts.value < 0) return nil;
 
     NSArray *attachments = (__bridge NSArray *)CMSampleBufferGetSampleAttachmentsArray(sample, false);
@@ -70,7 +72,7 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
     }
     if (!hasPicture || key != hasRandomAccessPicture) return nil;
     *keyFrame = key;
-    *ptsMicroseconds = (uint64_t)pts.value;
+    *pts90Khz = (uint64_t)pts.value;
     return output;
 }
 

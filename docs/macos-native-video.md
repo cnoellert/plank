@@ -22,7 +22,9 @@ change to the qualified IOSurface-based capture/encoder input path.
 
 The serial capture owner supplies an activated authentication lease and a
 borrowed native endpoint. There is no additional thread or private frame queue.
-PTS becomes microseconds, frame numbers start at one, and host-processing
+PTS becomes 90-kHz ticks, matching the existing Linux sender and Client frame
+assembler (the native transport does not convert units). Frame numbers start
+at one, and host-processing
 latency retains the existing ABI's tenths-of-millisecond unit. Duplicate or
 decreasing timestamps are rejected. Native enqueue is ordered against explicit
 lease revocation; no later submission succeeds after completed revocation.

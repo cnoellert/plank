@@ -159,7 +159,9 @@ int main(int argc, const char **argv) {
                 received.length, &receivedSize, 5000) == PLANK_TRANSPORT_OK);
             CHECK(receivedSize == expected.length && [received isEqual:expected]);
             CHECK(info.codec == PLANK_TRANSPORT_NATIVE_VIDEO_CODEC_HEVC && info.frame_number == (uint64_t)frame + 1);
-            CHECK(info.pts == (uint64_t)CMTimeConvertScale(CMTimeMake(frame, 60), 1000000, kCMTimeRoundingMethod_RoundTowardZero).value);
+            // Independent expected wire units: 90 kHz / 60 fps = 1500.
+            // The unchanged Client converts this to microseconds itself.
+            CHECK(info.pts == (uint64_t)frame * 1500);
             CHECK(info.host_processing_latency == 123);
             CFRelease(sample);
         }

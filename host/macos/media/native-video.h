@@ -7,7 +7,7 @@
 // Bounded compressed-data conversion. No pixel mapping, scaling or GPU download.
 // Returns nil for malformed samples; outputs are cleared on failure.
 NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
-                         BOOL *keyFrame, uint64_t *ptsMicroseconds);
+                         BOOL *keyFrame, uint64_t *pts90Khz);
 
 // Call on the capture owner's serial submission queue. This object owns no
 // worker/queue and borrows the endpoint: stop submissions before destroying it.
