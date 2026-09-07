@@ -1,9 +1,11 @@
 # PLANK macOS Host implementation plan
 
 Date: 2026-09-06
-Status: macos-host branch; dedicated-Mac capture/display and limited live
-capture-to-hardware-encoder probes pass. Visible LoginWindow cursor/input is
-unverified and deferred by the operator. Product integration has not started.
+Status: macos-host branch; dedicated-Mac capture/display probes, account/control
+integration, gated Apple Client profile and hardware-encoder/native-QUIC adapter
+tests pass. Authenticated live capture now passes a short native loopback test;
+the ordinary Client is not connected yet. Visible
+LoginWindow cursor/input is unverified and deferred by the operator.
 See macos-host-investigation.md for measured results and remaining gates.
 
 ## Objective and baseline
@@ -611,6 +613,18 @@ These references guide experiments; none establishes that PLANK's macOS Host
 already works. Record exact hardware/OS and actual results alongside each gate.
 
 ## Stopping point and resume checklist
+
+**Current September 7 integration priority (supersedes the historical checklist
+below):** one-use stream claims, typed HTTPS launch, idle/topology revocation,
+capture/transport lifecycle, native bitrate/control handling and actual
+ScreenCaptureKit → hardware VideoToolbox → native QUIC now pass component and
+short authenticated live loopback tests. No desktop pixels were persisted.
+The ordinary Client remains explicitly gated. Next connect its fixed geometry,
+typed launch and explicit optional audio/cursor/input negotiation before removing
+that gate. Do not invent capabilities to satisfy Linux assumptions. Live decode,
+presentation, performance and complete LoginWindow lifecycle remain open.
+This is not a user-testable Mac Host release. See
+`macos-native-video.md`, `macos-authentication.md` and HANDOFF for exact evidence.
 
 Implementation was authorized on 2026-09-06. Root branch macos-host starts at
 e451f24e88ea67ebcd97d1984a39d10c0b4d23b2. Host and Client forks are unchanged

@@ -15,6 +15,10 @@ Core dumps must be disabled before constructing the interface.
 
 Implemented routes are `GET /serverinfo`, `POST /plank/auth/start` and
 `POST /plank/auth/respond`, plus authenticated `GET /plank/topology`.
+An explicitly supplied launch handler adds `POST /plank/launch`; otherwise it
+remains 404. See `protocol/macos-preview-launch.md` for the experimental typed
+contract. The same bounded auth lane invokes launch after peer-bound Bearer
+validation. Failed reply delivery cancels its claim; exceptions revoke it too.
 The response JSON retains the current Client contract. Peer binding comes from
 the accepted connection's actual IP address; IPv4-mapped IPv6 is normalized.
 Forwarded headers cannot select the peer identity. No request, account, password
@@ -119,7 +123,7 @@ runbook. It also runs the previous authentication tests. Current gates pass:
 - 215 framing assertions, including every truncated prefix of valid GET/POST requests;
 - escaped XML, immutable metadata, exact public-field allowlist, query validation,
   and the shared `tests/protocol/macos-server-information.xml` fixture;
-- 53 authentication-state assertions, including individual-token revocation;
+- 93 authentication/stream-lease assertions, including individual-token revocation;
 - TLS 1.3 authentication, rejection of TLS 1.2/plaintext/untrusted certificates,
   replay and malformed requests, slow-request expiry, eight-connection admission
   and recovery afterward, using a synthetic verifier only;
@@ -151,9 +155,18 @@ working native media. The shared color validator checks limited BT.709 and sRGB,
 including storage metadata for hardware surfaces without downloading pixels.
 This is not yet hardware decoder or presentation qualification.
 
-Connect fixed capture geometry to authenticated Mac launch, then claim the session
-into native QUIC stream lifetime and feed
-the qualified capture/encode path. Do not label Apple output as NVENC, 4:4:4 or
+The claim/lease, native-video adapter, typed launch and capture-owning coordinator
+now pass component and short authenticated loopback tests; see
+`macos-authentication.md` and `macos-native-video.md`.
+Fixed capture now registers a process-lifetime CoreGraphics reconfiguration
+observer. Every observed change invalidates generation, including a change back
+to identical geometry between queries. Snapshots reject in-progress or mid-read
+changes; callback registration failure fails construction. Synthetic CG tests
+cover these cases without touching real displays. No new polling worker exists.
+The coordinator compares generation while idle and before encoded submission.
+
+Next connect the ordinary Client's fixed geometry and launch to this path, with
+explicit optional audio/cursor/input handling. Do not label Apple output as NVENC, 4:4:4 or
 RGB identity. Keep takeover, input ownership and cleanup gates explicit.
 Persistent administrator configuration, protected TLS-key loading, packaged
 signing and required LoginWindow lifecycle remain unfinished.

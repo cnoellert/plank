@@ -102,6 +102,79 @@ Audio, Wacom and notarized release packaging can follow the first interactive
 preview. Authentication, exact-format negotiation and cleanup cannot be skipped
 to obtain an earlier demo. Linux behavior must remain unchanged.
 
+## Hardware encoder/native media qualification
+
+Run `bash scripts/build-macos-native-video.sh SOURCE_ROOT EMPTY_OUTPUT ARCHIVE`
+on the dedicated Mac. `ARCHIVE` is the exact retained, SHA-256-verified
+`libplank_transport.a` from the transport gate; do not rebuild/download Rust for
+Objective-C-only edits. Source inputs include `host/macos/auth`, the new
+`host/macos/media`, `protocol/plank-transport/include/plank_transport.h`,
+`tests/auth/macos-native-video.m` and `probes/macos/loopback-cert.cnf`.
+Include and hash those explicitly when copying unpublished standalone inputs;
+an older control-only staging directory does not contain the transport header.
+
+The runner requires a free UDP 47491 and binds loopback only. It performs
+hardware-required 1080p and 2160p synthetic HEVC tests through native QUIC,
+including forced keyframe recovery. It creates and removes private ephemeral
+TLS material, leaving the binary and synthetic first-frame HEVC files. It
+does not request TCC, install an app or capture the desktop. The synthetic
+account backend is linked only into the test executable. Preserve source,
+archive and binary hashes separately; this is not a clean release build.
+
+Inspect the synthetic files with the pinned Client FFmpeg on linux-client-builder,
+using its private `LD_LIBRARY_PATH`. Expect HEVC Main10, `yuv420p10le`, limited
+range, BT.709 matrix/primaries and sRGB transfer. This is a component gate;
+actual Client hardware decode and presentation still require a hardware target.
+
+The native-video runner also compiles `preview-session.m`/`screen-capture.m`
+and runs the synthetic-capture lifecycle suite on loopback UDP 47492. Include
+`plank_transport_control.h`, both new modules and
+`tests/protocol/macos-preview-launch-v1.json` in standalone staged inputs.
+This is not a new transport-library build. Each lifecycle test remains bounded.
+
+## Authenticated live preview qualification
+
+`bash scripts/build-macos-preview.sh SOURCE_ROOT EMPTY_OUTPUT ARCHIVE` builds
+the loopback synthetic launch server, native receiver, and a signed **PLANK Host
+Probe.app** with real account verification and capture. It requires the existing
+`PLANK_MACOS_SIGNING_IDENTITY` certificate fingerprint, SDK/minimum macOS 27
+and the retained archive. This app entry point is the authenticated HTTPS probe,
+not the older command-line chart/input probe. Preserve the previously installed
+probe app before replacing it on the dedicated Mac. Do not install on the
+read-only reference Mac or change TCC/keychain trust policy to make it work.
+
+If signing fails with `errSecInternalComponent` despite a valid identity,
+unlock the login keychain interactively and run signing/build **within the same
+SSH TTY session**. A separate unlock-only SSH session may succeed, yet signing
+in a later SSH session still lacks access. Never pass the keychain password in
+arguments, environment or files, or change key ACL/partition policy as a shortcut.
+After compilation has already passed, retry only codesign/verification in that
+same unlocked session; no new dependency bootstrap or clean compilation is needed.
+
+First run the synthetic endpoint (no capture even if TCC is granted):
+
+```bash
+python3 tests/auth/macos-https-auth.py \
+  --server /absolute/preview-output/preview-synthetic \
+  --config probes/macos/https-cert.cnf \
+  --preview-receiver /absolute/preview-output/preview-receive
+```
+
+Then, from a TTY as the desktop user, run the signed app installed at its
+consented location using `--aqua` and the same receiver/config. The runner asks
+for the password without echo, boots a temporary Aqua job, approves its exact
+TLS fixture and exchanges the transport secret only over TLS and receiver stdin.
+TCP and UDP share the same ephemeral loopback port and leaf certificate. It
+receives live HEVC in memory for three seconds, tests the existing bitrate
+acknowledgement, and sends a native disconnect. No desktop image is written.
+Finally it removes its exact Aqua job and temporary TLS material. Do not use
+Screen Sharing to launch this test or modify login state.
+
+A successful receiver checks framing, codec identifier, timestamps and clean
+disconnect; it does **not** decode or present those live frames. The independent
+synthetic bitstream tests remain the color/format evidence. Existing-Client
+hardware decoding/presentation and longer live tests are still required.
+
 ## Native account-backend qualification
 
 `scripts/build-macos-auth.sh SOURCE_ROOT EMPTY_OUTPUT_DIRECTORY` builds the

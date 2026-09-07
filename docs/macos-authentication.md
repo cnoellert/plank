@@ -88,7 +88,7 @@ before verification; a response cannot replay. Random 256-bit conversation IDs
 and tokens are bound to canonical IP bytes supplied by the accepted connection.
 There is a hard cap of 16 pending conversations and 16 unclaimed tokens.
 
-Tokens expire after 300 seconds. Every authorization rechecks UID, UUID and
+Unclaimed tokens expire after 300 seconds. Every authorization rechecks UID, UUID and
 desktop generation; expiry, logout/replacement and explicit revocation remove
 authority. No LoginWindow token is issued by this desktop-preview component.
 No account/credential/token values are logged.
@@ -96,10 +96,38 @@ No account/credential/token values are logged.
 This state class does not implement HTTP itself. The new Network.framework
 adapter supplies TLS 1.3, bounded HTTP/JSON input, non-cacheable replies and
 actual connection-derived peer addresses. Live graphical-session snapshots are
-now connected and qualified for the already-logged-in desktop case. Stream launch must claim
-and bind the authorization to the QUIC session, revoke on final disconnect,
-and enforce continuous capture/input revocation and takeover. Do not use the
-five-minute unclaimed-token store as a substitute for that stream lifecycle.
+now connected and qualified for the already-logged-in desktop case. The stream
+lease below now connects to the experimental HTTP launch and native stream owner.
+
+## One-use stream claim
+
+After validating capture/profile/geometry, `claimToken:peer:` atomically consumes
+the peer-bound HTTP token and returns one opaque process-local lease. It creates
+an independent random 256-bit transport credential; the HTTP token cannot be
+replayed as a launch or used for subsequent topology queries. Only one pending
+or active lease exists. A second claim fails instead of implicitly taking over.
+
+The coordinator must activate the exact lease only after its credential-bound
+native QUIC endpoint reports READY. Pending activation expires after 15 seconds.
+Active authorization has no five-minute expiration: it lasts until explicit
+disconnect/revocation or loss/replacement of the authenticated desktop. Every
+check revalidates trusted UID/UUID/generation. Revocation clears the lease's
+credential and record and cannot be undone by restoring an old desktop snapshot.
+Ending a foreign or stale lease cannot terminate another stream.
+
+Password verification runs outside the session-state lock. A revocation epoch
+prevents an in-flight verifier from minting a new token after `revokeAll`.
+Only one verifier runs concurrently. `performWithStreamLease:action:` orders a
+bounded native-media enqueue against revocation under the short state lock;
+encoding, socket waits and other blocking operations must remain outside it.
+Frames already enqueued or in flight before revocation cannot be recalled.
+
+The lease does not itself own a transport, timer or capture session. The new
+preview coordinator stops capture and its endpoint on disconnect, desktop loss,
+topology replacement or failed activation, including while no frame arrives.
+It owns no remote input yet. Synthetic lifecycle and short live Aqua loopback
+tests now exercise that boundary; user-facing takeover and complete machine
+service lifecycle are not qualified by those tests.
 
 ## Desktop authority
 
@@ -128,10 +156,12 @@ with its own authenticated machine-service and graphical-agent lifecycle gate.
   requests, peer-code mismatch and direct invocation without the channel.
   Child assertions verify core-dump suppression, no inherited unrelated FD or
   test environment variable; the final gate verifies no unreaped children.
-- Fifty-three synthetic conversation assertions pass: Client-shaped JSON,
+- Ninety-three synthetic conversation/lease assertions pass: Client-shaped JSON,
   address binding, replay/expiry, wrong owner, generation change before/during
   verification, revoked/expired tokens, inactive desktop, bounded pending
-  state and password clearing. These tests do not call Open Directory.
+  state and password clearing, one-use claims, activation deadline, active
+  lifetime beyond token expiry, foreign-lease rejection, revoke/enqueue ordering,
+  and revocation while the verifier is blocked. These tests do not call Open Directory.
 - No actual incorrect password was submitted for the real account, avoiding an
   unqualified lockout policy. Locked/expired/disabled/remote-directory account
   behavior remains untested. API documentation is not a substitute for those
