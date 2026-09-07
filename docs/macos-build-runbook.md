@@ -83,7 +83,49 @@ unused Quinn telemetry warnings remain in the default-feature build. This is
 not a packet-loss matrix, performance test, account-authentication test or
 existing Client interoperability qualification. Exact hashes are in HANDOFF.
 
-## First interactive preview boundary
+## Host-first audio qualification
+
+The Host-first direction in `macos-host.plan` supersedes the older preview-first
+order below. No new Client package is required for these component gates.
+
+Use `scripts/build-macos-audio-probe.sh SOURCE_ROOT EMPTY_OUTPUT` on the dedicated
+Mac with the existing signing identity. It builds the standalone **audio** entry
+point at Probe build 46; it is not the HTTPS entry point of Probe 44 or the old
+multi-mode CLI. Preserve the installed app before replacing it, verify signature
+and installed executable SHA-256, and use the existing consented app location.
+Unlock/sign within the same SSH TTY as described below; no keychain ACL change.
+
+Run the installed probe in the existing user's Aqua domain:
+
+```bash
+bash probes/macos/run-graphical-probe.sh "gui/$(id -u)" \
+  "/Applications/PLANK Host Probe.app/Contents/MacOS/plank-host-probe" \
+  probes/macos/probe-agent.plist --audio
+```
+
+This explicitly plays a quiet two-second generated tone and captures system
+audio for eight seconds. No microphone, recorded samples, display changes or
+new listener. The runner removes its temporary job. Do not start this on an
+unrelated user's session. SDK 27 requires AVAudioEngine's
+`connect:to:format:error:` and AVAudioPlayerNode's `playAndReturnError:`; their
+old counterparts cause deprecated-API errors with warnings-as-errors. Use the
+modern APIs and check their errors, not warning suppression or old-OS paths.
+
+For native delivery without live capture/playback, run:
+
+```bash
+bash scripts/build-macos-native-audio.sh SOURCE_ROOT EMPTY_OUTPUT \
+  RETAINED_VERIFIED_LIBPLANK_TRANSPORT_ARCHIVE GENERATED_OPUS_FIXTURE
+```
+
+All arguments must be absolute. Generate the PAO1 fixture with `audio-encode.c`
+as described in `macos-audio.md`; never use recorded user audio. The runner binds
+loopback UDP 47493 only, uses ephemeral pinned TLS and test-only authentication,
+checks exact packets/timestamps/revocation, and removes its private TLS material.
+No Rust rebuild is needed: reuse the qualified native ABI-12 archive. These
+copied/hash-verified standalone sources are not clean release-package snapshots.
+
+## Historical first interactive preview boundary (superseded by Host first)
 
 After this portability gate, implement in this order:
 

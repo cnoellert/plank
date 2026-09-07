@@ -5,6 +5,13 @@ the Linux-only root qualification CMake project or change its dependency gates.
 See `docs/macos-host.plan` for phase order and acceptance requirements.
 macOS 27 and SDK 27 or newer are required; all binaries target macOS 27.0.
 
+The newer standalone system-audio probe uses
+`scripts/build-macos-audio-probe.sh`, not `build-probes.sh`. Its installed app
+accepts `--audio` only and temporarily replaces the approved Probe app entry
+point. See `docs/macos-audio.md` and the audio section of the Mac build runbook
+for playback/capture scope, backup, signing, execution and cleanup. Do not run
+an older probe mode against that installed audio-only executable.
+
 ## Passive desktop inventory
 
 Status: compiled and tested on the dedicated development M4 Mac, macOS 27.0 /

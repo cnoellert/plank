@@ -46,11 +46,19 @@ do not fabricate Linux flags on the Mac to satisfy a Client check. Do not change
 the shared transport, FEC, audio codec or packet duration just for this probe.
 No new Client release is needed for the next Host-side qualification steps.
 
-First Host-audio gate now passes: native Apple Opus actually encodes synthetic
-48-kHz stereo into 5-ms packets that the unchanged Ubuntu libopus layout decodes
-correctly. No additional Mac codec dependency was needed. Next qualify streaming
-input/priming behavior, SCK audio capture and source timestamp alignment. See
-`macos-audio.md`; neither live capture nor A/V synchronization is accepted yet.
+Host-audio component gates now pass: incremental/reset Apple Opus output is
+byte-identical to the fixture decoded by the unchanged Ubuntu libopus layout;
+live SCK captures planar 48-kHz stereo in 20-ms chunks and Apple encodes four
+5-ms packets per chunk. Native packet delivery/revocation passes 3239 checks.
+No new codec dependency or Client implementation was needed. Next integrate
+these components under the authenticated Host capture owner, qualify priming
+and source-clock alignment, then integrated A/V timing/cleanup. See
+`macos-audio.md`; this is not yet complete Host audio or A/V synchronization.
+
+The clock audit also corrected the experimental video adapter from microseconds
+to the existing Client's 90-kHz PTS contract. Real 1080p/4K native-video tests
+(180 checks each) and the 213-check capture-owner lifecycle suite pass again.
+The earlier opaque-PTS loopback had not tested the correct Client clock unit.
 
 ## Objective and baseline
 
