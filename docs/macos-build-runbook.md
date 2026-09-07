@@ -35,7 +35,7 @@ bash "$source_root/scripts/build-macos-input-delivery.sh" "$source_root" \
   "$PLANK_WORK_ROOT/input-delivery-candidate"
 ```
 
-The current delivery app is Probe **51**, accepts only `--input`, and is not the
+The current delivery app is Probe **52**, accepts only `--input`, and is not the
 authenticated A/V app. Preserve/hash-verify installed Probe 49 and its signed
 backup before temporarily replacing it at the approved application path.
 Verify installed ownership root/755, signature and executable hash, then run as
@@ -50,6 +50,11 @@ bash "$source_root/probes/macos/run-graphical-probe.sh" "gui/$(id -u)" \
 The expected mask is 1023 with `position_match=1`, result/exit zero. Focus denial
 is a safety refusal, not proof the OS rejected input. Restore and hash-verify
 the tested A/V Probe 49 after the test; ensure the temporary agent is gone.
+Request test-window activation from `NSApplicationDidFinishLaunchingNotification`,
+not before `[NSApp run]`. Probe 51 still failed focus on an unlocked desktop;
+moving that one activation to the launch notification produced two fresh Probe
+52 passes with no mapper/source/permission changes. Do not replace the guard
+with repeated activation attempts or inject input into another app.
 The input test link retains the qualified `__CGPreLoginApp/__cgpreloginapp`
 Mach-O marker. Carry that gate into any later app that incorporates input; the
 current A/V-only build does not yet include it. The marker does not bypass TCC

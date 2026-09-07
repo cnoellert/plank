@@ -62,8 +62,17 @@ int main(int argc, const char **argv) {
         window.title = @"PLANK — native input qualification";
         window.releasedWhenClosed = NO; window.acceptsMouseMovedEvents = YES;
         PLANKNativeInputView *view = [[PLANKNativeInputView alloc] initWithFrame:NSMakeRect(0, 0, 640, 400)];
-        window.contentView = view; [window center]; [window makeKeyAndOrderFront:nil];
-        [window makeFirstResponder:view]; [NSApp activateIgnoringOtherApps:YES];
+        window.contentView = view; [window center];
+        // Activation requested before AppKit completes launch can be ignored
+        // for a launchd-started agent. Activate once, after the lifecycle event;
+        // never retry stealing focus or weaken the per-event focus check.
+        id launchObserver = [NSNotificationCenter.defaultCenter
+            addObserverForName:NSApplicationDidFinishLaunchingNotification object:NSApp queue:nil
+            usingBlock:^(NSNotification *notification) {
+                (void)notification;
+                [window makeKeyAndOrderFront:nil]; [window makeFirstResponder:view];
+                [NSApp activateIgnoringOtherApps:YES];
+            }];
         BOOL (^ownedFocus)(void) = ^BOOL {
             return NSApp.active && window.keyWindow && window.firstResponder == view && CGPreflightPostEventAccess();
         };
@@ -127,6 +136,7 @@ int main(int argc, const char **argv) {
             }
         });
         dispatch_resume(timer); [NSApp run]; dispatch_source_cancel(timer);
+        [NSNotificationCenter.defaultCenter removeObserver:launchObserver];
         for (id event in [mapper stopAndCopyReleaseEvents]) if (ownedFocus())
             CGEventPost(kCGHIDEventTap, (__bridge CGEventRef)event);
         [window orderOut:nil]; [window close];

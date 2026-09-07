@@ -61,15 +61,24 @@ it is not proof of TCC permission or WindowServer delivery.
 The signed own-window Probe 50 stopped with zero received events, failed focus
 and no pointer match. Its guard runs before every posting callback. Read-only
 inspection then found the desktop logged in **but screen locked**. Do not
-misdiagnose this as event-mapping failure or remove the focus check. Probe 51
-adds focus-state diagnostics only; compiled/signed, not run. The tested A/V
-Probe 49 was restored and its executable hash/signature verified.
+misdiagnose this as event-mapping failure or remove the focus check.
 
-Next: operator unlocks the dedicated Mac; temporarily install Probe 51 and run
-the bounded Aqua own-window test. It expects ten tagged event classes (mask
-1023) and absolute pointer agreement. It restores the pointer/foreground app.
-Do not run it in LoginWindow or send credentials. LoginWindow input remains a
-separate, operator-coordinated acceptance gate.
+After operator unlock, Probe 51 still refused focus: active=0, key=0,
+responder=1, permission=1. Probe 52 moves its single activation request to
+`NSApplicationDidFinishLaunchingNotification`, after AppKit launch completes.
+No mapper, event source, permission or per-event safety check changed.
+
+**Two fresh Probe 52 Aqua runs passed**: received mask 1023/1023, absolute
+pointer match, result/exit zero. This verifies actual private-source Quartz
+delivery into AppKit: move, left down/drag/up, right down/up, both scroll axes,
+key down/up. The test restored pointer and prior foreground app. The temporary
+agent exited/was removed; signed A/V Probe 49 was restored and hash-verified.
+
+This is not an ordinary Client session, modifier/held-state cleanup acceptance,
+multi-display or HiDPI live qualification, or custom cursor extraction. Next
+extend owned-window checks to those input cases before A/V owner integration.
+Do not run it in LoginWindow or send credentials; LoginWindow input remains a
+separate operator-coordinated acceptance gate.
 
 ## Cursor decision still open
 

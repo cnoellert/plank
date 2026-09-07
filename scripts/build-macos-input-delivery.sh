@@ -18,7 +18,7 @@ cd "$source_root"
 app="$output/PLANK Host Probe.app"
 mkdir -p "$app/Contents/MacOS"
 install -m 0644 probes/macos/Info.plist "$app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 51' "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 52' "$app/Contents/Info.plist"
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/input -Iprotocol/plank-transport/include \
     host/macos/input/input-events.m probes/macos/native-input-delivery.m \

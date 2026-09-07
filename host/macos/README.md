@@ -58,6 +58,6 @@ performance soak or LoginWindow product lifecycle. Linux is unchanged.
 events with dynamic point/pixel mapping and transactional held-state tracking.
 `input/native-input.m` qualifies delivery through the existing revocable lease;
 tests use a non-posting sink and real native QUIC. Neither is wired into the
-A/V owner yet. The own-window live test needs an unlocked desktop. See
+A/V owner yet. Two own-window live tests pass on the unlocked desktop. See
 `docs/macos-input.md`; do not advertise keyboard/mouse/cursor readiness from
 component tests alone.
