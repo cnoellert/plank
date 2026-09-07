@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     MacPreviewLaunch::Reply parsed;
     CHECK(MacPreviewLaunch::parseReply(valid, topology, 28989, 1200, parsed));
     CHECK(parsed.configuration.serviceFlags == 0);
-    CHECK(parsed.configuration.hostFeatureFlags == 0);
+    CHECK(parsed.configuration.hostFeatureFlags == LI_FF_DYNAMIC_VIDEO_BITRATE);
     CHECK(parsed.configuration.audioPacketDurationMs == 0);
     CHECK(parsed.configuration.opusConfiguration.channelCount == 0);
     CHECK(parsed.configuration.negotiatedVideoFormat == VIDEO_FORMAT_H265_MAIN10);
