@@ -370,8 +370,14 @@ The Client now parses an explicit fixed-capture feature extension without
 requiring the Mac to advertise Linux-specific layout/input/takeover features.
 The original Linux feature mask, fixture and checks remain unchanged. Native
 authenticated topology, the shared Apple profile descriptor and real Aqua
-geometry tests pass; bookmark selection, stream launch and actual decoder
-activation are still unwired. Public discovery therefore retains zero media
+geometry tests pass. Bookmark creation/editing now includes the explicit Apple
+profile, with append-only IDs and separately remembered bitrate; actual
+serialization/reload tests pass without changing Linux profile values. A real
+VideoToolbox-produced synthetic Main10 4:2:0 frame passes pinned Client FFmpeg
+decode and strict limited-range BT.709/sRGB validation. Hardware decode and
+renderer output are not yet qualified. Stream launch remains explicitly gated
+off pending native authorization lifetime and optional audio/input/cursor
+service negotiation; do not fake Linux capabilities. Public discovery retains zero media
 readiness. The new bit must not enter the Linux launch feature mask. Also retain
 the color distinction already measured: the probe's x420 input uses a BT.601
 sample-matrix declaration, while VideoToolbox output is requested/qualified as

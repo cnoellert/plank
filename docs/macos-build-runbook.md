@@ -259,3 +259,14 @@ and SHA-256. Passing proves software decode and strict format validation only;
 hardware decode, renderer output and stream integration are separate gates.
 Keep partial copied standalone qualification inputs explicitly identified;
 full Client builds still require exact committed, clean worktrees and bundles.
+
+For an uninstalled full-GUI startup diagnostic on linux-client-builder, keep isolated
+XDG config/state/cache/runtime directories and use both
+`QT_QPA_PLATFORM=offscreen` and `SDL_VIDEODRIVER=offscreen`. The SDL `dummy`
+driver is not a substitute: both the unchanged 1.0.34 binary and the Mac-profile
+build crash at `PlVkRenderer::initialize` when its Vulkan loader is unavailable.
+The ordinary package `--version` check does not enter that renderer path.
+Bound full-GUI probes with `timeout --kill-after=2s 8s` because the application's
+SDL signal handler can consume SIGTERM without exiting its idle Qt main loop.
+This diagnostic does not qualify compositor behavior, decoder hardware, visual
+layout or session teardown; those need the actual hardware-test target.
