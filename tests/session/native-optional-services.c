@@ -63,7 +63,7 @@ void stopVideoStream(void) { videoStop++; }
 void destroyVideoStream(void) { videoDestroy++; }
 int initializeControlStream(void) { controlInit++; return failStage == STAGE_CONTROL_STREAM_INIT ? -7 : 0; }
 int startControlStream(void) { controlStart++; return failStage == STAGE_CONTROL_STREAM_START ? -7 : 0; }
-void stopControlStream(void) { controlStop++; }
+int stopControlStream(void) { controlStop++; return 0; }
 void destroyControlStream(void) { controlDestroy++; }
 int LiSendMouseMoveEvent(short x, short y) { (void)x; (void)y; wiggles++; return 0; }
 
@@ -114,10 +114,10 @@ static void exercise(bool linuxSession, int failure) {
     if (!failure) {
         CHECK(started == 1 && completed == STAGE_INPUT_STREAM_START);
         CHECK(LiSetPlankNativeSessionConfiguration(&c) == -1);
-        CHECK(ActiveServiceFlags == c.serviceFlags);
+        CHECK(LiGetPlankNativeServiceFlags() == c.serviceFlags);
     }
     LiStopConnection();
-    CHECK(stage == STAGE_NONE && ActiveServiceFlags == 0);
+    CHECK(stage == STAGE_NONE && LiGetPlankNativeServiceFlags() == 0);
     CHECK(RemoteAddrString == NULL);
     CHECK(audioDestroy == (linuxSession && completed >= STAGE_AUDIO_STREAM_INIT));
     CHECK(audioStop == (linuxSession && completed >= STAGE_AUDIO_STREAM_START));
