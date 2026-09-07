@@ -1,0 +1,46 @@
+#!/bin/bash
+# Event construction/validation only; never injects input or installs a package.
+set -euo pipefail
+if [[ $# != 3 || $1 != /* || $2 != /* || $3 != /* ]]; then
+    echo "Usage: $0 /absolute/source /absolute/empty-output /libplank_transport.a" >&2; exit 2
+fi
+if [[ $(uname -s) != Darwin ||
+      $(sw_vers -productVersion | cut -d . -f 1) -lt 27 ||
+      $(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1) -lt 27 ]]; then
+    echo "Requires dedicated macOS 27/SDK 27 development Mac." >&2; exit 2
+fi
+source_root=$1
+output=$2
+archive=$3
+test -f "$archive"
+test -f "$source_root/protocol/plank-transport/include/plank_transport_input.h"
+if lsof -nP -iUDP:47494 >/dev/null 2>&1; then
+    echo "Loopback qualification UDP 47494 is already in use." >&2; exit 2
+fi
+mkdir "$output"
+cd "$source_root"
+shasum -a 256 host/macos/input/input-events.{h,m} tests/input/macos-input-events.m
+xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/input -Iprotocol/plank-transport/include \
+    host/macos/input/input-events.m tests/input/macos-input-events.m \
+    -framework Foundation -framework CoreGraphics -framework Carbon \
+    -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null -o "$output/input-events"
+"$output/input-events"
+shasum -a 256 "$output/input-events"
+xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/input -Ihost/macos/auth -Iprotocol/plank-transport/include \
+    host/macos/input/input-events.m host/macos/input/native-input.m \
+    host/macos/auth/authentication-session.m tests/input/macos-native-input.m "$archive" \
+    -framework Foundation -framework CoreGraphics -framework Carbon -framework Security \
+    -framework SystemConfiguration -lpthread -lm \
+    -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null -o "$output/native-input"
+umask 077
+certificate_dir=$(mktemp -d "$output/tls.XXXXXX")
+trap 'rm -f "$certificate_dir/key.pem" "$certificate_dir/cert.pem" "$certificate_dir/cert.der"; rmdir "$certificate_dir"' EXIT
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -config probes/macos/loopback-cert.cnf \
+    -keyout "$certificate_dir/key.pem" -out "$certificate_dir/cert.pem" >/dev/null 2>&1
+openssl x509 -in "$certificate_dir/cert.pem" -outform DER -out "$certificate_dir/cert.der"
+certificate_hash=$(shasum -a 256 "$certificate_dir/cert.der")
+certificate_hash=${certificate_hash%% *}
+"$output/native-input" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" "$certificate_hash"
+shasum -a 256 host/macos/input/native-input.{h,m} tests/input/macos-native-input.m "$archive" "$output/native-input"

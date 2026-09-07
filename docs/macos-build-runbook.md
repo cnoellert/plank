@@ -5,6 +5,56 @@ on the authorized dedicated development Mac. Linux builder roles are unchanged.
 Require Apple Silicon, macOS 27, SDK 27 and explicit deployment target 27.0.
 Probe signing/installation remains documented in `probes/macos/README.md`.
 
+## Native keyboard/mouse qualification
+
+Use the dedicated Mac only. For the non-posting component tests:
+
+```bash
+bash "$source_root/scripts/build-macos-input.sh" "$source_root" \
+  "$PLANK_WORK_ROOT/input-candidate" \
+  "$PLANK_WORK_ROOT/transport-build-e451f24/release/libplank_transport.a"
+```
+
+Output must not exist; UDP 47494 must be unused. Reuse the retained ABI-12
+transport archive (hash in HANDOFF), not a new Rust/dependency build. Expected:
+1826 event checks and 129 native input checks/seven scenarios. Both suites post
+zero OS events. Include **`protocol/plank-transport/include/plank_transport_input.h`**
+in a standalone copied qualification source set; earlier audio sets did not need
+that header. The input runner now checks for it before compilation. Standalone
+copied inputs are not a clean release checkout; record their verified hashes.
+
+For actual delivery, first have the operator unlock the desktop. A logged-in
+console owner alone does **not** mean the screen is unlocked. Do not enter
+credentials, change lock settings, or weaken the owned-window focus guard.
+Build the focused signed test in the **same SSH TTY** as keychain unlock:
+
+```bash
+security unlock-keychain "$HOME/Library/Keychains/login.keychain-db"
+# Enter the password interactively. Export the existing signing identity.
+bash "$source_root/scripts/build-macos-input-delivery.sh" "$source_root" \
+  "$PLANK_WORK_ROOT/input-delivery-candidate"
+```
+
+The current delivery app is Probe **51**, accepts only `--input`, and is not the
+authenticated A/V app. Preserve/hash-verify installed Probe 49 and its signed
+backup before temporarily replacing it at the approved application path.
+Verify installed ownership root/755, signature and executable hash, then run as
+the actual desktop UID (never assume 501):
+
+```bash
+bash "$source_root/probes/macos/run-graphical-probe.sh" "gui/$(id -u)" \
+  "/Applications/PLANK Host Probe.app/Contents/MacOS/plank-host-probe" \
+  "$source_root/probes/macos/probe-agent.plist" --input
+```
+
+The expected mask is 1023 with `position_match=1`, result/exit zero. Focus denial
+is a safety refusal, not proof the OS rejected input. Restore and hash-verify
+the tested A/V Probe 49 after the test; ensure the temporary agent is gone.
+The input test link retains the qualified `__CGPreLoginApp/__cgpreloginapp`
+Mach-O marker. Carry that gate into any later app that incorporates input; the
+current A/V-only build does not yet include it. The marker does not bypass TCC
+or qualify LoginWindow delivery. See `macos-input.md` for remaining gates.
+
 ## Transport qualification
 
 The first integration build reuses `protocol/plank-transport` and its exact

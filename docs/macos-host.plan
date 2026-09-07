@@ -66,6 +66,17 @@ to the existing Client's 90-kHz PTS contract. Real 1080p/4K native-video tests
 (180 checks each) and the now 222-check A/V capture-owner lifecycle suite pass.
 The earlier opaque-PTS loopback had not tested the correct Client clock unit.
 
+Native input components now pass 1826 Quartz event-construction checks and 129
+authenticated native-QUIC checks (seven scenarios), with no OS input posted by
+those tests. The own-window live probe stopped before delivery because development-mac's
+screen is locked. Await operator unlock; do not weaken focus protection or
+resume unattended LoginWindow input. Probe 51 is built/signed but not run;
+installed app was restored to tested A/V Probe 49. The input components are not
+yet wired into the A/V session owner or advertised to the Client. See
+`macos-input.md` for scope, release ordering, unsupported key/text paths and the
+SDK-27 deprecated global-cursor-image API finding. Custom cursor handling and
+full session lifecycle remain gates; Client work stays paused.
+
 ## Objective and baseline
 
 Add a performant macOS Host to the current PLANK repository, initially served

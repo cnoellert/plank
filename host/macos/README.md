@@ -53,3 +53,11 @@ The qualification launch now includes audio, but ordinary Client work remains
 paused until the Host service contract is complete. These are short authenticated
 loopback capture tests, not existing-Client playback,
 performance soak or LoginWindow product lifecycle. Linux is unchanged.
+
+`input/input-events.m` translates existing native input payloads to Quartz
+events with dynamic point/pixel mapping and transactional held-state tracking.
+`input/native-input.m` qualifies delivery through the existing revocable lease;
+tests use a non-posting sink and real native QUIC. Neither is wired into the
+A/V owner yet. The own-window live test needs an unlocked desktop. See
+`docs/macos-input.md`; do not advertise keyboard/mouse/cursor readiness from
+component tests alone.
