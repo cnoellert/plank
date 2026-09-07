@@ -3,6 +3,13 @@
 Experimental work for macOS 27+. This directory is not an installable Host yet.
 It does not replace or relocate the supported Linux Host under `sunshine-fork`.
 
+`session/agent-registry.m` and `agent-connection.m` implement the machine/agent
+XPC ownership boundary: signing and kernel peer identity checks, exclusive
+generations, irreversible revocation and cleanup-gated replacement. They pass
+component and cross-process LoginWindow tests but are not yet wired to remote
+authentication, capture or a persistent service. See
+`docs/macos-session-lifecycle.md` for the contract and remaining integration.
+
 `auth/account-verifier.m` uses Open Directory password verification, including
 the framework's account/password-policy evaluation. The authenticated record's
 UID and GeneratedUID must agree with macOS membership resolution. It returns

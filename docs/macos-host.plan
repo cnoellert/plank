@@ -133,6 +133,13 @@ must be qualified through the actual product before acceptance.
 
 ## Objective and baseline
 
+September 7 production integration now includes the machine/agent XPC registry
+and graphical connection under `host/macos/session`. The system-service versus
+LoginWindow-agent cross-process test passes, including rejection of a signed
+Background peer. See `macos-session-lifecycle.md`. Aqua cross-process validation,
+real remote admission, media/display drain and persistent service wiring remain
+next; this is not yet an ordinary Client connection or packaged Mac Host.
+
 Add a performant macOS Host to the current PLANK repository, initially served
 by the existing Ubuntu Client. Do not make another transport rewrite, a new
 repository, or a macOS Client a prerequisite. Preserve the working Linux

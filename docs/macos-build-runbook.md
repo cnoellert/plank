@@ -5,6 +5,41 @@ on the authorized dedicated development Mac. Linux builder roles are unchanged.
 Require Apple Silicon, macOS 27, SDK 27 and explicit deployment target 27.0.
 Probe signing/installation remains documented in `probes/macos/README.md`.
 
+## Machine/graphical-agent IPC qualification
+
+Build `bash scripts/build-macos-agent-registry.sh SOURCE_ROOT EMPTY_OUTPUT`
+on the dedicated Mac, SDK/target 27, warnings as errors. Include both modules
+under `host/macos/session`, both agent tests, `session-boundary.h`, the service
+plist and the two build/test scripts in the hash-verified source set. No Rust
+rebuild, TCC permission or app replacement. The test executables are ad-hoc
+signed to pin their exact code, not as a product distribution policy.
+
+The build runs `agent-registry --synthetic`: 185 checks over real anonymous XPC
+with synthetic scope observations. Require a clean process exit, including
+autorelease teardown. A previous run printed passing assertions but trapped
+when an inactive outgoing XPC object was released; that was a failure, now fixed.
+Pending-peer expiry tests must cancel on XPC interruption, not silently reconnect.
+
+To check actual graphical identity, run the uninstalled `agent-registry` binary
+through the existing graphical runner with no explicit mode argument. Use root
+for LoginWindow or the actual desktop user for Aqua. Default mode requires a
+positive graphical scope; `--synthetic` does not.
+
+For cross-process qualification, run as root on the dedicated Mac:
+
+```bash
+sudo bash scripts/test-macos-agent-service.sh SOURCE_ROOT \
+  /absolute/output/agent-peer VERIFIED_SHA256 ALLOWED_DESKTOP_UID
+```
+
+Discover the UID; never assume 501. The runner hash-verifies a root-owned
+temporary executable, boots a uniquely named system Mach service, proves
+rejection of a signed Background peer, then launches the actual graphical agent.
+Expected: `agent_service_cross_process_pass=1 persistent_install=0 media=0 input=0`.
+An EXIT trap removes both exact jobs and all generated files. No persistent
+installation, app replacement, capture, input, credentials or network listener.
+See `macos-session-lifecycle.md` for what these tests do and do not prove.
+
 ## Native keyboard/mouse qualification
 
 Use the dedicated Mac only. For the non-posting component tests:
