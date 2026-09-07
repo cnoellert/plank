@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>la.instinctual.PLANK.Host.Probe</string>
+    <key>CFBundleName</key><string>PLANK Host Probe</string>
+    <key>CFBundleDisplayName</key><string>PLANK Host Probe</string>
+    <key>CFBundleExecutable</key><string>plank-host-probe</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleVersion</key><string>42</string>
+    <key>LSMinimumSystemVersion</key><string>27.0</string>
+    <key>LSUIElement</key><true/>
+</dict>
+</plist>

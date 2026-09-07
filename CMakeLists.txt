@@ -253,6 +253,11 @@ target_compile_options(plank-wacom-raw-bridge PRIVATE
   -Wall -Wextra -Wpedantic -Werror)
 
 if(BUILD_TESTING)
+  add_executable(macos-account-policy-test tests/auth/macos-account-policy.c)
+  target_compile_features(macos-account-policy-test PRIVATE c_std_11)
+  target_compile_options(macos-account-policy-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_include_directories(macos-account-policy-test PRIVATE host/macos/auth)
+  add_test(NAME macos-account-policy COMMAND macos-account-policy-test)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   add_test(NAME encoder-probe-order
     COMMAND ${Python3_EXECUTABLE}

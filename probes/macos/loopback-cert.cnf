@@ -1,0 +1,14 @@
+# Synthetic loopback TLS fixture only, never a product certificate profile.
+[req]
+distinguished_name = subject
+x509_extensions = loopback_server
+prompt = no
+
+[subject]
+CN = localhost
+
+[loopback_server]
+basicConstraints = critical,CA:FALSE
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = DNS:localhost

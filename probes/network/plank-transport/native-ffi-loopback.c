@@ -388,6 +388,21 @@ int main(int argc, char **argv) {
     memset(&client_stats, 0, sizeof(client_stats));
     server_stats.struct_size = sizeof(server_stats);
     client_stats.struct_size = sizeof(client_stats);
+    /* Reconstructed media can arrive before the sender finishes its repair
+     * symbols and increments completion counters. Wait for that asynchronous
+     * completion, bounded to two seconds; retain every exact assertion below. */
+    unsigned int settle_attempt;
+    const struct timespec settle_pause = {0, 10 * 1000 * 1000};
+    for (settle_attempt = 0; settle_attempt < 200; ++settle_attempt) {
+        if (plank_transport_native_endpoint_stats(server, &server_stats) !=
+                PLANK_TRANSPORT_OK ||
+            (server_stats.video_frames_sent >= 1 &&
+             server_stats.audio_packets_sent >= 1)) {
+            break;
+        }
+        nanosleep(&settle_pause, NULL);
+    }
+    printf("native_sender_counter_wait_iterations=%u\n", settle_attempt);
     if (plank_transport_native_endpoint_stats(server, &server_stats) !=
             PLANK_TRANSPORT_OK ||
         plank_transport_native_endpoint_stats(client, &client_stats) !=
@@ -410,6 +425,28 @@ int main(int argc, char **argv) {
         client_stats.audio_receive_drops != 0 ||
         client_stats.kyproto_packets_dropped != 0) {
         fprintf(stderr, "native transport counters mismatch\n");
+        fprintf(stderr,
+                "video sent/received=%llu/%llu bytes=%llu/%llu "
+                "audio=%llu/%llu input=%llu/%llu "
+                "server data sent/received=%llu/%llu client data=%llu/%llu "
+                "video drops=%llu/%llu audio drops=%llu/%llu kyproto drops=%llu\n",
+                (unsigned long long)server_stats.video_frames_sent,
+                (unsigned long long)client_stats.video_frames_received,
+                (unsigned long long)server_stats.video_bytes_sent,
+                (unsigned long long)client_stats.video_bytes_received,
+                (unsigned long long)server_stats.audio_packets_sent,
+                (unsigned long long)client_stats.audio_packets_received,
+                (unsigned long long)client_stats.input_packets_sent,
+                (unsigned long long)server_stats.input_packets_received,
+                (unsigned long long)server_stats.data_packets_sent,
+                (unsigned long long)server_stats.data_packets_received,
+                (unsigned long long)client_stats.data_packets_sent,
+                (unsigned long long)client_stats.data_packets_received,
+                (unsigned long long)server_stats.video_send_drops,
+                (unsigned long long)client_stats.video_receive_drops,
+                (unsigned long long)server_stats.audio_send_drops,
+                (unsigned long long)client_stats.audio_receive_drops,
+                (unsigned long long)client_stats.kyproto_packets_dropped);
         goto failure;
     }
 

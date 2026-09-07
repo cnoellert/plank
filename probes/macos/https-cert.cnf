@@ -1,0 +1,15 @@
+# Ephemeral HTTPS qualification identity. Mirrors the product certificate's
+# RSA-3072/SHA-256, DNS-only SAN and self-signed CA/key-usage attributes.
+[req]
+distinguished_name = subject
+x509_extensions = server
+prompt = no
+
+[subject]
+CN = localhost
+
+[server]
+basicConstraints = critical,CA:TRUE,pathlen:0
+keyUsage = critical,digitalSignature,keyEncipherment,keyCertSign
+extendedKeyUsage = serverAuth
+subjectAltName = DNS:localhost
