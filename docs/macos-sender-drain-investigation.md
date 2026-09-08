@@ -63,7 +63,7 @@ submission, not exclusively contention. These are elapsed wall times, not CPU,
 ACK or wire-delivery times. Instrumentation overhead was not independently
 benchmarked; no synchronous per-frame log output occurred during playback.
 
-## Next proposed experiment (not applied)
+## Original proposal after .50 (superseded by authorized .51 experiment)
 
 Keep encoder settings, Client, FEC policy and queue capacity unchanged. Test a
 bounded sender burst budget that can drain a keyframe promptly while retaining
@@ -78,3 +78,65 @@ Raw numeric log is retained outside Git at
 Reproduce with `scripts/analyze-sender-timing.py` and
 `scripts/analyze-macos-frame-timing.py`. Align by frame number; capture sample
 sizes omit Annex-B parameter-set additions included in sender payload sizes.
+
+## Combined fast-send result: .51
+
+The user explicitly authorized removing our application datagram pacer and
+raising the Quinn window budget together. Exact build and feature scope are in
+HANDOFF. User reports fewer stutters, but still unacceptable stutter. No further
+code or runtime settings were changed during this analysis.
+
+| First 120-second sender trace | .50 | .51 |
+| --- | ---: | ---: |
+| Queue evictions at last dequeue | 116 | 0 |
+| Mean keyframe submission time | 81.50 ms | 24.69 ms |
+| Mean keyframe queue residence | 11.25 ms | 0.028 ms |
+| Mean keyframe payload | 928 KB | 1204 KB |
+| Mean keyframe encode time | 22.16 ms | 22.41 ms |
+
+The workloads are not pixel-identical. .51 delivered about50.04Mbps encoded
+payload versus48.34Mbps previously. .51 traced6890 sender frames/58keys,
+zero failed submissions, zero pacing sleeps, and zero queue evictions. Full
+Host session:6955 complete captures,5 pre-encode skips,0 encoder drops,
+0 recovery/send drops,6949 video sent,24204 audio sent,0 audio-send drops.
+Worst submission was53.37ms for a delta frame;51.24ms fell inside one Quinn
+call, coinciding with a capture callback stall. This is elapsed time, not proof
+of a particular lock or an on-wire stall. Keys averaged7.87ms FEC preparation
+and16.10ms Quinn calls. Capture callback gaps reached88.39ms; output-handler
+dispatch delay reached79.54ms. PTS gaps include304 at33.33ms and1 at50ms, giving
+roughly57.45 complete captures/sec despite a requested60fps.
+
+wan-test-client Client1.0.45 log for this connection:6374 video frames received,
+0 receive drops,0 KyProto drops,544292 FEC source symbols and0 missing source
+symbols. Reported network/decode/render57.42/57.42/56.97fps; VA-API Main10/P010
+hardware decoding; decode completion p95/p99/max1/1/35ms. Frame queue drops:
+41 render catch-up plus9 startup overflow, reported0.79%. Render-call latency
+p95/p99/max6/10/189ms; the maximum is not timestamped and may include startup.
+QUIC-lost546 is also reported: this is the Client endpoint's outbound QUIC loss
+counter, not evidence of missing incoming video source symbols. Do not claim
+the entire network had zero loss. Host continued until00:23:59 after Client
+disconnected00:23:49; raw frame totals cover different lifetimes, so their
+difference is not a lost-frame count.
+
+The recurring render catch-up drops closely follow normal120-frame keyframes:
+
+| Keyframe submission completed (Host local time) | Client render catch-up |
+| --- | --- |
+| 00:22:00.979 | 00:22:01.019 |
+| 00:22:03.152 | 00:22:03.179 |
+| 00:22:05.240 | 00:22:05.275 |
+| 00:22:07.317 | 00:22:07.359 |
+
+This temporal alignment supports a keyframe delivery burst followed by Client
+render catch-up as the remaining periodic mechanism. It does not isolate QUIC
+wire delivery, FEC reconstruction, decoder output batching and render scheduling
+from one another. Frame pacing logs as disabled; the render queue's independent
+catch-up policy still runs in `Pacer::renderFrame()` and discards frames over a
+history-derived depth, even with recorded ages6–19ms. Do not remove bounded
+queues or assert that this policy alone is defective without tracing arrivals.
+
+Next focus: keyframe receive/reconstruction, decoded-frame arrival, and render
+queue policy, while retaining .51 as the experimental comparison. Further
+sender budget increases are not justified by the now-zero sender queue drops.
+Raw Host log: `~/.cache/plank-build/work/host-sender-1.0.51.log`, SHA-256
+`918716eb0cc6957fea625dc2f328d12e105293df3159f00a236425800e286ec8`.
