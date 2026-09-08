@@ -3,6 +3,7 @@
 #import <AppKit/AppKit.h>
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 #import <CoreVideo/CoreVideo.h>
+#import <QuartzCore/QuartzCore.h>
 #include <time.h>
 #include <unistd.h>
 #include <string.h>
@@ -16,8 +17,10 @@ typedef struct { uint64_t callback; int64_t pts; NSInteger status; } Record;
     size_t _count, _complete, _width, _height;
     BOOL _stopping;
     CGDirectDisplayID _display;
+    NSPanel *_pattern;
 }
 @property BOOL nativeRate;
+@property BOOL pattern;
 @property int result;
 - (void)begin;
 @end
@@ -35,7 +38,10 @@ typedef struct { uint64_t callback; int64_t pts; NSInteger status; } Record;
                    (long long)r.pts, (long)r.status);
         }
         fflush(stdout);
-        dispatch_async(dispatch_get_main_queue(), ^{ CFRunLoopStop(CFRunLoopGetMain()); });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self->_pattern orderOut:nil]; self->_pattern = nil;
+            CFRunLoopStop(CFRunLoopGetMain());
+        });
     };
     if (!_stream) { done(); return; }
     [_stream stopCaptureWithCompletionHandler:^(NSError *error) {
@@ -70,13 +76,36 @@ typedef struct { uint64_t callback; int64_t pts; NSInteger status; } Record;
     dispatch_async(_queue, ^{ [self finish:3]; });
 }
 - (void)begin {
+    _display = CGMainDisplayID();
+    if (self.pattern) {
+        NSScreen *screen = nil;
+        for (NSScreen *candidate in NSScreen.screens)
+            if ([candidate.deviceDescription[@"NSScreenNumber"] unsignedIntValue] == _display) screen = candidate;
+        if (!screen) { self.result = 3; CFRunLoopStop(CFRunLoopGetMain()); return; }
+        _pattern = [[NSPanel alloc] initWithContentRect:screen.frame
+            styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
+            backing:NSBackingStoreBuffered defer:NO];
+        _pattern.level = NSFloatingWindowLevel; _pattern.ignoresMouseEvents = YES;
+        _pattern.contentView.wantsLayer = YES;
+        _pattern.contentView.layer.backgroundColor = NSColor.darkGrayColor.CGColor;
+        CALayer *bar = [CALayer layer];
+        bar.bounds = CGRectMake(0, 0, 100, screen.frame.size.height);
+        bar.position = CGPointMake(50, screen.frame.size.height / 2);
+        bar.backgroundColor = NSColor.whiteColor.CGColor;
+        [_pattern.contentView.layer addSublayer:bar];
+        CABasicAnimation *motion = [CABasicAnimation animationWithKeyPath:@"position.x"];
+        motion.fromValue = @50; motion.toValue = @(screen.frame.size.width - 50);
+        motion.duration = 2; motion.autoreverses = YES; motion.repeatCount = HUGE_VALF;
+        motion.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+        [bar addAnimation:motion forKey:@"cadence"];
+        [_pattern orderFrontRegardless]; // No key window, activation, or input.
+    }
     _queue = dispatch_queue_create("la.instinctual.PLANK.capture-cadence", DISPATCH_QUEUE_SERIAL);
     dispatch_async(_queue, ^{
         BOOL allowed = CGPreflightScreenCaptureAccess();
-        printf("cadence_begin native_rate=%d capture_preflight=%d encoder=0 network=0 audio=0\n",
-               self.nativeRate, allowed);
+        printf("cadence_begin native_rate=%d pattern=%d capture_preflight=%d encoder=0 network=0 audio=0\n",
+               self.nativeRate, self.pattern, allowed);
         if (!allowed) { [self finish:2]; return; } // Never request new consent.
-        self->_display = CGMainDisplayID();
         [SCShareableContent getShareableContentExcludingDesktopWindows:NO onScreenWindowsOnly:YES
             completionHandler:^(SCShareableContent *content, NSError *error) {
             dispatch_async(self->_queue, ^{
@@ -121,13 +150,15 @@ typedef struct { uint64_t callback; int64_t pts; NSInteger status; } Record;
 @end
 
 int main(int argc, const char **argv) {
-    if (argc != 2 || (strcmp(argv[1], "--cadence-60") && strcmp(argv[1], "--cadence-native"))) return 2;
+    if (argc != 2 || (strcmp(argv[1], "--cadence-60") && strcmp(argv[1], "--cadence-native") &&
+        strcmp(argv[1], "--cadence-pattern-60") && strcmp(argv[1], "--cadence-pattern-native"))) return 2;
     alarm(35); // Bound framework setup/teardown too; runner is the outer guard.
     @autoreleasepool {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
         PLANKCaptureCadence *probe = [PLANKCaptureCadence new];
-        probe.nativeRate = !strcmp(argv[1], "--cadence-native"); probe.result = 4;
+        probe.nativeRate = strstr(argv[1], "native") != NULL;
+        probe.pattern = strstr(argv[1], "pattern") != NULL; probe.result = 4;
         dispatch_async(dispatch_get_main_queue(), ^{ [probe begin]; });
         CFRunLoopRun();
         return probe.result;
