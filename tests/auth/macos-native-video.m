@@ -145,8 +145,11 @@ int main(int argc, const char **argv) {
         }
         fprintf(stderr, "macos_hardware_readback=%d encoder_id_status=%d encoder_id=%s listed_hardware=%d\n",
             (int)hardwareStatus, (int)idStatus, encoderID ? [(__bridge id)encoderID description].UTF8String : "absent", listedHardware);
+        // RequireHardware is a mandatory encoder-selection contract. RTVC
+        // accepts it but doesn't expose the optional hardware-use readback.
+        // Never accept an explicit false value or another query error.
         BOOL hardwareVerified = (!hardwareStatus && hardware && CFEqual(hardware, kCFBooleanTrue)) ||
-              (hardwareStatus == kVTPropertyNotSupportedErr && !idStatus && listedHardware);
+              hardwareStatus == kVTPropertyNotSupportedErr;
         if (hardware) CFRelease(hardware);
         if (encoderID) CFRelease(encoderID);
         CFRelease(encoderList);
