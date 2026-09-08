@@ -31,6 +31,15 @@ kernel exit event before releasing its exclusive slot; an IPC retirement
 acknowledgment is not enough. The short-lived account verification child
 retains its separate bounded timeout and cannot capture or post input.
 
+Sign-in and desktop advertise and select the same qualified display modes.
+The sign-in agent bootstraps at 1920x1080 before discovery; an authenticated
+`/plank/display` request selects the bookmark resolution before streaming.
+The Client sends that same resolution again after a graphical-role transition.
+Preparation verifies actual pixel and logical dimensions and fails explicitly
+if they do not match; SCStream output scaling is not a display-mode substitute.
+Both roles retain independent virtual-display identities and the same bounded
+scope-checked transaction. This does not extend input or capture authority.
+
 The experimental role-private startup directory is owned by that role's UID,
 mode 0700. `host.plist`, `cert.der`, `key.der`, `cert.pem`, `key.pem` must each be
 regular, non-symlink, mode-0600 files owned by the same UID. The plist has exactly

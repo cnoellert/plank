@@ -4,6 +4,16 @@ Date: 2026-09-06
 
 ## September 8 active continuation
 
+Resolution update (.62): the real boot LoginWindow now passes 1920x1080,
+3840x2160 and 5120x2160 with matching pixels and logical bounds. The bounded
+AppKit diagnostic owns a separate display and uses public mode selection after
+advertising the modes. Earlier Foundation-loop/initial-mode failures are
+historical observations, not a current macOS resolution ceiling. Host sign-in
+and desktop now share mode selection; the Client no longer replaces its saved
+resolution with 1080p at sign-in. An unconnected Host still bootstraps at 1080p.
+No capture/encoder/transport tuning changes are part of this update. See HANDOFF
+for installed-stream verification and the next graphical acceptance test.
+
 Latest: Client .60 routes native endpoint receive closure into reconnect without
 waiting for input. Host .61 recognizes the positively verified initial boot
 LoginWindow audit/session state, in addition to the post-logout representation.
@@ -282,10 +292,12 @@ until the feasibility gates below pass.
 - Normal macOS login-screen access is essential, not a later enhancement.
   Support remote connection before a local user logs in, login into the user's
   desktop, logout back to the login screen, and subsequent reconnect.
-- A fixed 1920x1080 login screen is acceptable; after authentication use the
-  requested bookmark desktop resolution, and return to 1080p on logout. Keep
-  the connection/window and input mapping coherent across those changes. This
-  policy does not waive desktop-resolution or normal login/logout test gates.
+- September 8 supersedes the earlier fixed-1080p sign-in allowance: apply the
+  requested bookmark resolution at both sign-in and desktop. Bootstrap at
+  1920x1080 only before an authenticated display request. Verify actual display
+  pixels and logical bounds; never substitute capture upscaling. If a requested
+  mode cannot be established, fail preparation explicitly rather than claim the
+  requested size. Keep window/input mapping coherent across role replacement.
 - Minimum supported macOS is 27, explicitly selected by the user. Target SDK
   27+ and deployment target 27.0; do not add compatibility paths for older macOS.
   The older reference Mac was solely for studying PCoIP. Revalidate beta-tested
