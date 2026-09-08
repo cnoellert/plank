@@ -231,17 +231,11 @@ delivery can precede the asynchronous start acknowledgement).
 
 ## Transport qualification
 
-For bounded submission qualification, use `PLANK_MACOS_DATAGRAM_BATCH=1`.
-This includes .53 source-first and .51 fast-send/timing. It calls the vendored
-Quinn 0.11.11 batch API only from macOS source-first video, at most 4 packets
-per lock. No timer, MTU, FEC, encoder, queue or controller change. The runner
-adds real-TLS batch boundary/error/partial-success tests and concurrent reliable
-control round trips during datagram load. Retain .53 for large-frame complete-
-receive comparison. These loopback tests do not qualify live audio/input.
-`quinn_max_ns` now measures a submission group, not a single packet; sums remain
-comparable, but maxima do not. The feature is OFF by default.
-The uninstalled .54 used 16 packets and showed worse control-tail latency.
-.55 reduces that bound; neither should replace .53 without comparison gates.
+The rejected .54/.55 submission-batching implementation, feature and extra
+Quinn wrapper vendor tree have been removed. Historical source commits and
+measurements remain in the sender-drain investigation; do not reuse their build
+commands for a current candidate. The qualified source-first path below retains
+ordinary single-datagram submission and the tested Mac application-pacer bypass.
 
 For .53 source-first FEC qualification, use `PLANK_MACOS_SOURCE_FIRST=1`.
 This includes the .51 fast-send/timing experiment and enables source-first

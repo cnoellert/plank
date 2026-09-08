@@ -16,7 +16,6 @@ sender-timing = ["kynet/sender-timing", "kyproto/sender-timing"]
 # Temporary combined experiment; ordinary Linux/Mac builds are unchanged.
 macos-fast-send = ["sender-timing"]
 macos-source-first = ["macos-fast-send", "kyproto/source-first-fec"]
-macos-datagram-batch = ["macos-source-first", "kyproto/datagram-batch"]
 
 [dependencies]
 anyhow = "1.0"
@@ -32,7 +31,6 @@ subtle = "2.6"
 tokio = { version = "1.47", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 
 [patch.crates-io]
-quinn = { path = "../../third_party/quinn-0.11.11" }
 # Keep the same narrowly repaired Quinn release shared by production and the
 # standalone probes. See third_party/quinn-proto-0.11.17/PLANK-PATCH.md.
 quinn-proto = { path = "../../third_party/quinn-proto-0.11.17" }
