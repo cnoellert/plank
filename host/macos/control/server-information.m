@@ -33,6 +33,9 @@ static BOOL publicText(NSString *value, NSUInteger maximum) {
 }
 
 - (NSData *)XMLForControlPort:(uint16_t)port {
+    return [self XMLForControlPort:port authorized:NO];
+}
+- (NSData *)XMLForControlPort:(uint16_t)port authorized:(BOOL)authorized {
     if (!port) return nil;
     NSXMLElement *root = [NSXMLElement elementWithName:@"root"];
     [root addAttribute:[NSXMLNode attributeWithName:@"status_code" stringValue:@"200"]];
@@ -46,7 +49,7 @@ static BOOL publicText(NSString *value, NSUInteger maximum) {
         @[@"PlankAuth", @"1"], @[@"ServerCodecModeSupport", _streaming ? @"512" : @"0"],
         @[@"PlankTopologyVersion", _streaming ? @"13" : @"0"],
         @[@"PlankFeatureFlags", _streaming ? @"524401" : @"0"],
-        @[@"PairStatus", @"0"]
+        @[@"PairStatus", authorized ? @"1" : @"0"]
     ];
     for (NSArray *field in fields)
         [root addChild:[NSXMLNode elementWithName:field[0] stringValue:field[1]]];

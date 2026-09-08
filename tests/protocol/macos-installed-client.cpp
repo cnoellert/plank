@@ -37,6 +37,11 @@ int main(int argc, char** argv)
         const QString token = http.authenticate(QString::fromLocal8Bit(argv[3]), QString::fromUtf8(password));
         password.fill('\0'); password.clear();
         http.setPlankSessionToken(token);
+        CHECK(NvHTTP::getXmlString(http.getServerInfo(NvHTTP::NVLL_NONE), "PairStatus") == "1");
+        NvHTTP anonymous(http.address());
+        CHECK(NvHTTP::getXmlString(anonymous.getServerInfo(NvHTTP::NVLL_NONE), "PairStatus") == "0");
+        anonymous.setPlankSessionToken(QString(44, QLatin1Char('x')));
+        CHECK(NvHTTP::getXmlString(anonymous.getServerInfo(NvHTTP::NVLL_NONE), "PairStatus") == "0");
         QString pin;
         const auto topology = http.getOutputTopology(&pin);
         CHECK(topology.featureFlags == NvOutputTopology::FixedCaptureFlags);

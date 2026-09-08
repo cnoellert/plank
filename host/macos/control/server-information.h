@@ -12,6 +12,8 @@
 - (instancetype)initWithName:(NSString *)name workstationUUID:(NSUUID *)uuid
                     version:(NSString *)version streaming:(BOOL)streaming;
 - (NSData *)XMLForControlPort:(uint16_t)port;
+// Reflect only this request's validated bearer, never another client's state.
+- (NSData *)XMLForControlPort:(uint16_t)port authorized:(BOOL)authorized;
 @end
 
 // Accept current Client cache-busting identifiers, not credentials or arbitrary

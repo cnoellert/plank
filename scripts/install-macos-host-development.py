@@ -6,7 +6,6 @@ firewall change, or private key copying from another machine. The narrow root
 coordinator and the current user's graphical agent retain separate authority.
 """
 import argparse
-import ipaddress
 import os
 from pathlib import Path
 import plistlib
@@ -25,13 +24,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", type=Path, required=True)
     parser.add_argument("--desktop-user", required=True)
-    parser.add_argument("--bind", required=True)
     parser.add_argument("--port", type=int, default=28989)
     args = parser.parse_args()
     assert os.getuid() == 0 and os.uname().sysname == "Darwin"
     assert int(run("sw_vers", "-productVersion").stdout.split(".")[0]) >= 27
     assert 1 <= args.port <= 65535
-    ipaddress.IPv4Address(args.bind)
     account = pwd.getpwnam(args.desktop_user)
     assert account.pw_uid > 0 and os.stat("/dev/console").st_uid == account.pw_uid
     source = args.app.resolve(strict=True)
@@ -65,11 +62,15 @@ def main():
             for name in ("cert.pem", "key.pem", "cert.der", "key.der"):
                 os.chmod(stage / name, 0o600)
                 os.replace(stage / name, private / name)
-        config_path.write_bytes(plistlib.dumps({"Address": args.bind, "Port": args.port,
+        config_path.write_bytes(plistlib.dumps({"Address": "0.0.0.0", "Port": args.port,
             "Name": "PLANK Mac Host", "UUID": str(uuid.uuid4())}))
     else:
         config = plistlib.loads(config_path.read_bytes())
-        assert config["Address"] == args.bind and config["Port"] == args.port, "Existing listener configuration is preserved"
+        assert config["Port"] == args.port, "Existing listener port is preserved"
+        # Product listeners serve every interface, including ZeroTier interfaces
+        # added after installation. Never bind to the builder's access address.
+        config["Address"] = "0.0.0.0"
+        config_path.write_bytes(plistlib.dumps(config))
     for name in ("host.plist", "cert.pem", "key.pem", "cert.der", "key.der"):
         path = private / name
         assert not path.is_symlink() and path.is_file()

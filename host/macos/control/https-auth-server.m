@@ -170,10 +170,11 @@
             } else if (result == PLANKMacHTTPComplete) {
                 request.dispatched = YES;
                 if ([method isEqual:@"GET"]) {
-                    if (PLANKMacIsServerInformationTarget(path) && owner->_serverInformationXML) {
+                    BOOL information = PLANKMacIsServerInformationTarget(path) && owner->_serverInformationXML;
+                    if (information && !authorization.length) {
                         [owner replyBytes:owner->_serverInformationXML type:@"application/xml; charset=utf-8"
                                     token:nil status:200 request:request];
-                    } else if (PLANKMacIsTopologyTarget(path) || PLANKMacIsDesktopTarget(path)) {
+                    } else if (information || PLANKMacIsTopologyTarget(path) || PLANKMacIsDesktopTarget(path)) {
                         if (owner->_authBusy) { [owner reply:@{@"state": @"denied"} status:503 request:request]; return; }
                         [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
                         request.bytes = nil;
@@ -181,24 +182,30 @@
                         dispatch_async(owner->_authQueue, ^{
                             @autoreleasepool {
                                 NSDictionary *topology = nil;
+                                BOOL authorized = NO;
                                 unsigned status = 401;
                                 @try {
                                     NSString *token = [authorization hasPrefix:@"Bearer "] && authorization.length == 51 ?
                                         [authorization substringFromIndex:7] : nil;
                                     PLANKMacAccountIdentity before = {0}, after = {0};
                                     if (token && [owner->_sessions authorizeToken:token peer:request.peer identity:&before]) {
-                                        topology = owner->_topology();
-                                        status = topology ? 200 : 503;
+                                        authorized = YES;
+                                        if (!information) topology = owner->_topology();
+                                        status = information || topology ? 200 : 503;
                                         if (![owner->_sessions authorizeToken:token peer:request.peer identity:&after] ||
                                             before.uid != after.uid || memcmp(before.uuid, after.uuid, sizeof(before.uuid))) {
-                                            topology = nil; status = 401;
+                                            authorized = NO; topology = nil; status = 401;
                                         }
                                     }
                                 } @catch (NSException *exception) {
-                                    (void)exception; topology = nil; status = 503;
+                                    (void)exception; authorized = NO; topology = nil; status = 503;
                                 }
                                 dispatch_async(owner->_networkQueue, ^{
-                                    if (status == 200 && PLANKMacIsDesktopTarget(path)) {
+                                    if (information) {
+                                        NSData *xml = [owner->_information XMLForControlPort:owner->_controlPort authorized:authorized];
+                                        [owner replyBytes:xml type:@"application/xml; charset=utf-8" token:nil
+                                                  status:200 request:request];
+                                    } else if (status == 200 && PLANKMacIsDesktopTarget(path)) {
                                         // One immutable desktop identity, not an application catalog.
                                         NSData *desktop = [@"<root status_code=\"200\"><App><AppTitle>Desktop</AppTitle><ID>881448767</ID></App></root>"
                                             dataUsingEncoding:NSUTF8StringEncoding];

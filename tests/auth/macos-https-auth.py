@@ -96,6 +96,11 @@ def authenticate(tls, port, username, password):
     assert status == 200 and result["state"] == "authenticated"
     assert len(result["session_token"]) == 44
     token = result["session_token"]
+    for bearer, expected in [(token, "1"), ("x" * 44, "0"), ("", "0")]:
+        header = f"Authorization: Bearer {bearer}\r\n" if bearer else ""
+        raw = f"GET /serverinfo HTTP/1.1\r\nHost: localhost\r\n{header}\r\n".encode()
+        status, info = request(tls, port, {}, raw=raw, xml=True)
+        assert status == 200 and info.findtext("PairStatus") == expected
     # No token or credential is printed or written to a file.
     status, replay = request(tls, port, response, "/plank/auth/respond")
     assert status == 200 and replay["state"] == "denied"
