@@ -135,7 +135,9 @@
             if (!self->_encoder) { self->_failed(); return; }
             SCStreamConfiguration *config = [SCStreamConfiguration new];
             config.width = self->_width; config.height = self->_height;
-            config.minimumFrameInterval = CMTimeMake(1, 60); config.queueDepth = 3;
+            // Native cadence on the qualified 60 Hz displays. An explicit 1/60
+            // SCK throttle skipped refresh intervals in capture-only tests.
+            config.minimumFrameInterval = kCMTimeZero; config.queueDepth = 3;
             config.pixelFormat = kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
             config.captureDynamicRange = SCCaptureDynamicRangeSDR; config.colorSpaceName = kCGColorSpaceSRGB;
             // macOS uses ScreenCaptureKit's embedded system/application cursor.
