@@ -19,7 +19,10 @@ async fn pair(cert_path: &str, key_path: &str, datagrams: bool)
     let mut roots = rustls::RootCertStore::empty();
     for cert in certs { roots.add(cert).unwrap(); }
     let mut client_config = quinn::ClientConfig::with_root_certificates(Arc::new(roots)).unwrap();
-    client_config.transport_config(transport);
+    let mut client_transport = TransportConfig::default();
+    client_transport.datagram_receive_buffer_size(Some(16 * 1024 * 1024));
+    client_transport.datagram_send_buffer_size(16 * 1024 * 1024);
+    client_config.transport_config(Arc::new(client_transport));
     let mut client = Endpoint::client("127.0.0.1:0".parse().unwrap()).unwrap();
     client.set_default_client_config(client_config);
     let connect = client.connect(server.local_addr().unwrap(), "localhost").unwrap();
@@ -54,9 +57,11 @@ async fn main() {
     client.close(0u32.into(), b"test complete");
     assert!(matches!(client.send_datagram_batch(&[Bytes::from_static(b"closed")]),
                      Err(quinn::SendDatagramError::ConnectionLost(_))));
-    let (_ce, _se, client, _server) = pair(&args[1], &args[2], false).await;
+    let (_ce, _se, client, server) = pair(&args[1], &args[2], false).await;
     assert!(matches!(client.send_datagram_batch(&[Bytes::from_static(b"disabled")]),
                      Err(quinn::SendDatagramError::UnsupportedByPeer)));
+    assert!(matches!(server.send_datagram_batch(&[Bytes::from_static(b"disabled")]),
+                     Err(quinn::SendDatagramError::Disabled)));
     client.close(0u32.into(), b"test complete");
     println!("quinn_batch_edges=pass empty=1 boundaries=1 partial_error_wake=1 oversized=1 closed=1 unsupported=1");
 
