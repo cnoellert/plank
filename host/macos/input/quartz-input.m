@@ -82,6 +82,9 @@ double PLANKMacScrollLinesForPreference(CFTypeRef value) {
         initialPosition:CGEventGetLocation(current) doubleClickInterval:NSEvent.doubleClickInterval];
     PLANKMacScrollPreference *preference = [PLANKMacScrollPreference new];
     events.scrollLinesPerNotch = ^double { return [preference lines]; };
+    events.keyRepeatTiming = ^PLANKMacKeyRepeatTiming {
+        return (PLANKMacKeyRepeatTiming){NSEvent.keyRepeatDelay, NSEvent.keyRepeatInterval};
+    };
     CFRelease(current); CFRelease(source);
     return events;
 }

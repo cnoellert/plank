@@ -13,6 +13,9 @@
         bounds:CGRectMake(origin.x, origin.y, [b[@"width"] doubleValue], [b[@"height"] doubleValue])
         pixels:CGSizeMake([capture[@"width"] doubleValue], [capture[@"height"] doubleValue])
         initialPosition:origin doubleClickInterval:0.5];
+    if (self.repeatEnabled) events.keyRepeatTiming = ^PLANKMacKeyRepeatTiming {
+        return (PLANKMacKeyRepeatTiming){0.25, 0.03};
+    };
     CFRelease(source); return events;
 }
 - (void)postEvent:(CGEventRef)event {

@@ -165,7 +165,7 @@ int main(int argc, const char **argv) {
             topology:snapshot config:&cfg capture:source input:input]);
         PLANKMacAccountIdentity identity = {0};
         CHECK([auth authorizeToken:token peer:peer identity:&identity]);
-        for (unsigned scenario = 0; scenario < 20; ++scenario) {
+        for (unsigned scenario = 0; scenario < 21; ++scenario) {
             printf("macos_preview_scenario=%u\n", scenario); fflush(stdout);
             if (scenario >= 11 && scenario < 15) {
                 @synchronized(guard) { agent = [PLANKSessionAgent new]; }
@@ -174,6 +174,7 @@ int main(int argc, const char **argv) {
             if (scenario) token = authenticate(auth, peer);
             source = [PLANKFakeCapture new];
             input = [PLANKFakeInput new];
+            input.repeatEnabled = scenario == 20;
             source.failStart = scenario == 4;
             source.deferStart = scenario == 5;
             source.deferStop = scenario == 8 || scenario == 11;
@@ -203,7 +204,19 @@ int main(int argc, const char **argv) {
                 CHECK(input.releases == 0);
             }
             uint8_t control[20]; size_t length = 0;
-            if (scenario >= 15) {
+            if (scenario == 20) {
+                CHECK(until(^BOOL { return input.delivered >= 4; })); // timer repeats without new packets
+                CHECK(plank_transport_native_input_send(client, 5, (uint8_t[]){0x80, 0x41, 0, 0, 0}, 5) == PLANK_TRANSPORT_OK);
+                CHECK(until(^BOOL { return input.releases == 1; }));
+                unsigned stoppedCount = input.delivered;
+                usleep(150000);
+                CHECK(input.delivered == stoppedCount);
+                CHECK(plank_transport_native_input_send(client, 5, (uint8_t[]){0x80, 0x41, 1, 0, 0}, 5) == PLANK_TRANSPORT_OK);
+                CHECK(until(^BOOL { return input.delivered >= stoppedCount + 3; }));
+                CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_CLIENT_DISCONNECT,
+                    NULL, 0, control, sizeof(control), &length));
+                CHECK(plank_transport_native_data_send(client, control, length) == PLANK_TRANSPORT_OK);
+            } else if (scenario >= 15) {
                 uint32_t rate = scenario == 19 ? 50000 : 10000;
                 unsigned requests = scenario == 15 ? 8 : 1;
                 for (unsigned requestIndex = 0; requestIndex < requests; ++requestIndex) {
@@ -304,7 +317,12 @@ int main(int argc, const char **argv) {
                 CHECK(session.state == PLANKMacPreviewStopped);
             }
             CHECK(source.stops == 1 && source.revokedBeforeStop && session.transportToken == nil);
-            CHECK(input.releases == ((scenario == 0 || scenario == 3 || scenario == 8 || scenario == 10 || scenario >= 15) ? 2u : 0u));
+            CHECK(input.releases == (scenario == 20 ? 3u : (scenario == 0 || scenario == 3 || scenario == 8 || scenario == 10 || scenario >= 15) ? 2u : 0u));
+            if (scenario == 20) {
+                unsigned stoppedCount = input.delivered;
+                usleep(150000);
+                CHECK(input.delivered == stoppedCount);
+            }
             dispatch_semaphore_t stopped = dispatch_semaphore_create(0);
             [session stopWithCompletion:^{ dispatch_semaphore_signal(stopped); }];
             CHECK(dispatch_semaphore_wait(stopped, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)) == 0);
@@ -332,6 +350,6 @@ int main(int argc, const char **argv) {
             }
         }
         [auth revokeAll];
-        printf("macos_preview_session=pass checks=%u scenarios=20 synthetic_capture=1 real_quic=1 cleanup=1 agent_bound=1\n", checks);
+        printf("macos_preview_session=pass checks=%u scenarios=21 synthetic_capture=1 real_quic=1 cleanup=1 agent_bound=1\n", checks);
     }
 }

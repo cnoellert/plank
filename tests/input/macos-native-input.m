@@ -29,7 +29,7 @@ int main(int argc, const char **argv) {
     struct rlimit noCore = {0, 0}; CHECK(!setrlimit(RLIMIT_CORE, &noCore));
     @autoreleasepool {
         CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStatePrivate); CHECK(source != NULL);
-        for (unsigned scenario = 0; scenario < 7; ++scenario) {
+        for (unsigned scenario = 0; scenario < 8; ++scenario) {
             __block PLANKMacGraphicalIdentity desktop = {true, 1, {123, {1}}, PLANKMacScopeDesktop};
             PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc]
                 initWithGraphicalSnapshot:^{ return desktop; }];
@@ -55,6 +55,7 @@ int main(int argc, const char **argv) {
             PLANKMacInputEvents *events = [[PLANKMacInputEvents alloc] initWithSource:source
                 bounds:CGRectMake(-1920, 0, 1920, 1080) pixels:CGSizeMake(3840, 2160)
                 initialPosition:CGPointMake(-1920, 0) doubleClickInterval:0.5]; CHECK(events != nil);
+            events.keyRepeatTiming = ^PLANKMacKeyRepeatTiming { return (PLANKMacKeyRepeatTiming){0.25, 0.05}; };
             __block unsigned delivered = 0, validityCalls = 0;
             __block BOOL topology = YES, permission = YES;
             PLANKMacNativeInput *input = [[PLANKMacNativeInput alloc] initWithEndpoint:server
@@ -63,6 +64,7 @@ int main(int argc, const char **argv) {
                     // Simulate ownership loss between event construction and
                     // the last bounded delivery check, without a racing thread.
                     if (scenario == 6 && validityCalls == 2) { [sessions revokeAll]; return NO; }
+                    if (scenario == 7 && validityCalls == 4) { [sessions revokeAll]; return NO; }
                     return topology && permission;
                 } deliver:^(CGEventRef event) {
                     CHECK(event != NULL); ++delivered; // NEVER CGEventPost
@@ -78,20 +80,28 @@ int main(int argc, const char **argv) {
                 if (scenario == 1) CHECK([sessions activateStreamLease:lease]);
                 CHECK([input consumeType:type payload:[NSData dataWithBytes:p length:sizeof(p)] time:1000000001] == PLANKMacInputStopped);
                 CHECK([input stop] == 0 && [input stop] == 0 && delivered == 0);
+            } else if (scenario == 7) {
+                CHECK(result == PLANKMacInputEvent && delivered == 1);
+                CHECK([input repeatAtTime:1250000000] == PLANKMacInputDenied);
+                CHECK(delivered == 1 && input.nextRepeatTime == 0);
+                CHECK([input stop] == 0);
             } else {
                 CHECK(result == PLANKMacInputEvent && delivered == 1);
+                CHECK(input.nextRepeatTime == 1250000000);
+                CHECK([input repeatAtTime:1250000000] == PLANKMacInputEvent && delivered == 2);
                 if (scenario == 0) {
                     // Transport loss does not prevent safe release in the same
                     // authorized desktop. No further input may be delivered.
                     CHECK(plank_transport_native_endpoint_stop(server) == PLANK_TRANSPORT_OK);
-                    CHECK([input stop] == 1 && delivered == 2);
+                    CHECK([input repeatAtTime:1300000000] == PLANKMacInputDenied);
+                    CHECK([input stop] == 1 && delivered == 3);
                 } else {
                     if (scenario == 2) desktop.active = false;
                     if (scenario == 3) desktop.generation++;
                     if (scenario == 4) topology = NO;
                     if (scenario == 5) permission = NO;
-                    CHECK([input consumeType:type payload:[NSData dataWithBytes:p length:sizeof(p)] time:1000000001] == PLANKMacInputDenied);
-                    CHECK([input stop] == 0 && delivered == 1);
+                    CHECK([input repeatAtTime:1300000000] == PLANKMacInputDenied);
+                    CHECK([input stop] == 0 && delivered == 2);
                     desktop.active = true; topology = YES; permission = YES;
                     CHECK([input consumeType:type payload:[NSData dataWithBytes:p length:sizeof(p)] time:1000000002] == PLANKMacInputStopped);
                 }
@@ -102,7 +112,7 @@ int main(int argc, const char **argv) {
             plank_transport_native_endpoint_destroy(client); plank_transport_native_endpoint_destroy(server);
         }
         CFRelease(source);
-        printf("macos_native_input checks=%u scenarios=7 posted_events=0\n", checks);
+        printf("macos_native_input checks=%u scenarios=8 posted_events=0\n", checks);
     }
     return 0;
 }

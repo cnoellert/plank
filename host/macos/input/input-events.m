@@ -103,6 +103,8 @@ typedef struct {
     CGEventFlags flags;
     uint64_t lastTime, clickTime[5];
     unsigned clickCount[5];
+    uint8_t repeatKey;
+    uint64_t repeatDue, repeatInterval;
 } PLANKMacInputState;
 
 @implementation PLANKMacInputEvents {
@@ -235,6 +237,20 @@ typedef struct {
                 if (bit || key == 0x14) CGEventSetType(event, kCGEventFlagsChanged);
                 CGEventSetIntegerValueField(event, kCGKeyboardEventAutorepeat, repeat);
                 _state.keys[key] = down; _state.flags = flags;
+                if (!down && key == _state.repeatKey) _state.repeatDue = 0;
+                if (down && !repeat && !bit && key != 0x14) {
+                    _state.repeatDue = 0; // newest non-modifier key owns repetition
+                    PLANKMacKeyRepeatTiming timing = self.keyRepeatTiming ? self.keyRepeatTiming() : (PLANKMacKeyRepeatTiming){0, 0};
+                    // macOS Repeat Off uses an extremely long initial delay.
+                    // Invalid/disabled values must not produce a busy timer.
+                    if (isfinite(timing.delay) && isfinite(timing.interval) &&
+                        timing.delay >= 0 && timing.delay <= 60 && timing.interval >= 0.001 && timing.interval <= 60 &&
+                        time <= UINT64_MAX - 60 * 1000000000ULL) {
+                        _state.repeatKey = key;
+                        _state.repeatInterval = (uint64_t)(timing.interval * 1e9);
+                        _state.repeatDue = time + (uint64_t)(timing.delay * 1e9);
+                    }
+                }
             }
             break;
         }
@@ -259,11 +275,30 @@ typedef struct {
     if (!accepted) { _state = previous; return PLANKMacInputDenied; }
     return PLANKMacInputEvent;
 }
+- (uint64_t)nextRepeatTime { return _state.stopped ? 0 : _state.repeatDue; }
+- (PLANKMacInputResult)repeatAtTime:(uint64_t)time accept:(BOOL (^)(CGEventRef))accept {
+    if (_state.stopped) return PLANKMacInputStopped;
+    if (!accept || time < _state.lastTime) return PLANKMacInputMalformed;
+    if (!_state.repeatDue || time < _state.repeatDue) return PLANKMacInputNoEvent;
+    CGEventRef event = CGEventCreateKeyboardEvent(_source, (CGKeyCode)keyCode(_state.repeatKey), true);
+    if (!event) { _state.stopped = YES; return PLANKMacInputStopped; }
+    CGEventSetFlags(event, _state.flags);
+    CGEventSetTimestamp(event, time);
+    CGEventSetIntegerValueField(event, kCGKeyboardEventAutorepeat, 1);
+    BOOL accepted = accept(event);
+    CFRelease(event);
+    if (!accepted) return PLANKMacInputDenied;
+    _state.lastTime = time;
+    // Never replay a backlog of repeats after a busy queue or sleep.
+    _state.repeatDue = time <= UINT64_MAX - _state.repeatInterval ? time + _state.repeatInterval : 0;
+    return PLANKMacInputEvent;
+}
 - (NSArray *)stopAndCopyReleaseEvents {
     NSMutableArray *events = [NSMutableArray array];
     // A construction failure also latches stop, but held state still needs a
     // best-effort release attempt. Clearing state makes repeated stop idempotent.
     _state.stopped = YES;
+    _state.repeatDue = 0;
     for (unsigned k = 0; k < 256; ++k) if (_state.keys[k]) {
         _state.keys[k] = NO;
         CGEventFlags bit = modifier(k);

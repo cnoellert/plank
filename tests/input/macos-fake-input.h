@@ -4,5 +4,6 @@
 // Synthetic tests only. Never linked into the signed real-account app.
 @interface PLANKFakeInput : NSObject <PLANKMacInputDevice>
 @property(atomic) BOOL availableFlag;
+@property(atomic) BOOL repeatEnabled;
 @property(atomic) unsigned delivered, releases;
 @end

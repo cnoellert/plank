@@ -19,6 +19,8 @@
 // callback). Only it executes under lease revocation serialization. Never log
 // event contents. time is the local monotonic clock, not untrusted packet data.
 - (PLANKMacInputResult)consumeType:(uint8_t)type payload:(NSData *)payload time:(uint64_t)time;
+@property(nonatomic, readonly) uint64_t nextRepeatTime;
+- (PLANKMacInputResult)repeatAtTime:(uint64_t)time;
 // Call BEFORE ending the lease on an orderly disconnect. Releases are attempted
 // only while the same desktop/topology is still authorized, even if QUIC closed.
 // After ownership loss, discard instead of posting releases into the next user.

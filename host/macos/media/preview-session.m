@@ -64,6 +64,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     PlankTransportNativeEndpoint *_endpoint;
     dispatch_queue_t _queue;
     dispatch_source_t _watch;
+    dispatch_source_t _repeatWatch;
     uint32_t _bitrate;
     uint32_t _pendingBitrate;
     BOOL _changingBitrate;
@@ -193,6 +194,18 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     // polling timer. At most one received packet awaits the serial owner queue;
     // no extra input backlog and no input latency from the 20-ms watchdog.
     __weak typeof(self) weakSelf = self;
+    _repeatWatch = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _queue);
+    dispatch_source_set_timer(_repeatWatch, DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
+    dispatch_source_set_event_handler(_repeatWatch, ^{
+        typeof(self) owner = weakSelf;
+        if (!owner || owner.state != PLANKMacPreviewStreaming) return;
+        PLANKMacInputResult result = [owner->_input repeatAtTime:clock_gettime_nsec_np(CLOCK_UPTIME_RAW)];
+        if (result == PLANKMacInputDenied || result == PLANKMacInputStopped || result == PLANKMacInputMalformed) {
+            [owner stopOnQueue]; return;
+        }
+        [owner scheduleKeyRepeat];
+    });
+    dispatch_resume(_repeatWatch);
     PlankTransportNativeEndpoint *endpoint = _endpoint;
     dispatch_queue_t ownerQueue = _queue;
     dispatch_group_async(_inputGroup, dispatch_queue_create("la.instinctual.PLANK.Host.input", DISPATCH_QUEUE_SERIAL), ^{
@@ -214,12 +227,20 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                 if (delivered == PLANKMacInputMalformed || delivered == PLANKMacInputDenied || delivered == PLANKMacInputStopped) {
                     [owner stopOnQueue]; return;
                 }
+                [owner scheduleKeyRepeat];
                 keepGoing = YES; // Unsupported platform-specific keys do not become unrelated keys.
             });
             running = keepGoing;
         }
     });
     dispatch_group_notify(_inputGroup, _queue, ^{ [weakSelf finishStop]; });
+}
+
+- (void)scheduleKeyRepeat {
+    if (!_repeatWatch) return;
+    uint64_t due = _input.nextRepeatTime, now = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+    dispatch_time_t start = due ? dispatch_time(DISPATCH_TIME_NOW, due > now ? (int64_t)(due - now) : 0) : DISPATCH_TIME_FOREVER;
+    dispatch_source_set_timer(_repeatWatch, start, DISPATCH_TIME_FOREVER, 500000);
 }
 
 - (void)receiveControls {
@@ -299,6 +320,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 - (void)stopOnQueue {
     if (self.state == PLANKMacPreviewStopping || self.state == PLANKMacPreviewStopped) return;
     self.state = PLANKMacPreviewStopping;
+    if (_repeatWatch) { dispatch_source_cancel(_repeatWatch); _repeatWatch = nil; }
     [_input stop]; // authorized releases first; never release into a replacement desktop
     [_sessions endStreamLease:_lease]; // revoke before any asynchronous drain
     if (_watch) { dispatch_source_cancel(_watch); _watch = nil; }
@@ -323,6 +345,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 - (void)dealloc {
     [_sessions endStreamLease:_lease];
     if (_watch) dispatch_source_cancel(_watch);
+    if (_repeatWatch) dispatch_source_cancel(_repeatWatch);
     // Fail closed even if a caller abandons the owner: retain the borrowed
     // endpoint/video until asynchronous capture drain, without capturing self.
     PlankTransportNativeEndpoint *endpoint = _endpoint;

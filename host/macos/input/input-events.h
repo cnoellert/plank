@@ -12,6 +12,8 @@ typedef NS_ENUM(NSInteger, PLANKMacInputResult) {
     PLANKMacInputDenied,
 };
 
+typedef struct { NSTimeInterval delay, interval; } PLANKMacKeyRepeatTiming;
+
 // Native input packet -> public Quartz event. No posting, event taps, permission
 // prompts, worker, transport, or authentication bypass lives in this component.
 // The owner calls on one serial queue, inside its authorized delivery boundary,
@@ -20,6 +22,10 @@ typedef NS_ENUM(NSInteger, PLANKMacInputResult) {
 // Local, nonblocking cached policy supplied by the graphical owner. Invoked
 // only for validated nonzero scroll input; nil keeps the one-line baseline.
 @property(nonatomic, copy) double (^scrollLinesPerNotch)(void);
+// Read when a new repeatable key is pressed; nil disables repeat in fixtures.
+@property(nonatomic, copy) PLANKMacKeyRepeatTiming (^keyRepeatTiming)(void);
+@property(nonatomic, readonly) uint64_t nextRepeatTime;
+- (PLANKMacInputResult)repeatAtTime:(uint64_t)time accept:(BOOL (^)(CGEventRef))accept;
 // Bounds are global Quartz points; pixels are the captured display's physical
 // pixels, not a client window size or a guessed Retina scale. Source is retained.
 - (instancetype)initWithSource:(CGEventSourceRef)source bounds:(CGRect)bounds

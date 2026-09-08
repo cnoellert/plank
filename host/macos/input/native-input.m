@@ -35,13 +35,30 @@
     // Event construction is outside the auth lock. Recheck authority immediately
     // before bounded delivery, linearized with end/revoke. No event queue/retry.
     PLANKMacInputResult result = [_events consumeType:type payload:payload time:time accept:^BOOL(CGEventRef event) {
-        __block BOOL delivered = NO;
-        [self->_sessions performWithStreamLease:self->_lease action:^{
-            if (self->_validity() && plank_transport_native_endpoint_state(self->_endpoint) == PLANK_TRANSPORT_STATE_READY) {
-                self->_deliver(event); delivered = YES;
-            }
-        }];
-        return delivered;
+        return [self deliverAuthorized:event];
+    }];
+    if (result == PLANKMacInputDenied || result == PLANKMacInputStopped) _stopped = YES;
+    return result;
+}
+- (BOOL)deliverAuthorized:(CGEventRef)event {
+    __block BOOL delivered = NO;
+    [_sessions performWithStreamLease:_lease action:^{
+        if (self->_validity() && plank_transport_native_endpoint_state(self->_endpoint) == PLANK_TRANSPORT_STATE_READY) {
+            self->_deliver(event); delivered = YES;
+        }
+    }];
+    return delivered;
+}
+- (uint64_t)nextRepeatTime { return _stopped ? 0 : _events.nextRepeatTime; }
+- (PLANKMacInputResult)repeatAtTime:(uint64_t)time {
+    if (_stopped) return PLANKMacInputStopped;
+    PLANKMacAccountIdentity identity = {0};
+    if (![_sessions authorizeStreamLease:_lease identity:&identity] || !_validity() ||
+        plank_transport_native_endpoint_state(_endpoint) != PLANK_TRANSPORT_STATE_READY) {
+        _stopped = YES; return PLANKMacInputDenied;
+    }
+    PLANKMacInputResult result = [_events repeatAtTime:time accept:^BOOL(CGEventRef event) {
+        return [self deliverAuthorized:event];
     }];
     if (result == PLANKMacInputDenied || result == PLANKMacInputStopped) _stopped = YES;
     return result;

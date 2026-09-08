@@ -202,6 +202,57 @@ int main(void) {
         NSArray *rollback = [mapper stopAndCopyReleaseEvents];
         CHECK(rollback.count == 1 && CGEventGetType((__bridge CGEventRef)rollback[0]) == kCGEventLeftMouseUp);
         CHECK([mapper stopAndCopyReleaseEvents].count == 0);
+        mapper = make(source, rectangles[0], pixels[0]);
+        mapper.keyRepeatTiming = ^PLANKMacKeyRepeatTiming { return (PLANKMacKeyRepeatTiming){0.25, 0.05}; };
+        now = 10000000000;
+        event = send(mapper, 5, key(0x41, YES, 0, 0), PLANKMacInputEvent); CFRelease(event);
+        uint64_t due = mapper.nextRepeatTime;
+        CHECK(due == 10250000000);
+        BOOL (^repeatSink)(CGEventRef) = ^BOOL(CGEventRef value) {
+            CHECK(CGEventGetType(value) == kCGEventKeyDown);
+            CHECK(CGEventGetIntegerValueField(value, kCGKeyboardEventAutorepeat) == 1);
+            CHECK(CGEventGetIntegerValueField(value, kCGKeyboardEventKeycode) == 0);
+            return YES;
+        };
+        CHECK([mapper repeatAtTime:due - 1 accept:repeatSink] == PLANKMacInputNoEvent);
+        CHECK([mapper repeatAtTime:due accept:repeatSink] == PLANKMacInputEvent);
+        CHECK(mapper.nextRepeatTime == due + 50000000);
+        now = due + 1;
+        event = send(mapper, 5, key(0xa0, YES, 1, 0), PLANKMacInputEvent); CFRelease(event);
+        CHECK(mapper.nextRepeatTime == due + 50000000); // modifier doesn't restart delay
+        CHECK([mapper repeatAtTime:due + 50000000 accept:^BOOL(CGEventRef value) {
+            CHECK(CGEventGetFlags(value) & kCGEventFlagMaskShift); return repeatSink(value);
+        }] == PLANKMacInputEvent);
+        uint64_t deniedDue = mapper.nextRepeatTime;
+        CHECK([mapper repeatAtTime:deniedDue accept:^BOOL(CGEventRef value) { (void)value; return NO; }] == PLANKMacInputDenied);
+        CHECK(mapper.nextRepeatTime == deniedDue);
+        CHECK([mapper repeatAtTime:deniedDue + 1000000000 accept:repeatSink] == PLANKMacInputEvent);
+        CHECK(mapper.nextRepeatTime == deniedDue + 1050000000); // no catch-up burst
+        now = deniedDue + 1000000001;
+        event = send(mapper, 5, key(0x41, NO, 1, 0), PLANKMacInputEvent); CFRelease(event);
+        CHECK(mapper.nextRepeatTime == 0);
+        CHECK([mapper repeatAtTime:now accept:repeatSink] == PLANKMacInputNoEvent);
+        event = send(mapper, 5, key(0x42, YES, 1, 0), PLANKMacInputEvent); CFRelease(event);
+        event = send(mapper, 5, key(0x43, YES, 1, 0), PLANKMacInputEvent); CFRelease(event);
+        CHECK([mapper repeatAtTime:mapper.nextRepeatTime accept:^BOOL(CGEventRef value) {
+            CHECK(CGEventGetIntegerValueField(value, kCGKeyboardEventKeycode) == 8); return YES;
+        }] == PLANKMacInputEvent); // newest held key only
+        CHECK([mapper stopAndCopyReleaseEvents].count == 3); // B, C, Shift
+        CHECK(mapper.nextRepeatTime == 0);
+        CHECK([mapper repeatAtTime:UINT64_MAX accept:repeatSink] == PLANKMacInputStopped);
+        CHECK([mapper stopAndCopyReleaseEvents].count == 0);
+        for (NSNumber *delay in @[@(NAN), @(INFINITY), @(-1), @1000000]) {
+            mapper = make(source, rectangles[0], pixels[0]);
+            mapper.keyRepeatTiming = ^PLANKMacKeyRepeatTiming { return (PLANKMacKeyRepeatTiming){delay.doubleValue, 0.05}; };
+            event = send(mapper, 5, key(0x41, YES, 0, 0), PLANKMacInputEvent); CFRelease(event);
+            CHECK(mapper.nextRepeatTime == 0);
+            CHECK([mapper stopAndCopyReleaseEvents].count == 1);
+        }
+        mapper = make(source, rectangles[0], pixels[0]);
+        mapper.keyRepeatTiming = ^PLANKMacKeyRepeatTiming { return (PLANKMacKeyRepeatTiming){0.25, 0}; };
+        event = send(mapper, 5, key(0x41, YES, 0, 0), PLANKMacInputEvent); CFRelease(event);
+        CHECK(mapper.nextRepeatTime == 0);
+        CHECK([mapper stopAndCopyReleaseEvents].count == 1);
         CFRelease(source);
         printf("macos_input_events checks=%u posted_events=0\n", checks);
     }

@@ -44,6 +44,18 @@ final macOS 27 release behavior still require qualification.
 
 ## Boundary
 
+Mac key repeat uses `NSEvent.keyRepeatDelay` and `keyRepeatInterval`, sampled
+on each new repeatable press. The Client continues sending down/up only.
+One disarmed-while-idle dispatch timer on the serial session queue services the
+latest held non-modifier key; modifiers update its flags without restarting its
+delay. Key-up stops that key's repeat and does not resume an older held key.
+Repeat Off/invalid timing disables repetition. A busy queue does not accumulate
+catch-up events. Every repeat rechecks lease, topology, permissions and native
+endpoint readiness through the same posting boundary as received input.
+Stop/deallocation cancels the timer; ordinary same-desktop teardown still
+releases all held keys. No keyboard event contents are logged. App-specific
+press-and-hold accent behavior is not claimed equivalent to a physical keyboard.
+
 `host/macos/input/input-events.m` translates existing native KyProto input
 payloads directly to public Quartz events. It opens no socket, posts nothing,
 requests no permission and uses no inherited GameStream packet wrapper.
