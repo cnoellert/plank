@@ -39,6 +39,23 @@ class ReconnectPresentation(unittest.TestCase):
         callback = between(session, "void Session::clConnectionTerminated", "void Session::clLogMessage")
         self.assertIn("m_ReconnectRequested.load() || s_ActiveSession->m_Reconnecting.load()", callback)
 
+    def test_terminal_receive_failure_notifies_without_input(self):
+        receive = between(session, "void Session::plankTransportDataReceiveLoop()",
+                          "const uint32_t magic =")
+        self.assertIn("if (result == PLANK_TRANSPORT_TIMEOUT) {\n            continue;", receive)
+        failure = between(receive, "if (result != PLANK_TRANSPORT_OK) {",
+                          "if (packetSize < sizeof(uint32_t))")
+        self.assertIn("if (!m_PlankTransportReceiversStopping.load()) {", failure)
+        self.assertIn("clConnectionTerminated(result);\n            }\n            return;", failure)
+        # Exactly one receiver reports shared endpoint closure. Otherwise media
+        # closure could race ahead of a queued takeover reason in control data.
+        media = between(session, "void Session::plankTransportVideoReceiveLoop()",
+                        "void Session::plankTransportDataReceiveLoop()")
+        self.assertNotIn("clConnectionTerminated(", media)
+        start = between(session, "void Session::startPlankTransportMediaReceivers()",
+                        "void Session::stopPlankTransportMediaReceivers()")
+        self.assertIn("m_PlankTransportDataThread = std::thread", start)
+
     def test_initial_status_is_neutral(self):
         begin = between(session, "bool Session::beginPlankReconnect", "bool Session::runPlankReconnect")
         self.assertIn('"Waiting for workstation...", false', begin)

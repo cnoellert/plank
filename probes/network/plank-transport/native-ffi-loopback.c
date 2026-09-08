@@ -480,13 +480,42 @@ int main(int argc, char **argv) {
         goto failure;
     }
 
-    plank_transport_native_endpoint_stop(client);
+    /* A peer can exit at LoginWindow without another client input event.
+     * Queued control (e.g. takeover) must precede the terminal receive error. */
+    if (plank_transport_native_data_send(server, server_data, sizeof(server_data)) !=
+            PLANK_TRANSPORT_OK) goto failure;
+    for (settle_attempt = 0; settle_attempt < 200; ++settle_attempt) {
+        if (plank_transport_native_endpoint_stats(client, &client_stats) != PLANK_TRANSPORT_OK)
+            goto failure;
+        if (client_stats.data_packets_received == 2) break;
+        nanosleep(&settle_pause, NULL);
+    }
+    if (client_stats.data_packets_received != 2) goto failure;
     plank_transport_native_endpoint_stop(server);
+    if (plank_transport_native_data_receive(client, data_received, sizeof(data_received),
+                &received_size, 5000) != PLANK_TRANSPORT_OK ||
+            received_size != sizeof(server_data) ||
+            memcmp(data_received, server_data, sizeof(server_data)) != 0) {
+        fprintf(stderr, "queued control was lost before peer closure\n");
+        goto failure;
+    }
+    int closure_result = PLANK_TRANSPORT_TIMEOUT;
+    for (settle_attempt = 0; settle_attempt < 300; ++settle_attempt) {
+        closure_result = plank_transport_native_data_receive(client, data_received,
+                sizeof(data_received), &received_size, 50);
+        if (closure_result != PLANK_TRANSPORT_TIMEOUT) break;
+    }
+    if (closure_result != PLANK_TRANSPORT_ERROR_RUNTIME) {
+        fprintf(stderr, "peer closure did not reach control receiver: %d\n", closure_result);
+        goto failure;
+    }
+    printf("native_peer_closure_without_input=pass queued_control_before_error=pass\n");
+    plank_transport_native_endpoint_stop(client);
     plank_transport_native_endpoint_destroy(client);
     plank_transport_native_endpoint_destroy(server);
     printf("status=complete test=native-kyproto-ffi-loopback trust=%s "
            "video_frames=1 video_bytes=%zu audio_packets=1 input_packets=1 "
-           "data_packets_each_direction=1\n",
+           "data_packets_each_direction=1 final_queued_control=1\n",
            profile_validation ? "profile" : "fingerprint", video_size);
     return 0;
 
