@@ -4,8 +4,9 @@ Experimental macOS/SDK 27 implementation under `host/macos/session`. The native
 `host-main.m` executable now joins the production IPC boundary to HTTPS remote
 authentication and the A/V/input owner through `host-runtime.m`. The executable
 has no qualification timeout or synthetic verifier. Virtual displays and
-development installation are implemented; automatic cross-login replacement
-remains a live acceptance gate.
+development installation are implemented; the operator accepted the .62
+reboot/login/logout and resolution/input-mapping cycle on September 8.
+Broader release lifecycle qualification remains in `macos-host.plan`.
 Qualification launchd jobs are temporary fixtures, not package inputs.
 
 ## Runnable Host assembly
@@ -74,16 +75,16 @@ identity. Existing complete keys/configuration must survive reinstallation;
 partial identities, symlinks or unexpected permissions fail closed. Sign-in
 logs belong in `/Library/Logs/PLANK/host-sign-in.log`.
 
-LoginWindow creates one exact 1920x1080 virtual mode before discovery. It never
+LoginWindow selects a 1920x1080 bootstrap canvas before discovery. It never
 selects a desktop account or types an OS password automatically. A successful
-PLANK authentication reports `desktop_stage=greeter`; the Client requests that
-temporary canvas without changing the bookmark. Desktop authentication then
-requests the saved resolution. Scope changes revoke the old stream; the
+PLANK authentication reports `desktop_stage=greeter`; the Client requests its
+saved bookmark resolution in both sign-in and desktop. Scope changes revoke the old stream; the
 Client must authenticate again. The desktop agent still runs as its OS user.
 
 This development installer provisions one explicitly designated desktop user,
-not every possible Mac account. Multi-user provisioning, actual LoginWindow
-input, logout/login and cold-boot recovery must pass before a product release.
+not every possible Mac account. Multi-user provisioning and broader crash and
+account-isolation qualification remain open despite the accepted single-user
+LoginWindow input, logout/login and cold-boot test.
 The existing desktop can be preserved while installing the next-login job;
 installation itself does not prove the cold-boot gate.
 

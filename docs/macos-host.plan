@@ -2,6 +2,36 @@
 
 Date: 2026-09-06
 
+## September 8 accepted baseline and remaining release gates
+
+The operator confirmed the .62 reboot/online, login-to-desktop, logout,
+resolution and mouse-positioning cycle passes. The accepted branch is merged
+into main with its tested Client/common-c/Kymux gitlinks. This supersedes earlier
+pending-interactive-test and do-not-merge notes below; those are historical.
+macOS remains experimental, not a production release. Outstanding gates:
+
+- Distribution: signed/notarized installer, guided permissions/configuration,
+  final signing/service policy, clean install, upgrade, rollback and uninstall.
+  Current installation is a development script for one designated desktop user.
+- Security/lifecycle: qualify the supported account model and cross-account
+  denial, permission revocation, certificate trust, takeover/lock/unlock, and
+  crash cleanup. The machine coordinator deliberately lacks automatic crash
+  restart until independent old-agent retirement can be proved safely.
+- Sustained performance: complete the planned two-hour A/V drift and eight-hour
+  mixed-workload tests, bounded memory/queues, loss/burst/outage recovery and
+  latency/quality validation on the final candidate. Short tests and operator
+  acceptance do not imply those longer runs passed.
+- Shared-code regressions: requalify affected Linux Client/transport behavior,
+  including exact profiles, audio, input/Wacom, toolbar and session ownership.
+  The Linux Host fork itself was not modified in this branch.
+- Platform: revalidate on final macOS 27 and document support/limitations of
+  the runtime-checked undocumented virtual-display API. Beta success is not
+  evidence for the final OS.
+
+Optional Wacom pressure is not a gate for the general-desktop macOS release.
+No additional tests, package builds or deployments are authorized merely by
+recording this list. Retain the working .62 artifacts as branch-build provenance.
+
 ## September 8 active continuation
 
 Resolution update (.62): the real boot LoginWindow now passes 1920x1080,
