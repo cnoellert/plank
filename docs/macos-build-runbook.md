@@ -29,6 +29,15 @@ existing `PLANK_MACOS_SIGNING_IDENTITY` also builds Apple-signed `PLANK Host.app
 with its own `la.instinctual.PLANK.Host` identity. Unlock the signing keychain
 in the same SSH TTY. No Rust rebuild, Linux package or persistent service install.
 
+The signed Host bundle uses `branding/assets/plank-logo.png`, the same approved
+artwork as the Client. `scripts/macos-app-icon.m` creates a transparent,
+aspect-preserving macOS iconset using native CoreGraphics/ImageIO; `iconutil`
+packs it as `Contents/Resources/plank.icns` before signing. Do not copy the
+Client's dormant upstream macOS `moonlight.icns`. Verify the Info.plist icon
+reference,10 standard variants (16–1024pixels), transparency and strict bundle
+signature. ICNS unpacking may re-encode PNGs; different compressed file bytes
+alone are not an image or packaging failure.
+
 `sudo python3 tests/auth/macos-host-service.py SOURCE BINARY SHA256 DESKTOP_UID`
 tests the real executable with temporary system/Aqua jobs, role-private keys,
 TLS discovery, unauthenticated topology denial, graceful stop and replacement

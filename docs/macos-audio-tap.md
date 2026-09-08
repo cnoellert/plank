@@ -117,3 +117,10 @@ real PLANK connection: remote sound, physical speaker suppression, disconnect
 restoration, then A/V sync and login/logout tests. The Host may need its own
 system-audio TCC approval; Probe consent is not copied. Process-death speaker
 restoration and live cross-account isolation remain separate untested gates.
+
+Candidate `1.0.70-macos-audio-tap` (source `3151559`) retains exactly this audio
+implementation and adds the shared Client artwork as the native Host app icon.
+It is installed on development-mac; signature, resource, version and discovery checks pass.
+The operator requested merging into main before release packaging. Component
+passes and the earlier manual tap test do not substitute for the integrated
+session acceptance gates above.
