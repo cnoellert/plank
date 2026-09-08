@@ -107,8 +107,8 @@ struct NativeStats {
     quic_rtt_us: AtomicU64,
     quic_packets_lost: AtomicU64,
     kyproto_packets_dropped: AtomicU64,
-    video_fec_source_symbols: AtomicU64,
-    video_fec_source_symbols_missing: AtomicU64,
+    // Sample/publish the related counters as one coherent snapshot.
+    video_fec: Mutex<(u64, u64, u64)>,
 }
 
 struct NativeStatus {
@@ -259,6 +259,7 @@ pub struct PlankTransportNativeStats {
     pub kyproto_packets_dropped: u64,
     pub video_fec_source_symbols: u64,
     pub video_fec_source_symbols_missing: u64,
+    pub video_fec_source_symbols_unrecovered: u64,
 }
 
 pub struct PlankTransportNativeEndpoint {
@@ -710,15 +711,10 @@ async fn sample_stats(
             protocol.dropped_packets.unwrap_or_default(),
             Ordering::Relaxed,
         );
-        shared.stats.video_fec_source_symbols.store(
+        *shared.stats.video_fec.lock().unwrap() = (
             protocol.video_fec_source_symbols.unwrap_or_default(),
-            Ordering::Relaxed,
-        );
-        shared.stats.video_fec_source_symbols_missing.store(
-            protocol
-                .video_fec_source_symbols_missing
-                .unwrap_or_default(),
-            Ordering::Relaxed,
+            protocol.video_fec_source_symbols_missing.unwrap_or_default(),
+            protocol.video_fec_source_symbols_unrecovered.unwrap_or_default(),
         );
     }
 }
@@ -1809,6 +1805,7 @@ pub unsafe extern "C" fn plank_transport_native_endpoint_stats(
             return PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT;
         }
         let stats = &endpoint.shared.stats;
+        let fec = *stats.video_fec.lock().unwrap();
         *stats_out = PlankTransportNativeStats {
             struct_size: std::mem::size_of::<PlankTransportNativeStats>() as u32,
             video_frames_sent: stats.video_frames_sent.load(Ordering::Relaxed),
@@ -1830,10 +1827,9 @@ pub unsafe extern "C" fn plank_transport_native_endpoint_stats(
             quic_rtt_us: stats.quic_rtt_us.load(Ordering::Relaxed),
             quic_packets_lost: stats.quic_packets_lost.load(Ordering::Relaxed),
             kyproto_packets_dropped: stats.kyproto_packets_dropped.load(Ordering::Relaxed),
-            video_fec_source_symbols: stats.video_fec_source_symbols.load(Ordering::Relaxed),
-            video_fec_source_symbols_missing: stats
-                .video_fec_source_symbols_missing
-                .load(Ordering::Relaxed),
+            video_fec_source_symbols: fec.0,
+            video_fec_source_symbols_missing: fec.1,
+            video_fec_source_symbols_unrecovered: fec.2,
         };
         PLANK_TRANSPORT_OK
     })

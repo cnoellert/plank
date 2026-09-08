@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define PLANK_TRANSPORT_ABI_VERSION 12u
+#define PLANK_TRANSPORT_ABI_VERSION 13u
 
 typedef struct PlankTransportEndpoint PlankTransportEndpoint;
 typedef struct PlankTransportNativeEndpoint PlankTransportNativeEndpoint;
@@ -169,6 +169,8 @@ typedef struct PlankTransportNativeStats {
     uint64_t kyproto_packets_dropped;
     uint64_t video_fec_source_symbols;
     uint64_t video_fec_source_symbols_missing;
+    /* Missing originals in expired, unreconstructed FEC objects; not frame gaps. */
+    uint64_t video_fec_source_symbols_unrecovered;
 } PlankTransportNativeStats;
 
 uint32_t plank_transport_abi_version(void);

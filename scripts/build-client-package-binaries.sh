@@ -121,9 +121,9 @@ done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${plank_transport_dir}/Cargo.toml" >/dev/null
-rg -q '^#define PLANK_TRANSPORT_ABI_VERSION 12u$' \
+rg -q '^#define PLANK_TRANSPORT_ABI_VERSION 13u$' \
   "${plank_transport_dir}/include/plank_transport.h" || {
-  echo "client requires PLANK transport ABI 12" >&2
+  echo "client requires PLANK transport ABI 13" >&2
   exit 1
 }
 rg -Fq 'uint32_t max_udp_payload_size;' \

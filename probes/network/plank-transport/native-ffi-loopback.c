@@ -398,6 +398,14 @@ int main(int argc, char **argv) {
     memset(&client_stats, 0, sizeof(client_stats));
     server_stats.struct_size = sizeof(server_stats);
     client_stats.struct_size = sizeof(client_stats);
+    /* Reject mismatched local headers before writing any counters. */
+    client_stats.struct_size -= sizeof(uint64_t);
+    if (plank_transport_native_endpoint_stats(client, &client_stats) !=
+            PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT) {
+        fprintf(stderr, "native transport accepted the wrong stats ABI size\n");
+        goto failure;
+    }
+    client_stats.struct_size = sizeof(client_stats);
     /* Reconstructed media can arrive before the sender finishes its repair
      * symbols and increments completion counters. Wait for that asynchronous
      * completion, bounded to two seconds; retain every exact assertion below. */
@@ -413,6 +421,15 @@ int main(int argc, char **argv) {
         nanosleep(&settle_pause, NULL);
     }
     printf("native_sender_counter_wait_iterations=%u\n", settle_attempt);
+    /* Protocol statistics are sampled asynchronously. Require real FEC data,
+     * not a default-zero field that would falsely pass a clean-loopback test. */
+    for (settle_attempt = 0; settle_attempt < 200; ++settle_attempt) {
+        if (plank_transport_native_endpoint_stats(client, &client_stats) !=
+                PLANK_TRANSPORT_OK || client_stats.video_fec_source_symbols != 0) {
+            break;
+        }
+        nanosleep(&settle_pause, NULL);
+    }
     if (plank_transport_native_endpoint_stats(server, &server_stats) !=
             PLANK_TRANSPORT_OK ||
         plank_transport_native_endpoint_stats(client, &client_stats) !=
@@ -433,7 +450,10 @@ int main(int argc, char **argv) {
         client_stats.video_receive_drops != 0 ||
         server_stats.audio_send_drops != 0 ||
         client_stats.audio_receive_drops != 0 ||
-        client_stats.kyproto_packets_dropped != 0) {
+        client_stats.kyproto_packets_dropped != 0 ||
+        client_stats.video_fec_source_symbols == 0 ||
+        client_stats.video_fec_source_symbols_missing > client_stats.video_fec_source_symbols ||
+        client_stats.video_fec_source_symbols_unrecovered != 0) {
         fprintf(stderr, "native transport counters mismatch\n");
         fprintf(stderr,
                 "video sent/received=%llu/%llu bytes=%llu/%llu "

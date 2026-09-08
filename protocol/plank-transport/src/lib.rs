@@ -21,7 +21,7 @@ pub mod rate_control;
 
 pub const PROTOCOL_MAGIC: [u8; 4] = *b"DSM1";
 pub const PROTOCOL_VERSION: u16 = 8;
-pub const ABI_VERSION: u32 = 12;
+pub const ABI_VERSION: u32 = 13;
 
 const DEFAULT_HANDSHAKE_TIMEOUT_MS: u32 = 10_000;
 const DEFAULT_IDLE_TIMEOUT_MS: u32 = 10_000;
@@ -2003,7 +2003,7 @@ mod tests {
 
     #[test]
     fn public_header_abi_values_are_stable() {
-        assert_eq!(plank_transport_abi_version(), 12);
+        assert_eq!(plank_transport_abi_version(), 13);
         assert_eq!(EndpointState::Idle as u32, 1);
         assert_eq!(EndpointState::PeerValidation as u32, 3);
         assert_eq!(EndpointState::SetupReady as u32, 4);
