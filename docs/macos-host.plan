@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Status: macos-host branch; the actual installed Host and ordinary Client launch
-are integrated for the current desktop. Client 1.0.36-macos-host is packaged.
+are integrated for the current desktop. Client 1.0.37-macos-host is packaged.
 The real Ubuntu Client HTTPS/auth/launch implementation has connected to the
 installed Mac Host, decoded exact Main10 video and Opus audio, changed bitrate,
 and disconnected. Graphical Client acceptance remains pending because the
@@ -13,14 +13,17 @@ See macos-host-investigation.md for measured results and remaining gates.
 
 ### Current next test
 
-Install `artifacts/packages/plank-client_1.0.36-macos-host_amd64.deb` on a
+Install `artifacts/packages/plank-client_1.0.37-macos-host_amd64.deb` on a
 hardware Client. Create/edit a bookmark for the dedicated Mac with
 `ScreenCaptureKit — macOS (Experimental)`, the Apple HEVC Main10 profile, and
 the current Mac display. Check continuing video, mouse alignment/buttons/scroll,
 keyboard, embedded custom cursor, audio, toolbar, and disconnect/reconnect.
-The signed 1.0.35-macos-host app/services are already installed on the Mac;
-the 1.0.36 Client fixes a TLS response-close issue without changing its wire
-contract. Do not use the superseded 1.0.35 Client package.
+The signed 1.0.37-macos-host app/services are installed on the Mac. Host polling
+now reports the requesting token's real authorization, and explicit Client
+sign-in never inherits a previous bearer. Authenticated/anonymous/invalid-token
+polling plus live LAN media reception pass. The development installer always
+binds product listeners to all interfaces, including ZeroTier; do not restrict
+the listener to an SSH/build access address. Use 1.0.37, not earlier candidates.
 
 Do not ask for another isolated login/logout cycle in place of this test.
 Current development installation registers only the existing user's desktop;
