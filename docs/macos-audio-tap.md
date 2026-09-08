@@ -46,14 +46,36 @@ Thus SSH signing access was the confirmed problem at that point; the earlier
 claim that the keychain itself was locked was too strong. No signing identity,
 key ACL or partition policy changes. The temporary signing job was removed.
 
-Probe executable SHA256:
-`06cafe6ab240e209103e72792442f50639154ea830d4380c94620faa413c7b74`.
-It was launched in Aqua through LaunchServices. Tap creation/format query
-succeeded: 48000 Hz, stereo interleaved Float32, flags9, 8 bytes/frame. Startup
-then paused before IO registration/start, consistent with the system-audio
-permission prompt; the operator has been asked to approve the separate Probe.
-No captured PCM, local muting or cleanup pass has yet been observed.
+The operator approved the separate system-audio capture permission. Initial
+executable SHA256
+`06cafe6ab240e209103e72792442f50639154ea830d4380c94620faa413c7b74`
+passed silence and an audible signal test: 48000 Hz, stereo interleaved Float32,
+flags9, 8 bytes/frame, 512-frame blocks, zero sample/host clock gaps. Maximum
+callback age ~10.8 ms. This is capture callback age, not glass-to-glass latency.
 
-No production code, installed Host or saved audio settings changed. Capture,
-muting, process-death restoration, owner isolation and synchronization remain
-unqualified. Do not replace the Host with this standalone feasibility probe.
+Latest probe source `8b59b7e` passes the real QuickTime loop through unchanged
+production `PLANKMacOpusEncoder`. The HAL callback copies PCM into a fixed
+16-slot ring; the main-queue consumer builds CoreMedia buffers and encodes.
+No recording is saved and no Client/transport is involved. The source timestamp
+is Core Audio's actual host time, not a manufactured continuous timestamp.
+Three ten-second runs, including two fresh restarts, passed: 2007–2018 Opus
+packets/run, zero encoder failures, zero ring overflows, zero sample/host clock
+gaps, nonzero captured signal. Maximum callback age across runs ~10.9 ms.
+All IO stop/destroy, aggregate destroy and tap destroy calls returned success.
+Source at `root-audio-tap-probe-3`, app at `audio-tap-probe-3` under the Mac work
+root; executable SHA256
+`277e158106e4eb8baf0e9368d8f0c64ffb3114164e538e141e6d249e726e350c`.
+Build/signing ran in a one-shot Aqua job that has been removed.
+
+No production code, installed Host or saved audio settings changed. Physical
+speaker suppression/restoration, process-death restoration, owner isolation and
+end-to-end synchronization remain unqualified. Asked whether the operator can
+hear the Mac's physical speakers or only the PLANK stream, to arrange the
+audible test. Do not replace the Host with this standalone feasibility probe.
+
+Product scope must be explicit: SDK27 defines a global tap as *all processes*
+and `privateTap` only as visibility to its creator. Neither documents same-user
+isolation. Do not infer an authorization boundary from `privateTap`. Before
+integration, qualify an authenticated-user process selection policy and preserve
+LoginWindow behavior and cleanup-gated desktop transitions. Do not add a global
+root tap to the sign-in worker or weaken ownership checks for audio.
