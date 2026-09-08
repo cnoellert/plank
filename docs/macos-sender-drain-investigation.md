@@ -140,3 +140,51 @@ queue policy, while retaining .51 as the experimental comparison. Further
 sender budget increases are not justified by the now-zero sender queue drops.
 Raw Host log: `~/.cache/plank-build/work/host-sender-1.0.51.log`, SHA-256
 `918716eb0cc6957fea625dc2f328d12e105293df3159f00a236425800e286ec8`.
+
+## Client receive-to-render code investigation
+
+Reviewed after checkpoint c94f4f5 was pushed. Installed Client source remains
+34e6f974; no Client policy modification or new package is part of this review.
+
+1. The native sender emits a reliable KyProto config/group marker before each
+   keyframe, then sends the complete media object through RaptorQ datagrams.
+   KyProto requires that marker before releasing a group's media. Its missing
+   sequence timeout is conditional, not a fixed50ms delay applied to every
+   healthy frame. Group-marker arrival and object reconstruction are possible
+   batching boundaries; existing logs do not time them separately.
+2. Root `receive_video()` immediately enqueues each complete media packet and
+   wakes the Client receive thread. `plankTransportVideoReceiveLoop()` submits
+   complete frames immediately to `LiSubmitPlankVideoFrame()`. The receive API's
+   50ms timeout is a wait-until-available limit, not a per-frame sleep.
+3. The assembler queues valid keyframes normally. Normal contiguous keyframes
+   do not automatically flush/restart the FFmpeg decoder. Hardware output is
+   passed to the render queue with preserved presentation timestamps, but
+   `pkt_dts` is repurposed as local decode-completion time for queue-age logging.
+   A dropped frame's6ms logged age therefore does NOT prove6ms total latency.
+4. `Pacer::renderFrame()` renders one frame, then immediately trims pending
+   frames to a history-derived target:2 if the queue was recently empty,
+   otherwise0 (or1 for the NO_BUFFERING renderer path). A transient depth3
+   therefore loses a frame even when it has only just been decoded. Neither
+   media PTS nor actual lateness participates in that catch-up decision.
+   The hard enqueue cap remains4, independently of this trimming.
+5. Pacing-disabled bypasses the extra pacing queue, NOT this render queue.
+   EGL waits for the previous GPU fence/swap separately; the recorded renderer
+   call time does not include `waitToRender()`. Consequently low average render
+   and decode measurements do not rule out burst-related presentation stalls.
+
+The logs and this code support, but do not fully prove, the sequence
+keyframe delivery delay → clustered decoded frames → depth-only catch-up drop.
+Do not attribute every gap to this policy: source cadence is below60fps and
+sporadic Host scheduling stalls are independently measured. Nor does removing
+the render limit repair time already spent delivering a complete keyframe.
+
+Corrective direction: distinguish a brief delivery burst from persistent
+playout lateness, retaining the existing finite surface/queue bound and prompt
+recovery after a real stall. Do not add an unbounded buffer, a universal fixed
+jitter delay, or a low local-age exemption alone (which misses upstream delay).
+Before choosing thresholds, correlate the same frame number/PTS at complete
+receive, decode completion, render dequeue, GPU-wait completion and render/drop.
+A bounded Client trace should capture these in one workload, with the .51 Host
+unchanged, rather than another series of sender-rate changes. Normal Linux
+Host→Client playback, A/V sync, high-refresh output, reconnect and prolonged
+stall recovery remain gates for any shared Client policy change.
