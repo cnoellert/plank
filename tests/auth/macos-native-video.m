@@ -111,18 +111,19 @@ int main(int argc, const char **argv) {
             (__bridge CFDictionaryRef)spec, (__bridge CFDictionaryRef)source, NULL, NULL, NULL, &encoder);
         printf("macos_low_latency_create=%d requested=%d pixels=%dx%d\n", (int)created, lowLatency, width, height);
         CHECK(created == 0);
-        NSDictionary *properties = @{
+        NSMutableDictionary *properties = [@{
             (__bridge NSString *)kVTCompressionPropertyKey_RealTime: @YES,
             (__bridge NSString *)kVTCompressionPropertyKey_AllowFrameReordering: @NO,
             (__bridge NSString *)kVTCompressionPropertyKey_ProfileLevel: (__bridge NSString *)kVTProfileLevel_HEVC_Main10_AutoLevel,
             (__bridge NSString *)kVTCompressionPropertyKey_AverageBitRate: @20000000,
             (__bridge NSString *)kVTCompressionPropertyKey_DataRateLimits: @[@5000000, @1],
-            (__bridge NSString *)kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality: @YES,
             (__bridge NSString *)kVTCompressionPropertyKey_ExpectedFrameRate: @60,
             (__bridge NSString *)kVTCompressionPropertyKey_ColorPrimaries: (__bridge NSString *)kCVImageBufferColorPrimaries_ITU_R_709_2,
             (__bridge NSString *)kVTCompressionPropertyKey_TransferFunction: (__bridge NSString *)kCVImageBufferTransferFunction_sRGB,
             (__bridge NSString *)kVTCompressionPropertyKey_YCbCrMatrix: (__bridge NSString *)kCVImageBufferYCbCrMatrix_ITU_R_709_2
-        };
+        } mutableCopy];
+        // The specialized low-latency encoder rejects this ordinary-mode hint.
+        if (!lowLatency) properties[(__bridge NSString *)kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality] = @YES;
         for (NSString *property in properties) {
             OSStatus set = VTSessionSetProperty(encoder, (__bridge CFStringRef)property, (__bridge CFTypeRef)properties[property]);
             if (set) fprintf(stderr, "macos_encoder_property=%s status=%d\n", property.UTF8String, (int)set);
