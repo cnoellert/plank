@@ -41,8 +41,35 @@ two2560x2160 screens, oversized/stacked/empty layouts, supported/unknown feature
 contracts, delayed stale discovery replies and offline/manual choices.
 These are automated logical/QML checks, not physical-monitor acceptance.
 
-Next: clean1.0.65-bookmark-host-options Client package on linux-client-builder, inspect
+Intermediate1.0.65 clean compile/package gates pass. Review adds queued local
+authentication-error completion (preserving the caller's asynchronous UI
+contract) and a locked copy of authenticated geometry. The final candidate
+advances to1.0.66;1.0.65 is internal validation only, not the handoff package.
+The actual NvComputer persistence/parser test also passes, preserving Match
+and fixed layout, both Apple profiles and independent profile bitrates.
+
+The shared-selector label gate now follows PlankCaptureSourceBox.qml and
+requires both dialogs to use that component. The new QML/topology/persistence
+tests are part of normal Client package preflight.
+
+Next: clean1.0.66-bookmark-host-options Client package on linux-client-builder, inspect
 the complete UI and package gates, retain DEB/checksum in artifacts/packages.
 Manual acceptance: edit a Mac bookmark, choose Match client display(s), verify
 native Host resolution and input mapping, reconnect, then verify a Linux
 bookmark and offline creation. Existing1.0.64 Mac Host remains installed.
+
+## Packaged UI smoke test
+
+`tests/protocol/client-bookmark-ui-smoke.cpp` is a standalone Linux test-only
+preload, never linked or shipped with the application. It opens the actual
+packaged Add/Edit dialogs, queries a specified live Mac's public metadata,
+checks filtered models and Match/fixed controls, and saves screenshots. It
+creates one bookmark only inside explicitly isolated XDG paths; it never
+authenticates or launches a stream. Compile with `g++ -shared -fPIC -std=c++17`
+and the `Qt6Core Qt6Gui Qt6Quick Qt6Qml` pkg-config flags. Run the extracted
+Client ELF with that library in LD_PRELOAD, `QT_QPA_PLATFORM=offscreen`,
+`QT_QUICK_BACKEND=software`, fresh XDG_CONFIG_HOME/XDG_STATE_HOME/XDG_CACHE_HOME
+and a private0700 XDG_RUNTIME_DIR. Set PLANK_UI_SMOKE_HOST explicitly to the
+authorized development Mac and PLANK_UI_SMOKE_DIR to the screenshot directory.
+Keep a30-second external timeout. Never preload it into an installed/live
+Client or use an existing user's settings.

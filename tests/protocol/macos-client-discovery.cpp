@@ -43,7 +43,7 @@ int main(int argc, char **argv)
         NvComputer bookmark(saved);
         if (bookmark.plankVideoProfile != 7 || bookmark.plankCaptureSource != 2 ||
                 bookmark.plankHostLayout != QStringLiteral("fixed") ||
-                bookmark.plankProfileBitratesKbps.size() != 8 ||
+                bookmark.plankProfileBitratesKbps.size() != StreamingPreferences::PLANK_PROFILE_COUNT ||
                 bookmark.plankProfileBitratesKbps[0] != 76500 ||
                 bookmark.plankProfileBitratesKbps[6] != 51000 ||
                 bookmark.plankProfileBitratesKbps[7] != 50000) return 1;
@@ -57,7 +57,27 @@ int main(int argc, char **argv)
                 restored.plankHostLayout != QStringLiteral("fixed") ||
                 restored.plankProfileBitratesKbps != bookmark.plankProfileBitratesKbps ||
                 !restored.sessionToken.isEmpty()) return 1;
+        // Matching remains a per-bookmark policy across process restarts,
+        // independent of either Apple encoding profile and saved fixed size.
+        for (int profile : {7, 8}) {
+            saved.setValue(QStringLiteral("plank-video-profile"), profile);
+            saved.setValue(QStringLiteral("plank-host-layout"), QStringLiteral("match-client"));
+            NvComputer matched(saved);
+            if (matched.plankCaptureSource != 2 || matched.plankVideoProfile != profile ||
+                    matched.plankHostLayout != NvOutputTopology::MatchClientHostLayout) return 1;
+            matched.serialize(saved, false);
+            saved.sync();
+            if (saved.status() != QSettings::NoError) return 1;
+            QSettings disk(saved.fileName(), QSettings::IniFormat);
+            NvComputer reopened(disk);
+            if (reopened.plankHostLayout != NvOutputTopology::MatchClientHostLayout ||
+                    reopened.plankVideoProfile != profile || reopened.plankCaptureSource != 2 ||
+                    reopened.plankVirtualMode1 != matched.plankVirtualMode1 ||
+                    reopened.plankProfileBitratesKbps != matched.plankProfileBitratesKbps) return 1;
+        }
         // Corrupt cross-platform tuples must not silently become a Linux codec.
+        saved.setValue(QStringLiteral("plank-video-profile"), 7);
+        saved.setValue(QStringLiteral("plank-host-layout"), QStringLiteral("fixed"));
         saved.setValue(QStringLiteral("plank-capture-source"), 0);
         NvComputer invalidTuple(saved);
         if (invalidTuple.plankVideoProfile != 7 ||

@@ -1674,6 +1674,14 @@ for bookmark_test in outputtopology hostchoices; do
     QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
     "$bookmark_test_build/$bookmark_test/$bookmark_test"
 done
+mkdir "$bookmark_test_build/persistence"
+qmake6 "$repo_dir/tests/protocol/macos-client-discovery.pro" \
+  "PLANK_CLIENT_SOURCE=$source_dir" \
+  "PLANK_COMMON_SOURCE=$source_dir/moonlight-common-c/moonlight-common-c" \
+  -o "$bookmark_test_build/persistence/Makefile"
+make -C "$bookmark_test_build/persistence" -j"$(nproc)"
+"$bookmark_test_build/persistence/macos-client-discovery" \
+  "$repo_dir/tests/protocol/macos-server-information.xml"
 cleanup_bookmark_test
 trap - EXIT
 echo "client_host_aware_bookmark_test=pass"
