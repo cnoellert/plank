@@ -62,14 +62,15 @@ both Apple profile choices, Match/fixed controls and offline/manual selection.
 No QML binding/type errors were recorded. Rendered screenshots were inspected;
 they and build logs are in ignored build/bookmark-host-options-records.
 
-No candidate was installed on a builder or End-User client. Development NUC
+No candidate was installed by the agent on a builder or End-User client. Development NUC
 was unreachable (no route). No Host restart, authentication, stream or display
-change was performed by the UI smoke test. Source remains locally committed
-on the feature branches, not pushed/merged pending operator testing.
+change was performed by the UI smoke test.
 
-Next, manual acceptance: edit a Mac bookmark, choose Match client display(s), verify
-native Host resolution and input mapping, reconnect, then verify a Linux
-bookmark and offline creation. Existing1.0.64 Mac Host remains installed.
+**Accepted September 8:** the operator reported "that passes" and requested
+commit, push and merge. This accepts the candidate's requested bookmark
+behavior; it does not independently document every resolution, scaling or
+multi-monitor combination. Existing1.0.64 Mac Host remains installed.
+No new package, tag or deployment accompanies this source integration.
 
 ## Packaged UI smoke test
 
