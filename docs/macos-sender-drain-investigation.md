@@ -527,3 +527,22 @@ Raw pattern logs in both machines' `PLANK_WORK_ROOT/capture-cadence-bundles`:
 - `pattern-2.log`: `b13c3be9e485eacbf40ad405c76d94008bc67f5f393a181f4399232695f21d69`
 - `pattern-3.log`: `965f2d55019017501b8d1eb141f39f8253ec41cdb2832e47d5b92a2a1494c84e`
 - `pattern-4.log`: `9880df439cd3fca85e9309ec16bc41244622233cd845844b4af9de0ef627acde`
+
+## .57 accepted live result and cleanup
+
+User reports the native-cadence Host solved the observed stutter. Its5–70second
+capture interval has3,900sent frames with3,899one-tick PTS gaps:60.000fps, versus
+the previous~57fps. Full71.216second run has1pre-encode skip,0encoder drops,
+3recovery/send drops and0video/audio sender queue evictions. Client final
+network/decode/render59.94/59.94/59.65fps,11render/7overflow drops,1video receive
+drop and0audio receive drops. These are summary observations, not a new
+glass-to-glass latency measurement or a claim of zero frame loss. HANDOFF records
+original log hashes and different summary end times.
+
+The failed batching code and extra Quinn wrapper vendor tree are removed from
+current source; historical commits/raw results remain. Kymux cleanup tree is
+identical to955d58b, preserving source-first FEC; root transport Cargo manifests,
+lockfiles and build runner again match7f8af9e. Installed .57 uses the original
+.53 archive, with application pacing disabled and the increased Quinn window
+budget retained. Shared Linux application pacing is not dormant and was not
+deleted. No new runtime change or installation during cleanup.
