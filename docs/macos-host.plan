@@ -95,7 +95,7 @@ Client presentation test. Probe 54 A/V/input is restored on the development Mac.
 
 ### Next gate: LoginWindow input, then authenticated agent replacement
 
-The lifecycle review confirms that current `desktop-authority.m` positively
+The earlier lifecycle review confirmed that the former `desktop-authority.m` positively
 requires the calling non-root Aqua account and irrevocably revokes on ownership
 loss. `account-policy.h` cannot authorize LoginWindow, and the temporary
 `run-session-handoff.py` controller is administrator-scoped qualification, not
@@ -141,7 +141,12 @@ account policy is implemented: verified non-root accounts may access a positivel
 identified sign-in scope, while desktop access still requires its owning UID/UUID.
 Every phase/generation change invalidates old tokens/stream leases; new desktop
 access requires fresh authentication. Registry-bound synthetic admission and
-revocation pass in Aqua; the new admission path still needs its LoginWindow run.
+revocation now pass in both Aqua and LoginWindow. A further integration uses the
+production explicit-role graphical authority and a cross-queue admission view;
+its LoginWindow checks pass, with Aqua requalification next. The real native
+A/V/input owner passes service-loss/stall and delayed-drain tests with synthetic
+capture/input; it does not synchronously wait on the IPC queue. This does not
+yet prove live media/display replacement across login/logout.
 See `macos-session-lifecycle.md`. Network-facing admission, media/display drain
 and persistent service wiring remain
 next; this is not yet an ordinary Client connection or packaged Mac Host.

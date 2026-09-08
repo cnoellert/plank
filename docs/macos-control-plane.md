@@ -95,7 +95,8 @@ not capture/decoder, logout/fast-switch race or full-stream tests.
 
 ## Desktop authority
 
-`host/macos/auth/desktop-authority.m` runs in the graphical user's Aqua context.
+`host/macos/auth/graphical-authority.m`, explicitly selecting the desktop role
+in the HTTPS probe, runs in the graphical user's Aqua context.
 It requires agreement between Security session graphic access, CoreGraphics
 console/login-complete state, the process UID, SystemConfiguration's console
 user and membership UUID. An SSH invocation correctly receives no authority.

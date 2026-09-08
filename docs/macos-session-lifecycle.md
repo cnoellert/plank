@@ -20,6 +20,16 @@ it does not prove remote-user authorization or the agent's current on-console
 permission. The graphical agent must independently validate its own scope,
 permissions and geometry, with latched revocation on notifications.
 
+`auth/graphical-authority.m` provides that local session check, replacing the
+desktop-only observer. Its constructor requires an explicit desktop or sign-in
+role; plain init and unknown roles are denied. Both require Security graphic
+access, positive CoreGraphics on-console/UID/login state, and matching console
+identity. Sign-in additionally requires actual root LoginWindow and
+login-complete=false. Desktop requires the non-root account and membership UUID.
+Neither an absent desktop nor root Background grants access. Notifications and
+per-read checks latch revocation; no object can switch roles. Input/capture
+consent and topology remain separate checks, not implied by this object.
+
 `agent-connection.m` verifies the machine's signing requirement and OS-reported
 UID. Its trusted local-scope predicate must remain valid. Neither registration
 nor its generation grants remote capture/input; those also require a verified
@@ -41,7 +51,7 @@ only its verified UID/UUID owner. Phase or generation changes invalidate pending
 challenges, unclaimed tokens and active stream leases. Reusing a generation
 across phases cannot preserve access. Fresh authentication is required after
 replacement; no serialized opaque stream lease or inherited root authority.
-The standalone Aqua provider remains strictly non-root/desktop-only.
+The standalone HTTPS probe explicitly selects the desktop-only role.
 
 When the auth lane synchronizes a snapshot onto the registry queue, registry
 callbacks must not synchronously call back into that auth owner. Revoke local
@@ -49,6 +59,23 @@ agent authority before scheduling drain; avoid reverse queue/lock ordering.
 This admission snapshot does not replace the graphical agent's own positive
 session and permission checks at capture/input delivery. Those checks and real
 resource cleanup still need wiring into the persistent service.
+
+On the graphical side, compose the auth provider as
+`[agent bindGraphicalScope:[authority snapshot]]`. This is the connection's sole
+cross-queue method. It binds fresh local identity to the machine generation
+without synchronously entering the IPC queue or invoking callbacks under its
+short lock. A local generation/phase/account change remains terminal even though
+the returned generation is the machine's. Its two-second freshness deadline
+expires independently of the IPC queue; neither a late response nor a restored
+local snapshot can renew expired admission. Revocation clears the view before
+notifying its owner. Only valid service acknowledgments refresh it.
+
+The A/V/input owner's native-QUIC lifecycle test exercises this composition:
+service revocation, service loss, stalled IPC and local-generation replacement
+stop input/media and the endpoint. The delayed-capture case cannot retire its
+agent until the actual stream owner reports its capture/input/endpoint drain.
+These tests use synthetic capture/input and a real native endpoint, not live
+ScreenCaptureKit, real display retirement or an installed service.
 
 ## Typed private protocol
 

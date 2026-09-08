@@ -2,8 +2,9 @@
 // Cross-process qualification of production IPC modules, not an installed Host.
 #import "agent-registry.h"
 #import "agent-connection.h"
-#import "session-boundary.h"
+#import "graphical-authority.h"
 #import "authentication-session.h"
+#include <unistd.h>
 
 // Synthetic verifier ONLY in this local IPC harness. Exercise the production
 // conversation/lease owner without credentials, Open Directory or OS input.
@@ -83,10 +84,11 @@ int main(int argc, const char **argv) {
         }
         BOOL background = !strcmp(argv[1], "--background-peer");
         if (!background && strcmp(argv[1], "--agent")) return 2;
-        PLANKGraphicalSession initial = PLANKReadGraphicalSession();
-        if (!background && initial.phase == PLANKSessionUnavailable) return 2;
-        if (background && initial.phase != PLANKSessionUnavailable) return 2;
-        PLANKMacAgentPhase phase = initial.phase == PLANKSessionDesktop ? PLANKMacAgentDesktop : PLANKMacAgentLoginWindow;
+        PLANKMacGraphicalPhase role = getuid() ? PLANKMacScopeDesktop : PLANKMacScopeSignIn;
+        PLANKMacGraphicalAuthority *authority = [[PLANKMacGraphicalAuthority alloc] initWithPhase:role];
+        PLANKMacGraphicalIdentity initial = [authority snapshot];
+        if (initial.active == background) return 2;
+        PLANKMacAgentPhase phase = role == PLANKMacScopeDesktop ? PLANKMacAgentDesktop : PLANKMacAgentLoginWindow;
         xpc_connection_t peer = xpc_connection_create_mach_service(argv[2], queue, XPC_CONNECTION_MACH_SERVICE_PRIVILEGED);
         __block __weak PLANKMacAgentConnection *weakAgent = nil;
         __block int result = 5;
@@ -94,11 +96,13 @@ int main(int argc, const char **argv) {
             requirement:requirement serverUID:0 phase:phase valid:^BOOL {
                 // Deliberately false claimed scope in the negative TEST peer;
                 // the real machine observer must reject its kernel audit ID.
-                return background || PLANKSessionMatches(initial, PLANKReadGraphicalSession());
+                return background || plank_macos_same_graphical_scope(initial, [authority snapshot]);
             } event:^(PLANKMacAgentConnectionState state, uint64_t generation) {
-                (void)generation;
                 if (state == PLANKMacAgentReady) {
                     if (background) { result = 3; CFRunLoopStop(CFRunLoopGetMain()); return; }
+                    PLANKMacGraphicalIdentity bound = [weakAgent bindGraphicalScope:[authority snapshot]];
+                    if (!bound.active || bound.generation != generation) { result = 6; CFRunLoopStop(CFRunLoopGetMain()); return; }
+                    printf("graphical_agent_bound_scope=1\n");
                     printf("graphical_agent_ready=1 phase=%u\n", phase);
                     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), queue, ^{
                         if (![weakAgent authorized]) { result = 4; CFRunLoopStop(CFRunLoopGetMain()); return; }

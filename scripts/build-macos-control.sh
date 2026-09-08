@@ -12,12 +12,15 @@ common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -I"$source_root/host/macos/auth" -I"$source_root/host/macos/control"
     -framework Foundation -framework Security -framework AppKit -framework CoreGraphics
     -framework SystemConfiguration -framework Network)
+xcrun clang "${common[@]}" "$source_root/host/macos/auth/graphical-authority.m" \
+    "$source_root/tests/auth/macos-graphical-authority.m" -o "$control_output/graphical-authority-test"
+"$control_output/graphical-authority-test" --background
 control_sources=("$source_root/host/macos/control/http-request.m"
     "$source_root/host/macos/control/server-information.m"
     "$source_root/host/macos/control/fixed-capture.m"
     "$source_root/host/macos/control/https-auth-server.m"
     "$source_root/host/macos/auth/authentication-session.m"
-    "$source_root/host/macos/auth/desktop-authority.m"
+    "$source_root/host/macos/auth/graphical-authority.m"
     "$source_root/probes/macos/https-auth.m")
 xcrun clang "${common[@]}" "$source_root/host/macos/control/http-request.m" \
     "$source_root/tests/auth/macos-http-request.m" -o "$control_output/http-request-test"

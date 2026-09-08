@@ -9,13 +9,13 @@ Probe signing/installation remains documented in `probes/macos/README.md`.
 
 Build `bash scripts/build-macos-agent-registry.sh SOURCE_ROOT EMPTY_OUTPUT`
 on the dedicated Mac, SDK/target 27, warnings as errors. Include both modules
-under `host/macos/session`, the authentication headers/implementation, both agent
-tests, `session-boundary.h`, the service
+under `host/macos/session`, authentication and graphical-authority sources/headers,
+both agent tests, the service
 plist and the two build/test scripts in the hash-verified source set. No Rust
 rebuild, TCC permission or app replacement. The test executables are ad-hoc
 signed to pin their exact code, not as a product distribution policy.
 
-The build runs `agent-registry --synthetic`: 185 checks over real anonymous XPC
+The build runs `agent-registry --synthetic`: 239 checks over real anonymous XPC
 with synthetic scope observations. Require a clean process exit, including
 autorelease teardown. A previous run printed passing assertions but trapped
 when an inactive outgoing XPC object was released; that was a failure, now fixed.
@@ -25,7 +25,7 @@ To check actual graphical identity, run the uninstalled `agent-registry` binary
 through the existing graphical runner with no explicit mode argument. Use root
 for LoginWindow or the actual desktop user for Aqua. Default mode requires a
 positive graphical scope; `--synthetic` does not.
-Native mode now includes seven admission-snapshot checks (200 total): phase,
+Native mode includes seven admission-snapshot checks (254 total): phase,
 generation, OS account, and nil/foreign/revoked lease denial.
 
 For cross-process qualification, run as root on the dedicated Mac:
@@ -42,6 +42,12 @@ Expected: `agent_service_cross_process_pass=1 persistent_install=0 media=0 input
 Require `agent_service_admission=1 synthetic_verification=1` and
 `agent_service_admission_revoked=1` too. The test links a synthetic verifier to
 the production conversation/stream-lease owner; no account password is supplied.
+Require `graphical_agent_bound_scope=1` for the graphical authority plus admission
+view. The agent uses the production explicit-role authority, not the older
+probe-only session helper. The control build also produces
+`graphical-authority-test`: run it with no arguments through the graphical runner
+(16 checks) and directly with `--background` from SSH (13 denial checks).
+Root Background must deny local graphical authority too. No TCC or input involved.
 An EXIT trap removes both exact jobs and all generated files. No persistent
 installation, app replacement, capture, input, credentials or network listener.
 See `macos-session-lifecycle.md` for what these tests do and do not prove.
@@ -338,11 +344,25 @@ actual Client hardware decode and presentation still require a hardware target.
 
 The native-video runner also compiles `preview-session.m`/`screen-capture.m`
 and runs the synthetic-capture/input lifecycle suite on loopback UDP 47492.
-Current expectation is 300 checks/11 scenarios. Include the `host/macos/input`
+Current expectation is 403 checks/15 scenarios. Include `host/macos/session`
+sources as well as the `host/macos/input`
 headers/sources, `tests/input/macos-fake-input.{h,m}`, `plank_transport_input.h`,
 `plank_transport_control.h`, both media modules and
 `tests/protocol/macos-preview-launch-v1.json` in standalone staged inputs.
 This is not a new transport-library build. Each lifecycle test remains bounded.
+
+The four added scenarios connect real anonymous XPC admission to the actual
+authentication and native-stream owners: revoke, service loss, a stalled IPC
+queue, and replacement of the local generation. Delayed capture drain must
+precede agent retirement. Capture and input remain synthetic; no OS events are
+posted. The fixture still constructs genuine Quartz event objects. While development-mac
+is logged out, the ordinary SSH user cannot create a private CGEventSource; an
+unchanged `input-events` binary then fails `source != NULL` too. Do not interpret
+that as a media regression or alter the production input guard. Prefer running
+as the logged-in development user. While logged out, the same synthetic build/
+test command was qualified with operator-authorized sudo on the dedicated Mac;
+all outputs stayed in a new explicit temporary directory, with no installation.
+That root Background synthetic run is not proof of LoginWindow capture/input.
 
 ## Authenticated live preview qualification
 

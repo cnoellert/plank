@@ -23,7 +23,7 @@ common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -framework CoreGraphics -framework AppKit -framework Network -framework CoreMedia
     -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox
     -framework Carbon -framework ApplicationServices -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null)
-sources=(host/macos/auth/authentication-session.m host/macos/auth/desktop-authority.m
+sources=(host/macos/auth/authentication-session.m host/macos/auth/graphical-authority.m
     host/macos/control/http-request.m host/macos/control/server-information.m
     host/macos/control/fixed-capture.m host/macos/control/https-auth-server.m
     host/macos/media/native-video.m host/macos/media/preview-session.m host/macos/media/screen-capture.m

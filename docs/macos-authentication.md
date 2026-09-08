@@ -144,8 +144,9 @@ the OS recycles a security-session ID or the same user logs in again. The
 network client never chooses that generation. Live capture/input still requires
 continuous revocation handling after attachment.
 
-`desktop-authority.m` intentionally still admits only non-root Aqua; it never
-infers LoginWindow from the absence of a desktop and does not unlock a session.
+`graphical-authority.m` requires an explicit role and positive OS evidence for
+that role. The existing HTTPS probe still explicitly selects non-root Aqua;
+it never infers LoginWindow from the absence of a desktop or unlocks a session.
 The new registry `authenticationScope:` obtains a separate sign-in/desktop
 snapshot from the exact admitted XPC lease, after machine scope validation.
 See `macos-session-lifecycle.md`: the graphical owner must independently check
@@ -153,6 +154,10 @@ its own session, permissions and media/input scope. Current HTTPS/A/V probe
 orchestration still uses the desktop provider, not the machine registry. A
 synthetic verifier tests registry-bound admission and revocation in a separate
 service/agent harness; it is never linked into the real verification backend.
+The local scope can now be bound to fresh machine admission using
+`bindGraphicalScope:` without synchronizing the media/auth caller onto the IPC
+queue. Service expiry and local identity changes latch revocation even if that
+queue stalls. The native A/V/input lifecycle suite exercises that composition.
 
 ## Qualification and limits
 

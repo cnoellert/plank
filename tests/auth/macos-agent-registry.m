@@ -144,7 +144,7 @@ static void connectionTests(NSString *requirement) {
         CHECK(unstarted != nil); unstarted = nil;
         [f close];
     } // Includes actual XPC release, not just assertions before a deferred trap.
-    for (unsigned scenario = 0; scenario < 7; ++scenario) {
+    for (unsigned scenario = 0; scenario < 11; ++scenario) {
         Fixture *f = [[Fixture alloc] initWithNative:NO requirement:requirement];
         f.stall = scenario == 6;
         __block BOOL localValid = scenario != 4;
@@ -162,14 +162,34 @@ static void connectionTests(NSString *requirement) {
         CHECK(agent != nil);
         __block BOOL started, active;
         dispatch_sync(f.queue, ^{ started = [agent start]; }); CHECK(started == (scenario != 4));
-        if (scenario >= 4 || scenario == 2) {
+        PLANKMacGraphicalIdentity localScope = {true, 500, {123, {1}}, PLANKMacScopeDesktop};
+        if ((scenario >= 4 && scenario <= 6) || scenario == 2) {
             CHECK(until(f, ^BOOL { return state == PLANKMacAgentDisconnected; })); CHECK(ready == 0);
+            CHECK(![agent bindGraphicalScope:localScope].active);
         } else {
             CHECK(until(f, ^BOOL { return ready == 1 && f.attached == 1; })); CHECK(generation != 0);
             dispatch_sync(f.queue, ^{ active = [agent authorized]; }); CHECK(active);
+            PLANKMacGraphicalIdentity bound = [agent bindGraphicalScope:localScope];
+            CHECK(bound.active && bound.generation == generation && bound.account.uid == 123);
             // Exercise an ordinary asynchronous health check before retirement.
             usleep(800000);
-            if (scenario == 3) {
+            if (scenario >= 7) {
+                if (scenario < 9) {
+                    PLANKMacGraphicalIdentity changed = localScope;
+                    if (scenario == 7) changed.generation++;
+                    else { changed.phase = PLANKMacScopeSignIn; changed.account = (PLANKMacAccountIdentity){0}; }
+                    CHECK(![agent bindGraphicalScope:changed].active);
+                    CHECK(![agent bindGraphicalScope:localScope].active);
+                } else {
+                    // The auth/media caller must not block behind stalled IPC.
+                    dispatch_suspend(f.queue);
+                    usleep(2200000);
+                    if (scenario == 9) CHECK(![agent bindGraphicalScope:localScope].active);
+                    dispatch_resume(f.queue);
+                }
+                CHECK(until(f, ^BOOL { return state == PLANKMacAgentDisconnected; }));
+                CHECK(![agent bindGraphicalScope:localScope].active);
+            } else if (scenario == 3) {
                 dispatch_sync(f.queue, ^{ [f.registry stop]; });
                 CHECK(until(f, ^BOOL { return state == PLANKMacAgentDisconnected; }));
             } else {
@@ -178,6 +198,7 @@ static void connectionTests(NSString *requirement) {
                     else [f.registry revoke];
                 });
                 CHECK(until(f, ^BOOL { return state == PLANKMacAgentRetiring; }));
+                CHECK(![agent bindGraphicalScope:localScope].active);
                 dispatch_sync(f.queue, ^{ active = [agent authorized]; }); CHECK(!active);
                 dispatch_sync(f.queue, ^{ [agent retire]; });
                 CHECK(until(f, ^BOOL { return retired == 1 && f.retired == 1; }));

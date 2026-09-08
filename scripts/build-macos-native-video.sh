@@ -39,7 +39,8 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -framework CoreFoundation -framework CoreMedia -framework CoreVideo \
     -framework VideoToolbox -lpthread -lm -o "$video_build/native-video"
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
-    -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Ihost/macos/input -Itests/input -Iprotocol/plank-transport/include \
+    -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Ihost/macos/input -Ihost/macos/session -Itests/input -Iprotocol/plank-transport/include \
+    host/macos/session/agent-registry.m host/macos/session/agent-connection.m \
     host/macos/auth/authentication-session.m host/macos/control/fixed-capture.m \
     host/macos/media/native-video.m host/macos/media/preview-session.m \
     host/macos/media/screen-capture.m host/macos/media/native-audio.m host/macos/media/opus-encoder.m \

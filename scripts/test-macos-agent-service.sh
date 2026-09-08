@@ -67,6 +67,7 @@ cat "$stage/service.stdout" "$stage/service.stderr" "$stage/agent.stdout" "$stag
 grep -q 'agent_service_attached=1 cross_process=1' "$stage/service.stdout"
 grep -q 'agent_service_admission=1 synthetic_verification=1' "$stage/service.stdout"
 grep -q 'agent_service_admission_revoked=1' "$stage/service.stdout"
+grep -q 'graphical_agent_bound_scope=1' "$stage/agent.stdout"
 grep -q 'agent_service_empty_cleanup=1' "$stage/service.stdout"
 grep -q 'graphical_agent_complete=1 background_rejected=0' "$stage/agent.stdout"
 echo "agent_service_cross_process_pass=1 persistent_install=0 media=0 input=0"

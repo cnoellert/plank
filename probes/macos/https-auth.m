@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Loopback-only, 60-second qualification executable; not an installed service.
 #import "https-auth-server.h"
-#import "desktop-authority.h"
+#import "graphical-authority.h"
 #import "fixed-capture.h"
 #include <sys/resource.h>
 #include <unistd.h>
@@ -46,7 +46,7 @@ int main(int argc, const char *argv[]) {
     if (setrlimit(RLIMIT_CORE, &noCore)) return 2;
     alarm(65);
     @autoreleasepool {
-        PLANKMacDesktopAuthority *authority = [PLANKMacDesktopAuthority new];
+        PLANKMacGraphicalAuthority *authority = [[PLANKMacGraphicalAuthority alloc] initWithPhase:PLANKMacScopeDesktop];
         if (argc == 1) {
             PLANKMacGraphicalIdentity before = [authority snapshot];
             [authority revoke];

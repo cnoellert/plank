@@ -39,8 +39,9 @@ account-policy failure qualification remain gates before product acceptance.
 
 `control/https-auth-server.m` uses Apple's Network/Security frameworks for the
 existing start/respond contract over TLS 1.3. The narrow HTTP parser bounds
-input and rejects ambiguous framing. `auth/desktop-authority.m` requires a real
-matching Aqua session and never reactivates revoked authority. Public discovery,
+input and rejects ambiguous framing. `auth/graphical-authority.m` requires an
+explicit role and positive native session identity, never reactivating revoked
+authority. The HTTPS probe explicitly retains its desktop-only role. Public discovery,
 authenticated fixed topology and an optional typed launch handler are implemented.
 Discovery still advertises no ready media service. See
 `docs/macos-control-plane.md` for limits and measured qualification results.

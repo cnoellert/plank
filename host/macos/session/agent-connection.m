@@ -13,6 +13,11 @@
     PLANKMacAgentConnectionState _state;
     uint64_t _generation, _sequence, _pending, _sentAt, _ackAt;
     BOOL _started, _retireRequested;
+    // Admission view for authentication/media queues. Access only under the
+    // short self lock; never call outward or dispatch while holding that lock.
+    uint64_t _admissionGeneration, _admissionDeadline;
+    BOOL _admissionClosed;
+    PLANKMacGraphicalIdentity _boundScope;
 }
 
 static uint64_t now(void) { return clock_gettime_nsec_np(CLOCK_MONOTONIC); }
@@ -57,6 +62,9 @@ static BOOL number(xpc_object_t message, const char *key, uint64_t *value) {
 - (void)transition:(PLANKMacAgentConnectionState)state {
     if (_state == state || _state == PLANKMacAgentFinished || _state == PLANKMacAgentDisconnected) return;
     _state = state;
+    if (state != PLANKMacAgentReady) {
+        @synchronized(self) { _admissionClosed = YES; _admissionGeneration = 0; }
+    }
     if (state == PLANKMacAgentFinished || state == PLANKMacAgentDisconnected) {
         if (_watch) dispatch_source_cancel(_watch);
         xpc_connection_cancel(_peer);
@@ -100,7 +108,8 @@ static BOOL number(xpc_object_t message, const char *key, uint64_t *value) {
 - (void)reply:(xpc_object_t)reply operation:(uint64_t)operation {
     if (_state == PLANKMacAgentFinished || _state == PLANKMacAgentDisconnected) return;
     uint64_t version = 0, status = UINT64_MAX, generation = 0;
-    if (_pending != operation || xpc_connection_get_euid(_peer) != _serverUID ||
+    if (_pending != operation || now() - _sentAt >= 2 * NSEC_PER_SEC ||
+        xpc_connection_get_euid(_peer) != _serverUID ||
         xpc_get_type(reply) != XPC_TYPE_DICTIONARY || !number(reply, "version", &version) || version != 1 ||
         !number(reply, "status", &status) || xpc_dictionary_get_count(reply) != (status ? 2u : 3u) ||
         (!status && (!number(reply, "generation", &generation) || !generation))) { [self stop]; return; }
@@ -114,7 +123,21 @@ static BOOL number(xpc_object_t message, const char *key, uint64_t *value) {
     else if (!status && generation != _generation) { [self stop]; return; }
     _ackAt = now();
     if (status == 2 || !_valid()) [self revoke];
-    else if (_state == PLANKMacAgentConnecting) [self transition:PLANKMacAgentReady];
+    else if (_state == PLANKMacAgentConnecting || _state == PLANKMacAgentReady) {
+        BOOL renewed = NO;
+        @synchronized(self) {
+            // Test the PREVIOUS deadline before replacing it. This also catches
+            // an IPC queue stall when nobody sampled admission during the stall.
+            if (_admissionGeneration && now() >= _admissionDeadline) _admissionClosed = YES;
+            if (!_admissionClosed && now() < _ackAt + 2 * NSEC_PER_SEC) {
+                _admissionGeneration = _generation;
+                _admissionDeadline = _ackAt + 2 * NSEC_PER_SEC;
+                renewed = YES;
+            }
+        }
+        if (!renewed) { [self stop]; return; }
+        if (_state == PLANKMacAgentConnecting) [self transition:PLANKMacAgentReady];
+    }
     // A previously revoked connection can never be revived by a late OK reply.
     if (_retireRequested && _state == PLANKMacAgentRetiring) [self send:3];
 }
@@ -133,8 +156,28 @@ static BOOL number(xpc_object_t message, const char *key, uint64_t *value) {
     dispatch_assert_queue(_queue);
     if (_state != PLANKMacAgentReady) return NO;
     if (!_valid()) { [self revoke]; return NO; }
-    if (now() - _ackAt >= 2 * NSEC_PER_SEC) { [self stop]; return NO; }
+    BOOL live;
+    @synchronized(self) {
+        if (now() >= _admissionDeadline) _admissionClosed = YES;
+        live = !_admissionClosed && _admissionGeneration != 0;
+    }
+    if (!live) { [self stop]; return NO; }
     return YES;
+}
+- (PLANKMacGraphicalIdentity)bindGraphicalScope:(PLANKMacGraphicalIdentity)scope {
+    @synchronized(self) {
+        if (_admissionClosed || !_admissionGeneration) return (PLANKMacGraphicalIdentity){0};
+        BOOL phaseMatches = (_phase == PLANKMacAgentDesktop && scope.phase == PLANKMacScopeDesktop) ||
+            (_phase == PLANKMacAgentLoginWindow && scope.phase == PLANKMacScopeSignIn);
+        if (now() >= _admissionDeadline || !phaseMatches || !plank_macos_graphical_identity_valid(scope) ||
+            (_boundScope.active && !plank_macos_same_graphical_scope(_boundScope, scope))) {
+            _admissionClosed = YES; _admissionGeneration = 0;
+            return (PLANKMacGraphicalIdentity){0};
+        }
+        _boundScope = scope;
+        scope.generation = _admissionGeneration;
+        return scope;
+    }
 }
 - (void)revoke {
     dispatch_assert_queue(_queue);
