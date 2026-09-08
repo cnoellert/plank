@@ -1,6 +1,8 @@
 # Host-aware bookmark options and Mac display matching
 
 Branch: `bookmark-host-options`, based on accepted main `d6c4598`.
+Accepted and merged September 8: Client main `a803e0dc`, root acceptance tip
+`cef37c8`, both published. Later root closeout changes are documentation only.
 
 ## Scope
 
@@ -71,6 +73,9 @@ commit, push and merge. This accepts the candidate's requested bookmark
 behavior; it does not independently document every resolution, scaling or
 multi-monitor combination. Existing1.0.64 Mac Host remains installed.
 No new package, tag or deployment accompanies this source integration.
+The accepted DEB/checksum and qualification logs/screenshots remain retained.
+After publication, this task's exact linux-client-builder candidate/test directories
+were removed; canonical repositories and prepared dependencies were preserved.
 
 ## Packaged UI smoke test
 
