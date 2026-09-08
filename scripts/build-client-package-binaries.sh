@@ -1624,6 +1624,27 @@ cleanup_policy_test
 trap - EXIT
 echo "client_administrator_policy_test=pass"
 
+packed_test_build=$(mktemp -d --tmpdir plank-client-packed-test.XXXXXX)
+cleanup_packed_test() {
+  if [[ -d ${packed_test_build} ]]; then
+    find "$packed_test_build" -xdev -depth -mindepth 1 -delete
+    rmdir "$packed_test_build"
+  fi
+}
+trap cleanup_packed_test EXIT
+c++ -std=c++17 -O2 -Wall -Wextra -Werror \
+  "$repo_dir/tests/video/packed-bt709-policy.cpp" \
+  -I"$source_dir/app" -I"$client_common_dir" \
+  $(pkg-config --cflags --libs Qt6Gui sdl3) -o "$packed_test_build/policy"
+"$packed_test_build/policy"
+c++ -std=c++17 -O2 -Wall -Wextra -Werror \
+  "$repo_dir/tests/video/packed-bt709-shader.cpp" \
+  $(pkg-config --cflags --libs egl glesv2) -o "$packed_test_build/shader"
+"$packed_test_build/shader" "$source_dir/app/shaders/egl_opaque.frag"
+cleanup_packed_test
+trap - EXIT
+echo "client_packed_bt709_policy_and_shader_gate=pass"
+
 wake_test_build=$(mktemp -d --tmpdir plank-client-relay-wake-test.XXXXXX)
 cleanup_wake_test() {
   if [[ -d ${wake_test_build} ]]; then
