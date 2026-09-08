@@ -22,6 +22,7 @@ plank-transport = { path = "../../../protocol/plank-transport", default-features
 tokio = { version = "1.47", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 
 [patch.crates-io]
+quinn = { path = "../../../third_party/quinn-0.11.11" }
 # quinn-proto 0.11.17 has two DATAGRAM send-buffer accounting defects that can
 # abort a saturated connection under loss. Keep Kyber on its Quinn 0.11 API and
 # use the narrow, documented shared backport until an upstream release contains

@@ -36,6 +36,11 @@ expected_kymux=$(git rev-parse HEAD:third_party/kyber-kymux)
 test "$(git -C third_party/kyber-kymux rev-parse HEAD)" = "$expected_kymux"
 printf 'Kymux: %s\n' "$expected_kymux"
 features=()
+if [[ ${PLANK_MACOS_DATAGRAM_BATCH:-0} == 1 ]]; then
+    export PLANK_MACOS_SOURCE_FIRST=1
+elif [[ ${PLANK_MACOS_DATAGRAM_BATCH:-0} != 0 ]]; then
+    echo 'PLANK_MACOS_DATAGRAM_BATCH must be 0 or 1' >&2; exit 2
+fi
 if [[ ${PLANK_MACOS_SENDER_TIMING:-0} == 1 ]]; then
     features=(--features sender-timing)
 elif [[ ${PLANK_MACOS_SENDER_TIMING:-0} != 0 ]]; then
@@ -50,6 +55,10 @@ if [[ ${PLANK_MACOS_SOURCE_FIRST:-0} == 1 ]]; then
     features=(--features macos-source-first)
 elif [[ ${PLANK_MACOS_SOURCE_FIRST:-0} != 0 ]]; then
     echo 'PLANK_MACOS_SOURCE_FIRST must be 0 or 1' >&2; exit 2
+fi
+if [[ ${PLANK_MACOS_DATAGRAM_BATCH:-0} == 1 ]]; then
+    test -f third_party/quinn-0.11.11/PLANK-PATCH.md
+    features=(--features macos-datagram-batch)
 fi
 cargo +1.89.0 build --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
 cargo +1.89.0 test --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
@@ -83,6 +92,18 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 1 -config "$certificate_config" 
 openssl x509 -in "$probe_tmp/cert.pem" -outform DER -out "$probe_tmp/cert.der"
 certificate_hash=$(shasum -a 256 "$probe_tmp/cert.der")
 certificate_hash=${certificate_hash%% *}
+if [[ ${PLANK_MACOS_DATAGRAM_BATCH:-0} == 1 ]]; then
+    externs=()
+    for crate in quinn tokio bytes rustls_pemfile; do
+        libs=("$transport_build"/release/deps/lib"$crate"-*.rlib)
+        test ${#libs[@]} -eq 1 && test -f "${libs[0]}"
+        externs+=(--extern "$crate=${libs[0]}")
+    done
+    rustc +1.89.0 --edition=2024 -O tests/protocol/quinn-datagram-batch.rs \
+        -L "dependency=$transport_build/release/deps" "${externs[@]}" \
+        -o "$transport_build/quinn-batch-test"
+    "$transport_build/quinn-batch-test" "$probe_tmp/cert.pem" "$probe_tmp/key.pem"
+fi
 "$probe_tmp/native-ffi-loopback" 127.0.0.1:47489 127.0.0.1:47489 localhost \
     "$probe_tmp/cert.pem" "$probe_tmp/key.pem" "$certificate_hash"
 "$probe_tmp/native-ffi-loopback" 127.0.0.1:47490 127.0.0.1:47490 localhost \

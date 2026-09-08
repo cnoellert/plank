@@ -2,6 +2,49 @@
 
 ## Latest: .53 source-first FEC candidate
 
+### Live comparison collected after user disconnect
+
+The .53 test ended 01:21:27 local time. Full Host run: 12,898 captures,
+1 pre-encode skip, no encoder/recovery/send drops, 12,895 video frames and
+46,436 audio packets sent; no video-queue evictions or audio-send drops.
+Two-minute bounded Host sender trace: 6,869 frames, 58 keys, mean key submission
+24.379 ms versus 26.208 ms in .51. Key bytes decreased 1,062,620 → 993,594;
+this is not a byte-identical workload or proof of faster submission per byte.
+Key matrix/repair preparation means 5.841/0.708 → 2.971/0.168 ms, while Quinn
+calls mean 18.749 → 20.084 ms. Stage scheduling differs with the new ordering;
+these are elapsed wall times, not isolated CPU or mutex-wait measurements.
+
+The Client log hit its 10 MiB cap because both tests ran in the same Client
+process. .53 receive trace is complete; render trace stops at 105.12 seconds,
+24,031 of 27,407 rows. Decode trace/final transport statistics are absent.
+The complete-trace parser correctly refuses this file. A separate inspection
+validated the receive begin/end/count and used only the recorded render prefix
+for an equal 5–100 second comparison, without manufacturing a trace end.
+
+| Measurement | .51 Host / .52 Client | .53 Host / .52 Client |
+| --- | ---: | ---: |
+| Mean key receive gap, seconds 5–100 | 44.332 ms | 36.867 ms |
+| Render catch-up drops, seconds 5–100 | 23 | 10 |
+| Of those within 200 ms after key receive | 22 | 10 |
+| Overflow drops, seconds 5–100 | 0 | 0 |
+| Missing frame sequence IDs in full 120-second receive trace | 5 | 0 |
+| Mean key receive gap, seconds 5–120 | 43.772 ms | 35.950 ms |
+| Mean gaps across first three frames after keys, seconds 5–120 | 7.386 ms | 9.800 ms |
+
+GPU waits and render durations remain similar in the matched interval; new
+mean/max GPU waits 6.850/32.391 ms, render 4.536/22.163 ms. Complete receive
+does not mean there was no packet loss: FEC could have recovered lost sources.
+The truncated file prevents a full-run Client loss/audio/decode result.
+
+This is directional improvement, with remaining post-key render catch-up.
+Footage/encode timing and payload sizes differed, so do not attribute the whole
+gain to the sender change. The next live trace requires quitting/relaunching
+the Client to obtain a fresh product log before one two-minute session. Keep
+the existing log cap and Client playback policy unchanged. Raw log hashes and
+paths are in HANDOFF. No code or runtime settings changed during this analysis.
+
+### Implementation and synthetic qualification
+
 The user selected reducing keyframe processing/submission delay before Client
 render-policy changes. In the .51/.52 run, keyframes averaged 1,062,620 bytes
 and 26.208 ms submission, versus 101,328 bytes and 3.289 ms for deltas. That
