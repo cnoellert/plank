@@ -77,14 +77,43 @@ The ~229-second run produced45802 Opus packets, zero encoder failures, overflows
 or timestamp gaps; maximum callback age10.957ms. All stop/destroy calls succeeded.
 This passes manual normal-stop suppression/restoration, not crash recovery.
 
-No production code, installed Host or saved audio settings changed. All probes
-have exited. Process-death restoration, owner isolation and end-to-end A/V
-synchronization remain unqualified. Do not replace the Host with this standalone
-feasibility probe.
+The initial probe did not change production code or the installed Host. All
+probes have exited. It is distinct from the integrated candidate below.
 
 Product scope must be explicit: SDK27 defines a global tap as *all processes*
 and `privateTap` only as visibility to its creator. Neither documents same-user
-isolation. Do not infer an authorization boundary from `privateTap`. Before
-integration, qualify an authenticated-user process selection policy and preserve
-LoginWindow behavior and cleanup-gated desktop transitions. Do not add a global
-root tap to the sign-in worker or weaken ownership checks for audio.
+isolation. Do not infer an authorization boundary from `privateTap` or add a
+global root tap to the sign-in worker.
+
+## Integrated candidate 1.0.69-macos-audio-tap
+
+Source `9669c97` is built and installed on the dedicated Mac. Native desktop
+capture selects only HAL process objects whose PID resolves through the kernel
+to the current non-root real and effective UID. It excludes the Host itself,
+rechecks HAL PID identity, and refreshes membership on process-list changes.
+Bundle-ID restoration is disabled. No application-name allowlists or polling
+loop. The trusted graphical role enables this only for desktop agents; the
+root sign-in agent retains SCK audio, as agreed with the operator.
+
+A private aggregate containing only the tap requests48kHz. This does not set
+the hardware output's sample rate, volume or default device. Its exact stereo
+Float32 format is verified. Unexpected format changes fail capture rather than
+reinterpret samples. A bounded16-slot ring transfers input to the serial session
+queue. Timestamp validation, Opus encoding and network delivery remain unchanged.
+HAL lifecycle calls run on a dedicated control queue, never synchronously on
+the session/UI queue. Stop discards buffered audio and completes only after
+listener removal and IO/aggregate/tap destruction. A teardown error retires the
+worker instead of pretending local playback was safely restored.
+
+The candidate passes SDK/target27 warnings-as-errors, strict Apple signing,
+the100000-block concurrent ring test and policy negatives, development-mac ASan/UBSan,
+3646 existing Opus checks, frame timing/recovery and development-installer tests.
+Its actual tap/Opus component passes live QuickTime capture, appearance/removal
+of an additional audio process, and immediate cancellation before startup:
+2016 packets in the live run, zero in the cancelled run, no failures.
+
+Installed app/discovery hashes and artifact are in HANDOFF. Await the operator's
+real PLANK connection: remote sound, physical speaker suppression, disconnect
+restoration, then A/V sync and login/logout tests. The Host may need its own
+system-audio TCC approval; Probe consent is not copied. Process-death speaker
+restoration and live cross-account isolation remain separate untested gates.
