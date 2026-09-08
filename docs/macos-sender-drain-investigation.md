@@ -328,3 +328,65 @@ Raw logs retained outside Git:
 `8eae146a2b0621837024988f344d60c447bf183b421ef9bdf1d285e3197931f0`.
 The mode0600 diagnostic transfer copy on wan-test-client was removed after hash-verified
 collection; the original Client product log remains untouched.
+
+## September 8: bounded submission batching rejected for deployment
+
+After the user disconnected, clean Mac transport builds tested 16-packet (.54)
+and four-packet (.55) batches against the installed .53 source-first baseline.
+Only already-ready datagrams are grouped under the Quinn connection lock;
+there is no collection timer or change to FEC, MTU, encoder or Client. This
+experimental feature remains off by default. Host .53 remains installed.
+
+Final functional gates pass: exact packet boundaries/order-independent byte
+sets, oversized/closed/disabled errors, accepted-prefix delivery after partial
+failure, source-first recovery, Rust tests and ordinary C ABI loopbacks. Early
+test errors came from assuming peer-disabled precedence over local-disabled
+and dropping the peer connection before its final response reached the reader;
+the fixtures were corrected without altering production behavior.
+
+The deployment blocker is performance, plus one unexplained mixed-media failure:
+
+- .54 completed all 20 large-frame comparison pairs with matching video/audio/
+  input data. Two alternating control stress pairs nevertheless increased
+  maximum reliable-control RTT from 9.143/11.753 ms to 18.393/27.366 ms.
+- .55 repeated five stress runs, each two ordinary and two batch connections.
+  Each delivered all 4,096 datagrams and 64 reliable control echoes. Maximum
+  control RTT was worse in 9 of 10 paired samples; overall maxima were
+  15.602 ms ordinary and 23.813 ms batch. Means/p95 were mixed; these are
+  per-connection results, not a pooled percentile or real input-latency test.
+- .55 large-frame comparison stopped at candidate 10: video completed with
+  exact bytes in 5.063 ms, but the following audio check reported
+  `native audio packet or metadata mismatch`. No failed datagram submission
+  was recorded. Do not claim its planned 20 pairs passed or attribute the
+  audio failure to batching without further evidence. Completed warmed pairs
+  generally saved only a fraction of a millisecond versus .53.
+
+The direct fairness fixture uses ordinary Quinn on Mac loopback, not the PLANK
+rate controller or WAN. The separate 1,100,123-byte C ABI comparison does use
+the PLANK transport configuration, but is not continuous capture/playout.
+Neither proves actual user-visible latency. Longer control tails and a failed
+mixed-media check do not justify deploying this small video gain.
+
+Retained Mac PLANK_WORK_ROOT evidence:
+
+- `datagram-batch-54-bundles/transport-testfix2.log`, SHA-256
+  `d7a169163624a2475ccca5907beaa7e9f6c367881c8de24465803c5e1301a216`.
+- `datagram-batch-55-bundles/transport-build.log`, SHA-256
+  `d0c211e94cd4a25264bc04e9486382f8f3b4616b618914c4fd28e6855025b958`.
+- `batch-54-comparison/` (20 complete pairs), `batch-55-comparison/`
+  (stops at `candidate-10.log`), `batch-55-control-repeat/trial-1.log` through
+  `trial-5.log`. Earlier fixture-failure logs remain for audit.
+- .54 root `99b33c508173d69ec87907c69073f0568afd95a1`, Kymux
+  `2fe06c11ee6e5c548bae7e468317d389bc2715f5`; .55 root
+  `cec281f1bdba8c6640b94abe525a8613dd4cce44`, Kymux
+  `d206363ea05757668065ad3fe26ba6b18cc97793`.
+
+Independent capture-cadence observation from retained live traces: .51 capture
+PTS gaps average 17.552 ms (median 16.667, p95 33.333, maximum 50.000); .53 gaps
+average 17.477 ms (median/p95 16.667, maximum 50.000). Callback-gap means match,
+but maxima are 53.683/73.739 ms. Thus the approximately 57 fps rate is present
+in captured sample timestamps before networking, not merely in the Client
+counter. Determine whether omitted SCK intervals arise from source updates,
+callback scheduling or another capture constraint before selecting a fix.
+This is distinct from the measured keyframe delivery burst; it does not prove
+all visible stutter has one cause. No capture-policy change made here.
