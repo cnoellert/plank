@@ -26,5 +26,10 @@ typedef NSDictionary *(^PLANKMacLaunchHandler)(NSDictionary *request, NSString *
                          launch:(PLANKMacLaunchHandler)launch;
 - (BOOL)startOnAddress:(NSString *)address port:(uint16_t)port
                 ready:(void (^)(uint16_t boundPort))ready;
+- (BOOL)startOnAddress:(NSString *)address port:(uint16_t)port
+                ready:(void (^)(uint16_t boundPort))ready failed:(void (^)(void))failed;
 - (void)stop;
+// Completes after admitted authentication/launch work and reply scheduling have
+// drained. Callback runs on the network queue, not the main/UI queue.
+- (void)stopWithCompletion:(void (^)(void))completion;
 @end

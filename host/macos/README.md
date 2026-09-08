@@ -1,13 +1,22 @@
 # Native macOS Host components
 
-Experimental work for macOS 27+. This directory is not an installable Host yet.
+Experimental work for macOS 27+. A native Host executable/application now builds;
+the product installer and ordinary Client connection are not qualified yet.
 It does not replace or relocate the supported Linux Host under `sunshine-fork`.
+
+`session/host-main.m` supplies machine and graphical entry points plus native
+permission requests. `session/host-runtime.m` assembles the actual HTTPS
+authentication and A/V/input stream owner; the former probe launch now uses it
+instead of duplicating orchestration. The machine/graphical assembly passes
+temporary launchd startup, TLS discovery/denial, shutdown and process replacement.
+See `docs/macos-session-lifecycle.md` for deployment and remaining display/trust
+gates. This is not yet an ordinary Client streaming acceptance result.
 
 `session/agent-registry.m` and `agent-connection.m` implement the machine/agent
 XPC ownership boundary: signing and kernel peer identity checks, exclusive
 generations, irreversible revocation and cleanup-gated replacement. They pass
-component and cross-process LoginWindow tests but are not yet wired to remote
-authentication, capture or a persistent service. See
+component and cross-process LoginWindow tests and are wired to the runtime's
+remote authentication and capture lifetime. Persistent installation is pending. See
 `docs/macos-session-lifecycle.md` for the contract and remaining integration.
 
 `auth/account-verifier.m` uses Open Directory password verification, including

@@ -1,0 +1,49 @@
+#!/bin/bash
+# Uninstalled native Host executable; no synthetic verifier or probe main.
+set -euo pipefail
+if [[ $# != 3 || $1 != /* || $2 != /* || $3 != /* || $(uname -s) != Darwin ||
+      $(sw_vers -productVersion | cut -d . -f 1) -lt 27 ||
+      $(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1) -lt 27 ]]; then
+    echo 'Usage (development Mac): build-macos-host.sh SOURCE EMPTY_OUTPUT TRANSPORT_ARCHIVE' >&2; exit 2
+fi
+: "${PLANK_MACOS_HOST_VERSION:?Explicit branch-qualified version required}"
+[[ $PLANK_MACOS_HOST_VERSION =~ ^[0-9a-z.+-]+-macos-host([.+-][0-9a-z.-]+)?$ ]]
+source_root=$1; output=$2; archive=$3
+mkdir "$output"
+cd "$source_root"
+common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
+    -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Ihost/macos/input
+    -Ihost/macos/session -Iprotocol/plank-transport/include
+    -framework Foundation -framework Security -framework SystemConfiguration -framework CoreFoundation
+    -framework CoreGraphics -framework AppKit -framework Network -framework CoreMedia
+    -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox
+    -framework Carbon -framework ApplicationServices -framework OpenDirectory
+    -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null)
+sources=(host/macos/auth/authentication-session.m host/macos/auth/graphical-authority.m
+    host/macos/auth/account-verifier.m host/macos/auth/account-channel.m
+    host/macos/control/http-request.m host/macos/control/server-information.m
+    host/macos/control/fixed-capture.m host/macos/control/https-auth-server.m
+    host/macos/media/native-video.m host/macos/media/preview-session.m host/macos/media/screen-capture.m
+    host/macos/media/native-audio.m host/macos/media/opus-encoder.m
+    host/macos/input/input-events.m host/macos/input/native-input.m host/macos/input/quartz-input.m
+    host/macos/session/agent-registry.m host/macos/session/agent-connection.m
+    host/macos/session/host-runtime.m host/macos/session/host-main.m)
+xcrun clang "${common[@]}" "-DPLANK_MACOS_HOST_VERSION=\"$PLANK_MACOS_HOST_VERSION\"" \
+    "${sources[@]}" "$archive" -lpthread -lm -o "$output/plank-host"
+# Ad-hoc is only for uninstalled assembly checks. TCC/live capture needs the
+# protected Apple-signed application and is NOT qualified by this build.
+codesign --force --sign - --identifier la.instinctual.PLANK.Host "$output/plank-host"
+codesign --verify --strict "$output/plank-host"
+shasum -a 256 "$archive" "$output/plank-host"
+if [[ -n ${PLANK_MACOS_SIGNING_IDENTITY:-} ]]; then
+    [[ $PLANK_MACOS_SIGNING_IDENTITY =~ ^[[:xdigit:]]{40}$ ]]
+    app="$output/PLANK Host.app"
+    mkdir -p "$app/Contents/MacOS"
+    install -m 0755 "$output/plank-host" "$app/Contents/MacOS/plank-host"
+    install -m 0644 packaging/macos/host-info.plist "$app/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Add :PLANKVersion string $PLANK_MACOS_HOST_VERSION" "$app/Contents/Info.plist"
+    codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY" --timestamp=none \
+        --identifier la.instinctual.PLANK.Host "$app"
+    codesign --verify --strict "$app"
+    shasum -a 256 "$app/Contents/MacOS/plank-host"
+fi

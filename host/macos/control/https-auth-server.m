@@ -256,6 +256,10 @@
 }
 
 - (BOOL)startOnAddress:(NSString *)address port:(uint16_t)port ready:(void (^)(uint16_t))ready {
+    return [self startOnAddress:address port:port ready:ready failed:nil];
+}
+- (BOOL)startOnAddress:(NSString *)address port:(uint16_t)port ready:(void (^)(uint16_t))ready
+                failed:(void (^)(void))failed {
     struct in_addr ip;
     if (_listener || _stopped || !ready || inet_pton(AF_INET, address.UTF8String, &ip) != 1) return NO;
     sec_identity_t identity = _identity;
@@ -276,15 +280,15 @@
     nw_listener_set_state_changed_handler(_listener, ^(nw_listener_state_t state, nw_error_t error) {
         (void)error;
         typeof(self) owner = weakSelf;
-        if (!owner) return;
+        if (!owner || owner->_stopped) return;
         if (state == nw_listener_state_ready) {
             uint16_t boundPort = nw_listener_get_port(owner->_listener);
             owner->_controlPort = boundPort;
             owner->_serverInformationXML = [owner->_information XMLForControlPort:boundPort];
-            if (!owner->_serverInformationXML) { [owner stop]; return; }
+            if (!owner->_serverInformationXML) { [owner stop]; if (failed) failed(); return; }
             ready(boundPort);
         }
-        else if (state == nw_listener_state_failed) [owner stop];
+        else if (state == nw_listener_state_failed) { [owner stop]; if (failed) failed(); }
     });
     // One watchdog for at most eight admitted requests. Do not retain a timer
     // closure for every completed/rejected connection during a request flood.
@@ -303,13 +307,21 @@
 }
 
 - (void)stop {
+    [self stopWithCompletion:nil];
+}
+- (void)stopWithCompletion:(void (^)(void))completion {
     dispatch_async(_networkQueue, ^{
         self->_stopped = YES;
         if (self->_listener) nw_listener_cancel(self->_listener);
         if (self->_expiryTimer) dispatch_source_cancel(self->_expiryTimer);
         for (PLANKMacHTTPSRequest *request in self->_requests.allObjects) [self finish:request];
         // Serialized after any in-flight verification: no token survives stop.
-        dispatch_async(self->_authQueue, ^{ [self->_sessions revokeAll]; });
+        dispatch_async(self->_authQueue, ^{
+            [self->_sessions revokeAll];
+            // Auth work may already have queued a reply back to the network
+            // lane. Drain that lane too before allowing the owner to retire.
+            dispatch_async(self->_networkQueue, ^{ if (completion) completion(); });
+        });
     });
 }
 

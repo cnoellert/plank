@@ -1,9 +1,49 @@
 # Mac service and graphical-agent ownership
 
-Experimental macOS/SDK 27 components under `host/macos/session`. These are
-production IPC/ownership modules, not a new Client transport. They are not yet
-wired to a persistent Host service, network-facing authentication or the A/V/input
-owner. Qualification launchd jobs are temporary fixtures, not package inputs.
+Experimental macOS/SDK 27 implementation under `host/macos/session`. The native
+`host-main.m` executable now joins the production IPC boundary to HTTPS remote
+authentication and the A/V/input owner through `host-runtime.m`. The executable
+has no qualification timeout or synthetic verifier. Automatic installation,
+virtual-display creation and cross-login replacement remain unfinished.
+Qualification launchd jobs are temporary fixtures, not package inputs.
+
+## Runnable Host assembly
+
+`plank-host --machine MACH_SERVICE` runs the root ownership coordinator.
+`plank-host --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY` runs
+the explicitly selected graphical role, on that actual launchd graphical domain.
+Same-product signing and root machine-peer checks remain mandatory. The agent
+opens HTTPS only after admission; each authentication/media/input authorization
+uses the independent local scope bound to the machine's current generation.
+No capture or input occurs merely because a listener starts.
+
+The runtime owns the HTTPS server, token owner and at most one native stream.
+It uses the existing HEVC Main10, stereo Opus and absolute keyboard/mouse
+implementations, with embedded cursor. Shutdown closes new launch admission,
+drains the stream (including authorized held-input release), then waits for the
+HTTP authentication/reply lanes to drain. It does not block the graphical loop
+on endpoint construction or substitute a fixed sleep for cleanup completion.
+
+This first assembly creates no virtual display or media child process. The
+machine coordinator waits for the exact graphical process's kernel exit event
+before releasing its exclusive slot; an IPC retirement acknowledgment is not
+enough. Do not add the virtual-display child until its independent removal proof
+is integrated into this condition. The short-lived account verification child
+retains its separate bounded timeout and cannot capture or post input.
+
+The experimental role-private startup directory is owned by that role's UID,
+mode 0700. `host.plist`, `cert.der`, `key.der`, `cert.pem`, `key.pem` must each be
+regular, non-symlink, mode-0600 files owned by the same UID. The plist has exactly
+`Address` (explicit IPv4), `Port` (1–65535), `Name`, and `UUID`. PEM and DER must
+represent the same certificate and PKCS#1 RSA private key; the native Security
+identity validates the key/certificate pair. This is developer startup wiring,
+not the final administrator configurator. Never copy the machine service's
+private key into a user-readable directory to make this work. A stable public
+trust identity across graphical roles remains a deployment/integration gate.
+
+Opening the signed PLANK Host application requests its own Screen Recording
+and Accessibility consent. Probe consent does not transfer across bundle IDs.
+The permission window does not start a listener or a remote session.
 
 ## Trust boundary
 

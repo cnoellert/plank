@@ -18,12 +18,13 @@ mkdir -p "$preview_build"
 [[ -z $(ls -A "$preview_build") ]]
 cd "$source_root"
 common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
-    -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Ihost/macos/input -Itests/input -Iprotocol/plank-transport/include
+    -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Ihost/macos/input -Ihost/macos/session -Itests/input -Iprotocol/plank-transport/include
     -framework Foundation -framework Security -framework SystemConfiguration -framework CoreFoundation
     -framework CoreGraphics -framework AppKit -framework Network -framework CoreMedia
     -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox
     -framework Carbon -framework ApplicationServices -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null)
 sources=(host/macos/auth/authentication-session.m host/macos/auth/graphical-authority.m
+    host/macos/session/host-runtime.m
     host/macos/control/http-request.m host/macos/control/server-information.m
     host/macos/control/fixed-capture.m host/macos/control/https-auth-server.m
     host/macos/media/native-video.m host/macos/media/preview-session.m host/macos/media/screen-capture.m

@@ -5,6 +5,36 @@ on the authorized dedicated development Mac. Linux builder roles are unchanged.
 Require Apple Silicon, macOS 27, SDK 27 and explicit deployment target 27.0.
 Probe signing/installation remains documented in `probes/macos/README.md`.
 
+## Native Host executable and application
+
+Use `scripts/build-macos-host.sh SOURCE EMPTY_OUTPUT RETAINED_TRANSPORT_ARCHIVE`
+on the dedicated Mac. Set `PLANK_MACOS_HOST_VERSION` explicitly, for example
+`1.0.34-macos-host.dev1`. The full native Host links with SDK/target 27 and
+warnings-as-errors; no probe main or synthetic verifier is linked. The default
+uninstalled executable is ad-hoc signed for assembly checks. Supplying the
+existing `PLANK_MACOS_SIGNING_IDENTITY` also builds Apple-signed `PLANK Host.app`
+with its own `la.instinctual.PLANK.Host` identity. Unlock the signing keychain
+in the same SSH TTY. No Rust rebuild, Linux package or persistent service install.
+
+`sudo python3 tests/auth/macos-host-service.py SOURCE BINARY SHA256 DESKTOP_UID`
+tests the real executable with temporary system/Aqua jobs, role-private keys,
+TLS discovery, unauthenticated topology denial, graceful stop and replacement
+on the same desktop. It does not require logout/login, credentials, TCC, capture
+or OS input. Temporary shared executable/log parents must be under `/private/tmp`,
+not root's inaccessible per-user TMPDIR; graphical logs must belong to the
+graphical UID or launchd returns EX_CONFIG before the executable runs.
+The fixture canonicalizes the RSA key to PKCS#1 PEM to match its DER; req's
+default PKCS#8 PEM must not be mistaken for the same byte representation.
+Generated keys and both jobs are removed on exit.
+When testing an Apple-signed application executable, keep the whole app bundle
+including its Info.plist; a bare extracted Mach-O fails strict signature checks.
+The runner detects this case and copies/verifies the complete bundle.
+
+The existing `build-macos-preview.sh` now links `host-runtime.m`; its HTTPS
+qualification launcher no longer duplicates stream creation or invents a
+one-second cleanup delay. Its synthetic launch/transport tests remain useful
+automated coverage of the real runtime, not the next operator milestone.
+
 ## Machine/graphical-agent IPC qualification
 
 Build `bash scripts/build-macos-agent-registry.sh SOURCE_ROOT EMPTY_OUTPUT`

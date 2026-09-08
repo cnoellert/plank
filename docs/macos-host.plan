@@ -13,6 +13,19 @@ See macos-host-investigation.md for measured results and remaining gates.
 
 ## September 7 direction change — Host first
 
+**Execution correction, September 7:** the operator rejected further isolated
+login/logout test loops. The next deliverable is a usable ordinary Ubuntu Client
+connection to the actual Host, not another component milestone. The runnable
+machine/graphical executable and combined HTTPS/A/V/input runtime now exist.
+Actual launchd startup, TLS discovery/denial, shutdown and process replacement
+pass on the same desktop, without OS login/logout. The runtime's authenticated
+QUIC launch, bitrate and disconnect pass with synthetic media. Next approve
+the real application's native permissions, qualify live capture under this
+assembly, and wire the ordinary Client to the complete audio/input manifest.
+Login-screen access, headless display ownership, stable trust across roles and
+login/logout continuity remain required before acceptance; do not misrepresent
+the first fixed-desktop connection as completing those gates.
+
 The operator explicitly rejected spending more time adapting the Client to a
 temporary, video-only Mac Host. This section supersedes the preview-first
 execution/resume instructions below. Pause the new Client launch workflow and
