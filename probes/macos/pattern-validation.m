@@ -139,7 +139,8 @@ NSWindow *PLANKCreatePatternWindow(CGDirectDisplayID display, BOOL mixedCadence)
 
 NSArray<NSNumber *> *PLANKReadPatternSamples(CVPixelBufferRef pixel) {
     OSType format = CVPixelBufferGetPixelFormatType(pixel);
-    BOOL tenBit = format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
+    BOOL fullChroma = format == kCVPixelFormatType_444YpCbCr10BiPlanarFullRange;
+    BOOL tenBit = fullChroma || format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
                   format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
     if ((!tenBit && format != kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) ||
         CVPixelBufferGetPlaneCount(pixel) != 2 || CVPixelBufferGetWidth(pixel) < 640 ||
@@ -153,10 +154,11 @@ NSArray<NSNumber *> *PLANKReadPatternSamples(CVPixelBufferRef pixel) {
     for (unsigned int i = 0; i < 40 && luma && chroma; i++) {
         size_t x = (size_t)((i < 8 ? (i + 0.5) / 8 : (i - 8 + 0.5) / 32) * width);
         size_t y = (size_t)((i < 8 ? 0.25 : 0.8125) * height);
-        size_t cx = (x / 2) * 2;
+        size_t cx = fullChroma ? x * 2 : (x / 2) * 2;
+        size_t cy = fullChroma ? y : y / 2;
         unsigned int yy = tenBit ? ((const uint16_t *)(luma + y * yStride))[x] >> 6 : luma[y * yStride + x];
-        unsigned int cb = tenBit ? ((const uint16_t *)(chroma + (y / 2) * cStride))[cx] >> 6 : chroma[(y / 2) * cStride + cx];
-        unsigned int cr = tenBit ? ((const uint16_t *)(chroma + (y / 2) * cStride))[cx + 1] >> 6 : chroma[(y / 2) * cStride + cx + 1];
+        unsigned int cb = tenBit ? ((const uint16_t *)(chroma + cy * cStride))[cx] >> 6 : chroma[cy * cStride + cx];
+        unsigned int cr = tenBit ? ((const uint16_t *)(chroma + cy * cStride))[cx + 1] >> 6 : chroma[cy * cStride + cx + 1];
         [values addObjectsFromArray:@[@(yy), @(cb), @(cr)]];
     }
     CVPixelBufferUnlockBaseAddress(pixel, kCVPixelBufferLock_ReadOnly);
@@ -223,7 +225,8 @@ NSArray<NSNumber *> *PLANKPatternMap601To709Range(NSArray<NSNumber *> *samples, 
 }
 - (void)decode:(CMSampleBufferRef)sample reference:(NSArray<NSNumber *> *)reference
     pixelFormat:(OSType)format queue:(dispatch_queue_t)queue completion:(void (^)(void))completion {
-    BOOL fullRange = format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
+    BOOL fullRange = format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange ||
+                     format == kCVPixelFormatType_444YpCbCr10BiPlanarFullRange;
     BOOL tenBit = fullRange || format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
     // Chart-only diagnostic: a private keyframe artifact for independent FFmpeg
     // inspection. Never enabled by ordinary live capture/encode modes.

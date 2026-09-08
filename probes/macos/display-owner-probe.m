@@ -50,7 +50,7 @@ int PLANKRunDisplayOwner(unsigned int width, unsigned int height, BOOL handoff) 
     struct stat input, output;
     if (fstat(STDIN_FILENO, &input) || fstat(STDOUT_FILENO, &output) ||
         !S_ISFIFO(input.st_mode) || !S_ISFIFO(output.st_mode)) return 2;
-    if (!((width == 1920 && height == 1080) || (width == 3840 && height == 2160))) return 2;
+    if (!((width == 1920 && height == 1080) || ((width == 3840 || width == 5120) && height == 2160))) return 2;
     signal(SIGPIPE, SIG_IGN);
     PLANKVirtualDisplay *display = createProbeDisplay(width, height);
     if (!display) return 3;
@@ -91,7 +91,7 @@ int PLANKRunDisplayOwner(unsigned int width, unsigned int height, BOOL handoff) 
     return self.forcedCrash;
 }
 - (BOOL)startWidth:(unsigned int)width height:(unsigned int)height {
-    if (self.task || !((width == 1920 && height == 1080) || (width == 3840 && height == 2160))) return NO;
+    if (self.task || !((width == 1920 && height == 1080) || ((width == 3840 || width == 5120) && height == 2160))) return NO;
     self.control = [NSPipe pipe];
     self.reportPipe = [NSPipe pipe];
     self.task = [[NSTask alloc] init];

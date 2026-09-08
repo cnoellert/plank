@@ -26,6 +26,7 @@ static BOOL timingEncodingSpeed = NO;
 static BOOL chartMixedCadence = NO;
 static BOOL qualifyFullRange = NO;
 static BOOL qualifyFullRange444 = NO;
+static BOOL qualifyMain44410 = NO;
 
 // Fixed one-second records, emitted only after capture stops. Updates stay on
 // the existing serial queue; no tracing thread, frame log or pixel readback.
@@ -94,8 +95,9 @@ typedef struct {
         (__bridge NSString *)kVTCompressionPropertyKey_ExpectedFrameRate: @60,
         (__bridge NSString *)kVTCompressionPropertyKey_MaxKeyFrameInterval: @120,
         (__bridge NSString *)kVTCompressionPropertyKey_AverageBitRate: @20000000,
-        (__bridge NSString *)kVTCompressionPropertyKey_ProfileLevel: (__bridge NSString *)(self.hevc ?
-            kVTProfileLevel_HEVC_Main10_AutoLevel : kVTProfileLevel_H264_High_AutoLevel),
+        (__bridge NSString *)kVTCompressionPropertyKey_ProfileLevel: (__bridge NSString *)(qualifyMain44410 ?
+            CFSTR("HEVC_Main44410_AutoLevel") : (self.hevc ?
+            kVTProfileLevel_HEVC_Main10_AutoLevel : kVTProfileLevel_H264_High_AutoLevel)),
         (__bridge NSString *)kVTCompressionPropertyKey_ColorPrimaries: (__bridge NSString *)kCVImageBufferColorPrimaries_ITU_R_709_2,
         (__bridge NSString *)kVTCompressionPropertyKey_TransferFunction: (__bridge NSString *)kCVImageBufferTransferFunction_sRGB,
         (__bridge NSString *)kVTCompressionPropertyKey_YCbCrMatrix: (__bridge NSString *)kCVImageBufferYCbCrMatrix_ITU_R_709_2
@@ -110,7 +112,7 @@ typedef struct {
     BOOL accelerated = hardware && CFEqual(hardware, kCFBooleanTrue);
     if (hardware) CFRelease(hardware);
     printf("encoder_codec=%s requested_profile=%s hardware=%d status=%d\n",
-        self.hevc ? "HEVC" : "H264", self.hevc ? "Main10" : "High", accelerated, status);
+        self.hevc ? "HEVC" : "H264", qualifyMain44410 ? "Main44410" : (self.hevc ? "Main10" : "High"), accelerated, status);
     return status == 0 && accelerated;
 }
 
@@ -161,7 +163,7 @@ typedef struct {
             SCStreamConfiguration *configuration = [[SCStreamConfiguration alloc] init];
             configuration.width = self.width;
             configuration.height = self.height;
-            configuration.minimumFrameInterval = CMTimeMake(1, 60);
+            configuration.minimumFrameInterval = qualifyMain44410 ? kCMTimeZero : CMTimeMake(1, 60);
             configuration.queueDepth = 3;
             configuration.pixelFormat = self.pixelFormat;
             configuration.colorSpaceName = kCGColorSpaceSRGB;
@@ -254,6 +256,10 @@ typedef struct {
     BOOL verifyChart = self.pattern && self.submitted == 30;
     NSArray<NSNumber *> *reference = verifyChart ? PLANKReadPatternSamples(pixel) : nil;
     if (verifyChart) {
+        if (qualifyMain44410) {
+            // Measure both hypotheses before accepting the source contract.
+            (void)PLANKPatternReferenceRangeError(reference, YES, NO, YES);
+        }
         self.sourceColorPassed = PLANKPatternReferenceRangeError(reference, self.hevc, self.hevc, qualifyFullRange) <= 4;
         if (self.hevc) reference = PLANKPatternMap601To709Range(reference, YES, qualifyFullRange);
     }
@@ -516,7 +522,7 @@ static int runMediaGuarded(BOOL hevc, BOOL pattern, unsigned int ownedWidth, BOO
     if (ownedWidth) {
         owner = [[PLANKDisplayOwnerProbe alloc] init];
         owner.handoffQualification = handoff;
-        if (![owner startWidth:ownedWidth height:ownedWidth == 3840 ? 2160 : 1080]) return 3;
+        if (![owner startWidth:ownedWidth height:ownedWidth >= 3840 ? 2160 : 1080]) return 3;
         target = owner.displayID;
     }
     int result;
@@ -590,6 +596,17 @@ int PLANKRunFullRangeQualification(BOOL capture444, BOOL pattern) {
     qualifyFullRange = YES;
     qualifyFullRange444 = capture444;
     return runMedia(YES, pattern, 0, NO);
+}
+
+int PLANKRunMain44410Qualification(unsigned int width) {
+    PLANKGraphicalSession session = PLANKReadGraphicalSession();
+    if (session.phase != PLANKSessionDesktop || (width != 3840 && width != 5120)) return 2;
+    qualifyMain44410 = YES;
+    qualifyFullRange = YES;
+    qualifyFullRange444 = YES;
+    timingEncodingSpeed = YES;
+    printf("main44410_qualification=1 requested_width=%u full_range=1 native_cadence=1\n", width);
+    return runMediaGuarded(YES, YES, width, NO, session, NO, NO);
 }
 
 int PLANKRunSpeedChartQualification(void) {

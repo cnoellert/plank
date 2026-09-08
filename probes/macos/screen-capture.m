@@ -13,6 +13,7 @@ int PLANKRunInputProbe(void);
 #import "display-owner-probe.h"
 int PLANKRunCaptureEncodeProbe(BOOL hevc, BOOL pattern, BOOL owned4K);
 int PLANKRunFullRangeQualification(BOOL capture444, BOOL pattern);
+int PLANKRunMain44410Qualification(unsigned int width);
 int PLANKRunMediaOwnerQualification(BOOL crashOwner);
 int PLANKRunSessionBoundaryQualification(BOOL injectBoundary, BOOL handoff);
 int PLANKRunSessionTimingQualification(const char *mode);
@@ -252,6 +253,7 @@ int main(int argc, const char *argv[]) {
         if (argc == 2 && strcmp(argv[1], "--encode-owned-replace") == 0) return PLANKRunMediaOwnerQualification(NO);
         if (argc == 2 && strcmp(argv[1], "--encode-owned-crash") == 0) return PLANKRunMediaOwnerQualification(YES);
         if (argc == 4 && strcmp(argv[1], "--display-owner") == 0) {
+            if (strcmp(argv[2], "5120") == 0 && strcmp(argv[3], "2160") == 0) return PLANKRunDisplayOwner(5120, 2160, NO);
             if (strcmp(argv[2], "3840") == 0 && strcmp(argv[3], "2160") == 0) return PLANKRunDisplayOwner(3840, 2160, NO);
             if (strcmp(argv[2], "1920") == 0 && strcmp(argv[3], "1080") == 0) return PLANKRunDisplayOwner(1920, 1080, NO);
             return 2;
@@ -261,6 +263,8 @@ int main(int argc, const char *argv[]) {
         if (argc == 2 && strcmp(argv[1], "--encode-h264") == 0) return PLANKRunCaptureEncodeProbe(NO, NO, NO);
         if (argc == 2 && strcmp(argv[1], "--encode-hevc") == 0) return PLANKRunCaptureEncodeProbe(YES, NO, NO);
         if (argc == 2 && strcmp(argv[1], "--encode-hevc-full-range") == 0) return PLANKRunFullRangeQualification(NO, NO);
+        if (argc == 2 && strcmp(argv[1], "--pattern-hevc444-4k") == 0) return PLANKRunMain44410Qualification(3840);
+        if (argc == 2 && strcmp(argv[1], "--pattern-hevc444-5k") == 0) return PLANKRunMain44410Qualification(5120);
         if (argc == 2 && strcmp(argv[1], "--encode-hevc-full-range-444") == 0) return PLANKRunFullRangeQualification(YES, NO);
         if (argc == 2 && strcmp(argv[1], "--pattern-hevc-full-range") == 0) return PLANKRunFullRangeQualification(NO, YES);
         if (argc == 2 && strcmp(argv[1], "--pattern-h264") == 0) return PLANKRunCaptureEncodeProbe(NO, YES, NO);

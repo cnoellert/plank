@@ -51,6 +51,14 @@ Later captures and input probes need separate explicit operating procedures.
 
 ## Build all probes
 
+HEVC 4:4:4 branch qualification adds `--pattern-hevc444-4k` and
+`--pattern-hevc444-5k` to this multi-mode build. These are desktop-only owned
+chart tests at 3840x2160 and 5120x2160, not product encoder defaults. See
+`docs/macos-hevc-444-investigation.md` for pending gates. The matching pixel
+sampling unit is `tests/video/macos-pattern-sampling.m`, linked with
+`pattern-validation.m`, AppKit, QuartzCore, VideoToolbox, CoreMedia/CoreVideo
+and the probe include directory. It requires no live capture or OS input.
+
 On the authorized development Mac, from the copied source directory or checkout:
 
 ```sh

@@ -11,6 +11,7 @@ case $probe_mode in
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) probe_deadline=210 ;;
 esac
 case $probe_mode in
+    --pattern-hevc444-4k|--pattern-hevc444-5k) ;;
     --encode-hevc-full-range|--encode-hevc-full-range-444|--pattern-hevc-full-range) ;;
     --cursor|--login-pointer|--cadence-60|--cadence-native|--cadence-pattern-60|--cadence-pattern-native) ;;
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) ;;
