@@ -737,14 +737,16 @@ echo "client_legacy_enet_absence_gate=pass"
 # KyProto loss sample. Do not restore a dormant GameStream FEC queue merely to
 # produce this statistic.
 for required_loss_ui_token in \
-  'm_CurrentVideoPacketLossPercent' \
-  'currentVideoPacketLossPercent' \
+  'm_CurrentVideoFecLoss' \
+  'currentVideoFecLoss' \
   'VideoPacketLossInterval' \
   'VideoPacketLossPeakWindow' \
   'kWindowMs = 10000' \
   'inline constexpr int VideoPacketLossDisplayDecimalPlaces = 2;' \
   'video_fec_source_symbols' \
   'video_fec_source_symbols_missing' \
+  'video_fec_source_symbols_unrecovered' \
+  'videoFecLoss.after' \
   'Frame rate (network/decode/render): %.2f/%.2f/%.2f FPS' \
   'Incoming video packet loss (before/after FEC): %s/%s' \
   'Client frame queue drops (%%/render/overflow): %.2f%%/%u/%u' \
@@ -794,6 +796,11 @@ for retired_stats_token in \
     exit 1
   fi
 done
+if rg -Fq '(float)stats.networkDroppedFrames / stats.totalFrames * 100' \
+    "$source_dir/app/streaming/video/ffmpeg.cpp"; then
+  echo "after-FEC packet loss must not be derived from frame gaps" >&2
+  exit 1
+fi
 echo "client_video_packet_loss_indicator_gate=pass"
 
 # PLANK presents immediately and keeps the optional upstream software

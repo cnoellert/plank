@@ -986,6 +986,12 @@ mod tests {
         assert_eq!(received_frames, 240);
         assert!(forwarded_server_packets.load(Ordering::Relaxed) > 20_000);
         assert!(dropped_server_packets.load(Ordering::Relaxed) > 500);
+        let fec = client_connection.protocol_stats();
+        let source = fec.video_fec_source_symbols.expect("missing FEC denominator");
+        let missing = fec.video_fec_source_symbols_missing.expect("missing pre-FEC counter");
+        assert!(source > 0 && missing > 0 && missing <= source);
+        assert_eq!(fec.video_fec_source_symbols_unrecovered, Some(0));
+        eprintln!("fec_loss_matrix_frames=240 source={source} missing={missing} unrecovered=0");
 
         server_connection.close();
         client_connection.close();
