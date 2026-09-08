@@ -4,6 +4,14 @@ Date: 2026-09-06
 
 ## September 8 active continuation
 
+Latest: Client .60 routes native endpoint receive closure into reconnect without
+waiting for input. Host .61 recognizes the positively verified initial boot
+LoginWindow audit/session state, in addition to the post-logout representation.
+Host .61 is installed at the boot login screen; real authenticated 1080p capture,
+decode/audio reception, bitrate updates and disconnect passed. Client .60 DEB is
+ready. Operator login/logout, saved desktop-resolution restoration and a fresh
+.61 reboot remain the next acceptance gates. See HANDOFF for exact provenance.
+
 The operator accepted .57's native SCK cadence (zero minimum interval, three
 surfaces), with the existing source-first FEC/unpaced Mac transport. Preserve
 that playback baseline. .58 corrects before/after-FEC telemetry in the ordinary
