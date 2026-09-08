@@ -26,6 +26,10 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "sender-timing")]
+#[path = "sender_trace.rs"]
+mod sender_trace;
+
 const VIDEO_SEND_CAPACITY: usize = 4;
 const VIDEO_RECEIVE_CAPACITY: usize = 16;
 const AUDIO_SEND_CAPACITY: usize = 16;
@@ -46,6 +50,8 @@ const AUDIO_CODEC_OPUS: u32 = u32::from_be_bytes(*b"OPUS");
 
 #[derive(Clone)]
 struct NativeVideoFrame {
+    #[cfg(feature = "sender-timing")]
+    enqueued_at: Instant,
     codec: u32,
     flags: u32,
     frame_number: u64,
@@ -111,6 +117,8 @@ struct NativeStatus {
 }
 
 struct NativeShared {
+    #[cfg(feature = "sender-timing")]
+    sender_trace: sender_trace::Trace,
     status: Mutex<NativeStatus>,
     state_changed: Condvar,
     stop: AtomicBool,
@@ -142,6 +150,8 @@ impl NativeShared {
         initial_video_bitrate_bps: u64,
     ) -> Self {
         Self {
+            #[cfg(feature = "sender-timing")]
+            sender_trace: sender_trace::Trace::default(),
             status: Mutex::new(NativeStatus {
                 state: EndpointState::Idle,
                 error: String::new(),
@@ -278,56 +288,85 @@ async fn send_video(
     let mut active_codec = None;
     loop {
         let notified = shared.video_send_notify.notified();
-        let frame = shared.queues.lock().unwrap().video_send.pop_front();
+        let (frame, _queue_depth) = {
+            let mut queues = shared.queues.lock().unwrap();
+            let frame = queues.video_send.pop_front();
+            (frame, queues.video_send.len())
+        };
         if let Some(frame) = frame {
-            if active_codec != Some(frame.codec) {
-                protocol
-                    .send
-                    .send(AVPacket::Codec(CodecPacket {
-                        header: CodecPacketHeader {
-                            codec: frame.codec,
-                            rotation: 0,
-                            frame_size: 0,
-                        },
-                    }))
-                    .await?;
-                active_codec = Some(frame.codec);
-            }
-            let key = frame.flags & VIDEO_FLAG_KEY != 0;
-            if key {
+            #[cfg(feature = "sender-timing")]
+            let timing = shared.sender_trace.begin(frame.enqueued_at);
+            #[cfg(feature = "sender-timing")]
+            let trace_frame = sender_trace::Frame {
+                number: frame.frame_number,
+                key: frame.flags & VIDEO_FLAG_KEY != 0,
+                bytes: frame.payload.len(),
+                depth: _queue_depth,
+                wire_bps: shared.rate_policy.active_wire_bps(),
+                drops: shared.stats.video_send_drops.load(Ordering::Relaxed),
+            };
+            let payload_size = frame.payload.len() as u64;
+            let submission = async {
+                if active_codec != Some(frame.codec) {
+                    protocol
+                        .send
+                        .send(AVPacket::Codec(CodecPacket {
+                            header: CodecPacketHeader {
+                                codec: frame.codec,
+                                rotation: 0,
+                                frame_size: 0,
+                            },
+                        }))
+                        .await?;
+                    active_codec = Some(frame.codec);
+                }
+                let key = frame.flags & VIDEO_FLAG_KEY != 0;
+                if key {
+                    protocol
+                        .send
+                        .send(AVPacket::Media(MediaPacket {
+                            header: MediaPacketHeader {
+                                is_config: true,
+                                is_key: true,
+                                pts: frame.pts,
+                                size: 0,
+                            },
+                            payload: Bytes::new(),
+                        }))
+                        .await?;
+                }
+                let mut native_payload =
+                    BytesMut::with_capacity(VIDEO_METADATA_SIZE + frame.payload.len());
+                native_payload.put_u64(frame.frame_number);
+                native_payload.put_u16(frame.host_processing_latency);
+                native_payload.extend_from_slice(&[0; VIDEO_METADATA_SIZE - 10]);
+                native_payload.extend_from_slice(&frame.payload);
+                let native_payload = native_payload.freeze();
                 protocol
                     .send
                     .send(AVPacket::Media(MediaPacket {
                         header: MediaPacketHeader {
-                            is_config: true,
-                            is_key: true,
+                            is_config: false,
+                            is_key: key,
                             pts: frame.pts,
-                            size: 0,
+                            size: native_payload.len() as u32,
                         },
-                        payload: Bytes::new(),
+                        payload: native_payload,
                     }))
                     .await?;
-            }
-            let payload_size = frame.payload.len() as u64;
-            let mut native_payload =
-                BytesMut::with_capacity(VIDEO_METADATA_SIZE + frame.payload.len());
-            native_payload.put_u64(frame.frame_number);
-            native_payload.put_u16(frame.host_processing_latency);
-            native_payload.extend_from_slice(&[0; VIDEO_METADATA_SIZE - 10]);
-            native_payload.extend_from_slice(&frame.payload);
-            let native_payload = native_payload.freeze();
-            protocol
-                .send
-                .send(AVPacket::Media(MediaPacket {
-                    header: MediaPacketHeader {
-                        is_config: false,
-                        is_key: key,
-                        pts: frame.pts,
-                        size: native_payload.len() as u32,
-                    },
-                    payload: native_payload,
-                }))
-                .await?;
+                Ok::<(), anyhow::Error>(())
+            };
+            #[cfg(feature = "sender-timing")]
+            let result = if let Some(start) = timing {
+                let (result, measurements) = kynet::sender_timing::measure(submission).await;
+                shared.sender_trace.finish(start, trace_frame, result.is_err(), measurements);
+                result
+            } else {
+                submission.await
+            };
+            #[cfg(not(feature = "sender-timing"))]
+            let result = submission.await;
+            result?;
             shared
                 .stats
                 .video_frames_sent
@@ -461,6 +500,8 @@ async fn receive_video(
                 push_video_receive(
                     &shared,
                     NativeVideoFrame {
+                        #[cfg(feature = "sender-timing")]
+                        enqueued_at: Instant::now(),
                         codec,
                         flags: if packet.header.is_key {
                             VIDEO_FLAG_KEY
@@ -1371,6 +1412,8 @@ pub unsafe extern "C" fn plank_transport_native_video_send(
             &mut endpoint.shared.queues.lock().unwrap().video_send,
             VIDEO_SEND_CAPACITY,
             NativeVideoFrame {
+                #[cfg(feature = "sender-timing")]
+                enqueued_at: Instant::now(),
                 codec: info.codec,
                 flags: info.flags,
                 frame_number: info.frame_number,
@@ -1814,6 +1857,8 @@ fn stop_endpoint(endpoint: &PlankTransportNativeEndpoint) -> i32 {
     if endpoint.shared.state() != EndpointState::Failed {
         endpoint.shared.set_state(EndpointState::Stopped);
     }
+    #[cfg(feature = "sender-timing")]
+    endpoint.shared.sender_trace.flush();
     PLANK_TRANSPORT_OK
 }
 

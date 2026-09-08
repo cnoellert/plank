@@ -33,10 +33,7 @@
 
 + (VTCompressionSessionRef)createEncoder:(uint32_t)bitrate width:(size_t)width height:(size_t)height {
     VTCompressionSessionRef encoder = NULL;
-    NSDictionary *spec = @{
-        (__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES,
-        (__bridge NSString *)kVTVideoEncoderSpecification_EnableLowLatencyRateControl: @YES
-    };
+    NSDictionary *spec = @{(__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES};
     NSDictionary *surface = @{
         (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr10BiPlanarFullRange),
         (__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
@@ -46,10 +43,10 @@
     NSDictionary *properties = @{
         (__bridge NSString *)kVTCompressionPropertyKey_RealTime: @YES,
         (__bridge NSString *)kVTCompressionPropertyKey_AllowFrameReordering: @NO,
-        // Low-latency mode supplies an infinite GOP; recovery still explicitly
-        // requests genuine keyframes. The ordinary speed-priority hint is not
-        // supported in this mode. Preserve actual SCK timestamps.
+        // Qualified mixed idle/motion behavior: preserve actual SCK timestamps.
+        (__bridge NSString *)kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality: @YES,
         (__bridge NSString *)kVTCompressionPropertyKey_ExpectedFrameRate: @60,
+        (__bridge NSString *)kVTCompressionPropertyKey_MaxKeyFrameInterval: @120,
         (__bridge NSString *)kVTCompressionPropertyKey_AverageBitRate: @((uint64_t)bitrate * 1000),
         // Two times target over one second, in bytes; not an added frame queue.
         (__bridge NSString *)kVTCompressionPropertyKey_DataRateLimits: @[@((uint64_t)bitrate * 250), @1],
@@ -62,14 +59,9 @@
         !VTCompressionSessionPrepareToEncodeFrames(encoder);
     CFTypeRef hardware = NULL;
     OSStatus result = VTSessionCopyProperty(encoder, kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, NULL, &hardware);
-    // Hardware is required at creation, not merely preferred. Apple's RTVC
-    // encoder lacks this optional readback; an explicit false or other error
-    // remains a failure. Do not recreate a software/ordinary-mode fallback.
-    valid = valid && ((!result && hardware && CFEqual(hardware, kCFBooleanTrue)) ||
-                      result == kVTPropertyNotSupportedErr);
+    valid = valid && !result && hardware && CFEqual(hardware, kCFBooleanTrue);
     if (hardware) CFRelease(hardware);
     if (!valid) { VTCompressionSessionInvalidate(encoder); CFRelease(encoder); return NULL; }
-    NSLog(@"PLANK HEVC Main10 encoder: realtime=1 low-latency=1 hardware-required=1 full-range=1 target-kbps=%u", bitrate);
     return encoder;
 }
 - (void)setBitrate:(uint32_t)bitrate completion:(void (^)(uint32_t))completion {

@@ -12,6 +12,7 @@ crate-type = ["staticlib", "rlib"]
 default = []
 quinn-bbr = ["quinn-proto/plank-bbr-default"]
 quinn-telemetry = ["quinn-proto/plank-telemetry"]
+sender-timing = ["kynet/sender-timing", "kyproto/sender-timing"]
 
 [dependencies]
 anyhow = "1.0"

@@ -35,8 +35,14 @@ git rev-parse HEAD
 expected_kymux=$(git rev-parse HEAD:third_party/kyber-kymux)
 test "$(git -C third_party/kyber-kymux rev-parse HEAD)" = "$expected_kymux"
 printf 'Kymux: %s\n' "$expected_kymux"
-cargo +1.89.0 build --locked --release --manifest-path protocol/plank-transport/Cargo.toml
-cargo +1.89.0 test --locked --release --manifest-path protocol/plank-transport/Cargo.toml
+features=()
+if [[ ${PLANK_MACOS_SENDER_TIMING:-0} == 1 ]]; then
+    features=(--features sender-timing)
+elif [[ ${PLANK_MACOS_SENDER_TIMING:-0} != 0 ]]; then
+    echo 'PLANK_MACOS_SENDER_TIMING must be 0 or 1' >&2; exit 2
+fi
+cargo +1.89.0 build --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
+cargo +1.89.0 test --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
 shasum -a 256 "$transport_build/release/libplank_transport.a"
 
 # Exercise the same real C ABI as Linux, with Apple platform link libraries.

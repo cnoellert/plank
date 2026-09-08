@@ -1,8 +1,9 @@
 #!/bin/bash
 # Standalone synthetic hardware-encode/native-QUIC qualification, not a Host.
 set -euo pipefail
-if [[ $# != 3 || $1 != /* || $2 != /* || $3 != /* ]]; then
-    echo "Usage: $0 /absolute/source /absolute/empty-output /absolute/libplank_transport.a" >&2
+if [[ $# -lt 3 || $# -gt 4 || $1 != /* || $2 != /* || $3 != /* ||
+      ( $# == 4 && $4 != --low-latency ) ]]; then
+    echo "Usage: $0 /absolute/source /absolute/empty-output /absolute/libplank_transport.a [--low-latency]" >&2
     exit 2
 fi
 source_root=$1
@@ -69,9 +70,11 @@ certificate_hash=${certificate_hash%% *}
     "$certificate_hash" "$video_build/synthetic-first-frame-full-range.hevc" --full-range
 "$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
     "$certificate_hash" "$video_build/synthetic-first-frame-full-range-4k.hevc" --full-range --4k
+if [[ ${4:-} == --low-latency ]]; then
 "$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
     "$certificate_hash" "$video_build/synthetic-low-latency-full-range-4k.hevc" --full-range --4k --low-latency
 "$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
     "$certificate_hash" "$video_build/synthetic-low-latency-full-range-wide.hevc" --full-range --wide --low-latency
+fi
 shasum -a 256 "$video_build/native-video" "$video_build/preview-session" "$video_build/synthetic-first-frame.hevc" \
     "$video_build/synthetic-first-frame-4k.hevc"
