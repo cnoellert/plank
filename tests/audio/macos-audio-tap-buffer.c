@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "audio-tap-buffer.h"
+#include "audio-tap-policy.h"
 #include <assert.h>
 #include <pthread.h>
 #include <sched.h>
@@ -16,6 +17,14 @@ static void *produce(void *context) {
     return NULL;
 }
 int main(void) {
+    assert(PLANKTapProcessOwned(502, 100, 101, 502, 502));
+    assert(!PLANKTapProcessOwned(502, 100, 100, 502, 502));
+    assert(!PLANKTapProcessOwned(502, 100, 0, 502, 502));
+    assert(!PLANKTapProcessOwned(502, 100, -1, 502, 502));
+    assert(!PLANKTapProcessOwned(0, 100, 101, 0, 0));
+    assert(!PLANKTapProcessOwned(502, 100, 101, 0, 502));
+    assert(!PLANKTapProcessOwned(502, 100, 101, 502, 0));
+    assert(!PLANKTapProcessOwned(502, 100, 101, 501, 501));
     PLANKTapBuffer *buffer = calloc(1, sizeof(*buffer)); assert(buffer);
     PLANKTapBufferInit(buffer);
     assert(atomic_is_lock_free(&buffer->readIndex));
@@ -48,5 +57,5 @@ int main(void) {
     }
     assert(!pthread_join(producer, NULL)); assert(!atomic_load(&buffer->failed));
     assert(!PLANKTapPeek(buffer)); free(buffer);
-    puts("audio_tap_buffer_pass blocks=100000 wrap=1 bounds=1 stop=1");
+    puts("audio_tap_buffer_pass blocks=100000 wrap=1 bounds=1 stop=1 owner_policy=1");
 }

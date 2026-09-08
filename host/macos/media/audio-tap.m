@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "audio-tap.h"
 #import "audio-tap-buffer.h"
+#import "audio-tap-policy.h"
 #import <CoreAudio/CoreAudio.h>
 #import <CoreAudio/AudioHardwareTapping.h>
 #import <CoreAudio/CATapDescription.h>
@@ -45,9 +46,10 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     BOOL _started, _stopped;
     AudioObjectID _tap, _device;
     AudioDeviceIOProcID _io;
-    BOOL _running, _listening;
+    BOOL _running, _listening, _formatListening;
     CATapDescription *_description;
-    AudioObjectPropertyListenerBlock _processesChanged;
+    AudioObjectPropertyListenerBlock _processesChanged, _formatChanged;
+    AudioStreamBasicDescription _inputFormat;
     CMAudioFormatDescriptionRef _format;
 }
 - (instancetype)init { return nil; }
@@ -84,7 +86,7 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
             pid <= 0 || pid == getpid()) continue;
         struct proc_bsdinfo info = {0};
         if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) != sizeof(info) ||
-            info.pbi_uid != getuid() || info.pbi_ruid != getuid()) continue;
+            !PLANKTapProcessOwned(getuid(), getpid(), pid, info.pbi_uid, info.pbi_ruid)) continue;
         // Re-read the HAL object's PID after the kernel ownership check.
         pid_t confirmed = 0; size = sizeof(confirmed);
         if (!AudioObjectGetPropertyData(objects[i], &pidProperty, 0, NULL, &size, &confirmed) && confirmed == pid)
@@ -133,6 +135,7 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
         !(format.mFormatFlags & kAudioFormatFlagIsFloat) || (format.mFormatFlags & kAudioFormatFlagIsBigEndian)) return NO;
     _input->planar = (format.mFormatFlags & kAudioFormatFlagIsNonInterleaved) != 0;
     if (format.mBytesPerFrame != (_input->planar ? 4u : 8u)) return NO;
+    _inputFormat = format;
     format.mFormatFlags &= ~kAudioFormatFlagIsNonInterleaved;
     format.mBytesPerFrame = format.mBytesPerPacket = 8;
     if (CMAudioFormatDescriptionCreate(NULL, &format, 0, NULL, 0, NULL, NULL, &_format)) return NO;
@@ -149,6 +152,20 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     AudioObjectPropertyAddress processProperty = property(kAudioHardwarePropertyProcessObjectList);
     if (AudioObjectAddPropertyListenerBlock(kAudioObjectSystemObject, &processProperty, _control, _processesChanged)) return NO;
     _listening = YES;
+    _formatChanged = ^(UInt32 count, const AudioObjectPropertyAddress *addresses) {
+        (void)count; (void)addresses;
+        typeof(self) strongSelf = weakSelf;
+        if (!strongSelf || atomic_load(&strongSelf->_input->buffer.stopped)) return;
+        AudioStreamBasicDescription current = {0}; UInt32 bytes = sizeof(current);
+        AudioObjectPropertyAddress address = {kAudioDevicePropertyStreamFormat, kAudioObjectPropertyScopeInput, kAudioObjectPropertyElementMain};
+        if (AudioObjectGetPropertyData(strongSelf->_device, &address, 0, NULL, &bytes, &current) ||
+            memcmp(&current, &strongSelf->_inputFormat, sizeof(current))) {
+            atomic_store(&strongSelf->_input->buffer.failed, 4);
+            dispatch_source_merge_data(strongSelf->_ready, 1);
+        }
+    };
+    if (AudioObjectAddPropertyListenerBlock(_device, &formatProperty, _control, _formatChanged)) return NO;
+    _formatListening = YES;
     if (![self updateProcesses]) return NO; // close enumeration/listener setup race
     if (atomic_load(&_input->buffer.stopped)) return NO;
     if (AudioDeviceCreateIOProcID(_device, receive, _input, &_io) || AudioDeviceStart(_device, _io)) return NO;
@@ -196,6 +213,10 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
             AudioObjectPropertyAddress address = property(kAudioHardwarePropertyProcessObjectList);
             clean &= AudioObjectRemovePropertyListenerBlock(kAudioObjectSystemObject, &address, self->_control, self->_processesChanged) == noErr;
         }
+        if (self->_formatListening) {
+            AudioObjectPropertyAddress address = {kAudioDevicePropertyStreamFormat, kAudioObjectPropertyScopeInput, kAudioObjectPropertyElementMain};
+            clean &= AudioObjectRemovePropertyListenerBlock(self->_device, &address, self->_control, self->_formatChanged) == noErr;
+        }
         if (self->_running) clean &= AudioDeviceStop(self->_device, self->_io) == noErr;
         if (self->_io) clean &= AudioDeviceDestroyIOProcID(self->_device, self->_io) == noErr;
         if (self->_device) clean &= AudioHardwareDestroyAggregateDevice(self->_device) == noErr;
@@ -203,7 +224,7 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
         // Do not reuse a worker after uncertain HAL teardown: process exit is
         // the final cleanup boundary and the machine service replaces its agent.
         if (!clean) { NSLog(@"PLANK audio tap teardown failed; retiring worker"); _exit(70); }
-        self->_processesChanged = nil; self->_description = nil;
+        self->_processesChanged = nil; self->_formatChanged = nil; self->_description = nil;
         dispatch_async(self->_owner, ^{
             dispatch_source_cancel(self->_ready);
             NSLog(@"PLANK desktop audio tap stopped; local playback released");
