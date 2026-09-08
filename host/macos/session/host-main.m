@@ -117,6 +117,8 @@ static int machine(const char *service) {
 }
 
 static int graphical(const char *service, NSString *role, NSString *directory) {
+    NSApplication *application = NSApplication.sharedApplication;
+    [application setActivationPolicy:NSApplicationActivationPolicyProhibited];
     PLANKMacGraphicalPhase phase = [role isEqual:@"desktop"] ? PLANKMacScopeDesktop :
         [role isEqual:@"sign-in"] ? PLANKMacScopeSignIn : PLANKMacScopeUnavailable;
     PLANKMacGraphicalAuthority *authority = [[PLANKMacGraphicalAuthority alloc] initWithPhase:phase];
@@ -219,7 +221,10 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
     CFRelease(identity);
     if (!agent || !runtime || ![agent start]) return startupFailure("runtime-admission");
     signals(stop);
-    [[NSRunLoop mainRunLoop] run]; return 0;
+    // Quartz display reconfiguration also needs AppKit's event processing.
+    // A bare Foundation run loop services our timers but leaves an observed
+    // virtual display offline. Keep the graphical agent headless, not eventless.
+    [application run]; return 0;
 }
 
 int main(int argc, const char **argv) {
