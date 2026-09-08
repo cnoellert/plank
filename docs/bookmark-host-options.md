@@ -52,9 +52,22 @@ The shared-selector label gate now follows PlankCaptureSourceBox.qml and
 requires both dialogs to use that component. The new QML/topology/persistence
 tests are part of normal Client package preflight.
 
-Next: clean1.0.66-bookmark-host-options Client package on linux-client-builder, inspect
-the complete UI and package gates, retain DEB/checksum in artifacts/packages.
-Manual acceptance: edit a Mac bookmark, choose Match client display(s), verify
+The clean1.0.66-bookmark-host-options Client package is built and retained with
+its checksum in artifacts/packages. Source root f7832bfd50cc0816e92cbe2ae85609818cd2eb03,
+Client a803e0dc6d2e0846d4153d0a1c8dced8267fc39b. All package preflight, compile,
+private runtime, manifest, version, dependency, logging and autostart-absence
+gates pass. Existing FFmpeg deprecation/Quinn dead-code warnings remain.
+Final packaged UI smoke passes real public Mac discovery, Add/Edit round-trip,
+both Apple profile choices, Match/fixed controls and offline/manual selection.
+No QML binding/type errors were recorded. Rendered screenshots were inspected;
+they and build logs are in ignored build/bookmark-host-options-records.
+
+No candidate was installed on a builder or End-User client. Development NUC
+was unreachable (no route). No Host restart, authentication, stream or display
+change was performed by the UI smoke test. Source remains locally committed
+on the feature branches, not pushed/merged pending operator testing.
+
+Next, manual acceptance: edit a Mac bookmark, choose Match client display(s), verify
 native Host resolution and input mapping, reconnect, then verify a Linux
 bookmark and offline creation. Existing1.0.64 Mac Host remains installed.
 
