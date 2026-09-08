@@ -39,7 +39,7 @@ def main():
     assert info["CFBundleIdentifier"] == "la.instinctual.PLANK.Host"
     assert "-macos-host" in info["PLANKVersion"]
     run("codesign", "--verify", "--strict", str(source))
-    signature = run("codesign", "-dv", str(source)).stderr
+    signature = run("codesign", "-d", "--verbose=4", str(source)).stderr
     assert "Authority=Apple Development:" in signature and "TeamIdentifier=" in signature
 
     home = Path(account.pw_dir)

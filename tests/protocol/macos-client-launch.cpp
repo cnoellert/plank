@@ -28,7 +28,12 @@ int main(int argc, char** argv)
                 result.transportToken != QByteArray(32, 'x').toBase64() ||
                 result.configuration.serviceFlags != (PLANK_NATIVE_SERVICE_AUDIO | PLANK_NATIVE_SERVICE_INPUT) ||
                 result.configuration.sessionPort != static_cast<uint32_t>(port) ||
-                result.configuration.negotiatedVideoFormat != VIDEO_FORMAT_H265_MAIN10) return 1;
+                result.configuration.negotiatedVideoFormat != VIDEO_FORMAT_H265_MAIN10) {
+            std::fprintf(stderr, "manifest check failed: services=%u port=%u format=%u\n",
+                         result.configuration.serviceFlags, result.configuration.sessionPort,
+                         result.configuration.negotiatedVideoFormat);
+            return 1;
+        }
         // The same NvHTTP cannot replay its consumed HTTP token.
         try { http.startMacPreview(topology, pin, 50000, 1200); return 1; }
         catch (const GfeHttpResponseException& error) { if (error.getStatusCode() != 400) return 1; }
@@ -36,7 +41,10 @@ int main(int argc, char** argv)
         const int expected = mode == QLatin1String("wrong-pin") || mode == QLatin1String("certificate-swap") ? 401 :
                 mode == QLatin1String("denied") ? 403 :
                 mode == QLatin1String("redirect") ? 307 : 400;
-        if (mode == QLatin1String("success") || error.getStatusCode() != expected) return 1;
+        if (mode == QLatin1String("success") || error.getStatusCode() != expected) {
+            std::fprintf(stderr, "unexpected HTTP status %d (expected %d)\n", error.getStatusCode(), expected);
+            return 1;
+        }
         try { http.getOutputTopology(); return 1; }
         catch (const GfeHttpResponseException& consumed) { if (consumed.getStatusCode() != 400) return 1; }
     } catch (const QtNetworkReplyException&) {

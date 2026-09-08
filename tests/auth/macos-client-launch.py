@@ -114,7 +114,7 @@ def main():
                 if token in result.stdout + result.stderr or "do-not-log-this-response" in result.stdout + result.stderr:
                     raise RuntimeError(f"{mode}: sensitive response reached diagnostics")
                 if result.returncode:
-                    raise RuntimeError(f"{mode}: Client qualification failed ({result.returncode})")
+                    raise RuntimeError(f"{mode}: Client qualification failed ({result.returncode}): {result.stderr}")
                 expected_requests = ["topology"] if mode in ("wrong-pin", "certificate-swap") else ["topology", "launch"]
                 if requests != expected_requests or faults:
                     raise RuntimeError(f"{mode}: incorrect HTTP request sequence")
