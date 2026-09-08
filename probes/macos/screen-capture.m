@@ -12,6 +12,7 @@
 int PLANKRunInputProbe(void);
 #import "display-owner-probe.h"
 int PLANKRunCaptureEncodeProbe(BOOL hevc, BOOL pattern, BOOL owned4K);
+int PLANKRunFullRangeQualification(void);
 int PLANKRunMediaOwnerQualification(BOOL crashOwner);
 int PLANKRunSessionBoundaryQualification(BOOL injectBoundary, BOOL handoff);
 int PLANKRunSessionTimingQualification(const char *mode);
@@ -259,6 +260,7 @@ int main(int argc, const char *argv[]) {
         if (argc == 2 && strcmp(argv[1], "--encode-hevc-owned") == 0) return PLANKRunCaptureEncodeProbe(YES, NO, YES);
         if (argc == 2 && strcmp(argv[1], "--encode-h264") == 0) return PLANKRunCaptureEncodeProbe(NO, NO, NO);
         if (argc == 2 && strcmp(argv[1], "--encode-hevc") == 0) return PLANKRunCaptureEncodeProbe(YES, NO, NO);
+        if (argc == 2 && strcmp(argv[1], "--encode-hevc-full-range") == 0) return PLANKRunFullRangeQualification();
         if (argc == 2 && strcmp(argv[1], "--pattern-h264") == 0) return PLANKRunCaptureEncodeProbe(NO, YES, NO);
         if (argc == 2 && strcmp(argv[1], "--pattern-hevc") == 0) return PLANKRunCaptureEncodeProbe(YES, YES, NO);
         if (argc == 2 && strcmp(argv[1], "--pattern-h264-2160") == 0) return PLANKRunCaptureEncodeProbe(NO, YES, YES);

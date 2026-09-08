@@ -27,9 +27,11 @@ static PlankTransportConfig config(uint32_t mode, NSString *token) {
 }
 
 int main(int argc, const char **argv) {
-    // certificate, private-key path, fingerprint, synthetic output path, optional --4k
-    if (argc != 5 && !(argc == 6 && !strcmp(argv[5], "--4k"))) return 2;
-    const int width = argc == 6 ? 3840 : 1920, height = argc == 6 ? 2160 : 1080;
+    // certificate, private-key path, fingerprint, output, optional --4k/--full-range
+    BOOL fullRange = argc == 6 && !strcmp(argv[5], "--full-range");
+    BOOL fourK = argc == 6 && !strcmp(argv[5], "--4k");
+    if (argc != 5 && !(argc == 6 && (fullRange || fourK))) return 2;
+    const int width = fourK ? 3840 : 1920, height = fourK ? 2160 : 1080;
     alarm(30);
     struct rlimit noCore = {0, 0};
     CHECK(!setrlimit(RLIMIT_CORE, &noCore));
@@ -65,7 +67,9 @@ int main(int argc, const char **argv) {
 
         CVPixelBufferRef pixel = NULL;
         NSDictionary *attributes = @{(__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}};
-        CHECK(CVPixelBufferCreate(NULL, width, height, kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange,
+        OSType pixelFormat = fullRange ? kCVPixelFormatType_420YpCbCr10BiPlanarFullRange :
+                                        kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
+        CHECK(CVPixelBufferCreate(NULL, width, height, pixelFormat,
             (__bridge CFDictionaryRef)attributes, &pixel) == 0);
         CHECK(CVPixelBufferLockBaseAddress(pixel, 0) == 0);
         for (size_t plane = 0; plane < 2; ++plane) {
@@ -75,7 +79,8 @@ int main(int argc, const char **argv) {
             for (size_t y = 0; y < rows; ++y) {
                 memset(base + y * stride, 0, stride);
                 for (size_t x = 0; x < (size_t)width; ++x)
-                    ((uint16_t *)(base + y * stride))[x] = (plane ? 512 : 64 + 876 * x / (width - 1)) << 6;
+                    ((uint16_t *)(base + y * stride))[x] = (plane ? 512 :
+                        (fullRange ? 1023 * x / (width - 1) : 64 + 876 * x / (width - 1))) << 6;
             }
         }
         CHECK(CVPixelBufferUnlockBaseAddress(pixel, 0) == 0);
@@ -84,8 +89,10 @@ int main(int argc, const char **argv) {
         CVBufferSetAttachment(pixel, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
         VTCompressionSessionRef encoder = NULL;
         NSDictionary *spec = @{(__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES};
+        NSDictionary *source = @{(__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(pixelFormat),
+                                (__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}};
         CHECK(VTCompressionSessionCreate(NULL, width, height, kCMVideoCodecType_HEVC,
-            (__bridge CFDictionaryRef)spec, NULL, NULL, NULL, NULL, &encoder) == 0);
+            (__bridge CFDictionaryRef)spec, (__bridge CFDictionaryRef)source, NULL, NULL, NULL, &encoder) == 0);
         NSDictionary *properties = @{
             (__bridge NSString *)kVTCompressionPropertyKey_RealTime: @YES,
             (__bridge NSString *)kVTCompressionPropertyKey_AllowFrameReordering: @NO,
