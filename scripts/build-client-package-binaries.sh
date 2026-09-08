@@ -12,6 +12,12 @@ source_dir=$(realpath -- "$1")
 ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
+frame_flow_qmake=()
+case ${PLANK_CLIENT_FRAME_FLOW_TRACE:-0} in
+  0) ;;
+  1) frame_flow_qmake+=(CONFIG+=plank-frame-flow-trace) ;;
+  *) echo "PLANK_CLIENT_FRAME_FLOW_TRACE must be 0 or 1" >&2; exit 2 ;;
+esac
 
 for command_name in c++ cargo cmp diff find git make mktemp nm patch pkg-config qmake6 readelf realpath rg rustc sha256sum stat tar timeout; do
   command -v "$command_name" >/dev/null || {
@@ -1648,7 +1654,7 @@ export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PAT
 mkdir -p "$build_dir"
 (
   cd "$build_dir"
-  qmake6 "$source_dir" CONFIG+=release CONFIG+=plank-transport \
+  qmake6 "$source_dir" CONFIG+=release CONFIG+=plank-transport "${frame_flow_qmake[@]}" \
     "PLANK_TRANSPORT_DIR=${plank_transport_dir}" \
     "PLANK_VERSION=${package_version}" \
     "QMAKE_CFLAGS+=-ffile-prefix-map=${build_dir}=." \
