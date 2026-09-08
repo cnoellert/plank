@@ -9,7 +9,11 @@
 #include <mach/mach_time.h>
 #include <math.h>
 #include <stdatomic.h>
+#include <signal.h>
 #include <unistd.h>
+
+static volatile sig_atomic_t stopRequested;
+static void requestStop(int signalNumber) { (void)signalNumber; stopRequested = 1; }
 
 enum { TapSlots = 16, TapMaxFrames = 8192 };
 typedef struct {
@@ -95,9 +99,15 @@ static OSStatus capture(AudioObjectID device, const AudioTimeStamp* now,
     return noErr;
 }
 
-int main(void) {
+int main(int argc, const char* argv[]) {
     @autoreleasepool {
+        BOOL hold = argc == 2 && strcmp(argv[1], "--hold") == 0;
+        if (argc != 1 && !hold) { fprintf(stderr, "Usage: audio-tap [--hold]\n"); return 2; }
         if (geteuid() == 0) { fprintf(stderr, "Run as the logged-in desktop user, not root.\n"); return 2; }
+        struct sigaction action = {0};
+        action.sa_handler = requestStop;
+        sigemptyset(&action.sa_mask);
+        if (sigaction(SIGTERM, &action, NULL) || sigaction(SIGINT, &action, NULL)) return 2;
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
         setbuf(stdout, NULL);
@@ -157,7 +167,7 @@ int main(void) {
         description.name = @"PLANK Audio Tap Qualification";
         description.privateTap = YES;
         description.muteBehavior = CATapMutedWhenTapped;
-        printf("tap_probe stage=create mute=when-tapped duration_seconds=10 stored_audio=0\n");
+        printf("tap_probe stage=create mute=when-tapped duration=%s stored_audio=0\n", hold ? "until-stopped" : "10-seconds");
         OSStatus status = AudioHardwareCreateProcessTap(description, &tap);
         if (status) { printf("tap_create_status=%d\n", (int)status); goto cleanup; }
         AudioObjectPropertyAddress property = {kAudioTapPropertyFormat, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
@@ -194,10 +204,12 @@ int main(void) {
         status = AudioDeviceStart(aggregate, proc);
         if (status) { printf("io_start_status=%d\n", (int)status); goto cleanup; }
         started = YES;
+        printf("tap_probe stage=active pid=%d stop_with=SIGTERM\n", getpid());
         {
             CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + 10;
-            while (CFAbsoluteTimeGetCurrent() < deadline)
-                CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false);
+            while (!stopRequested && (hold || CFAbsoluteTimeGetCurrent() < deadline)) {
+                @autoreleasepool { CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false); }
+            }
         }
         result = 0;
 cleanup:
