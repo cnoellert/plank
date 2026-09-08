@@ -1,5 +1,45 @@
 # macOS sender-drain measurement
 
+## Latest: .53 source-first FEC candidate
+
+The user selected reducing keyframe processing/submission delay before Client
+render-policy changes. In the .51/.52 run, keyframes averaged 1,062,620 bytes
+and 26.208 ms submission, versus 101,328 bytes and 3.289 ms for deltas. That
+ratio alone is not abnormal per-byte work. The avoidable dependency is preparing
+all RaptorQ repairs before submitting any systematic source packet.
+
+The .53 macOS-only experiment sends originals first, then computes/sends the
+same library repair packets. OTI, IDs, padding, repair count, wire layout, MTU,
+queue limits and .51 rate/window policy remain unchanged. Default builds/Linux
+retain their prior path. No Client, capture or encoder change.
+
+Tests compare originals byte-for-byte with RaptorQ 1.8.1 across single/multiple
+blocks, sub-block partitions, alignment and padding. Reconstruction passes at
+0/5/10/20% deliberately omitted source packets with unchanged repairs. This
+is not 20% loss over both source and repair traffic or a WAN loss matrix.
+
+On the Mac, synthetic 1,100,123-byte CPU preparation averages 1.903 ms before
+any packet was ready in the baseline; source-first originals are ready at
+0.081 ms, total preparation 1.911 ms. These are isolated preparation timings,
+not the larger preparation times observed concurrently with live capture.
+
+`scripts/test-macos-source-first.sh` compares the retained .51 archive to .53
+through genuine QUIC/C ABI send/complete-receive, synthetic 1,100,123-byte
+keyframes, 20 alternating independent connections each. All byte/counter
+checks pass. Excluding the first two warm-up pairs, baseline mean 7.022 ms,
+candidate 5.115 ms; medians 7.023/5.123 ms (~27% sooner). This includes receiving
+and reconstructing the original payload, not encoding, decoding or display.
+Both endpoints run on the same Mac; it does not qualify WAN stutter or sustained
+video/audio load. Total FEC work still occurs before the next frame can be sent.
+
+Build/sign/install gates and exact provenance are in HANDOFF. .53 is installed
+on the dedicated Mac; existing Client .52 remains the live trace tool. Next
+compare the same two-video workload, complete-receive gaps and following-frame
+bursts, sender totals/evictions, receiver loss and render drops. Do not declare
+the visible stutter fixed from a loopback improvement alone.
+
+## Earlier .50 measurement
+
 September 8, 2026. Diagnostic Host1.0.50-macos-host; exact source and binary
 provenance in HANDOFF. User played two browser-video windows at5120x2160,
 unchanged50Mbps encoder target/100Mbps peak. Capture/encoder settings match .48.

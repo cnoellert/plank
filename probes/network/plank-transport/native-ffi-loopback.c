@@ -10,6 +10,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifndef PLANK_LOOPBACK_VIDEO_BYTES
+#define PLANK_LOOPBACK_VIDEO_BYTES (192 * 1024)
+#endif
+
 static PlankTransportConfig base_config(uint32_t mode, const char *token) {
     PlankTransportConfig config;
     memset(&config, 0, sizeof(config));
@@ -218,7 +222,7 @@ int main(int argc, char **argv) {
         goto failure;
     }
 
-    const size_t video_size = 192 * 1024;
+    const size_t video_size = PLANK_LOOPBACK_VIDEO_BYTES;
     unsigned char *video = malloc(video_size);
     unsigned char *video_received = malloc(video_size);
     if (video == NULL || video_received == NULL) {
@@ -238,6 +242,8 @@ int main(int argc, char **argv) {
     video_info.frame_number = 42;
     video_info.pts = 90000;
     video_info.host_processing_latency = 17;
+    struct timespec video_started, video_completed;
+    if (clock_gettime(CLOCK_MONOTONIC, &video_started) != 0) { abort(); }
     if (plank_transport_native_video_send(server, &video_info, video,
                                        video_size) != PLANK_TRANSPORT_OK) {
         fprintf(stderr, "failed to submit native video frame\n");
@@ -252,6 +258,10 @@ int main(int argc, char **argv) {
     int video_receive_result = plank_transport_native_video_receive(
             client, &received_video_info, video_received, video_size,
             &received_size, 5000);
+    if (clock_gettime(CLOCK_MONOTONIC, &video_completed) != 0) { abort(); }
+    printf("native_video_complete_us=%.3f video_bytes=%zu\n",
+           (video_completed.tv_sec - video_started.tv_sec) * 1000000.0 +
+           (video_completed.tv_nsec - video_started.tv_nsec) / 1000.0, video_size);
     if (video_receive_result != PLANK_TRANSPORT_OK ||
         received_size != video_size ||
         memcmp(video, video_received, video_size) != 0 ||
