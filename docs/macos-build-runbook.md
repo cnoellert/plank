@@ -513,6 +513,16 @@ arguments, environment or files, or change key ACL/partition policy as a shortcu
 After compilation has already passed, retry only codesign/verification in that
 same unlocked session; no new dependency bootstrap or clean compilation is needed.
 
+September 8 audio-tap probe: after the operator unlocked the keychain in the
+desktop, SSH signing still failed, while the exact same codesign invocation in
+a temporary `gui/<actual-UID>` Aqua launchd job passed. A valid certificate plus
+`errSecInternalComponent`/`User interaction is not allowed` is not sufficient
+evidence that the keychain itself is locked. For an already unlocked desktop,
+signing in that authorized session is an alternative to another unlock prompt.
+Use a uniquely named one-shot job, verify its exit code and the strict Apple
+signature, and boot it out afterward. No key ACL/partition-policy changes or
+credentials in its plist. This does not grant audio/screen-capture consent.
+
 First run the synthetic endpoint (no capture even if TCC is granted):
 
 ```bash

@@ -38,16 +38,22 @@ ScreenCaptureKit video, VideoToolbox, transport, Opus and the Client remain inta
 
 ## Current state
 
-Standalone probe and build script prepared. The first clean Mac worktree at
-`e86bbf4` compiled with macOS SDK/deployment 27 and warnings-as-errors. Apple
-Development signing failed with `errSecInternalComponent`; an independent
-keychain settings query reported `User interaction is not allowed`. The operator
-has been asked to unlock the existing login signing keychain locally. Do not
-reset permissions, create a replacement signing identity, or copy credentials.
+Standalone probe source `32ecdd7` compiled in a clean Mac worktree with macOS
+SDK/deployment 27 and warnings-as-errors. Signing from SSH failed with
+`errSecInternalComponent`, even after the operator unlocked the login keychain.
+The same `codesign` operation succeeded in the desktop's Aqua launchd session.
+Thus SSH signing access was the confirmed problem at that point; the earlier
+claim that the keychain itself was locked was too strong. No signing identity,
+key ACL or partition policy changes. The temporary signing job was removed.
 
-No production code, installed Host, saved audio settings or permissions have
-been changed. The probe has not run and has not qualified capture, muting, crash
-cleanup or synchronization. The follow-up probe source adds an explicit duration
-loop, verifies bytes per frame and reports failed zero-callback runs correctly;
-rebuild that exact source after keychain unlock, rather than treating the first
-unsigned executable as the current probe.
+Probe executable SHA256:
+`06cafe6ab240e209103e72792442f50639154ea830d4380c94620faa413c7b74`.
+It was launched in Aqua through LaunchServices. Tap creation/format query
+succeeded: 48000 Hz, stereo interleaved Float32, flags9, 8 bytes/frame. Startup
+then paused before IO registration/start, consistent with the system-audio
+permission prompt; the operator has been asked to approve the separate Probe.
+No captured PCM, local muting or cleanup pass has yet been observed.
+
+No production code, installed Host or saved audio settings changed. Capture,
+muting, process-death restoration, owner isolation and synchronization remain
+unqualified. Do not replace the Host with this standalone feasibility probe.
