@@ -58,20 +58,28 @@ static BOOL supportedAPI(void) {
     PLANKMacVirtualDisplay *_display;
     atomic_uint _displayID;
     BOOL _busy;
+    BOOL _signIn;
+}
+- (instancetype)initForSignIn {
+    self = [super init];
+    if (self) _signIn = YES;
+    return self;
 }
 - (CGDirectDisplayID)displayID { return atomic_load(&_displayID); }
 - (BOOL)create {
     if (!supportedAPI()) { NSLog(@"PLANK virtual display API signature unavailable"); return NO; }
     PLANKMacDisplayDescriptor *descriptor = [[NSClassFromString(@"CGVirtualDisplayDescriptor") alloc] init];
-    descriptor.name = @"PLANK Desktop";
-    descriptor.maxPixelsWide = 5120; descriptor.maxPixelsHigh = 2160;
+    descriptor.name = _signIn ? @"PLANK Sign In" : @"PLANK Desktop";
+    descriptor.maxPixelsWide = _signIn ? 1920 : 5120;
+    descriptor.maxPixelsHigh = _signIn ? 1080 : 2160;
     descriptor.sizeInMillimeters = CGSizeMake(600, 340);
-    descriptor.vendorID = 0xF0F0; descriptor.productID = 2; descriptor.serialNum = 1;
+    descriptor.vendorID = 0xF0F0; descriptor.productID = 2; descriptor.serialNum = _signIn ? 2 : 1;
     descriptor.queue = dispatch_get_main_queue();
     _display = [[NSClassFromString(@"CGVirtualDisplay") alloc] initWithDescriptor:descriptor];
     if (!_display) { NSLog(@"PLANK virtual display descriptor rejected"); return NO; }
     NSMutableArray *available = [NSMutableArray array];
     for (size_t i = 0; i < sizeof(modes)/sizeof(modes[0]); ++i) {
+        if (_signIn && (modes[i][0] != 1920 || modes[i][1] != 1080)) continue;
         id mode = [[NSClassFromString(@"CGVirtualDisplayMode") alloc]
             initWithWidth:modes[i][0] height:modes[i][1] refreshRate:60];
         if (!mode) return NO;
@@ -86,6 +94,11 @@ static BOOL supportedAPI(void) {
 - (BOOL)selectWidth:(unsigned)width height:(unsigned)height {
     CGDirectDisplayID display = self.displayID;
     if (!CGDisplayIsOnline(display) || CGDisplayIsInMirrorSet(display)) return NO;
+    // LoginWindow may not publish selectable mode objects. Its one advertised
+    // mode still has to be active at exact pixel and logical dimensions.
+    if (_signIn) return width == 1920 && height == 1080 && CGDisplayIsActive(display) &&
+        CGDisplayPixelsWide(display) == width && CGDisplayPixelsHigh(display) == height &&
+        CGDisplayBounds(display).size.width == width && CGDisplayBounds(display).size.height == height;
     CFArrayRef available = CGDisplayCopyAllDisplayModes(display, NULL);
     BOOL selected = NO;
     if (available && CFArrayGetCount(available) < 128) {
@@ -105,7 +118,8 @@ static BOOL supportedAPI(void) {
 - (void)prepareWidth:(unsigned)width height:(unsigned)height
               valid:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion {
     NSAssert(NSThread.isMainThread, @"Display mutation belongs to the graphical main queue");
-    if (_busy || !valid || !completion || !valid() || !PLANKMacDesktopModeSupported(width, height)) {
+    if (_busy || !valid || !completion || !valid() || !PLANKMacDesktopModeSupported(width, height) ||
+        (_signIn && (width != 1920 || height != 1080))) {
         if (completion) completion(NO); return;
     }
     if (!_display && ![self create]) { completion(NO); return; }

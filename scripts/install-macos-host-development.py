@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Install a signed development Host for the existing dedicated Mac desktop.
+"""Install a signed development Host for LoginWindow and the designated Mac user.
 
-Not a release installer or LoginWindow enablement. No login, logout, TCC change,
+Not a release installer. No login, logout, reboot, TCC change,
 firewall change, or private key copying from another machine. The narrow root
 coordinator and the current user's graphical agent retain separate authority.
 """
@@ -11,6 +11,7 @@ from pathlib import Path
 import plistlib
 import pwd
 import shutil
+import stat
 import subprocess
 import tempfile
 import uuid
@@ -18,6 +19,40 @@ import uuid
 
 def run(*args, check=True):
     return subprocess.run(args, check=check, capture_output=True, text=True, timeout=30)
+
+
+def prepare_sign_in_identity(private, public_config):
+    """Root LoginWindow gets its own key, never a copy of the desktop key.
+
+    Only public discovery values are shared. The existing Client profile-TLS
+    policy supports fresh authentication after a role/certificate replacement;
+    a matching UUID is discovery identity, not a cryptographic trust claim.
+    """
+    private.mkdir(mode=0o700, exist_ok=True)
+    assert not private.is_symlink() and private.stat().st_uid == os.geteuid()
+    assert stat.S_IMODE(private.stat().st_mode) == 0o700
+    config_path = private / "host.plist"
+    if config_path.exists() or config_path.is_symlink():
+        for name in ("host.plist", "cert.pem", "key.pem", "cert.der", "key.der"):
+            path = private / name
+            assert not path.is_symlink() and path.is_file()
+            assert path.stat().st_uid == os.geteuid() and stat.S_IMODE(path.stat().st_mode) == 0o600
+        existing = plistlib.loads(config_path.read_bytes())
+        assert existing == public_config, "Installed sign-in identity/configuration must be preserved"
+        return
+    assert not any(private.iterdir()), "Refusing a partial sign-in identity"
+    with tempfile.TemporaryDirectory(prefix=".identity-", dir=private) as temporary:
+        stage = Path(temporary)
+        run("openssl", "req", "-x509", "-newkey", "rsa:3072", "-nodes", "-sha256", "-days", "365",
+            "-subj", "/CN=PLANK Host", "-addext", "subjectAltName=DNS:plank-host",
+            "-keyout", str(stage / "initial.pem"), "-out", str(stage / "cert.pem"))
+        run("openssl", "rsa", "-in", str(stage / "initial.pem"), "-out", str(stage / "key.pem"))
+        run("openssl", "rsa", "-in", str(stage / "key.pem"), "-outform", "DER", "-out", str(stage / "key.der"))
+        run("openssl", "x509", "-in", str(stage / "cert.pem"), "-outform", "DER", "-out", str(stage / "cert.der"))
+        (stage / "host.plist").write_bytes(plistlib.dumps(public_config))
+        for name in ("cert.pem", "key.pem", "cert.der", "key.der", "host.plist"):
+            os.chmod(stage / name, 0o600)
+            os.replace(stage / name, private / name)
 
 
 def main():
@@ -77,6 +112,9 @@ def main():
         os.chmod(path, 0o600)
         os.chown(path, account.pw_uid, account.pw_gid)
     os.chown(private, account.pw_uid, account.pw_gid)
+    # Read only public values with the desktop user's authority. No root code
+    # follows paths in a writable user home to obtain secrets.
+    public_config = plistlib.loads(config_path.read_bytes())
 
     logs = home / "Library/Logs/PLANK"
     logs.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -89,10 +127,18 @@ def main():
     os.seteuid(0)
     os.setegid(0)
 
+    machine_state = Path("/Library/Application Support/PLANK")
+    machine_state.mkdir(mode=0o700, exist_ok=True)
+    assert not machine_state.is_symlink() and machine_state.stat().st_uid == 0
+    os.chmod(machine_state, 0o700)
+    sign_in_private = machine_state / "SignIn"
+    prepare_sign_in_identity(sign_in_private, public_config)
+
     machine_label = "la.instinctual.PLANK.Host.machine"
     graphical_label = "la.instinctual.PLANK.Host.desktop"
+    sign_in_label = "la.instinctual.PLANK.Host.sign-in"
     domain = f"gui/{account.pw_uid}"
-    for job in (domain + "/" + graphical_label, "system/" + machine_label):
+    for job in ("loginwindow/" + sign_in_label, domain + "/" + graphical_label, "system/" + machine_label):
         run("launchctl", "bootout", job, check=False)
     installed = Path("/Applications/PLANK Host.app")
     if installed.exists():
@@ -112,15 +158,27 @@ def main():
     assert not machine_log.is_symlink()
     machine_log.touch(mode=0o600, exist_ok=True)
     os.chmod(machine_log, 0o600)
+    sign_in_log = machine_logs / "host-sign-in.log"
+    assert not sign_in_log.is_symlink()
+    sign_in_log.touch(mode=0o600, exist_ok=True)
+    os.chmod(sign_in_log, 0o600)
     machine = {"Label": machine_label, "ProgramArguments": [executable, "--machine", machine_label],
-        "MachServices": {machine_label: True}, "RunAtLoad": True,
+        "MachServices": {machine_label: True}, "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 2,
         "StandardOutPath": str(machine_log), "StandardErrorPath": str(machine_log)}
     graphical = {"Label": graphical_label, "ProgramArguments": [executable, "--graphical", machine_label, "desktop", str(private)],
-        "RunAtLoad": True, "LimitLoadToSessionType": "Aqua", "ProcessType": "Interactive",
+        "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 2,
+        "LimitLoadToSessionType": "Aqua", "ProcessType": "Interactive",
         "StandardOutPath": str(logs / "host-desktop.log"), "StandardErrorPath": str(logs / "host-desktop.log")}
+    sign_in = {"Label": sign_in_label,
+        "ProgramArguments": [executable, "--graphical", machine_label, "sign-in", str(sign_in_private)],
+        "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 2,
+        "LimitLoadToSessionType": "LoginWindow", "ProcessType": "Interactive",
+        "StandardOutPath": str(sign_in_log), "StandardErrorPath": str(sign_in_log)}
     machine_path = Path("/Library/LaunchDaemons") / (machine_label + ".plist")
     agent_path = agent_dir / (graphical_label + ".plist")
-    for path, content, uid in ((machine_path, machine, 0), (agent_path, graphical, account.pw_uid)):
+    sign_in_path = Path("/Library/LaunchAgents") / (sign_in_label + ".plist")
+    for path, content, uid in ((machine_path, machine, 0), (agent_path, graphical, account.pw_uid),
+                               (sign_in_path, sign_in, 0)):
         os.setegid(0 if uid == 0 else account.pw_gid)
         os.seteuid(uid)
         assert not path.is_symlink()
@@ -130,7 +188,9 @@ def main():
         os.seteuid(0)
     run("launchctl", "bootstrap", "system", str(machine_path))
     run("launchctl", "bootstrap", domain, str(agent_path))
-    print("Installed", info["PLANKVersion"], "for the existing desktop only; logs:", logs)
+    print("Installed", info["PLANKVersion"], "for LoginWindow and desktop user", account.pw_name)
+    print("LoginWindow agent will load in the next LoginWindow session; no logout or reboot performed.")
+    print("Desktop logs:", logs, "Machine/sign-in logs:", machine_logs)
 
 
 if __name__ == "__main__":

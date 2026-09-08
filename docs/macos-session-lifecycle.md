@@ -3,8 +3,9 @@
 Experimental macOS/SDK 27 implementation under `host/macos/session`. The native
 `host-main.m` executable now joins the production IPC boundary to HTTPS remote
 authentication and the A/V/input owner through `host-runtime.m`. The executable
-has no qualification timeout or synthetic verifier. Automatic installation,
-virtual-display creation and cross-login replacement remain unfinished.
+has no qualification timeout or synthetic verifier. Virtual displays and
+development installation are implemented; automatic cross-login replacement
+remains a live acceptance gate.
 Qualification launchd jobs are temporary fixtures, not package inputs.
 
 ## Runnable Host assembly
@@ -24,11 +25,10 @@ drains the stream (including authorized held-input release), then waits for the
 HTTP authentication/reply lanes to drain. It does not block the graphical loop
 on endpoint construction or substitute a fixed sleep for cleanup completion.
 
-This first assembly creates no virtual display or media child process. The
-machine coordinator waits for the exact graphical process's kernel exit event
-before releasing its exclusive slot; an IPC retirement acknowledgment is not
-enough. Do not add the virtual-display child until its independent removal proof
-is integrated into this condition. The short-lived account verification child
+The graphical agent owns its virtual display in-process, with no detached
+display child. The machine coordinator waits for the exact graphical process's
+kernel exit event before releasing its exclusive slot; an IPC retirement
+acknowledgment is not enough. The short-lived account verification child
 retains its separate bounded timeout and cannot capture or post input.
 
 The experimental role-private startup directory is owned by that role's UID,
@@ -38,8 +38,40 @@ regular, non-symlink, mode-0600 files owned by the same UID. The plist has exact
 represent the same certificate and PKCS#1 RSA private key; the native Security
 identity validates the key/certificate pair. This is developer startup wiring,
 not the final administrator configurator. Never copy the machine service's
-private key into a user-readable directory to make this work. A stable public
-trust identity across graphical roles remains a deployment/integration gate.
+private key into a user-readable directory to make this work. Development roles
+retain independent TLS keys with the same public workstation UUID. This uses
+the existing Client certificate-profile validation and fresh authentication;
+the UUID is not a cryptographic trust anchor. Persistent machine-certificate
+pinning is not provided by that existing policy and remains a security gate.
+
+## Development installation and reboot recovery
+
+`install-macos-host-development.py` installs the machine coordinator as a
+root LaunchDaemon, the designated user's Aqua agent in that user's LaunchAgents
+directory, and a root-owned LoginWindow-only agent in `/Library/LaunchAgents`.
+It does not log out, reboot, disable FileVault or alter TCC. Launchd restarts
+exited jobs with a two-second throttle; each new graphical process must prove
+its scope and acquire a fresh generation before listening. Restart policy
+does not grant access or allow overlapping media owners.
+
+The root sign-in identity is under `/Library/Application Support/PLANK/SignIn`,
+directory 0700/files 0600. Only the public discovery values match the desktop
+identity. Existing complete keys/configuration must survive reinstallation;
+partial identities, symlinks or unexpected permissions fail closed. Sign-in
+logs belong in `/Library/Logs/PLANK/host-sign-in.log`.
+
+LoginWindow creates one exact 1920x1080 virtual mode before discovery. It never
+selects a desktop account or types an OS password automatically. A successful
+PLANK authentication reports `desktop_stage=greeter`; the Client requests that
+temporary canvas without changing the bookmark. Desktop authentication then
+requests the saved resolution. Scope changes revoke the old stream; the
+Client must authenticate again. The desktop agent still runs as its OS user.
+
+This development installer provisions one explicitly designated desktop user,
+not every possible Mac account. Multi-user provisioning, actual LoginWindow
+input, logout/login and cold-boot recovery must pass before a product release.
+The existing desktop can be preserved while installing the next-login job;
+installation itself does not prove the cold-boot gate.
 
 Opening the signed PLANK Host application requests its own Screen Recording
 and Accessibility consent. Probe consent does not transfer across bundle IDs.

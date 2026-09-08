@@ -7,6 +7,16 @@ Probe signing/installation remains documented in `probes/macos/README.md`.
 
 ## Native Host executable and application
 
+For LoginWindow candidates, run
+`python3 tests/auth/test-macos-development-install.py` and the Client's
+`tests/desktopstage` suite. The development installer now registers a
+LoginWindow-only agent as well as the designated user's Aqua agent. It never
+logs out or reboots for testing. See `macos-session-lifecycle.md` for its
+role-private identity files, restart policy and remaining live acceptance gates.
+ABI-13 candidates must rebuild the transport archive; never link an ABI-12
+archive to the larger stats header. Preserve accepted .57's
+`PLANK_MACOS_SOURCE_FIRST=1` feature selection during that rebuild.
+
 Use `scripts/build-macos-host.sh SOURCE EMPTY_OUTPUT RETAINED_TRANSPORT_ARCHIVE`
 on the dedicated Mac. Set `PLANK_MACOS_HOST_VERSION` explicitly, for example
 `1.0.34-macos-host.dev1`. The full native Host links with SDK/target 27 and

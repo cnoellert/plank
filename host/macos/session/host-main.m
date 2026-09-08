@@ -87,10 +87,9 @@ static int machine(const char *service) {
         scope:^PLANKMacAgentPhase(PLANKMacAgentPeer peer) { return PLANKMacObserveAgentScope(peer); }
         event:^(PLANKMacAgentLease *lease, PLANKMacAgentEvent event) {
             if (event != PLANKMacAgentAttached) return;
-            // This initial runtime creates NO virtual displays or media child
-            // processes. Process exit independently proves its local media/input
-            // resources are gone. An XPC retirement ACK alone does not suffice.
-            // Display-owner integration must extend this proof before enabling it.
+            // Display, capture and input belong to this graphical process (no
+            // detached display child). An XPC retirement ACK alone cannot release
+            // ownership; wait for its exact kernel-observed process exit.
             exitWatch = dispatch_source_create(DISPATCH_SOURCE_TYPE_PROC, lease.peer.pid,
                 DISPATCH_PROC_EXIT, dispatch_get_main_queue());
             if (!exitWatch) { [weakRegistry revoke]; return; }
@@ -158,7 +157,8 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
     PLANKMacServerInformation *information = [[PLANKMacServerInformation alloc] initWithName:config[@"Name"]
         workstationUUID:[[NSUUID alloc] initWithUUIDString:config[@"UUID"]] version:@PLANK_MACOS_HOST_VERSION streaming:YES];
     PLANKMacFixedCapture *capture = [PLANKMacFixedCapture new];
-    PLANKMacDesktopDisplay *desktopDisplay = [PLANKMacDesktopDisplay new];
+    PLANKMacDesktopDisplay *desktopDisplay = phase == PLANKMacScopeSignIn ?
+        [[PLANKMacDesktopDisplay alloc] initForSignIn] : [PLANKMacDesktopDisplay new];
     __block PLANKMacHostRuntime *runtime;
     __block __weak PLANKMacAgentConnection *weakAgent;
     __block BOOL stopping = NO;
@@ -184,9 +184,25 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
         event:^(PLANKMacAgentConnectionState state, uint64_t generation) {
             (void)generation;
             if (state == PLANKMacAgentReady && !stopping) {
-                if (![runtime startOnPort:[config[@"Port"] unsignedShortValue] ready:^(uint16_t port) {
-                    NSLog(@"PLANK Host listening on %@:%u (TLS control/native QUIC)", config[@"Address"], port);
-                } failed:^{ dispatch_async(dispatch_get_main_queue(), stop); }]) stop();
+                void (^listen)(void) = ^{
+                    if (stopping) return;
+                    if (![runtime startOnPort:[config[@"Port"] unsignedShortValue] ready:^(uint16_t port) {
+                        NSLog(@"PLANK Host listening on %@:%u (TLS control/native QUIC; scope=%@)",
+                            config[@"Address"], port, role);
+                    } failed:^{ dispatch_async(dispatch_get_main_queue(), stop); }]) stop();
+                };
+                if (phase == PLANKMacScopeSignIn) {
+                    // Establish a usable headless login display before discovery
+                    // and topology queries. This grants no capture or input.
+                    [desktopDisplay prepareWidth:1920 height:1080 valid:^BOOL {
+                        return !stopping && plank_macos_graphical_identity_valid(
+                            [weakAgent bindGraphicalScope:[authority snapshot]]);
+                    } completion:^(BOOL ready) {
+                        if (!ready) { stop(); return; }
+                        capture.selectedDisplay = desktopDisplay.displayID;
+                        listen();
+                    }];
+                } else listen();
             } else if (state == PLANKMacAgentRetiring || state == PLANKMacAgentDisconnected || state == PLANKMacAgentFinished) stop();
         }];
     weakAgent = agent;
@@ -197,7 +213,10 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
         privateKey:[directory stringByAppendingPathComponent:@"key.pem"]
         capture:^id<PLANKMacPreviewCapture> { return [PLANKMacScreenCapture new]; }
         input:^id<PLANKMacInputDevice> { return [PLANKMacQuartzInput new]; }];
-    if (phase == PLANKMacScopeDesktop) runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, BOOL (^valid)(void)) {
+    runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, BOOL (^valid)(void)) {
+        // Sign-in is deliberately fixed at 1080p. The authenticated Client
+        // chooses that size only for the greeter, never rewrites its bookmark.
+        if (phase == PLANKMacScopeSignIn && (width != 1920 || height != 1080)) return NO;
         if (!PLANKMacDesktopModeSupported(width, height)) return NO;
         dispatch_semaphore_t finished = dispatch_semaphore_create(0);
         __block atomic_bool cancelled = false, ready = false;
