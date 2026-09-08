@@ -30,7 +30,7 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
         fabs(bounds.origin.x) > 65536 || fabs(bounds.origin.y) > 65536 ||
         bounds.size.width <= 0 || bounds.size.height <= 0 ||
         bounds.size.width > 65536 || bounds.size.height > 65536) return nil;
-    return @{@"schema_version": @13, @"feature_flags": @524401, @"generation": generation,
+    return @{@"schema_version": @13, @"feature_flags": @1572977, @"generation": generation,
         @"capture": @{@"id": identifier, @"width": @(width), @"height": @(height),
             @"logical_bounds": @{@"x": @(bounds.origin.x), @"y": @(bounds.origin.y),
                 @"width": @(bounds.size.width), @"height": @(bounds.size.height)},
@@ -55,7 +55,8 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
     @synchronized(self) {
         uint64_t revision = atomic_load(&displayRevision);
         if (revision & 1) { _previous = nil; _generation = nil; return nil; }
-        CGDirectDisplayID display = CGMainDisplayID();
+        CGDirectDisplayID selection = self.selectedDisplay;
+        CGDirectDisplayID display = selection ?: CGMainDisplayID();
         if (!display || !CGDisplayIsActive(display)) { _previous = nil; _generation = nil; return nil; }
         CGDisplayModeRef mode = CGDisplayCopyDisplayMode(display);
         if (!mode) { _previous = nil; _generation = nil; return nil; }
@@ -64,7 +65,8 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
         CGDisplayModeRelease(mode);
         CGRect bounds = CGDisplayBounds(display);
         CGDisplayModeRef check = CGDisplayCopyDisplayMode(display);
-        BOOL stable = check && display == CGMainDisplayID() && CGDisplayIsActive(display) &&
+        BOOL stable = check && selection == self.selectedDisplay &&
+            display == (selection ?: CGMainDisplayID()) && CGDisplayIsActive(display) &&
             modeID == CGDisplayModeGetIODisplayModeID(check) &&
             width == CGDisplayModeGetPixelWidth(check) && height == CGDisplayModeGetPixelHeight(check) &&
             CGRectEqualToRect(bounds, CGDisplayBounds(display)) &&

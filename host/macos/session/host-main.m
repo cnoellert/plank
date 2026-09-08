@@ -5,6 +5,7 @@
 #import "agent-connection.h"
 #import "graphical-authority.h"
 #import "fixed-capture.h"
+#import "desktop-display.h"
 #import "screen-capture.h"
 #import <AppKit/AppKit.h>
 #include <fcntl.h>
@@ -12,6 +13,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdatomic.h>
 
 #ifndef PLANK_MACOS_HOST_VERSION
 #error Build must supply an explicit branch-qualified Host version
@@ -154,6 +156,7 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
     PLANKMacServerInformation *information = [[PLANKMacServerInformation alloc] initWithName:config[@"Name"]
         workstationUUID:[[NSUUID alloc] initWithUUIDString:config[@"UUID"]] version:@PLANK_MACOS_HOST_VERSION streaming:YES];
     PLANKMacFixedCapture *capture = [PLANKMacFixedCapture new];
+    PLANKMacDesktopDisplay *desktopDisplay = [PLANKMacDesktopDisplay new];
     __block PLANKMacHostRuntime *runtime;
     __block __weak PLANKMacAgentConnection *weakAgent;
     __block BOOL stopping = NO;
@@ -192,6 +195,27 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
         privateKey:[directory stringByAppendingPathComponent:@"key.pem"]
         capture:^id<PLANKMacPreviewCapture> { return [PLANKMacScreenCapture new]; }
         input:^id<PLANKMacInputDevice> { return [PLANKMacQuartzInput new]; }];
+    if (phase == PLANKMacScopeDesktop) runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, BOOL (^valid)(void)) {
+        if (!PLANKMacDesktopModeSupported(width, height)) return NO;
+        dispatch_semaphore_t finished = dispatch_semaphore_create(0);
+        __block atomic_bool cancelled = false, ready = false;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [desktopDisplay prepareWidth:width height:height
+                valid:^BOOL { return !atomic_load(&cancelled) && valid(); }
+                completion:^(BOOL success) {
+                    if (success && !atomic_load(&cancelled) && valid()) {
+                        capture.selectedDisplay = desktopDisplay.displayID;
+                        atomic_store(&ready, true);
+                    }
+                    dispatch_semaphore_signal(finished);
+                }];
+        });
+        // Only the bounded authentication lane waits, never the graphical or
+        // network event loops. A timeout revokes pending mutation, not authority.
+        BOOL completed = dispatch_semaphore_wait(finished, dispatch_time(DISPATCH_TIME_NOW, 7*NSEC_PER_SEC)) == 0;
+        atomic_store(&cancelled, true);
+        return completed && atomic_load(&ready);
+    };
     CFRelease(identity);
     if (!agent || !runtime || ![agent start]) return startupFailure("runtime-admission");
     signals(stop);

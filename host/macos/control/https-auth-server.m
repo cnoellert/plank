@@ -118,16 +118,24 @@
                     NSMutableData *password = [[value[@"responses"][0] dataUsingEncoding:NSUTF8StringEncoding] mutableCopy];
                     reply = [_sessions respondForPeer:request.peer conversation:value[@"conversation_id"] password:password];
                     status = 200;
-                } else if ([path isEqual:@"/plank/launch"] && _launch) {
+                } else if (([path isEqual:@"/plank/launch"] && _launch) ||
+                           ([path isEqual:@"/plank/display"] && self.prepareDisplay)) {
                     NSString *token = [authorization hasPrefix:@"Bearer "] && authorization.length == 51 ?
                         [authorization substringFromIndex:7] : nil;
                     PLANKMacAccountIdentity identity = {0};
                     status = 401;
                     if (token && [_sessions authorizeToken:token peer:request.peer identity:&identity]) {
                         status = 503;
-                        potentialClaim = token;
-                        reply = _launch(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
-                        if (status == 200) claimedToken = token;
+                        if ([path isEqual:@"/plank/display"]) {
+                            reply = self.prepareDisplay(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
+                            if (![_sessions authorizeToken:token peer:request.peer identity:&identity]) {
+                                status = 401; reply = @{@"state": @"denied"};
+                            }
+                        } else {
+                            potentialClaim = token;
+                            reply = _launch(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
+                            if (status == 200) claimedToken = token;
+                        }
                     }
                 }
             }
@@ -224,7 +232,8 @@
                     return;
                 }
                 if (![path isEqual:@"/plank/auth/start"] && ![path isEqual:@"/plank/auth/respond"] &&
-                    !([path isEqual:@"/plank/launch"] && owner->_launch)) {
+                    !([path isEqual:@"/plank/launch"] && owner->_launch) &&
+                    !([path isEqual:@"/plank/display"] && owner.prepareDisplay)) {
                     [owner reply:@{@"state": @"denied"} status:404 request:request];
                     return;
                 }

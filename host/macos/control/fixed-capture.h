@@ -9,6 +9,9 @@
 // Every observed reconfiguration changes generation, including change-back.
 // The eventual stream owner must compare this generation and stop on change.
 @interface PLANKMacFixedCapture : NSObject
+// Zero describes the current main display. Nonzero describes only the selected
+// owned display, never silently falling back to a different screen.
+@property CGDirectDisplayID selectedDisplay;
 - (NSDictionary *)snapshot;
 @end
 

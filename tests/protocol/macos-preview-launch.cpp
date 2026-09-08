@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     MacPreviewLaunch::Reply parsed;
     CHECK(MacPreviewLaunch::parseReply(valid, topology, 28989, 1200, parsed));
     CHECK(parsed.configuration.serviceFlags == (PLANK_NATIVE_SERVICE_AUDIO | PLANK_NATIVE_SERVICE_INPUT));
-    CHECK(parsed.configuration.hostFeatureFlags == LI_FF_DYNAMIC_VIDEO_BITRATE);
+    CHECK(parsed.configuration.hostFeatureFlags == (LI_FF_DYNAMIC_VIDEO_BITRATE | LI_FF_ENCODER_TARGET_ACK));
     CHECK(parsed.configuration.audioPacketDurationMs == 5);
     CHECK(parsed.configuration.opusConfiguration.sampleRate == 48000);
     CHECK(parsed.configuration.opusConfiguration.channelCount == 2);

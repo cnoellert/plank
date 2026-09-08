@@ -41,7 +41,46 @@
             if (!owner) { *status = 503; return nil; }
             return [owner launch:request token:token peer:peer port:port status:status];
         }];
+    _server.prepareDisplay = ^NSDictionary *(NSDictionary *request, NSString *token, NSData *peer,
+                                             uint16_t port, unsigned *status) {
+        (void)port;
+        typeof(self) owner = weakSelf;
+        if (!owner) { *status = 503; return nil; }
+        return [owner prepareDisplayRequest:request token:token peer:peer status:status];
+    };
     return _server ? self : nil;
+}
+- (NSDictionary *)prepareDisplayRequest:(NSDictionary *)request token:(NSString *)token
+                                  peer:(NSData *)peer status:(unsigned *)status {
+    @synchronized(self) {
+        if (!self.prepareDisplay || atomic_load(&_stopping) || !_started) { *status = 503; return nil; }
+        if (_stream && _stream.state != PLANKMacPreviewStopped) { *status = 409; return nil; }
+        if (request.count != 3) { *status = 400; return nil; }
+        for (NSString *key in @[@"schema_version", @"width", @"height"]) {
+            id number = request[key];
+            if (![number isKindOfClass:NSNumber.class] ||
+                CFGetTypeID((__bridge CFTypeRef)number) == CFBooleanGetTypeID() ||
+                [number doubleValue] != [number unsignedIntValue]) { *status = 400; return nil; }
+        }
+        unsigned width = [request[@"width"] unsignedIntValue], height = [request[@"height"] unsignedIntValue];
+        if ([request[@"schema_version"] unsignedIntValue] != 1 || width < 2 || height < 2 ||
+            width > 8192 || height > 8192) { *status = 400; return nil; }
+        PLANKMacGraphicalIdentity scope = _snapshot();
+        BOOL (^valid)(void) = ^BOOL {
+            PLANKMacAccountIdentity account = {0};
+            return !atomic_load(&self->_stopping) &&
+                plank_macos_same_graphical_scope(scope, self->_snapshot()) &&
+                [self->_sessions authorizeToken:token peer:peer identity:&account];
+        };
+        if (!valid()) { *status = 401; return nil; }
+        if (!self.prepareDisplay(width, height, valid) || !valid()) { *status = 503; return nil; }
+        NSDictionary *topology = _topology();
+        if (!topology || [topology[@"capture"][@"width"] unsignedIntValue] != width ||
+            [topology[@"capture"][@"height"] unsignedIntValue] != height || !valid()) {
+            *status = 503; return nil;
+        }
+        *status = 200; return topology;
+    }
 }
 - (BOOL)startOnPort:(uint16_t)port ready:(void (^)(uint16_t))ready failed:(void (^)(void))failed {
     @synchronized(self) {

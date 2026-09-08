@@ -107,7 +107,7 @@ def authenticate(tls, port, username, password):
     raw = ("GET /plank/topology?uniqueid=0123456789ABCDEF&uuid=abc HTTP/1.1\r\nHost: localhost\r\n"
            "Authorization: Bearer " + token + "\r\n\r\n").encode()
     status, topology = request(tls, port, {}, raw=raw)
-    assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 524401
+    assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 1572977
     capture = topology["capture"]
     assert 2 <= capture["width"] <= 8192 and capture["width"] % 2 == 0
     assert 2 <= capture["height"] <= 8192 and capture["height"] % 2 == 0
@@ -127,11 +127,23 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
             "width": capture["width"], "height": capture["height"], "encoding_mode": "hevc-10-420-videotoolbox",
             "frame_rate": 60, "bitrate_kbps": 50000, "max_udp_payload_size": 1200}
 
-    def launch(value, bearer):
+    def launch(value, bearer, path="/plank/launch"):
         encoded = json.dumps(value).encode()
-        raw = (f"POST /plank/launch HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
+        raw = (f"POST {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
                f"Authorization: Bearer {bearer}\r\nContent-Length: {len(encoded)}\r\n\r\n").encode() + encoded
         return request(tls, port, {}, raw=raw)
+
+    if not media:  # Synthetic display adapter; never changes a real desktop.
+        mode = {"schema_version": 1, "width": 1920, "height": 1080}
+        assert launch(mode, "x" * 44, "/plank/display")[0] == 401
+        for invalid in [dict(mode, width=True), dict(mode, width=1920.5),
+                        dict(mode, width=-1), dict(mode, extra=0), dict(mode, schema_version=2)]:
+            assert launch(invalid, token, "/plank/display")[0] == 400
+        assert launch(dict(mode, width=1922), token, "/plank/display")[0] == 503
+        status, resized = launch(mode, token, "/plank/display")
+        assert status == 200 and resized["capture"]["width"] == 1920
+        status, restored = launch(dict(mode, width=3840, height=2160), token, "/plank/display")
+        assert status == 200 and restored == topology
 
     assert launch(body, "x" * 44)[0] == 401
     assert launch(dict(body, width=1), token)[0] == 400
@@ -143,6 +155,7 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
     assert reply["capture"] == capture and reply["transport_token"] != token
     assert reply["services"] == {"audio": True, "input": True, "cursor": "embedded"}
     assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
+    assert launch({"schema_version": 1, "width": 1920, "height": 1080}, token, "/plank/display")[0] == 401
     fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()
     command = [str(receiver), fingerprint] + (["--seconds", str(seconds)] if media else ["--no-media"])
     # No launch/transport credential in argv, environment, files or diagnostics.

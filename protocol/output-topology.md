@@ -245,7 +245,7 @@ schema.
 The `macos-host` work adds `FixedCaptureFeature = 0x80000` within schema 13.
 This is a distinct fixed-capture description, **not** permission to relax the
 existing Linux topology requirements. Its exact current feature mask is
-`524401` (`0x80071`): fixed capture, output topology, topology generation,
+`1572977` (`0x180071`): fixed capture, Mac desktop preparation, output topology, topology generation,
 layout metadata and composite source geometry. All other bits are rejected
 for this preview. It is deliberately excluded from the Client's Linux
 `SupportedFeatureFlags` launch mask.
@@ -265,6 +265,28 @@ Do not assume a 1:1 or fixed 2:1 mapping. This report does not grant input, and
 does not claim the capture display is physical, PLANK-owned, or newly created.
 The Client represents its single video surface as `layoutKind="fixed"`, with
 no virtual modes; Linux bookmark layout changes are not allowed for it.
+
+`MacDesktopPreparationFeature = 0x100000` additionally requires authenticated
+`POST /plank/display` before constructing a streaming session. The exact JSON
+request is `{ "schema_version": 1, "width": 3840, "height": 2160 }`; values
+are integral, never booleans, and must identify a qualified bookmark mode.
+The Client first fetches authenticated topology to pin the certificate, then
+sends this request through a fresh TLS 1.3 connection pinned to that certificate.
+There is no redirect, new port, unauthenticated mutation, or implicit takeover.
+The Host returns the strict topology object above, describing actual pixels and
+desktop bounds after the change. The Client rejects mismatched dimensions and
+uses the returned geometry before video/window/input initialization. Preparing
+a display does not consume the authentication bearer; stream launch still does.
+An active stream rejects preparation (409); authority loss rejects it (401), and
+an unavailable/failed mode returns 503 without starting a differently sized stream.
+
+The desktop agent owns one virtual display for its whole process lifetime and
+changes only that display's mode between streams. It neither changes a physical
+monitor's mode nor deletes/recreates an output on every disconnect. Agent exit
+is the removal boundary. This desktop-only implementation and its private Apple
+display API require dedicated macOS 27 qualification; it is not LoginWindow
+resolution support. Old fixed-capture-only feature masks are no longer accepted
+by this matching development Client/Host pair.
 
 The explicit tuple is ScreenCaptureKit (`screencapturekit`) → VideoToolbox
 (`videotoolbox`), mode `hevc-10-420-videotoolbox`: HEVC Main10, 10-bit 4:2:0,

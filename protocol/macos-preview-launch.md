@@ -63,7 +63,7 @@ The native library itself retains its shared Linux endpoint implementation.
 
 The Client now has a typed manifest parser and explicit native service flags.
 Audio/input are required for this manifest, while schema-1's bitrate
-controls set `LI_FF_DYNAMIC_VIDEO_BITRATE`. The embedded cursor needs no local
+controls set `LI_FF_DYNAMIC_VIDEO_BITRATE | LI_FF_ENCODER_TARGET_ACK`. The embedded cursor needs no local
 cursor channel. Common-c skips absent service workers;
 the Client does not start an audio receiver without negotiated audio. Linux
 PLS1 setup explicitly retains all three services and its existing checks.

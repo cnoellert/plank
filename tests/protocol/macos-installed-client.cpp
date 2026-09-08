@@ -22,7 +22,7 @@ extern "C" {
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
-    CHECK(argc == 4);
+    CHECK(argc == 4 || argc == 5);
     bool valid = false;
     const int port = QString::fromLocal8Bit(argv[2]).toInt(&valid);
     CHECK(valid && port > 0 && port <= 65535);
@@ -42,6 +42,10 @@ int main(int argc, char** argv)
         const QString token = http.authenticate(QString::fromLocal8Bit(argv[3]), QString::fromUtf8(password));
         password.fill('\0'); password.clear();
         http.setPlankSessionToken(token);
+        if (argc == 5) {
+            const auto prepared = http.prepareMacDisplay(QString::fromLocal8Bit(argv[4]));
+            CHECK(prepared.displayPolicyKnown());
+        }
         CHECK(NvHTTP::getXmlString(http.getServerInfo(NvHTTP::NVLL_NONE), "PairStatus") == "1");
         NvHTTP anonymous(http.address());
         CHECK(NvHTTP::getXmlString(anonymous.getServerInfo(NvHTTP::NVLL_NONE), "PairStatus") == "0");

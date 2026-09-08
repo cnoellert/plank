@@ -20,6 +20,9 @@ typedef NSDictionary *(^PLANKMacLaunchHandler)(NSDictionary *request, NSString *
 // IPv4 bind address/port; no implicit wildcard and no insecure fallback.
 // Core dumps must already be disabled before construction. Stop before release.
 @interface PLANKMacHTTPSAuthServer : NSObject
+// Configure before start. Runs on the bounded auth lane; authenticates before
+// dispatch and rechecks ownership before returning any display description.
+@property(copy) PLANKMacLaunchHandler prepareDisplay;
 - (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions
                     information:(PLANKMacServerInformation *)information
                        topology:(NSDictionary *(^)(void))topology

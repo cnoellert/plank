@@ -76,9 +76,10 @@ int main(int argc, const char *argv[]) {
         PLANKMacGraphicalSnapshot snapshot = ^{ return [authority snapshot]; };
 #endif
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
+        __block unsigned desktopWidth = 3840, desktopHeight = 2160;
         NSDictionary *(^topology)(void) = ^{
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
-                3840, 2160, CGRectMake(-1920, 0, 1920, 1080));
+                desktopWidth, desktopHeight, CGRectMake(-1920, 0, 1920, 1080));
         };
 #else
         PLANKMacFixedCapture *capture = [PLANKMacFixedCapture new];
@@ -110,6 +111,13 @@ int main(int argc, const char *argv[]) {
                 return [PLANKMacQuartzInput new];
 #endif
             }];
+#ifdef PLANK_SYNTHETIC_AUTH_TEST
+        runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, BOOL (^valid)(void)) {
+            if (!valid() || !((width == 1920 && height == 1080) || (width == 3840 && height == 2160))) return NO;
+            desktopWidth = width; desktopHeight = height;
+            return valid();
+        };
+#endif
 #else
         PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc] initWithGraphicalSnapshot:snapshot];
         PLANKMacHTTPSAuthServer *server = [[PLANKMacHTTPSAuthServer alloc] initWithIdentity:identity
