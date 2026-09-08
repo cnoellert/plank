@@ -19,7 +19,10 @@ archive to the larger stats header. Preserve accepted .57's
 
 Use `scripts/build-macos-host.sh SOURCE EMPTY_OUTPUT RETAINED_TRANSPORT_ARCHIVE`
 on the dedicated Mac. Set `PLANK_MACOS_HOST_VERSION` explicitly, for example
-`1.0.34-macos-host.dev1`. The full native Host links with SDK/target 27 and
+`1.0.64-macos-hevc444`. Use the base packaging version on main and append the
+actual feature branch otherwise; do not keep the historical `macos-host`
+qualifier on unrelated branches or main. Both build and development install
+accept that shared semantic-version/branch shape. The full native Host links with SDK/target 27 and
 warnings-as-errors; no probe main or synthetic verifier is linked. The default
 uninstalled executable is ad-hoc signed for assembly checks. Supplying the
 existing `PLANK_MACOS_SIGNING_IDENTITY` also builds Apple-signed `PLANK Host.app`

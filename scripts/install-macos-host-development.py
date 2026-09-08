@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import plistlib
 import pwd
+import re
 import shutil
 import stat
 import subprocess
@@ -74,7 +75,7 @@ def main():
     source = args.app.resolve(strict=True)
     info = plistlib.loads((source / "Contents/Info.plist").read_bytes())
     assert info["CFBundleIdentifier"] == "la.instinctual.PLANK.Host"
-    assert "-macos-host" in info["PLANKVersion"]
+    assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z][a-z0-9.-]*)?", info["PLANKVersion"])
     run("codesign", "--verify", "--strict", str(source))
     signature = run("codesign", "-d", "--verbose=4", str(source)).stderr
     assert "Authority=Apple Development:" in signature and "TeamIdentifier=" in signature
