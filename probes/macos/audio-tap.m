@@ -5,9 +5,18 @@
 #import <CoreAudio/CoreAudio.h>
 #import <CoreAudio/AudioHardwareTapping.h>
 #import <CoreAudio/CATapDescription.h>
+#import "opus-encoder.h"
 #include <mach/mach_time.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <unistd.h>
+
+enum { TapSlots = 16, TapMaxFrames = 8192 };
+typedef struct {
+    UInt32 frames;
+    uint64_t hostTime;
+    float samples[TapMaxFrames * 2];
+} TapBlock;
 
 typedef struct {
     AudioStreamBasicDescription format;
@@ -18,6 +27,9 @@ typedef struct {
     uint64_t previousHost;
     UInt32 previousFrames;
     double tickSeconds;
+    _Atomic uint32_t writeIndex, readIndex, overflow;
+    TapBlock blocks[TapSlots];
+    __unsafe_unretained dispatch_source_t ready;
 } TapMeasurements;
 
 // Single HAL callback writer; main reads only after IO has stopped/destroyed.
@@ -63,6 +75,23 @@ static OSStatus capture(AudioObjectID device, const AudioTimeStamp* now,
     if (frames > state->maxFrames) state->maxFrames = frames;
     state->maxRMS = fmax(state->maxRMS, sqrt(energy / (2 * frames)));
     state->callbacks++; state->frames += frames;
+    uint32_t writeIndex = atomic_load_explicit(&state->writeIndex, memory_order_relaxed);
+    uint32_t readIndex = atomic_load_explicit(&state->readIndex, memory_order_acquire);
+    if (writeIndex - readIndex == TapSlots) {
+        atomic_fetch_add_explicit(&state->overflow, 1, memory_order_relaxed);
+    } else {
+        TapBlock* block = &state->blocks[writeIndex % TapSlots];
+        block->frames = frames; block->hostTime = inputTime->mHostTime;
+        if (planar) {
+            const float* left = input->mBuffers[0].mData;
+            const float* right = input->mBuffers[1].mData;
+            for (UInt32 i = 0; i < frames; i++) {
+                block->samples[i * 2] = left[i]; block->samples[i * 2 + 1] = right[i];
+            }
+        } else memcpy(block->samples, input->mBuffers[0].mData, frames * 2 * sizeof(float));
+        atomic_store_explicit(&state->writeIndex, writeIndex + 1, memory_order_release);
+        dispatch_source_merge_data(state->ready, 1);
+    }
     return noErr;
 }
 
@@ -76,7 +105,49 @@ int main(void) {
         AudioDeviceIOProcID proc = NULL;
         BOOL started = NO;
         int result = 1;
-        TapMeasurements measurements = {0};
+        // Bounded RAM handoff to the ordinary main queue, never HAL encoding.
+        // No PCM or Opus payload is persisted. The ring is single producer/consumer.
+        static TapMeasurements measurements;
+        TapMeasurements* state = &measurements;
+        atomic_init(&measurements.writeIndex, 0);
+        atomic_init(&measurements.readIndex, 0);
+        atomic_init(&measurements.overflow, 0);
+        __block uint64_t opusPackets = 0, opusBytes = 0, encodeFailures = 0;
+        __block CMTime lastOpusPTS = kCMTimeInvalid;
+        PLANKMacOpusEncoder* encoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData* packet, CMTime pts) {
+            if (CMTIME_IS_VALID(lastOpusPTS) && CMTimeCompare(pts, lastOpusPTS) <= 0) return NO;
+            lastOpusPTS = pts; opusPackets++; opusBytes += packet.length;
+            return YES;
+        }];
+        dispatch_source_t ready = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_main_queue());
+        measurements.ready = ready;
+        void (^drain)(void) = ^{
+            uint32_t readIndex = atomic_load_explicit(&state->readIndex, memory_order_relaxed);
+            uint32_t writeIndex = atomic_load_explicit(&state->writeIndex, memory_order_acquire);
+            while (readIndex != writeIndex) {
+                TapBlock* block = &state->blocks[readIndex % TapSlots];
+                AudioStreamBasicDescription format = state->format;
+                format.mFormatFlags &= ~kAudioFormatFlagIsNonInterleaved;
+                format.mBytesPerFrame = format.mBytesPerPacket = 8;
+                CMAudioFormatDescriptionRef description = NULL;
+                CMBlockBufferRef data = NULL;
+                CMSampleBufferRef sample = NULL;
+                size_t bytes = block->frames * 2 * sizeof(float);
+                OSStatus status = CMAudioFormatDescriptionCreate(NULL, &format, 0, NULL, 0, NULL, NULL, &description);
+                if (!status) status = CMBlockBufferCreateWithMemoryBlock(NULL, NULL, bytes, NULL, NULL, 0, bytes, 0, &data);
+                if (!status) status = CMBlockBufferReplaceDataBytes(block->samples, data, 0, bytes);
+                CMTime pts = CMClockMakeHostTimeFromSystemUnits(block->hostTime);
+                if (!status) status = CMAudioSampleBufferCreateReadyWithPacketDescriptions(NULL, data, description,
+                    block->frames, pts, NULL, &sample);
+                if (status || ![encoder encodeSample:sample]) encodeFailures++;
+                if (sample) CFRelease(sample);
+                if (data) CFRelease(data);
+                if (description) CFRelease(description);
+                atomic_store_explicit(&state->readIndex, ++readIndex, memory_order_release);
+            }
+        };
+        dispatch_source_set_event_handler(ready, drain);
+        dispatch_resume(ready);
         mach_timebase_info_data_t clock;
         mach_timebase_info(&clock);
         measurements.tickSeconds = (double)clock.numer / clock.denom / 1e9;
@@ -150,7 +221,15 @@ cleanup:
             printf("tap_destroy_status=%d\n", (int)status);
             if (status) result = 1;
         }
+        drain();
+        dispatch_source_cancel(ready);
+        [encoder stop];
+        uint32_t overflows = atomic_load_explicit(&measurements.overflow, memory_order_relaxed);
+        if (overflows || encodeFailures || !opusPackets) result = 1;
         if (!measurements.callbacks || measurements.invalid) result = 1;
+        printf("tap_opus packets=%llu bytes=%llu failures=%llu ring_overflows=%u persisted_payloads=0\n",
+            (unsigned long long)opusPackets, (unsigned long long)opusBytes,
+            (unsigned long long)encodeFailures, overflows);
         printf("tap_probe callbacks=%llu frames=%llu invalid=%llu chunk_min=%u chunk_max=%u max_rms=%.6f sample_gap_frames=%.3f host_gap_us=%.3f max_age_ms=%.3f result=%d\n",
             (unsigned long long)measurements.callbacks, (unsigned long long)measurements.frames,
             (unsigned long long)measurements.invalid, measurements.minFrames, measurements.maxFrames,
