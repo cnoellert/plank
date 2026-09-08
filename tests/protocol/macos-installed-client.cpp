@@ -34,6 +34,11 @@ int main(int argc, char** argv)
         NvHTTP http(NvAddress(QString::fromLocal8Bit(argv[1]), static_cast<quint16>(port)));
         const QString info = http.getServerInfo(NvHTTP::NVLL_NONE);
         CHECK(NvHTTP::getXmlString(info, "ServerCodecModeSupport") == "512");
+        // Same discovery gate used by normal login and reconnect. The original
+        // probe skipped it and therefore missed the GUI's absent topology.
+        CHECK(NvOutputTopology::supportsDescription(
+                    NvHTTP::getXmlString(info, "PlankTopologyVersion").toInt(),
+                    NvHTTP::getXmlString(info, "PlankFeatureFlags").toInt()));
         const QString token = http.authenticate(QString::fromLocal8Bit(argv[3]), QString::fromUtf8(password));
         password.fill('\0'); password.clear();
         http.setPlankSessionToken(token);
@@ -45,6 +50,9 @@ int main(int argc, char** argv)
         QString pin;
         const auto topology = http.getOutputTopology(&pin);
         CHECK(topology.featureFlags == NvOutputTopology::FixedCaptureFlags);
+        CHECK(topology.displayPolicyKnown());
+        CHECK(topology.allowsBookmarkHostLayout(QStringLiteral("fixed")));
+        CHECK(topology.desktopWidth > 0 && topology.desktopHeight > 0);
         const auto desktops = http.getAppList();
         CHECK(desktops.size() == 1 && desktops[0].name == QStringLiteral("Desktop"));
         auto launch = http.startMacPreview(topology, pin, 50000, 1200);
