@@ -28,9 +28,6 @@ int PltCreateThread(const char* name, ThreadEntry entry, void* context, PLT_THRE
     CHECK(false); return -1;
 }
 void PltDetachThread(PLT_THREAD* thread) { (void)thread; CHECK(false); }
-int extractVersionQuadFromString(const char* version, int* quad) {
-    (void)version; quad[0] = 7; quad[1] = 1; quad[2] = 0; quad[3] = -1; return 0;
-}
 void fixupMissingCallbacks(PDECODER_RENDERER_CALLBACKS* video,
                           PAUDIO_RENDERER_CALLBACKS* audio,
                           PCONNECTION_LISTENER_CALLBACKS* listener) {
@@ -93,7 +90,8 @@ static void exercise(bool linuxSession, int failure) {
     AUDIO_RENDERER_CALLBACKS audio = {0};
     CONNECTION_LISTENER_CALLBACKS listener = {0};
     server.address = "127.0.0.1";
-    server.serverInfoAppVersion = "7.1.0.-1";
+    // Native session setup must work without a legacy application version.
+    server.serverInfoAppVersion = NULL;
     server.serverCodecModeSupport = 1;
     stream.width = 1920; stream.height = 1080; stream.fps = 60;
     // No invented audio configuration is needed by the video-only session.

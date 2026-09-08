@@ -14,16 +14,21 @@ static BOOL publicText(NSString *value, NSUInteger maximum) {
     NSString *_name;
     NSUUID *_uuid;
     NSString *_version;
+    BOOL _streaming;
 }
 
 - (instancetype)initWithName:(NSString *)name workstationUUID:(NSUUID *)uuid version:(NSString *)version {
+    return [self initWithName:name workstationUUID:uuid version:version streaming:NO];
+}
+- (instancetype)initWithName:(NSString *)name workstationUUID:(NSUUID *)uuid version:(NSString *)version
+                  streaming:(BOOL)streaming {
     if (!uuid || !publicText(name, 255) || !publicText(version, 128)) return nil;
     uuid_t bytes;
     [uuid getUUIDBytes:bytes];
     const uuid_t zero = {0};
     if (!memcmp(bytes, zero, sizeof(bytes))) return nil;
     self = [super init];
-    if (self) { _name = [name copy]; _uuid = [uuid copy]; _version = [version copy]; }
+    if (self) { _name = [name copy]; _uuid = [uuid copy]; _version = [version copy]; _streaming = streaming; }
     return self;
 }
 
@@ -38,8 +43,9 @@ static BOOL publicText(NSString *value, NSUInteger maximum) {
         @[@"hostname", _name], @[@"uniqueid", _uuid.UUIDString.lowercaseString],
         @[@"HttpsPort", [NSString stringWithFormat:@"%u", port]],
         @[@"PlankHostMetadataVersion", @"1"], @[@"PlankHostVersion", _version],
-        @[@"PlankAuth", @"1"], @[@"ServerCodecModeSupport", @"0"],
-        @[@"PlankTopologyVersion", @"0"], @[@"PlankFeatureFlags", @"0"],
+        @[@"PlankAuth", @"1"], @[@"ServerCodecModeSupport", _streaming ? @"512" : @"0"],
+        @[@"PlankTopologyVersion", _streaming ? @"13" : @"0"],
+        @[@"PlankFeatureFlags", _streaming ? @"524401" : @"0"],
         @[@"PairStatus", @"0"]
     ];
     for (NSArray *field in fields)
@@ -72,3 +78,4 @@ static BOOL targetMatches(NSString *target, NSString *path) {
 
 BOOL PLANKMacIsServerInformationTarget(NSString *target) { return targetMatches(target, @"/serverinfo"); }
 BOOL PLANKMacIsTopologyTarget(NSString *target) { return targetMatches(target, @"/plank/topology"); }
+BOOL PLANKMacIsDesktopTarget(NSString *target) { return targetMatches(target, @"/applist"); }

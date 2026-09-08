@@ -33,14 +33,19 @@ int main(int argc, char** argv)
         {"schema_version", 1}, {"state", "connecting"}, {"udp_port", 28989},
         {"max_udp_payload_size", 1200}, {"capture", rawTopology.value("capture")},
         {"transport_token", QString::fromLatin1(QByteArray(32, 'x').toBase64())},
-        {"services", QJsonObject {{"audio", false}, {"input", false}, {"cursor", "embedded"}}}
+        {"services", QJsonObject {{"audio", true}, {"input", true}, {"cursor", "embedded"}}}
     };
     MacPreviewLaunch::Reply parsed;
     CHECK(MacPreviewLaunch::parseReply(valid, topology, 28989, 1200, parsed));
-    CHECK(parsed.configuration.serviceFlags == 0);
+    CHECK(parsed.configuration.serviceFlags == (PLANK_NATIVE_SERVICE_AUDIO | PLANK_NATIVE_SERVICE_INPUT));
     CHECK(parsed.configuration.hostFeatureFlags == LI_FF_DYNAMIC_VIDEO_BITRATE);
-    CHECK(parsed.configuration.audioPacketDurationMs == 0);
-    CHECK(parsed.configuration.opusConfiguration.channelCount == 0);
+    CHECK(parsed.configuration.audioPacketDurationMs == 5);
+    CHECK(parsed.configuration.opusConfiguration.sampleRate == 48000);
+    CHECK(parsed.configuration.opusConfiguration.channelCount == 2);
+    CHECK(parsed.configuration.opusConfiguration.streams == 1);
+    CHECK(parsed.configuration.opusConfiguration.coupledStreams == 1);
+    CHECK(parsed.configuration.opusConfiguration.mapping[0] == 0);
+    CHECK(parsed.configuration.opusConfiguration.mapping[1] == 1);
     CHECK(parsed.configuration.negotiatedVideoFormat == VIDEO_FORMAT_H265_MAIN10);
     CHECK(parsed.configuration.sessionPort == 28989);
     auto reject = [&](const QJsonObject& bad) {
@@ -63,7 +68,7 @@ int main(int argc, char** argv)
     bad = valid; bad["transport_token"] = QString(44, 'x'); reject(bad);
     bad = valid; bad["transport_token"] = QString::fromLatin1(QByteArray(31, 'x').toBase64()); reject(bad);
     for (const char* service : {"audio", "input", "cursor"}) {
-        auto services = valid.value("services").toObject(); services[service] = true;
+        auto services = valid.value("services").toObject(); services[service] = false;
         bad = valid; bad["services"] = services; reject(bad);
     }
     auto capture = rawTopology.value("capture").toObject();

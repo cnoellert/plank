@@ -111,7 +111,11 @@ def main():
                 assert status == 200 and response.findtext("hostname") == config["Name"]
                 assert response.findtext("HttpsPort") == str(port)
                 assert "macos-host" in response.findtext("PlankHostVersion")
+                assert response.findtext("ServerCodecModeSupport") == "512"
+                assert response.findtext("PlankTopologyVersion") == "13"
+                assert response.findtext("PlankFeatureFlags") == "524401"
                 assert fixture.request(certificate, port, {}, raw=b"GET /plank/topology HTTP/1.1\r\nHost: localhost\r\n\r\n")[0] == 401
+                assert fixture.request(certificate, port, {}, raw=b"GET /applist HTTP/1.1\r\nHost: localhost\r\n\r\n")[0] == 401
                 command("launchctl", "kill", "SIGTERM", graphical_job)
                 until(lambda: "last exit code = 0" in command("launchctl", "print", graphical_job).stdout)
                 assert "control, video, audio and input drained" in (stage / "graphical.err").read_text()

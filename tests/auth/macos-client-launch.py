@@ -96,11 +96,11 @@ def main():
                                 "udp_port": self.server.server_port,
                                 "max_udp_payload_size": 1200, "capture": topology["capture"],
                                 "transport_token": base64.b64encode(b"x" * 32).decode(),
-                                "services": {"audio": False, "input": False, "cursor": "embedded"}}
+                                "services": {"audio": True, "input": True, "cursor": "embedded"}}
                     if mode == "wrong-port":
                         response["udp_port"] = 1
                     if mode == "audio":
-                        response["services"]["audio"] = True
+                        response["services"]["audio"] = False
                     self.respond(200, json.dumps(response).encode())
 
             server = http.server.HTTPServer(("127.0.0.1", 0), Handler)

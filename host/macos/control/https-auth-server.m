@@ -173,7 +173,7 @@
                     if (PLANKMacIsServerInformationTarget(path) && owner->_serverInformationXML) {
                         [owner replyBytes:owner->_serverInformationXML type:@"application/xml; charset=utf-8"
                                     token:nil status:200 request:request];
-                    } else if (PLANKMacIsTopologyTarget(path)) {
+                    } else if (PLANKMacIsTopologyTarget(path) || PLANKMacIsDesktopTarget(path)) {
                         if (owner->_authBusy) { [owner reply:@{@"state": @"denied"} status:503 request:request]; return; }
                         [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
                         request.bytes = nil;
@@ -198,7 +198,13 @@
                                     (void)exception; topology = nil; status = 503;
                                 }
                                 dispatch_async(owner->_networkQueue, ^{
-                                    [owner reply:topology ?: @{@"state": @"denied"} status:status request:request];
+                                    if (status == 200 && PLANKMacIsDesktopTarget(path)) {
+                                        // One immutable desktop identity, not an application catalog.
+                                        NSData *desktop = [@"<root status_code=\"200\"><App><AppTitle>Desktop</AppTitle><ID>881448767</ID></App></root>"
+                                            dataUsingEncoding:NSUTF8StringEncoding];
+                                        [owner replyBytes:desktop type:@"application/xml; charset=utf-8" token:nil
+                                                  status:200 request:request];
+                                    } else [owner reply:topology ?: @{@"state": @"denied"} status:status request:request];
                                     owner->_authBusy = NO;
                                 });
                             }

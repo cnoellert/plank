@@ -9,6 +9,8 @@
 @interface PLANKMacServerInformation : NSObject
 - (instancetype)initWithName:(NSString *)name workstationUUID:(NSUUID *)uuid
                     version:(NSString *)version;
+- (instancetype)initWithName:(NSString *)name workstationUUID:(NSUUID *)uuid
+                    version:(NSString *)version streaming:(BOOL)streaming;
 - (NSData *)XMLForControlPort:(uint16_t)port;
 @end
 
@@ -16,3 +18,4 @@
 // query parameters. These optional values are ignored, never authorization.
 BOOL PLANKMacIsServerInformationTarget(NSString *target);
 BOOL PLANKMacIsTopologyTarget(NSString *target);
+BOOL PLANKMacIsDesktopTarget(NSString *target);

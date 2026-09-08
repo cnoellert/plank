@@ -152,7 +152,7 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
     if (key) CFRelease(key);
     if (!identity) return startupFailure("tls-identity");
     PLANKMacServerInformation *information = [[PLANKMacServerInformation alloc] initWithName:config[@"Name"]
-        workstationUUID:[[NSUUID alloc] initWithUUIDString:config[@"UUID"]] version:@PLANK_MACOS_HOST_VERSION];
+        workstationUUID:[[NSUUID alloc] initWithUUIDString:config[@"UUID"]] version:@PLANK_MACOS_HOST_VERSION streaming:YES];
     PLANKMacFixedCapture *capture = [PLANKMacFixedCapture new];
     __block PLANKMacHostRuntime *runtime;
     __block __weak PLANKMacAgentConnection *weakAgent;
