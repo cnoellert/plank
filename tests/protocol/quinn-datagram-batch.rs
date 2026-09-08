@@ -75,8 +75,11 @@ async fn main() {
         let drain = tokio::spawn(async move {
             for _ in 0..4096 { receive(&reader).await; }
         });
+        // Retain the parent connection until all replies have been received;
+        // dropping its last handle closes it, even after SendStream::finish.
+        let echo_server = server.clone();
         let echo = tokio::spawn(async move {
-            let (mut send, mut recv) = server.accept_bi().await.unwrap();
+            let (mut send, mut recv) = echo_server.accept_bi().await.unwrap();
             let mut byte = [0u8];
             for _ in 0..64 {
                 recv.read_exact(&mut byte).await.unwrap();
