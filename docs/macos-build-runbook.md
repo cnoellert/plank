@@ -198,6 +198,17 @@ Two independent launches passed on September 7. Exact hashes are in HANDOFF.
 
 ## Transport qualification
 
+For the user-authorized combined sender experiment (.51), use
+`PLANK_MACOS_FAST_SEND=1` instead. This selects `macos-fast-send`, which includes
+sender timing. On macOS only, it passes no application datagram pacer to either
+server path and floors the rate-derived Quinn window budget at 1 Gbps. This is
+not an encoder bitrate, a measured link capacity, or a strict wire-rate cap;
+Quinn still schedules transmission. Encoder settings, FEC and queue capacities
+are unchanged. Keep this archive separate from the baseline. The feature is
+off by default and must not become a release default without live acceptance.
+Check receiver loss as well as sender drain: immediate submission can move
+drops downstream. This experiment does not qualify the Linux sender.
+
 For the explicitly authorized sender-drain diagnostic only, set
 `PLANK_MACOS_SENDER_TIMING=1` before `build-macos-transport.sh`. It selects the
 compile-time `sender-timing` feature (off by default), retaining ABI12 and the
