@@ -61,7 +61,7 @@ static BOOL supportedAPI(void) {
 }
 - (CGDirectDisplayID)displayID { return atomic_load(&_displayID); }
 - (BOOL)create {
-    if (!supportedAPI()) return NO;
+    if (!supportedAPI()) { NSLog(@"PLANK virtual display API signature unavailable"); return NO; }
     PLANKMacDisplayDescriptor *descriptor = [[NSClassFromString(@"CGVirtualDisplayDescriptor") alloc] init];
     descriptor.name = @"PLANK Desktop";
     descriptor.maxPixelsWide = 5120; descriptor.maxPixelsHigh = 2160;
@@ -69,7 +69,7 @@ static BOOL supportedAPI(void) {
     descriptor.vendorID = 0xF0F0; descriptor.productID = 2; descriptor.serialNum = 1;
     descriptor.queue = dispatch_get_main_queue();
     _display = [[NSClassFromString(@"CGVirtualDisplay") alloc] initWithDescriptor:descriptor];
-    if (!_display) return NO;
+    if (!_display) { NSLog(@"PLANK virtual display descriptor rejected"); return NO; }
     NSMutableArray *available = [NSMutableArray array];
     for (size_t i = 0; i < sizeof(modes)/sizeof(modes[0]); ++i) {
         id mode = [[NSClassFromString(@"CGVirtualDisplayMode") alloc]
@@ -79,7 +79,7 @@ static BOOL supportedAPI(void) {
     }
     PLANKMacDisplaySettings *settings = [[NSClassFromString(@"CGVirtualDisplaySettings") alloc] init];
     settings.hiDPI = 0; settings.modes = available;
-    if (![_display applySettings:settings]) return NO;
+    if (![_display applySettings:settings]) { NSLog(@"PLANK virtual display modes rejected"); return NO; }
     atomic_store(&_displayID, _display.displayID);
     return self.displayID != kCGNullDirectDisplay;
 }
@@ -110,6 +110,7 @@ static BOOL supportedAPI(void) {
     }
     if (!_display && ![self create]) { completion(NO); return; }
     _busy = YES;
+    NSLog(@"PLANK desktop mode preparing: %ux%u display=%u", width, height, self.displayID);
     __block BOOL selected = NO;
     NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + 6;
     dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
@@ -126,6 +127,7 @@ static BOOL supportedAPI(void) {
             dispatch_source_set_event_handler(timer, nil);
             self->_busy = NO;
             if (ready) NSLog(@"PLANK desktop mode ready: %ux%u", width, height);
+            else NSLog(@"PLANK desktop mode not ready: selected=%d authorized=%d", selected, allowed);
             completion(ready);
         }
     });

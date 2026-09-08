@@ -53,7 +53,11 @@
 - (NSDictionary *)prepareDisplayRequest:(NSDictionary *)request token:(NSString *)token
                                   peer:(NSData *)peer status:(unsigned *)status {
     @synchronized(self) {
-        if (!self.prepareDisplay || atomic_load(&_stopping) || !_started) { *status = 503; return nil; }
+        if (!self.prepareDisplay || atomic_load(&_stopping) || !_started) {
+            NSLog(@"PLANK desktop preparation unavailable: provider=%d stopping=%d started=%d",
+                self.prepareDisplay != nil, atomic_load(&_stopping), _started);
+            *status = 503; return nil;
+        }
         if (_stream && _stream.state != PLANKMacPreviewStopped) { *status = 409; return nil; }
         if (request.count != 3) { *status = 400; return nil; }
         for (NSString *key in @[@"schema_version", @"width", @"height"]) {
@@ -73,7 +77,10 @@
                 [self->_sessions authorizeToken:token peer:peer identity:&account];
         };
         if (!valid()) { *status = 401; return nil; }
-        if (!self.prepareDisplay(width, height, valid) || !valid()) { *status = 503; return nil; }
+        if (!self.prepareDisplay(width, height, valid) || !valid()) {
+            NSLog(@"PLANK desktop preparation failed: %ux%u", width, height);
+            *status = 503; return nil;
+        }
         NSDictionary *topology = _topology();
         if (!topology || [topology[@"capture"][@"width"] unsignedIntValue] != width ||
             [topology[@"capture"][@"height"] unsignedIntValue] != height || !valid()) {
