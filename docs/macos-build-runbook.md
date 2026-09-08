@@ -697,12 +697,25 @@ before qmake, and `LD_LIBRARY_PATH=$PLANK_CLIENT_FFMPEG_WORK/install/lib` when
 running the decoder test. Its `.pro` includes libswresample for private
 libavcodec's transitive link requirement. Never link a distro FFmpeg instead.
 
-The embedded fixture is a synthetic VideoToolbox Main10 chart, not a desktop
-capture or generic HDR HEVC sample. Its Client test README records provenance
+The embedded fixtures are PLANK-owned VideoToolbox Main10 and RExt10 charts,
+not user desktop content or generic HDR HEVC samples. The Client test README records provenance
 and SHA-256. Passing proves software decode and strict format validation only;
 hardware decode, renderer output and stream integration are separate gates.
 Keep partial copied standalone qualification inputs explicitly identified;
 full Client builds still require exact committed, clean worktrees and bundles.
+
+The existing `macos-installed-client` integration harness takes explicit
+`ADDRESS PORT USER WIDTHxHEIGHT ENCODING_MODE`, with the account password only
+on stdin from a no-echo prompt. Both Apple modes use authenticated display
+schema2. On GPU-less builders, append `--sample-keyframes` for format-only
+qualification: receive/audio/control drain promptly; at most eight keyframes
+and64MiB remain in memory and are decoded after disconnect. This is not a
+real-time decoder, full reference-chain, or graphical presentation test.
+The default synchronous full-frame software decode can fall behind a5K444
+stream and overflow its receive queue; do not diagnose this test bottleneck as
+an actual graphical Client transport regression. Static SCK content can
+produce only one keyframe in15seconds; that validates format but not bitrate
+response under motion. Keep failures and this limitation in the test record.
 
 For `tests/outputtopology/outputtopology.pro`, set `PLANK_REPO_ROOT` to the exact
 root source worktree when running its binary. Without that environment value,

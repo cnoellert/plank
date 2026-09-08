@@ -22,7 +22,11 @@ extern "C" {
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
-    CHECK(argc == 4 || argc == 5);
+    CHECK(argc == 6 || (argc == 7 && QByteArray(argv[6]) == "--sample-keyframes"));
+    const bool sampleKeyframes = argc == 7;
+    const QString encodingMode = QString::fromLocal8Bit(argv[5]);
+    const bool fullChroma = encodingMode == QLatin1String("hevc-10-444-videotoolbox");
+    CHECK(fullChroma || encodingMode == QLatin1String("hevc-10-420-videotoolbox"));
     bool valid = false;
     const int port = QString::fromLocal8Bit(argv[2]).toInt(&valid);
     CHECK(valid && port > 0 && port <= 65535);
@@ -43,9 +47,9 @@ int main(int argc, char** argv)
         const QString token = http.authenticate(QString::fromLocal8Bit(argv[3]), QString::fromUtf8(password), &greeter);
         password.fill('\0'); password.clear();
         http.setPlankSessionToken(token);
-        if (argc == 5) {
+        {
             const auto requested = NvOutputTopology::virtualModeSize(QString::fromLocal8Bit(argv[4]));
-            const auto prepared = http.prepareMacDisplay(QString::fromLocal8Bit(argv[4]));
+            const auto prepared = http.prepareMacDisplay(QString::fromLocal8Bit(argv[4]), encodingMode);
             CHECK(prepared.displayPolicyKnown());
             CHECK(prepared.desktopWidth == requested.width() && prepared.desktopHeight == requested.height());
         }
@@ -58,6 +62,7 @@ int main(int argc, char** argv)
         const auto topology = http.getOutputTopology(&pin);
         CHECK(topology.featureFlags == NvOutputTopology::FixedCaptureFlags);
         CHECK(topology.displayPolicyKnown());
+        CHECK(topology.appleEncodingMode == encodingMode);
         CHECK(topology.allowsBookmarkHostLayout(QStringLiteral("fixed")));
         CHECK(topology.desktopWidth > 0 && topology.desktopHeight > 0);
         const auto desktops = http.getAppList();
@@ -91,6 +96,12 @@ int main(int argc, char** argv)
         OpusDecoder* audio = opus_decoder_create(48000, 2, &opusError);
         CHECK(audio && opusError == OPUS_OK);
         std::vector<uint8_t> bytes(64 * 1024 * 1024);
+        // GPU-less builders cannot necessarily software-decode 5K444 in real
+        // time. Optional format-only mode drains media promptly and retains at
+        // most eight keyframes / 64 MiB in memory for decode after disconnect.
+        // This is not hardware, render, or full reference-chain qualification.
+        std::vector<std::vector<uint8_t>> samples;
+        size_t sampleBytes = 0;
         unsigned frames = 0, decoded = 0, audioPackets = 0, rateSent = 0, rateAck = 0;
         const uint32_t cycleRates[] = {10000, 150000, 10000, 150000};
         uint64_t lastPTS = 0, lastFrameNumber = 0;
@@ -138,6 +149,13 @@ int main(int argc, char** argv)
                 lastFrameNumber = video.frame_number;
                 CHECK(!frames || video.pts > lastPTS);
                 lastPTS = video.pts; ++frames;
+                if (sampleKeyframes) {
+                    if ((video.flags & PLANK_TRANSPORT_NATIVE_VIDEO_FLAG_KEY) && samples.size() < 8) {
+                        CHECK(count <= bytes.size() - sampleBytes);
+                        samples.emplace_back(bytes.begin(), bytes.begin() + count);
+                        sampleBytes += count;
+                    }
+                } else {
                 CHECK(av_new_packet(packet, static_cast<int>(count)) == 0);
                 std::memcpy(packet->data, bytes.data(), count);
                 CHECK(avcodec_send_packet(codec, packet) == 0);
@@ -145,13 +163,14 @@ int main(int argc, char** argv)
                 int status;
                 while ((status = avcodec_receive_frame(codec, frame)) == 0) {
                     CHECK(frame->width == topology.desktopWidth && frame->height == topology.desktopHeight);
-                    CHECK(frame->format == AV_PIX_FMT_YUV420P10LE && frame->color_range == AVCOL_RANGE_JPEG);
+                    CHECK(frame->format == (fullChroma ? AV_PIX_FMT_YUV444P10LE : AV_PIX_FMT_YUV420P10LE) && frame->color_range == AVCOL_RANGE_JPEG);
                     CHECK(frame->colorspace == AVCOL_SPC_BT709 && frame->color_primaries == AVCOL_PRI_BT709);
-                    CHECK(plankAppleVideoFrameMatches(frame, codec->profile, false));
+                    CHECK(plankAppleVideoFrameMatches(frame, codec->profile, fullChroma));
                     ++decoded;
                     av_frame_unref(frame);
                 }
                 CHECK(status == AVERROR(EAGAIN));
+                }
             }
             for (unsigned i = 0; i < 64; ++i) {
                 uint8_t opus[65536]; size_t size = 0;
@@ -164,7 +183,10 @@ int main(int argc, char** argv)
                 ++audioPackets;
             }
         }
-        CHECK(frames > 1 && decoded > 1 && audioPackets > 100);
+        // A static desktop can produce fewer than a GOP's worth of SCK
+        // changes. One captured keyframe is sufficient for this explicitly
+        // format-only gate; bitrate response under motion is a separate test.
+        CHECK(frames > 1 && (sampleKeyframes ? !samples.empty() : decoded > 1) && audioPackets > 100);
         CHECK(rateAck == 4);
         uint8_t control[20]; size_t count = 0; uint32_t bitrate = 55000;
         CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE, &bitrate, 1, control, sizeof(control), &count));
@@ -180,9 +202,22 @@ int main(int argc, char** argv)
         while (plank_transport_native_endpoint_state(raw) == PLANK_TRANSPORT_STATE_READY && drain.elapsed() < 5000)
             QThread::msleep(10);
         CHECK(plank_transport_native_endpoint_state(raw) != PLANK_TRANSPORT_STATE_READY);
+        for (const auto& sample : samples) {
+            avcodec_flush_buffers(codec);
+            CHECK(av_new_packet(packet, static_cast<int>(sample.size())) == 0);
+            std::memcpy(packet->data, sample.data(), sample.size());
+            CHECK(avcodec_send_packet(codec, packet) == 0);
+            av_packet_unref(packet);
+            CHECK(avcodec_send_packet(codec, nullptr) == 0);
+            CHECK(avcodec_receive_frame(codec, frame) == 0);
+            CHECK(frame->width == topology.desktopWidth && frame->height == topology.desktopHeight);
+            CHECK(plankAppleVideoFrameMatches(frame, codec->profile, fullChroma));
+            ++decoded;
+            av_frame_unref(frame);
+        }
         opus_decoder_destroy(audio); av_packet_free(&packet); av_frame_free(&frame); avcodec_free_context(&codec);
-        std::printf("installed_mac_client=pass network_frames=%u decoded_frames=%u opus_packets=%u pixels=%dx%d exact_main10=1 bitrate_ack=1 disconnect=1 graphical_client=0 input_posting=0\n",
-                    frames, decoded, audioPackets, topology.desktopWidth, topology.desktopHeight);
+        std::printf("installed_mac_client=pass network_frames=%u decoded_frames=%u opus_packets=%u pixels=%dx%d chroma=%s exact_profile=1 bitrate_ack=1 disconnect=1 graphical_client=0 input_posting=0 keyframes_only=%d\n",
+                    frames, decoded, audioPackets, topology.desktopWidth, topology.desktopHeight, fullChroma ? "444" : "420", sampleKeyframes);
     } catch (const GfeHttpResponseException& error) {
         std::fprintf(stderr, "HTTP failure: %d\n", error.getStatusCode()); return 1;
     } catch (const QtNetworkReplyException& error) {

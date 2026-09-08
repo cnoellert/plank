@@ -11,6 +11,7 @@ import importlib.util
 import os
 from pathlib import Path
 import plistlib
+import re
 import shutil
 import socket
 import subprocess
@@ -110,7 +111,10 @@ def main():
                 status, response = fixture.request(certificate, port, {}, raw=raw, xml=True)
                 assert status == 200 and response.findtext("hostname") == config["Name"]
                 assert response.findtext("HttpsPort") == str(port)
-                assert "macos-host" in response.findtext("PlankHostVersion")
+                version = response.findtext("PlankHostVersion")
+                assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z][a-z0-9.-]*)?", version)
+                if args.binary.parent.name == "MacOS" and args.binary.parents[2].suffix == ".app":
+                    assert version == plistlib.loads((args.binary.parents[2] / "Contents/Info.plist").read_bytes())["PLANKVersion"]
                 assert response.findtext("ServerCodecModeSupport") == "1049088"
                 assert response.findtext("PlankTopologyVersion") == "13"
                 assert response.findtext("PlankFeatureFlags") == "3670129"

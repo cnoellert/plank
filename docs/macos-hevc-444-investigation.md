@@ -2,7 +2,8 @@
 
 September 8, 2026. Qualification and candidate integration on the dedicated Apple M4 development
 Mac: macOS 27.0 build 26A5425a, SDK 27.0, arm64, deployment target 27.0.
-No installed Host, Client, capture, display, input or service changes.
+The initial investigation did not change the installed Host. Candidate1.0.64
+is now installed on the dedicated development Mac; see the integration record.
 
 ## Result
 
@@ -137,7 +138,30 @@ real software-decoded 420/444 fixtures, 123 launch checks, 15 topology tests,
 and nine bitrate-policy tests. Synthetic hardware metadata is not hardware
 decode qualification. Full Mac Host compilation and native-media lifecycle
 tests pass; updated control/capture-generation tests pass. Full candidate
-packaging, real Client presentation and interactive acceptance are next.
+packaging now passes too. The signed Host1.0.64-macos-hevc444 is installed on
+the dedicated Mac; the Client DEB is retained for manual graphical acceptance.
+Actual service discovery/unauthorized denial/graceful replacement pass. A
+stale test-only bitrate adapter was updated to the existing asynchronous
+interface, and old test/installer branch-name checks now accept the actual
+version while preserving signature and exact runtime-version checks.
+
+Live4K444 format-only receive passes51frames, two independently decoded
+keyframes,2992Opus packets, four10/150Mbps command ACKs and clean disconnect.
+The unchanged4K420 full decode test passes52network/49decoded frames and
+2992Opus packets with the same ACK/disconnect checks. These are static desktop
+runs, not moving-content performance or visual acceptance.
+
+The first synchronous4K444 software-decode harness run on GPU-less linux-client-builder
+fell behind at frame8→11, with two receive-queue drops and missing-reference
+decode failure; Host recorded zero send drops. The format-only runner now
+drains promptly and decodes bounded retained keyframes after disconnect,
+without changing product code. A first5K format-only run received49frames
+but failed the test's two-keyframe minimum because the static desktop had
+only one. The explicit format-only gate now accepts one; this does not qualify
+bitrate-driven re-encoding under motion or excuse reference-chain failures.
+Final5120x2160 run passes52network frames, two exact decoded444 keyframes,
+2992Opus packets, all four bitrate ACKs and clean disconnect. Hardware Client
+rendering, smooth moving footage, login/logout and final OS revalidation remain.
 
 A startup experiment with `MaxFrameDelayCount=1` was rejected by VideoToolbox
 with OSStatus -12900 before frame submission. It is not in production or the
