@@ -67,11 +67,20 @@ root; executable SHA256
 `277e158106e4eb8baf0e9368d8f0c64ffb3114164e538e141e6d249e726e350c`.
 Build/signing ran in a one-shot Aqua job that has been removed.
 
-No production code, installed Host or saved audio settings changed. Physical
-speaker suppression/restoration, process-death restoration, owner isolation and
-end-to-end synchronization remain unqualified. Asked whether the operator can
-hear the Mac's physical speakers or only the PLANK stream, to arrange the
-audible test. Do not replace the Host with this standalone feasibility probe.
+Operator-observed held test: source `40018c8` adds `--hold` and graceful
+SIGTERM/SIGINT cleanup. Signed executable SHA256
+`de2a9e79825237db6171693eaeddbb03ca11ffb58034634cd5842c0401950cb8`.
+The operator listened at the physical Mac, reported that sound no longer seemed
+to come from its speaker, then requested stop. After exact PID/command validation,
+SIGTERM stopped only the probe. The operator confirmed speaker audio returned.
+The ~229-second run produced45802 Opus packets, zero encoder failures, overflows
+or timestamp gaps; maximum callback age10.957ms. All stop/destroy calls succeeded.
+This passes manual normal-stop suppression/restoration, not crash recovery.
+
+No production code, installed Host or saved audio settings changed. All probes
+have exited. Process-death restoration, owner isolation and end-to-end A/V
+synchronization remain unqualified. Do not replace the Host with this standalone
+feasibility probe.
 
 Product scope must be explicit: SDK27 defines a global tap as *all processes*
 and `privateTap` only as visibility to its creator. Neither documents same-user
