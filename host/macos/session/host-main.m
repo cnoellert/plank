@@ -214,9 +214,6 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
         capture:^id<PLANKMacPreviewCapture> { return [PLANKMacScreenCapture new]; }
         input:^id<PLANKMacInputDevice> { return [PLANKMacQuartzInput new]; }];
     runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, BOOL (^valid)(void)) {
-        // Sign-in is deliberately fixed at 1080p. The authenticated Client
-        // chooses that size only for the greeter, never rewrites its bookmark.
-        if (phase == PLANKMacScopeSignIn && (width != 1920 || height != 1080)) return NO;
         if (!PLANKMacDesktopModeSupported(width, height)) return NO;
         dispatch_semaphore_t finished = dispatch_semaphore_create(0);
         __block atomic_bool cancelled = false, ready = false;

@@ -44,9 +44,10 @@ int main(int argc, char** argv)
         password.fill('\0'); password.clear();
         http.setPlankSessionToken(token);
         if (argc == 5) {
-            const auto prepared = http.prepareMacDisplay(QString::fromLocal8Bit(argv[4]), greeter);
+            const auto requested = NvOutputTopology::virtualModeSize(QString::fromLocal8Bit(argv[4]));
+            const auto prepared = http.prepareMacDisplay(QString::fromLocal8Bit(argv[4]));
             CHECK(prepared.displayPolicyKnown());
-            if (greeter) CHECK(prepared.desktopWidth == 1920 && prepared.desktopHeight == 1080);
+            CHECK(prepared.desktopWidth == requested.width() && prepared.desktopHeight == requested.height());
         }
         CHECK(NvHTTP::getXmlString(http.getServerInfo(NvHTTP::NVLL_NONE), "PairStatus") == "1");
         NvHTTP anonymous(http.address());

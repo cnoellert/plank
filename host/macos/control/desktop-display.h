@@ -7,7 +7,7 @@
 // helper, public socket or physical-display mode mutation. Agent process exit
 // is the removal boundary on SDK 27; do not pretend releasing the object removes it.
 @interface PLANKMacDesktopDisplay : NSObject
-// LoginWindow advertises only its fixed bootstrap canvas, not desktop modes.
+// Distinct display identity, with the same selectable modes as the desktop.
 - (instancetype)initForSignIn;
 @property(nonatomic, readonly) CGDirectDisplayID displayID;
 - (void)prepareWidth:(unsigned)width height:(unsigned)height
