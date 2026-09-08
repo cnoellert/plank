@@ -1,8 +1,9 @@
 # Authenticated macOS preview launch (schema 1)
 
-Experimental, on `macos-host` only. Discovery continues to advertise zero
-streaming capabilities and the ordinary Client Session remains gated. This is
-not a Linux launch protocol replacement or an installable Mac Host service.
+Experimental, on `macos-host` only. The actual Host advertises HEVC Main10 and
+fixed capture; component-only fixtures still advertise zero capabilities.
+The ordinary Client uses this authenticated media contract. This does not
+replace Linux PLS1 negotiation or claim completed LoginWindow deployment.
 
 After TLS 1.3 certificate approval, `/plank/auth/start` and `/plank/auth/respond`
 authenticate the active desktop's owner. `GET /plank/topology` returns the exact
@@ -36,7 +37,7 @@ one-use `transport_token`, `udp_port`, the exact `max_udp_payload_size`, the
 selected `capture` descriptor and:
 
 ```json
-"services": {"audio": false, "input": false, "cursor": "embedded"}
+"services": {"audio": true, "input": true, "cursor": "embedded"}
 ```
 
 The UDP port is the same number as the approved HTTPS control port. QUIC uses
@@ -54,19 +55,22 @@ original token's claimed lease. An exception during launch also revokes it.
 Native data controls retain existing PLD1 encoding: disconnect, keyframe request,
 reference-range invalidation (implemented by forcing a keyframe), and bitrate
 updates. Bitrate acknowledgement contains requested/applied/peak values in that
-order. Malformed/unsupported controls fail the session. No separate cursor,
-audio, raw-HID or generic input capability is claimed by this video-only preview.
+order. Malformed/unsupported controls fail the session. System audio is Opus,
+stereo 48 kHz, 5 ms packets (one stream, one coupled stream, mapping 0/1).
+Keyboard, absolute mouse, buttons, and scrolling use native input. No separate
+cursor, raw-HID, tablet or generic-touchscreen capability is claimed.
 The native library itself retains its shared Linux endpoint implementation.
 
 The Client now has a typed manifest parser and explicit native service flags.
-Audio/input/local-cursor are absent for this manifest, while schema-1's bitrate
-controls set `LI_FF_DYNAMIC_VIDEO_BITRATE`. Common-c skips absent service workers;
+Audio/input are required for this manifest, while schema-1's bitrate
+controls set `LI_FF_DYNAMIC_VIDEO_BITRATE`. The embedded cursor needs no local
+cursor channel. Common-c skips absent service workers;
 the Client does not start an audio receiver without negotiated audio. Linux
 PLS1 setup explicitly retains all three services and its existing checks.
 This internal Client/common-c struct change is not a transport wire ABI change;
 the two must be rebuilt together, without an old-struct fallback.
 
-The parser is not yet called by the ordinary HTTPS/Session launch flow. Keep its
-Mac gate until authenticated POST, approved certificate continuity, fixed pixel
-geometry and embedded-cursor presentation are wired and tested. Live capture
-tests currently use a standalone native receiver, not the user-facing Client.
+The ordinary Session calls the pinned HTTPS launch, then consumes this manifest
+instead of sending a Linux setup exchange. Capture pixels remain host-native;
+Scaled-Span fits them at presentation. A changed topology requires fresh
+authentication/geometry instead of silently reusing stale dimensions.

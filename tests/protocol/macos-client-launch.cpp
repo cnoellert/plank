@@ -26,7 +26,7 @@ int main(int argc, char** argv)
         const auto result = http.startMacPreview(topology, pin, 50000, 1200);
         if (mode != QLatin1String("success") ||
                 result.transportToken != QByteArray(32, 'x').toBase64() ||
-                result.configuration.serviceFlags != 0 ||
+                result.configuration.serviceFlags != (PLANK_NATIVE_SERVICE_AUDIO | PLANK_NATIVE_SERVICE_INPUT) ||
                 result.configuration.sessionPort != static_cast<uint32_t>(port) ||
                 result.configuration.negotiatedVideoFormat != VIDEO_FORMAT_H265_MAIN10) return 1;
         // The same NvHTTP cannot replay its consumed HTTP token.
