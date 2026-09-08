@@ -13,7 +13,7 @@ int main(void) {
         if (!plank_macos_graphical_identity_valid(authority.snapshot) || !validateAPI()) return 2;
         __block PLANKVirtualDisplay *display = nil;
         __block unsigned step = 0, attempts = 0, passed = 0;
-        const unsigned sizes[][2] = {{1920,1080}, {3840,2160}, {5120,2160}};
+        static const unsigned sizes[][2] = {{1920,1080}, {3840,2160}, {5120,2160}};
         dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
         dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), 250*NSEC_PER_MSEC, 0);
         dispatch_source_set_event_handler(timer, ^{
