@@ -23,6 +23,9 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
 }
 @interface PLANKFakeCapture : NSObject <PLANKMacPreviewCapture>
 @property unsigned starts, stops;
+@property unsigned bitrateChanges;
+@property BOOL deferBitrate, failBitrate;
+@property(copy) void (^pendingBitrate)(uint32_t);
 @property BOOL deferStart, failStart, deferStop, revokedBeforeStop;
 @property uint32_t bitrate;
 @property PLANKMacNativeVideo *video;
@@ -41,8 +44,11 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
     if (self.failStart) failed();
     else if (!self.deferStart) started(2 * bitrate);
 }
-- (BOOL)setBitrate:(uint32_t)bitrate peak:(uint32_t *)peak {
-    self.bitrate = bitrate; *peak = 2 * bitrate; return YES;
+- (void)setBitrate:(uint32_t)bitrate completion:(void (^)(uint32_t))completion {
+    self.bitrateChanges++;
+    self.bitrate = bitrate;
+    if (self.deferBitrate) self.pendingBitrate = completion;
+    else completion(self.failBitrate ? 0 : 2 * bitrate);
 }
 - (void)stopWithCompletion:(void (^)(void))completion {
     self.revokedBeforeStop = [self.video sendSample:NULL processingLatency:0] == PLANK_TRANSPORT_ERROR_INVALID_STATE;
@@ -110,7 +116,7 @@ static NSString *authenticate(PLANKMacAuthenticationSession *auth, NSData *peer)
 
 int main(int argc, const char **argv) {
     if (argc != 5) return 2; // cert, key, pin, shared request fixture
-    alarm(60);
+    alarm(90);
     struct rlimit core = {0, 0}; CHECK(!setrlimit(RLIMIT_CORE, &core));
     @autoreleasepool {
         __block PLANKMacGraphicalIdentity desktop = {true, 1, {123, {1}}, PLANKMacScopeDesktop};
@@ -159,9 +165,9 @@ int main(int argc, const char **argv) {
             topology:snapshot config:&cfg capture:source input:input]);
         PLANKMacAccountIdentity identity = {0};
         CHECK([auth authorizeToken:token peer:peer identity:&identity]);
-        for (unsigned scenario = 0; scenario < 15; ++scenario) {
+        for (unsigned scenario = 0; scenario < 20; ++scenario) {
             printf("macos_preview_scenario=%u\n", scenario); fflush(stdout);
-            if (scenario >= 11) {
+            if (scenario >= 11 && scenario < 15) {
                 @synchronized(guard) { agent = [PLANKSessionAgent new]; }
                 CHECK(until(^BOOL { return [agent.connection bindGraphicalScope:desktop].active; }));
             }
@@ -171,6 +177,8 @@ int main(int argc, const char **argv) {
             source.failStart = scenario == 4;
             source.deferStart = scenario == 5;
             source.deferStop = scenario == 8 || scenario == 11;
+            source.deferBitrate = scenario == 16 || scenario == 18;
+            source.failBitrate = scenario == 17;
             PLANKMacPreviewSession *session = [[PLANKMacPreviewSession alloc] initWithSessions:auth token:token peer:peer
                 request:request topology:snapshot config:&cfg capture:source input:input];
             CHECK(session && session.state == PLANKMacPreviewPrepared);
@@ -195,7 +203,32 @@ int main(int argc, const char **argv) {
                 CHECK(input.releases == 0);
             }
             uint8_t control[20]; size_t length = 0;
-            if (scenario == 0) {
+            if (scenario >= 15) {
+                uint32_t rate = scenario == 19 ? 50000 : 10000;
+                unsigned requests = scenario == 15 ? 8 : 1;
+                for (unsigned requestIndex = 0; requestIndex < requests; ++requestIndex) {
+                    rate += requestIndex ? 500 : 0;
+                    CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE,
+                        &rate, 1, control, sizeof(control), &length));
+                    CHECK(plank_transport_native_data_send(client, control, length) == PLANK_TRANSPORT_OK);
+                }
+                if (scenario == 15 || scenario == 19) {
+                    CHECK(plank_transport_native_data_receive(client, control, sizeof(control), &length, 5000) == PLANK_TRANSPORT_OK);
+                    PlankTransportControlPacket ack;
+                    CHECK(!plank_transport_control_decode(control, length, &ack));
+                    CHECK(ack.type == PLANK_TRANSPORT_CONTROL_VIDEO_BITRATE_APPLIED &&
+                        plank_transport_control_read_u32(ack.payload + 4) == rate);
+                    CHECK(source.bitrateChanges == (scenario == 15 ? 1u : 0u));
+                } else if (scenario == 16 || scenario == 18) {
+                    CHECK(until(^BOOL { return source.pendingBitrate != nil; }));
+                    CHECK(plank_transport_native_data_receive(client, control, sizeof(control), &length, 50) == PLANK_TRANSPORT_TIMEOUT);
+                }
+                if (scenario != 17 && scenario != 18) {
+                    CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_CLIENT_DISCONNECT,
+                        NULL, 0, control, sizeof(control), &length));
+                    CHECK(plank_transport_native_data_send(client, control, length) == PLANK_TRANSPORT_OK);
+                }
+            } else if (scenario == 0) {
                 uint32_t bitrate = 76500;
                 CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE, &bitrate, 1,
                     control, sizeof(control), &length));
@@ -263,8 +296,15 @@ int main(int argc, const char **argv) {
                 @synchronized(guard) { desktop.generation++; }
             }
             CHECK(until(^BOOL { return session.state == PLANKMacPreviewStopped; }));
+            if (source.pendingBitrate) {
+                dispatch_sync(source.queue, ^{
+                    void (^late)(uint32_t) = source.pendingBitrate; source.pendingBitrate = nil;
+                    late(20000); // A late completion cannot revive or acknowledge a stopped owner.
+                });
+                CHECK(session.state == PLANKMacPreviewStopped);
+            }
             CHECK(source.stops == 1 && source.revokedBeforeStop && session.transportToken == nil);
-            CHECK(input.releases == ((scenario == 0 || scenario == 3 || scenario == 8 || scenario == 10) ? 2u : 0u));
+            CHECK(input.releases == ((scenario == 0 || scenario == 3 || scenario == 8 || scenario == 10 || scenario >= 15) ? 2u : 0u));
             dispatch_semaphore_t stopped = dispatch_semaphore_create(0);
             [session stopWithCompletion:^{ dispatch_semaphore_signal(stopped); }];
             CHECK(dispatch_semaphore_wait(stopped, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)) == 0);
@@ -292,6 +332,6 @@ int main(int argc, const char **argv) {
             }
         }
         [auth revokeAll];
-        printf("macos_preview_session=pass checks=%u scenarios=15 synthetic_capture=1 real_quic=1 cleanup=1 agent_bound=1\n", checks);
+        printf("macos_preview_session=pass checks=%u scenarios=20 synthetic_capture=1 real_quic=1 cleanup=1 agent_bound=1\n", checks);
     }
 }

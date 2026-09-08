@@ -87,10 +87,31 @@ int main(int argc, char** argv)
         OpusDecoder* audio = opus_decoder_create(48000, 2, &opusError);
         CHECK(audio && opusError == OPUS_OK);
         std::vector<uint8_t> bytes(64 * 1024 * 1024);
-        unsigned frames = 0, decoded = 0, audioPackets = 0;
+        unsigned frames = 0, decoded = 0, audioPackets = 0, rateSent = 0, rateAck = 0;
+        const uint32_t cycleRates[] = {10000, 150000, 10000, 150000};
         uint64_t lastPTS = 0;
         QElapsedTimer clock; clock.start();
         while (clock.elapsed() < 15000) {
+            if (rateSent < 4 && clock.elapsed() >= (rateSent + 1) * 3000) {
+                uint8_t control[20]; size_t size = 0;
+                CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE,
+                    &cycleRates[rateSent], 1, control, sizeof(control), &size));
+                CHECK(plank_transport_native_data_send(raw, control, size) == PLANK_TRANSPORT_OK);
+                ++rateSent;
+            }
+            {
+                uint8_t control[20]; size_t size = 0;
+                const int result = plank_transport_native_data_receive(raw, control, sizeof(control), &size, 0);
+                CHECK(result == PLANK_TRANSPORT_TIMEOUT || result == PLANK_TRANSPORT_OK);
+                if (result == PLANK_TRANSPORT_OK) {
+                    PlankTransportControlPacket ack {};
+                    CHECK(!plank_transport_control_decode(control, size, &ack));
+                    CHECK(rateAck < rateSent && ack.type == PLANK_TRANSPORT_CONTROL_VIDEO_BITRATE_APPLIED && ack.payload_size == 12);
+                    CHECK(plank_transport_control_read_u32(ack.payload + 4) == cycleRates[rateAck]);
+                    std::printf("live_bitrate_applied_kbps=%u decoded_frames=%u opus_packets=%u\n", cycleRates[rateAck], decoded, audioPackets);
+                    ++rateAck;
+                }
+            }
             PlankTransportNativeVideoFrameInfo video {}; video.struct_size = sizeof(video);
             size_t count = 0;
             const int result = plank_transport_native_video_receive(raw, &video, bytes.data(), bytes.size(), &count, 5);
@@ -126,6 +147,7 @@ int main(int argc, char** argv)
             }
         }
         CHECK(frames > 1 && decoded > 1 && audioPackets > 100);
+        CHECK(rateAck == 4);
         uint8_t control[20]; size_t count = 0; uint32_t bitrate = 55000;
         CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE, &bitrate, 1, control, sizeof(control), &count));
         CHECK(plank_transport_native_data_send(raw, control, count) == PLANK_TRANSPORT_OK);

@@ -14,7 +14,9 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                    queue:(dispatch_queue_t)queue
                  started:(void (^)(uint32_t peakBitrate))started
                   failed:(void (^)(void))failed;
-- (BOOL)setBitrate:(uint32_t)bitrate peak:(uint32_t *)peakBitrate;
+// At most one replacement outstanding. Completion returns zero on failure;
+// stop cancels delivery and must wait for any replacement work to drain.
+- (void)setBitrate:(uint32_t)bitrate completion:(void (^)(uint32_t peakBitrate))completion;
 - (void)stopWithCompletion:(void (^)(void))completion;
 @end
 

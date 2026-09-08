@@ -65,6 +65,9 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     dispatch_queue_t _queue;
     dispatch_source_t _watch;
     uint32_t _bitrate;
+    uint32_t _pendingBitrate;
+    BOOL _changingBitrate;
+    uint64_t _bitrateDue, _bitrateFirstRequest, _bitrateDeadline;
     BOOL _captureStarted;
     uint64_t _captureDeadline;
     NSMutableArray *_stopCallbacks;
@@ -178,7 +181,10 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         if (_captureStarted && ![_inputDevice available]) { [self stopOnQueue]; return; }
         if (_captureStarted && self.state == PLANKMacPreviewConnecting &&
             clock_gettime_nsec_np(CLOCK_MONOTONIC) >= _captureDeadline) { [self stopOnQueue]; return; }
-        if (self.state == PLANKMacPreviewStreaming) [self receiveControls];
+        if (self.state == PLANKMacPreviewStreaming) {
+            [self receiveControls];
+            [self applyPendingBitrate];
+        }
     }
 }
 
@@ -236,21 +242,51 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
             [_video requestKeyFrame];
         } else if (packet.type == PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE && packet.payload_size == 4) {
             uint32_t bitrate = plank_transport_control_read_u32(packet.payload);
-            uint32_t peak = 0;
-            if (bitrate < 10000 || bitrate > 150000 || ![_capture setBitrate:bitrate peak:&peak] || peak < bitrate ||
-                plank_transport_native_set_video_bitrate(_endpoint, bitrate, peak) != PLANK_TRANSPORT_OK) {
+            if (bitrate < 10000 || bitrate > 150000) {
                 [self stopOnQueue]; return;
             }
-            _bitrate = bitrate;
-            uint32_t values[] = {bitrate, bitrate, peak}; // requested/applied/peak: existing PLD1 contract
-            uint8_t reply[20]; size_t replySize = 0;
-            if (plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_VIDEO_BITRATE_APPLIED, values, 3,
-                reply, sizeof(reply), &replySize) ||
-                plank_transport_native_data_send(_endpoint, reply, replySize) != PLANK_TRANSPORT_OK) {
-                [self stopOnQueue]; return;
+            uint64_t now = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+            if (!_pendingBitrate) _bitrateFirstRequest = now;
+            if (_pendingBitrate != bitrate) {
+                _pendingBitrate = bitrate;
+                _bitrateDue = MIN(now + 150*NSEC_PER_MSEC, _bitrateFirstRequest + 500*NSEC_PER_MSEC);
             }
         } else { [self stopOnQueue]; return; }
     }
+}
+
+- (void)acknowledgeBitrate:(uint32_t)bitrate peak:(uint32_t)peak {
+    uint32_t values[] = {bitrate, bitrate, peak};
+    uint8_t reply[20]; size_t size = 0;
+    if (plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_VIDEO_BITRATE_APPLIED,
+        values, 3, reply, sizeof(reply), &size) ||
+        plank_transport_native_data_send(_endpoint, reply, size) != PLANK_TRANSPORT_OK) [self stopOnQueue];
+}
+- (void)applyPendingBitrate {
+    if (self.state != PLANKMacPreviewStreaming) return;
+    uint64_t now = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+    if (_changingBitrate) {
+        if (now >= _bitrateDeadline) {
+            NSLog(@"PLANK encoder replacement timed out"); [self stopOnQueue];
+        }
+        return;
+    }
+    if (!_pendingBitrate || now < _bitrateDue) return;
+    uint32_t bitrate = _pendingBitrate; _pendingBitrate = 0;
+    if (bitrate == _bitrate) { [self acknowledgeBitrate:bitrate peak:bitrate * 2]; return; }
+    _changingBitrate = YES; _bitrateDeadline = now + 5*NSEC_PER_SEC;
+    __weak typeof(self) weakSelf = self;
+    [_capture setBitrate:bitrate completion:^(uint32_t peak) {
+        typeof(self) owner = weakSelf;
+        if (!owner || owner.state != PLANKMacPreviewStreaming) return;
+        owner->_changingBitrate = NO;
+        if (peak < bitrate ||
+            plank_transport_native_set_video_bitrate(owner->_endpoint, bitrate, peak) != PLANK_TRANSPORT_OK) {
+            [owner stopOnQueue]; return;
+        }
+        owner->_bitrate = bitrate;
+        [owner acknowledgeBitrate:bitrate peak:peak];
+    }];
 }
 
 - (void)stopWithCompletion:(void (^)(void))completion {

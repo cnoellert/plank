@@ -20,31 +20,22 @@
     void (^_drained)(void);
     BOOL _stopping, _captureStopped, _starting;
     unsigned _inFlight;
+    BOOL _changingEncoder, _buildingEncoder;
+    uint32_t _replacementBitrate;
+    void (^_replacementCompletion)(uint32_t);
     size_t _width, _height;
     CMTime _lastPTS;
 }
 
-- (BOOL)setBitrate:(uint32_t)bitrate peak:(uint32_t *)peak {
-    if (peak) *peak = 0;
-    if (!_encoder || !peak || _stopping || bitrate < 10000 || bitrate > 150000) return NO;
-    // A one-second hard rate limit of 2x target supplies the transport's peak
-    // budget. It is not an extra buffering stage or a constant-bitrate promise.
-    NSDictionary *values = @{
-        (__bridge NSString *)kVTCompressionPropertyKey_AverageBitRate: @((uint64_t)bitrate * 1000),
-        (__bridge NSString *)kVTCompressionPropertyKey_DataRateLimits: @[@((uint64_t)bitrate * 250), @1]
-    };
-    if (VTSessionSetProperties(_encoder, (__bridge CFDictionaryRef)values)) return NO;
-    *peak = bitrate * 2;
-    return YES;
-}
-- (BOOL)prepareEncoder:(uint32_t)bitrate peak:(uint32_t *)peak {
++ (VTCompressionSessionRef)createEncoder:(uint32_t)bitrate width:(size_t)width height:(size_t)height {
+    VTCompressionSessionRef encoder = NULL;
     NSDictionary *spec = @{(__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES};
     NSDictionary *surface = @{
         (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr10BiPlanarFullRange),
         (__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
     };
-    if (VTCompressionSessionCreate(NULL, (int32_t)_width, (int32_t)_height, kCMVideoCodecType_HEVC,
-        (__bridge CFDictionaryRef)spec, (__bridge CFDictionaryRef)surface, NULL, NULL, NULL, &_encoder)) return NO;
+    if (VTCompressionSessionCreate(NULL, (int32_t)width, (int32_t)height, kCMVideoCodecType_HEVC,
+        (__bridge CFDictionaryRef)spec, (__bridge CFDictionaryRef)surface, NULL, NULL, NULL, &encoder)) return NULL;
     NSDictionary *properties = @{
         (__bridge NSString *)kVTCompressionPropertyKey_RealTime: @YES,
         (__bridge NSString *)kVTCompressionPropertyKey_AllowFrameReordering: @NO,
@@ -52,18 +43,55 @@
         (__bridge NSString *)kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality: @YES,
         (__bridge NSString *)kVTCompressionPropertyKey_ExpectedFrameRate: @60,
         (__bridge NSString *)kVTCompressionPropertyKey_MaxKeyFrameInterval: @120,
+        (__bridge NSString *)kVTCompressionPropertyKey_AverageBitRate: @((uint64_t)bitrate * 1000),
+        // Two times target over one second, in bytes; not an added frame queue.
+        (__bridge NSString *)kVTCompressionPropertyKey_DataRateLimits: @[@((uint64_t)bitrate * 250), @1],
         (__bridge NSString *)kVTCompressionPropertyKey_ProfileLevel: (__bridge NSString *)kVTProfileLevel_HEVC_Main10_AutoLevel,
         (__bridge NSString *)kVTCompressionPropertyKey_ColorPrimaries: (__bridge NSString *)kCVImageBufferColorPrimaries_ITU_R_709_2,
         (__bridge NSString *)kVTCompressionPropertyKey_TransferFunction: (__bridge NSString *)kCVImageBufferTransferFunction_sRGB,
         (__bridge NSString *)kVTCompressionPropertyKey_YCbCrMatrix: (__bridge NSString *)kCVImageBufferYCbCrMatrix_ITU_R_709_2
     };
-    if (VTSessionSetProperties(_encoder, (__bridge CFDictionaryRef)properties) ||
-        ![self setBitrate:bitrate peak:peak] || VTCompressionSessionPrepareToEncodeFrames(_encoder)) return NO;
+    BOOL valid = !VTSessionSetProperties(encoder, (__bridge CFDictionaryRef)properties) &&
+        !VTCompressionSessionPrepareToEncodeFrames(encoder);
     CFTypeRef hardware = NULL;
-    OSStatus result = VTSessionCopyProperty(_encoder, kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, NULL, &hardware);
-    BOOL valid = !result && hardware && CFEqual(hardware, kCFBooleanTrue);
+    OSStatus result = VTSessionCopyProperty(encoder, kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, NULL, &hardware);
+    valid = valid && !result && hardware && CFEqual(hardware, kCFBooleanTrue);
     if (hardware) CFRelease(hardware);
-    return valid;
+    if (!valid) { VTCompressionSessionInvalidate(encoder); CFRelease(encoder); return NULL; }
+    return encoder;
+}
+- (void)setBitrate:(uint32_t)bitrate completion:(void (^)(uint32_t))completion {
+    if (!_encoder || !completion || _stopping || _changingEncoder || bitrate < 10000 || bitrate > 150000) {
+        if (completion) completion(0); return;
+    }
+    _changingEncoder = YES; _replacementBitrate = bitrate;
+    _replacementCompletion = [completion copy];
+    [self replaceEncoderWhenDrained];
+}
+- (void)replaceEncoderWhenDrained {
+    if (!_changingEncoder || _buildingEncoder || _inFlight || _stopping) return;
+    _buildingEncoder = YES;
+    size_t width = _width, height = _height;
+    uint32_t bitrate = _replacementBitrate;
+    // No old frame can cross the switch. Framework setup is off the session
+    // queue so input, audio, network control and cancellation stay responsive.
+    VTCompressionSessionInvalidate(_encoder); CFRelease(_encoder); _encoder = NULL;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        VTCompressionSessionRef replacement = [PLANKMacScreenCapture createEncoder:bitrate width:width height:height];
+        dispatch_async(self->_queue, ^{
+            self->_buildingEncoder = NO; self->_changingEncoder = NO;
+            if (self->_stopping) {
+                if (replacement) { VTCompressionSessionInvalidate(replacement); CFRelease(replacement); }
+                [self finishStop]; return;
+            }
+            self->_encoder = replacement;
+            [self->_video requestKeyFrame];
+            void (^completion)(uint32_t) = self->_replacementCompletion;
+            self->_replacementCompletion = nil;
+            NSLog(@"PLANK encoder replacement: target=%u Kbps peak=%u Kbps ready=%d", bitrate, bitrate * 2, replacement != NULL);
+            if (completion) completion(replacement ? bitrate * 2 : 0);
+        });
+    });
 }
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
                    audio:(PLANKMacNativeAudio *)audio
@@ -97,8 +125,9 @@
             double w = filter.contentRect.size.width * filter.pointPixelScale;
             double h = filter.contentRect.size.height * filter.pointPixelScale;
             if (!isfinite(w) || !isfinite(h) || w != self->_width || h != self->_height) { self->_failed(); return; }
-            uint32_t peak = 0;
-            if (![self prepareEncoder:bitrate peak:&peak]) { self->_failed(); return; }
+            uint32_t peak = bitrate * 2;
+            self->_encoder = [PLANKMacScreenCapture createEncoder:bitrate width:self->_width height:self->_height];
+            if (!self->_encoder) { self->_failed(); return; }
             SCStreamConfiguration *config = [SCStreamConfiguration new];
             config.width = self->_width; config.height = self->_height;
             config.minimumFrameInterval = CMTimeMake(1, 60); config.queueDepth = 3;
@@ -151,7 +180,7 @@
         fprintf(stderr, "macos_capture_failure stage=video-sample\n"); _failed(); return;
     }
     _lastPTS = pts;
-    if (_inFlight >= 3) return; // drop before encoding; no reference-frame dependency
+    if (_changingEncoder || _inFlight >= 3) return; // drop before encoding; no reference-frame dependency
     // Explicit qualified SDK-27 xf20 full-range interpretation, distinct from the
     // BT.709 encoded output. Revalidate on final OS; no CPU color conversion.
     CVBufferSetAttachment(pixel, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
@@ -174,6 +203,7 @@
                 }
             }
             if (output) CFRelease(output);
+            [self replaceEncoderWhenDrained];
             [self finishStop];
         });
     });
@@ -187,6 +217,7 @@
 - (void)stopWithCompletion:(void (^)(void))completion {
     if (_stopping) return; // owner calls once and fans out its own completions
     _stopping = YES; _failed = nil; _drained = [completion copy];
+    _replacementCompletion = nil;
     [_audioEncoder stop]; _audioEncoder = nil;
     if (!_starting) [self stopCapture];
 }
@@ -198,7 +229,7 @@
     }];
 }
 - (void)finishStop {
-    if (!_stopping || !_captureStopped || _inFlight) return;
+    if (!_stopping || !_captureStopped || _inFlight || _buildingEncoder) return;
     if (_encoder) { VTCompressionSessionInvalidate(_encoder); CFRelease(_encoder); _encoder = NULL; }
     _stream = nil; _video = nil; _audio = nil;
     void (^completion)(void) = _drained; _drained = nil;
