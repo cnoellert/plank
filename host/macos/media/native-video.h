@@ -19,6 +19,8 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
                            width:(int)width height:(int)height
                         validity:(BOOL (^)(void))validity;
 @property(nonatomic, readonly) BOOL needsKeyFrame;
+// Temporary timing diagnostic: last assigned native frame number, same queue.
+@property(nonatomic, readonly) uint64_t lastFrameNumber;
 // Called on the same serial queue for a native receiver recovery request.
 - (void)requestKeyFrame;
 // Latency is capture-to-submit in tenths of a millisecond, matching native ABI.

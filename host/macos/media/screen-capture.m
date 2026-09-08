@@ -5,6 +5,7 @@
 #import <VideoToolbox/VideoToolbox.h>
 #include <time.h>
 #include <math.h>
+#include "frame-timing.h"
 
 @interface PLANKMacScreenCapture () <SCStreamOutput, SCStreamDelegate>
 @end
@@ -27,6 +28,7 @@
     CMTime _lastPTS;
     uint64_t _completeFrames, _preEncodeDrops, _encoderDrops, _sendDrops;
     uint64_t _maxEncodeNs, _maxCallbackQueueNs;
+    PLANKFrameTiming *_timing;
 }
 
 + (VTCompressionSessionRef)createEncoder:(uint32_t)bitrate width:(size_t)width height:(size_t)height {
@@ -100,6 +102,7 @@
                    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
     if (_queue || !queue || !video || !audio || !started || !failed) { if (failed) failed(); return; }
     _queue = queue; _video = video; _audio = audio; _failed = [failed copy];
+    _timing = calloc(1, sizeof(*_timing)); // allocation failure must not affect capture
     __weak typeof(self) weakSelf = self;
     _audioEncoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts) {
         typeof(self) capture = weakSelf;
@@ -182,8 +185,19 @@
         fprintf(stderr, "macos_capture_failure stage=video-sample\n"); _failed(); return;
     }
     _lastPTS = pts;
+    uint64_t captured = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+    if (_timing && !_timing->origin_ns) {
+        _timing->origin_ns = captured;
+        _timing->wall_ns = clock_gettime_nsec_np(CLOCK_REALTIME);
+    }
+    PLANKFrameTimingRecord *timing = PLANKFrameTimingAppend(_timing, captured);
+    if (timing) {
+        timing->pts_ns = (uint64_t)CMTimeConvertScale(pts, 1000000000, kCMTimeRoundingMethod_RoundTowardZero).value;
+        timing->in_flight = _inFlight;
+    }
     ++_completeFrames;
     if (_changingEncoder || _inFlight >= 3) {
+        if (timing) timing->stage = 1; // pre-encode skip
         ++_preEncodeDrops; return; // no encoded reference-frame dependency
     }
     // Explicit qualified SDK-27 xf20 full-range interpretation, distinct from the
@@ -193,33 +207,49 @@
     CVBufferSetAttachment(pixel, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_601_4, kCVAttachmentMode_ShouldPropagate);
     NSDictionary *options = _video.needsKeyFrame ? @{(__bridge NSString *)kVTEncodeFrameOptionKey_ForceKeyFrame: @YES} : nil;
     uint64_t submitted = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+    if (timing) { timing->submitted_ns = submitted; timing->forced = options != nil; }
     ++_inFlight;
     OSStatus result = VTCompressionSessionEncodeFrameWithOutputHandler(_encoder, pixel, pts, kCMTimeInvalid,
         (__bridge CFDictionaryRef)options, NULL, ^(OSStatus status, VTEncodeInfoFlags flags, CMSampleBufferRef output) {
         uint64_t completed = clock_gettime_nsec_np(CLOCK_MONOTONIC);
         if (output) CFRetain(output);
         dispatch_async(self->_queue, ^{
+            uint64_t handled = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+            if (timing) { timing->completed_ns = completed; timing->handled_ns = handled; }
             --self->_inFlight;
             self->_maxEncodeNs = MAX(self->_maxEncodeNs, completed - submitted);
             self->_maxCallbackQueueNs = MAX(self->_maxCallbackQueueNs,
                 clock_gettime_nsec_np(CLOCK_MONOTONIC) - completed);
             if (!self->_stopping) {
                 if (status || !output || (flags & kVTEncodeInfo_FrameDropped)) {
+                    if (timing) { timing->stage = 2; timing->result = status; }
                     ++self->_encoderDrops; [self->_video requestKeyFrame];
                 }
                 else {
                     uint64_t latency = (clock_gettime_nsec_np(CLOCK_MONOTONIC) - submitted) / 100000;
                     int32_t sent = [self->_video sendSample:output processingLatency:(uint16_t)MIN(latency, UINT16_MAX)];
+                    if (timing) {
+                        timing->sent_ns = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+                        timing->number = self->_video.lastFrameNumber;
+                        timing->bytes = CMSampleBufferGetTotalSampleSize(output);
+                        NSArray *metadata = (__bridge NSArray *)CMSampleBufferGetSampleAttachmentsArray(output, false);
+                        timing->key = ![metadata.firstObject[(__bridge NSString *)kCMSampleAttachmentKey_NotSync] boolValue];
+                        timing->stage = 3; timing->result = sent;
+                    }
                     if (sent == PLANK_TRANSPORT_DROPPED) ++self->_sendDrops;
                     if (sent != PLANK_TRANSPORT_OK && sent != PLANK_TRANSPORT_DROPPED) self->_failed();
                 }
             }
+            else if (timing) timing->stage = 5; // stop suppressed delivery
             if (output) CFRelease(output);
             [self replaceEncoderWhenDrained];
             [self finishStop];
         });
     });
-    if (result) { --_inFlight; _failed(); }
+    if (result) {
+        if (timing) { timing->stage = 4; timing->result = result; }
+        --_inFlight; _failed();
+    }
 }
 - (void)stream:(SCStream *)stream didStopWithError:(NSError *)error {
     (void)stream;
@@ -242,6 +272,12 @@
 }
 - (void)finishStop {
     if (!_stopping || !_captureStopped || _inFlight || _buildingEncoder) return;
+    if (_timing) {
+        // The launch agent directs stderr to its product log. All callbacks are
+        // drained before exporting; no frame can still reference these records.
+        PLANKFrameTimingDump(_timing, stderr);
+        free(_timing); _timing = NULL;
+    }
     if (_drained) NSLog(@"PLANK capture summary: complete=%llu pre-encode-drops=%llu encoder-drops=%llu recovery-or-send-drops=%llu encode-max-ms=%.3f callback-queue-max-ms=%.3f",
         (unsigned long long)_completeFrames, (unsigned long long)_preEncodeDrops,
         (unsigned long long)_encoderDrops, (unsigned long long)_sendDrops,
@@ -251,4 +287,5 @@
     void (^completion)(void) = _drained; _drained = nil;
     if (completion) completion();
 }
+- (void)dealloc { free(_timing); }
 @end

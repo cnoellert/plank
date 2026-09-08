@@ -101,6 +101,7 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
     return self;
 }
 - (BOOL)needsKeyFrame { return _needsKeyFrame; }
+- (uint64_t)lastFrameNumber { return _frameNumber; }
 - (void)requestKeyFrame { _needsKeyFrame = YES; }
 - (int32_t)sendSample:(CMSampleBufferRef)sample processingLatency:(uint16_t)latency {
     PLANKMacAccountIdentity identity = {0};

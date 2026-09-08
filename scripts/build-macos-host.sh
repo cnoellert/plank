@@ -11,6 +11,9 @@ fi
 source_root=$1; output=$2; archive=$3
 mkdir "$output"
 cd "$source_root"
+xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
+    -Ihost/macos/media tests/video/macos-frame-timing.c -o "$output/frame-timing-test"
+"$output/frame-timing-test"
 common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Ihost/macos/input
     -Ihost/macos/session -Iprotocol/plank-transport/include
