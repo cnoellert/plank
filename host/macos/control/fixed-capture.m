@@ -43,6 +43,12 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
 @implementation PLANKMacFixedCapture {
     NSDictionary *_previous;
     NSString *_generation;
+    NSString *_unavailableReason;
+}
+- (NSDictionary *)unavailable:(NSString *)reason {
+    if (![_unavailableReason isEqual:reason]) NSLog(@"PLANK capture geometry unavailable: %@", reason);
+    _unavailableReason = reason; _previous = nil; _generation = nil;
+    return nil;
 }
 - (instancetype)init {
     static dispatch_once_t once;
@@ -54,12 +60,12 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
 - (NSDictionary *)snapshot {
     @synchronized(self) {
         uint64_t revision = atomic_load(&displayRevision);
-        if (revision & 1) { _previous = nil; _generation = nil; return nil; }
+        if (revision & 1) return [self unavailable:@"display reconfiguration in progress"];
         CGDirectDisplayID selection = self.selectedDisplay;
         CGDirectDisplayID display = selection ?: CGMainDisplayID();
-        if (!display || !CGDisplayIsActive(display)) { _previous = nil; _generation = nil; return nil; }
+        if (!display || !CGDisplayIsActive(display)) return [self unavailable:@"selected display is inactive"];
         CGDisplayModeRef mode = CGDisplayCopyDisplayMode(display);
-        if (!mode) { _previous = nil; _generation = nil; return nil; }
+        if (!mode) return [self unavailable:@"display mode unavailable"];
         size_t width = CGDisplayModeGetPixelWidth(mode), height = CGDisplayModeGetPixelHeight(mode);
         int32_t modeID = CGDisplayModeGetIODisplayModeID(mode);
         CGDisplayModeRelease(mode);
@@ -72,7 +78,7 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
             CGRectEqualToRect(bounds, CGDisplayBounds(display)) &&
             revision == atomic_load(&displayRevision);
         if (check) CGDisplayModeRelease(check);
-        if (!stable) { _previous = nil; _generation = nil; return nil; }
+        if (!stable) return [self unavailable:@"display changed during snapshot"];
         NSString *identifier = [NSString stringWithFormat:@"cgdisplay:%u", display];
         // Refresh/mode identity is part of the generation even if pixel size
         // is unchanged. No guessed point-to-pixel ratio or monitor provenance.
@@ -82,7 +88,10 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
             _generation = NSUUID.UUID.UUIDString.lowercaseString;
             _previous = fingerprint;
         }
-        return PLANKMacFixedCaptureDescription(_generation, identifier, width, height, bounds);
+        NSDictionary *description = PLANKMacFixedCaptureDescription(_generation, identifier, width, height, bounds);
+        if (!description) return [self unavailable:@"unsupported pixel or desktop bounds"];
+        _unavailableReason = nil;
+        return description;
     }
 }
 @end
