@@ -1654,3 +1654,42 @@ transport/Client and measuring actual interaction. Coordinated login/logout,
 complex footage, audio, long-soak and end-to-end latency gates remain open.
 Raw local Git-ignored diagnostics and Mac synthetic artifact paths are in
 HANDOFF. No production Host/Client or networking code changed.
+
+### September 7: live bitrate increase after a decrease
+
+The operator observed both persistent low picture quality and low measured
+bitrate in 1.0.41 after reducing then raising the toolbar target. They explicitly
+disconnected for diagnostics. A standalone generated-moving-texture test on
+the dedicated M4/macOS 27 development machine reproduces the behavior before
+transport, using the actual Host's VT property combination. No installed code
+or service was changed during diagnosis.
+
+All runs request 150 → 10 → 150 Mbps on the same deterministic 1080p sequence.
+The output below is measured encoded payload, excluding all transport overhead.
+
+| Diagnostic | First high | Low | Restored high |
+| --- | ---: | ---: | ---: |
+| Existing combined property setter | 151.754 | 16.334 | 22.913 |
+| Set hard limit before average | 151.754 | 16.334 | 22.913 |
+| Force keyframe at changes | 151.754 | 16.374 | 22.913 |
+| Clear and reapply hard limit | 151.754 | 16.334 | 22.913 |
+| Omit hard limit | 152.077 | 37.374 | 150.916 |
+| Recreate encoder at each change | 151.754 | 24.200 | 151.754 |
+| Existing setter, ten media seconds per phase | 150.235 | 18.739 | 22.844 |
+
+Units are Mbps; ordinary phases contain 180 frames / three media seconds.
+Property readback returns the requested 150,000,000 average and [37,500,000
+bytes, one second] limit on the final high phase even when output remains low.
+The hardware-encoder property stays true. Forced keyframe and update ordering
+do not resolve it. The comparisons implicate live DataRateLimits behavior with
+this encoder/OS/property combination, not the slider, QUIC or packet telemetry.
+This is not a claim about every Apple encoder or final macOS 27 behavior.
+
+Low-target stress phases can drop frames and overshoot the soft average target;
+removing the hard limit is therefore not the proposed remedy. A fresh encoder
+restores the first high phase's output exactly. Recommend integrating bounded,
+serialized encoder-only replacement, preserving capture/audio/connection and
+accounting for in-flight callbacks and new reference frames. This remains a
+proposal: synthetic results do not qualify seamless real capture replacement,
+slider coalescing, decode continuity, quality, or latency. The installed Host
+still contains the original dynamic setter.

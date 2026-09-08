@@ -580,3 +580,31 @@ VideoToolbox LowLatencyRateControl is not enabled/tested by this probe.
 Validate generated streams independently with the retained FFmpeg on linux-client-builder:
 profile, pixel format, range, BT.709 tags, no B frames, all 40 frames decoded.
 No package build/install or dependency change is needed for this validation.
+
+### Live bitrate roundtrip diagnostic
+
+On the authorized dedicated Mac only, compile `bitrate-roundtrip.m` with:
+
+```sh
+xcrun clang -O2 -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+  -framework Foundation -framework CoreVideo -framework CoreMedia \
+  -framework VideoToolbox bitrate-roundtrip.m -o bitrate-roundtrip
+./bitrate-roundtrip
+```
+
+This standalone test uses CPU-generated 1080p moving texture, matching the
+Host's full-range Main10 hardware encoder settings. It performs 150 → 10 →
+150 Mbps changes, reads back the properties, and counts encoded bytes and
+drops before transport. Each phase repeats identical source frames; rates are
+calculated from 60-Hz media timestamps, not wall-clock execution speed. No
+screen capture, network, credentials, GUI, input, installed Host change, or
+output video file is involved. Run without a concurrent user stream to avoid
+encoder resource competition. The process has a 120-second safety deadline.
+
+Separate invocations accept `--ordered`, `--clear-limit`, `--keyframe`,
+`--average-only`, `--recreate`, or `--long` (ten media seconds per phase).
+These are diagnostic comparisons, not supported Host configuration switches.
+Successful execution reports measured behavior, not automatic performance
+acceptance. Low-target frame drops are counted instead of suppressing the
+final high-rate test. Actual capture, motion quality and A/V continuity need
+separate qualification before an encoder lifecycle change ships.
