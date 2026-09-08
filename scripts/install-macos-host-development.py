@@ -65,7 +65,12 @@ def main():
     assert int(run("sw_vers", "-productVersion").stdout.split(".")[0]) >= 27
     assert 1 <= args.port <= 65535
     account = pwd.getpwnam(args.desktop_user)
-    assert account.pw_uid > 0 and os.stat("/dev/console").st_uid == account.pw_uid
+    console_uid = os.stat("/dev/console").st_uid
+    assert account.pw_uid > 0 and console_uid in (0, account.pw_uid)
+    active_domain = "loginwindow" if console_uid == 0 else f"gui/{account.pw_uid}"
+    # Installation may occur before first login. This proves that launchd has
+    # the domain; the graphical executable still independently proves authority.
+    run("launchctl", "print", active_domain)
     source = args.app.resolve(strict=True)
     info = plistlib.loads((source / "Contents/Info.plist").read_bytes())
     assert info["CFBundleIdentifier"] == "la.instinctual.PLANK.Host"
@@ -187,9 +192,12 @@ def main():
         os.chown(path, uid, 0 if uid == 0 else account.pw_gid)
         os.seteuid(0)
     run("launchctl", "bootstrap", "system", str(machine_path))
-    run("launchctl", "bootstrap", domain, str(agent_path))
+    if os.stat("/dev/console").st_uid == console_uid:
+        run("launchctl", "bootstrap", active_domain, str(sign_in_path if console_uid == 0 else agent_path))
+    else:
+        print("Console changed during installation; graphical startup deferred to its next session.")
     print("Installed", info["PLANKVersion"], "for LoginWindow and desktop user", account.pw_name)
-    print("LoginWindow agent will load in the next LoginWindow session; no logout or reboot performed.")
+    print("Graphical jobs are registered for LoginWindow/Aqua; no logout or reboot performed.")
     print("Desktop logs:", logs, "Machine/sign-in logs:", machine_logs)
 
 

@@ -107,6 +107,17 @@ Neither an absent desktop nor root Background grants access. Notifications and
 per-read checks latch revocation; no object can switch roles. Input/capture
 consent and topology remain separate checks, not implied by this object.
 
+macOS 27 initial boot uses a second, positively qualified sign-in representation:
+the graphical UID resolves to the local `_windowserver` account (not a hardcoded
+UID), username `unknown`, on-console true and login-done false. There is no named
+console owner. Both OS session IDs in that record must match the agent's actual
+Security/XPC audit session, and exactly one such active record must exist in the
+system-owned console SessionInfo. The graphical agent additionally requires the
+same current CGSession record and root real/effective UID with graphic access.
+The machine coordinator checks the root signed peer's kernel-reported identity
+against the same system snapshot. Missing, malformed, duplicate, completed or
+foreign-audit-session records deny access. This is not a root Background fallback.
+
 `agent-connection.m` verifies the machine's signing requirement and OS-reported
 UID. Its trusted local-scope predicate must remain valid. Neither registration
 nor its generation grants remote capture/input; those also require a verified
