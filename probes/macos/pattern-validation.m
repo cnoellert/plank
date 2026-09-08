@@ -139,7 +139,8 @@ NSWindow *PLANKCreatePatternWindow(CGDirectDisplayID display, BOOL mixedCadence)
 
 NSArray<NSNumber *> *PLANKReadPatternSamples(CVPixelBufferRef pixel) {
     OSType format = CVPixelBufferGetPixelFormatType(pixel);
-    BOOL tenBit = format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
+    BOOL tenBit = format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
+                  format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
     if ((!tenBit && format != kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) ||
         CVPixelBufferGetPlaneCount(pixel) != 2 || CVPixelBufferGetWidth(pixel) < 640 ||
         CVPixelBufferGetHeight(pixel) < 400 || CVPixelBufferLockBaseAddress(pixel, kCVPixelBufferLock_ReadOnly)) return nil;
@@ -163,16 +164,21 @@ NSArray<NSNumber *> *PLANKReadPatternSamples(CVPixelBufferRef pixel) {
 }
 
 double PLANKPatternReferenceError(NSArray<NSNumber *> *samples, BOOL tenBit, BOOL bt601) {
+    return PLANKPatternReferenceRangeError(samples, tenBit, bt601, NO);
+}
+double PLANKPatternReferenceRangeError(NSArray<NSNumber *> *samples, BOOL tenBit, BOOL bt601, BOOL fullRange) {
     if (samples.count != 120) return INFINITY;
     double maximum = 0, scale = tenBit ? 4 : 1;
+    double yMin = fullRange ? 0 : 16, ySpan = fullRange ? (tenBit ? 255.75 : 255) : 219;
+    double cSpan = fullRange ? (tenBit ? 255.75 : 255) : 224;
     double kr = bt601 ? 0.299 : 0.2126, kb = bt601 ? 0.114 : 0.0722;
     for (unsigned int i = 0; i < 40; i++) {
         double r = i < 8 ? chartColors[i][0] : (i - 8) / 31.0;
         double g = i < 8 ? chartColors[i][1] : r;
         double b = i < 8 ? chartColors[i][2] : r;
         double y = kr * r + (1 - kr - kb) * g + kb * b;
-        double expected[] = {16 + 219 * y, 128 + 224 * (b - y) / (2 * (1 - kb)),
-                            128 + 224 * (r - y) / (2 * (1 - kr))};
+        double expected[] = {yMin + ySpan * y, 128 + cSpan * (b - y) / (2 * (1 - kb)),
+                            128 + cSpan * (r - y) / (2 * (1 - kr))};
         for (unsigned int c = 0; c < 3; c++)
             maximum = MAX(maximum, fabs(samples[i * 3 + c].doubleValue / scale - expected[c]));
         printf("chart_patch=%u y=%.2f cb=%.2f cr=%.2f units=8bit_equivalent\n", i,
@@ -185,19 +191,24 @@ double PLANKPatternReferenceError(NSArray<NSNumber *> *samples, BOOL tenBit, BOO
 
 // Convert only the 40 diagnostic sample triples, never a production pixel buffer.
 NSArray<NSNumber *> *PLANKPatternMap601To709(NSArray<NSNumber *> *samples, BOOL tenBit) {
+    return PLANKPatternMap601To709Range(samples, tenBit, NO);
+}
+NSArray<NSNumber *> *PLANKPatternMap601To709Range(NSArray<NSNumber *> *samples, BOOL tenBit, BOOL fullRange) {
     if (samples.count != 120) return nil;
     NSMutableArray *result = [NSMutableArray arrayWithCapacity:120];
     double scale = tenBit ? 4 : 1;
+    double yMin = fullRange ? 0 : 16, ySpan = fullRange ? (tenBit ? 255.75 : 255) : 219;
+    double cSpan = fullRange ? (tenBit ? 255.75 : 255) : 224;
     for (NSUInteger i = 0; i < 40; i++) {
-        double y = (samples[i*3].doubleValue / scale - 16) / 219;
-        double cb = (samples[i*3+1].doubleValue / scale - 128) / 224;
-        double cr = (samples[i*3+2].doubleValue / scale - 128) / 224;
+        double y = (samples[i*3].doubleValue / scale - yMin) / ySpan;
+        double cb = (samples[i*3+1].doubleValue / scale - 128) / cSpan;
+        double cr = (samples[i*3+2].doubleValue / scale - 128) / cSpan;
         double r = y + 2 * (1 - 0.299) * cr, b = y + 2 * (1 - 0.114) * cb;
         double g = (y - 0.299 * r - 0.114 * b) / (1 - 0.299 - 0.114);
         double mapped = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        [result addObjectsFromArray:@[@(scale * (16 + 219 * mapped)),
-            @(scale * (128 + 224 * (b - mapped) / (2 * (1 - 0.0722)))),
-            @(scale * (128 + 224 * (r - mapped) / (2 * (1 - 0.2126))))]];
+        [result addObjectsFromArray:@[@(scale * (yMin + ySpan * mapped)),
+            @(scale * (128 + cSpan * (b - mapped) / (2 * (1 - 0.0722)))),
+            @(scale * (128 + cSpan * (r - mapped) / (2 * (1 - 0.2126))))]];
     }
     return result;
 }
@@ -212,11 +223,13 @@ NSArray<NSNumber *> *PLANKPatternMap601To709(NSArray<NSNumber *> *samples, BOOL 
 }
 - (void)decode:(CMSampleBufferRef)sample reference:(NSArray<NSNumber *> *)reference
     pixelFormat:(OSType)format queue:(dispatch_queue_t)queue completion:(void (^)(void))completion {
+    BOOL fullRange = format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
+    BOOL tenBit = fullRange || format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
     // Chart-only diagnostic: a private keyframe artifact for independent FFmpeg
     // inspection. Never enabled by ordinary live capture/encode modes.
     char directory[] = "/tmp/plank-chart-bitstream.XXXXXX";
     if (mkdtemp(directory)) {
-        BOOL hevc = format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
+        BOOL hevc = tenBit;
         NSString *path = [[NSString stringWithUTF8String:directory] stringByAppendingPathComponent:hevc ? @"chart.hevc" : @"chart.h264"];
         int descriptor = open(path.fileSystemRepresentation, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
         FILE *file = descriptor >= 0 ? fdopen(descriptor, "w") : NULL;
@@ -248,11 +261,11 @@ NSArray<NSNumber *> *PLANKPatternMap601To709(NSArray<NSNumber *> *samples, BOOL 
                     printf("decoded_color_%u=%s\n", i, value ? [(__bridge id)value description].UTF8String : "missing");
                     if (value) CFRelease(value);
                 }
-                (void)PLANKPatternReferenceError(decoded, format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange, NO);
+                (void)PLANKPatternReferenceRangeError(decoded, tenBit, NO, fullRange);
             }
             for (NSUInteger i = 0; valid && i < 120; i++)
                 maximum = MAX(maximum, fabs([decoded[i] doubleValue] - reference[i].doubleValue));
-            maximum /= format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ? 4 : 1;
+            maximum /= tenBit ? 4 : 1;
             self.passed = valid && maximum <= 6;
             self.complete = YES;
             printf("chart_decoded_match=%d max_error=%.3f units=8bit_equivalent decode_status=%d\n", self.passed, maximum, decodeStatus);

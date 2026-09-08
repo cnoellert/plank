@@ -254,8 +254,8 @@ typedef struct {
     BOOL verifyChart = self.pattern && self.submitted == 30;
     NSArray<NSNumber *> *reference = verifyChart ? PLANKReadPatternSamples(pixel) : nil;
     if (verifyChart) {
-        self.sourceColorPassed = PLANKPatternReferenceError(reference, self.hevc, self.hevc) <= 4;
-        if (self.hevc) reference = PLANKPatternMap601To709(reference, YES);
+        self.sourceColorPassed = PLANKPatternReferenceRangeError(reference, self.hevc, self.hevc, qualifyFullRange) <= 4;
+        if (self.hevc) reference = PLANKPatternMap601To709Range(reference, YES, qualifyFullRange);
     }
     NSDictionary *frameProperties = verifyChart ? @{(__bridge NSString *)kVTEncodeFrameOptionKey_ForceKeyFrame: @YES} : nil;
     // Diagnostic only: retaining the enclosing sample tests SCK lifetime without
@@ -584,12 +584,12 @@ int PLANKRunCaptureEncodeProbe(BOOL hevc, BOOL pattern, BOOL owned4K) {
     return runMedia(hevc, pattern, owned4K ? 3840 : 0, NO);
 }
 
-int PLANKRunFullRangeQualification(BOOL capture444) {
+int PLANKRunFullRangeQualification(BOOL capture444, BOOL pattern) {
     // Capability probe only: no chart or claim of color qualification. Reject
     // SCK substituting a different pixel format. Existing product stays intact.
     qualifyFullRange = YES;
     qualifyFullRange444 = capture444;
-    return runMedia(YES, NO, 0, NO);
+    return runMedia(YES, pattern, 0, NO);
 }
 
 int PLANKRunSpeedChartQualification(void) {

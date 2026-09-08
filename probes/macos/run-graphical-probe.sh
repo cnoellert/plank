@@ -11,7 +11,7 @@ case $probe_mode in
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) probe_deadline=210 ;;
 esac
 case $probe_mode in
-    --encode-hevc-full-range|--encode-hevc-full-range-444) ;;
+    --encode-hevc-full-range|--encode-hevc-full-range-444|--pattern-hevc-full-range) ;;
     --cursor|--login-pointer) ;;
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) ;;
     --audio|--capture|--capture-virtual|--input|--pointer|--pointer-session|--encode-h264|--encode-hevc|--encode-h264-owned|--encode-hevc-owned|--encode-owned-replace|--encode-owned-crash|--encode-session|--encode-session-revoke|--pattern-h264|--pattern-hevc|--pattern-h264-2160|--pattern-hevc-2160|--pattern-hevc-2160-speed|--select-mode|--restore-mode|--descriptor-comparison|--hidpi-comparison) ;;
