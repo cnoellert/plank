@@ -1,6 +1,27 @@
 # PLANK macOS Host implementation plan
 
 Date: 2026-09-06
+
+## September 8 active continuation
+
+The operator accepted .57's native SCK cadence (zero minimum interval, three
+surfaces), with the existing source-first FEC/unpaced Mac transport. Preserve
+that playback baseline. .58 corrects before/after-FEC telemetry in the ordinary
+Client; packet loss is not derived from frame gaps.
+
+The next matching candidate is .59: persistent LoginWindow startup, a fixed
+1080p sign-in display, independent root/user TLS keys sharing public discovery
+identity, and Client restoration of the saved desktop resolution after fresh
+authentication. No root private key is copied to a user directory. This keeps
+the existing Client certificate-profile policy; it does not introduce persistent
+machine pinning. Development setup provisions only the designated desktop user.
+Automated tests must precede deployment. The remaining interactive gate is one
+actual logout → remote login → requested desktop-resolution cycle, followed by
+operator-controlled reboot qualification. Do not claim probe success completes
+either gate. No automatic reboot or End-User package installation.
+
+Historical checkpoints follow; HANDOFF contains the current source/artifacts.
+
 Status: macos-host branch; the actual installed Host and ordinary Client launch
 are integrated for the current desktop. Matching Host/Client 1.0.42-macos-host
 is built; Host is installed and Client is packaged for manual installation.
