@@ -213,7 +213,7 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
         privateKey:[directory stringByAppendingPathComponent:@"key.pem"]
         capture:^id<PLANKMacPreviewCapture> { return [PLANKMacScreenCapture new]; }
         input:^id<PLANKMacInputDevice> { return [PLANKMacQuartzInput new]; }];
-    runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, BOOL (^valid)(void)) {
+    runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, NSString *encodingMode, BOOL (^valid)(void)) {
         if (!PLANKMacDesktopModeSupported(width, height)) return NO;
         dispatch_semaphore_t finished = dispatch_semaphore_create(0);
         __block atomic_bool cancelled = false, ready = false;
@@ -223,6 +223,7 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
                 completion:^(BOOL success) {
                     if (success && !atomic_load(&cancelled) && valid()) {
                         capture.selectedDisplay = desktopDisplay.displayID;
+                        capture.encodingMode = encodingMode;
                         atomic_store(&ready, true);
                     }
                     dispatch_semaphore_signal(finished);

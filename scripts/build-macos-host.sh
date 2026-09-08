@@ -7,7 +7,7 @@ if [[ $# != 3 || $1 != /* || $2 != /* || $3 != /* || $(uname -s) != Darwin ||
     echo 'Usage (development Mac): build-macos-host.sh SOURCE EMPTY_OUTPUT TRANSPORT_ARCHIVE' >&2; exit 2
 fi
 : "${PLANK_MACOS_HOST_VERSION:?Explicit branch-qualified version required}"
-[[ $PLANK_MACOS_HOST_VERSION =~ ^[0-9a-z.+-]+-macos-host([.+-][0-9a-z.-]+)?$ ]]
+[[ $PLANK_MACOS_HOST_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-z][a-z0-9.-]*)?$ ]]
 source_root=$1; output=$2; archive=$3
 mkdir "$output"
 cd "$source_root"

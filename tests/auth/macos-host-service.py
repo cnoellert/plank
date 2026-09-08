@@ -111,9 +111,9 @@ def main():
                 assert status == 200 and response.findtext("hostname") == config["Name"]
                 assert response.findtext("HttpsPort") == str(port)
                 assert "macos-host" in response.findtext("PlankHostVersion")
-                assert response.findtext("ServerCodecModeSupport") == "512"
+                assert response.findtext("ServerCodecModeSupport") == "1049088"
                 assert response.findtext("PlankTopologyVersion") == "13"
-                assert response.findtext("PlankFeatureFlags") == "1572977"
+                assert response.findtext("PlankFeatureFlags") == "3670129"
                 assert fixture.request(certificate, port, {}, raw=b"GET /plank/topology HTTP/1.1\r\nHost: localhost\r\n\r\n")[0] == 401
                 assert fixture.request(certificate, port, {}, raw=b"GET /applist HTTP/1.1\r\nHost: localhost\r\n\r\n")[0] == 401
                 command("launchctl", "kill", "SIGTERM", graphical_job)

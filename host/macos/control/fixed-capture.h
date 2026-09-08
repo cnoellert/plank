@@ -12,9 +12,12 @@
 // Zero describes the current main display. Nonzero describes only the selected
 // owned display, never silently falling back to a different screen.
 @property CGDirectDisplayID selectedDisplay;
+@property(copy) NSString *encodingMode;
 - (NSDictionary *)snapshot;
 @end
 
 // Shared serializer also used by synthetic tests, never a source of authority.
 NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *identifier,
-    size_t width, size_t height, CGRect logicalBounds);
+    size_t width, size_t height, CGRect logicalBounds, NSString *encodingMode);
+// Exact YCbCr contracts; unknown modes are rejected, never substituted.
+NSDictionary *PLANKMacEncodingProfile(NSString *encodingMode);

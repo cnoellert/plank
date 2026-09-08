@@ -76,5 +76,19 @@ int main(int argc, char** argv)
     bad = valid; bad["capture"] = capture; reject(bad);
     CHECK(!MacPreviewLaunch::parseReply(valid, topology, 28990, 1200, parsed));
     CHECK(!MacPreviewLaunch::parseReply(valid, topology, 28989, 1300, parsed));
+    auto full = topology;
+    full.appleEncodingMode = QStringLiteral("hevc-10-444-videotoolbox");
+    NvOutputTopology checked;
+    CHECK(NvOutputTopology::fromJson(full.toJson(), checked));
+    CHECK(checked.appleEncodingMode == full.appleEncodingMode);
+    CHECK(MacPreviewLaunch::request(full, 50000, 1200).value("encoding_mode") == QJsonValue(full.appleEncodingMode));
+    auto fullReply = valid;
+    fullReply["capture"] = full.toJson().value("capture");
+    CHECK(MacPreviewLaunch::parseReply(fullReply, full, 28989, 1200, parsed));
+    CHECK(parsed.configuration.negotiatedVideoFormat == VIDEO_FORMAT_H265_REXT10_444);
+    CHECK(!MacPreviewLaunch::parseReply(valid, full, 28989, 1200, parsed));
+    CHECK(!MacPreviewLaunch::parseReply(fullReply, topology, 28989, 1200, parsed));
+    full.appleEncodingMode = QStringLiteral("invalid");
+    CHECK(MacPreviewLaunch::request(full, 50000, 1200).isEmpty());
     std::printf("Mac preview launch: %u checks passed\n", checks);
 }

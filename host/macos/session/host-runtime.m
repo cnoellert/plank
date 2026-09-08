@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "host-runtime.h"
+#import "fixed-capture.h"
 #include <arpa/inet.h>
 #include <stdatomic.h>
 
@@ -59,7 +60,7 @@
             *status = 503; return nil;
         }
         if (_stream && _stream.state != PLANKMacPreviewStopped) { *status = 409; return nil; }
-        if (request.count != 3) { *status = 400; return nil; }
+        if (request.count != 4 || !PLANKMacEncodingProfile(request[@"encoding_mode"])) { *status = 400; return nil; }
         for (NSString *key in @[@"schema_version", @"width", @"height"]) {
             id number = request[key];
             if (![number isKindOfClass:NSNumber.class] ||
@@ -67,7 +68,7 @@
                 [number doubleValue] != [number unsignedIntValue]) { *status = 400; return nil; }
         }
         unsigned width = [request[@"width"] unsignedIntValue], height = [request[@"height"] unsignedIntValue];
-        if ([request[@"schema_version"] unsignedIntValue] != 1 || width < 2 || height < 2 ||
+        if ([request[@"schema_version"] unsignedIntValue] != 2 || width < 2 || height < 2 ||
             width > 8192 || height > 8192) { *status = 400; return nil; }
         PLANKMacGraphicalIdentity scope = _snapshot();
         BOOL (^valid)(void) = ^BOOL {
@@ -77,13 +78,14 @@
                 [self->_sessions authorizeToken:token peer:peer identity:&account];
         };
         if (!valid()) { *status = 401; return nil; }
-        if (!self.prepareDisplay(width, height, valid) || !valid()) {
+        if (!self.prepareDisplay(width, height, request[@"encoding_mode"], valid) || !valid()) {
             NSLog(@"PLANK desktop preparation failed: %ux%u", width, height);
             *status = 503; return nil;
         }
         NSDictionary *topology = _topology();
         if (!topology || [topology[@"capture"][@"width"] unsignedIntValue] != width ||
-            [topology[@"capture"][@"height"] unsignedIntValue] != height || !valid()) {
+            [topology[@"capture"][@"height"] unsignedIntValue] != height ||
+            ![topology[@"capture"][@"encoding_profile"] isEqual:PLANKMacEncodingProfile(request[@"encoding_mode"])] || !valid()) {
             *status = 503; return nil;
         }
         *status = 200; return topology;

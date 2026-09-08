@@ -13,7 +13,7 @@
 @interface PLANKMacHostRuntime : NSObject
 // Optional desktop-only mode preparation, configured before start. Called on
 // the auth lane with a cancellation/authority predicate; must finish boundedly.
-@property(copy) BOOL (^prepareDisplay)(unsigned width, unsigned height, BOOL (^valid)(void));
+@property(copy) BOOL (^prepareDisplay)(unsigned width, unsigned height, NSString *encodingMode, BOOL (^valid)(void));
 - (instancetype)initWithIdentity:(SecIdentityRef)identity
                      information:(PLANKMacServerInformation *)information
                         snapshot:(PLANKMacGraphicalSnapshot)snapshot

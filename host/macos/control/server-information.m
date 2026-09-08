@@ -46,9 +46,9 @@ static BOOL publicText(NSString *value, NSUInteger maximum) {
         @[@"hostname", _name], @[@"uniqueid", _uuid.UUIDString.lowercaseString],
         @[@"HttpsPort", [NSString stringWithFormat:@"%u", port]],
         @[@"PlankHostMetadataVersion", @"1"], @[@"PlankHostVersion", _version],
-        @[@"PlankAuth", @"1"], @[@"ServerCodecModeSupport", _streaming ? @"512" : @"0"],
+        @[@"PlankAuth", @"1"], @[@"ServerCodecModeSupport", _streaming ? @"1049088" : @"0"],
         @[@"PlankTopologyVersion", _streaming ? @"13" : @"0"],
-        @[@"PlankFeatureFlags", _streaming ? @"1572977" : @"0"],
+        @[@"PlankFeatureFlags", _streaming ? @"3670129" : @"0"],
         @[@"PairStatus", authorized ? @"1" : @"0"]
     ];
     for (NSArray *field in fields)

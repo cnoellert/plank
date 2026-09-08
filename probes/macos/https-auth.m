@@ -20,7 +20,7 @@
     queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
     (void)topology; (void)video; (void)audio; (void)queue; (void)failed; started(bitrate * 2);
 }
-- (BOOL)setBitrate:(uint32_t)bitrate peak:(uint32_t *)peak { *peak = bitrate * 2; return YES; }
+- (void)setBitrate:(uint32_t)bitrate completion:(void (^)(uint32_t))completion { completion(bitrate * 2); }
 - (void)stopWithCompletion:(void (^)(void))completion { completion(); }
 @end
 #endif
@@ -77,9 +77,10 @@ int main(int argc, const char *argv[]) {
 #endif
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
         __block unsigned desktopWidth = 3840, desktopHeight = 2160;
+        __block NSString *encodingMode = @"hevc-10-420-videotoolbox";
         NSDictionary *(^topology)(void) = ^{
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
-                desktopWidth, desktopHeight, CGRectMake(-1920, 0, 1920, 1080));
+                desktopWidth, desktopHeight, CGRectMake(-1920, 0, 1920, 1080), encodingMode);
         };
 #else
         PLANKMacFixedCapture *capture = [PLANKMacFixedCapture new];
@@ -112,9 +113,10 @@ int main(int argc, const char *argv[]) {
 #endif
             }];
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
-        runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, BOOL (^valid)(void)) {
+        runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, NSString *mode, BOOL (^valid)(void)) {
             if (!valid() || !((width == 1920 && height == 1080) || (width == 3840 && height == 2160))) return NO;
             desktopWidth = width; desktopHeight = height;
+            encodingMode = mode;
             return valid();
         };
 #endif

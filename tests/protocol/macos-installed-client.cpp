@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     try {
         NvHTTP http(NvAddress(QString::fromLocal8Bit(argv[1]), static_cast<quint16>(port)));
         const QString info = http.getServerInfo(NvHTTP::NVLL_NONE);
-        CHECK(NvHTTP::getXmlString(info, "ServerCodecModeSupport") == "512");
+        CHECK(NvHTTP::getXmlString(info, "ServerCodecModeSupport") == "1049088");
         // Same discovery gate used by normal login and reconnect. The original
         // probe skipped it and therefore missed the GUI's absent topology.
         CHECK(NvOutputTopology::supportsDescription(
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
                     CHECK(frame->width == topology.desktopWidth && frame->height == topology.desktopHeight);
                     CHECK(frame->format == AV_PIX_FMT_YUV420P10LE && frame->color_range == AVCOL_RANGE_JPEG);
                     CHECK(frame->colorspace == AVCOL_SPC_BT709 && frame->color_primaries == AVCOL_PRI_BT709);
-                    CHECK(plankAppleVideoFrameMatches(frame, codec->profile));
+                    CHECK(plankAppleVideoFrameMatches(frame, codec->profile, false));
                     ++decoded;
                     av_frame_unref(frame);
                 }

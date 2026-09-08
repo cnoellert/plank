@@ -71,6 +71,16 @@ int main(int argc, const char **argv) {
         width = 1920;
         assert(![[capture snapshot][@"generation"] isEqual:beforeWidth[@"generation"]]);
         assert([PLANKMacFixedCapture new] && registered == 1);
+        NSDictionary *beforeProfile = [capture snapshot];
+        capture.encodingMode = @"hevc-10-444-videotoolbox";
+        NSDictionary *fullChroma = [capture snapshot];
+        assert(fullChroma && ![fullChroma[@"generation"] isEqual:beforeProfile[@"generation"]]);
+        assert([fullChroma[@"capture"][@"encoding_profile"][@"chroma"] isEqual:@"4:4:4"]);
+        assert([fullChroma isEqual:[capture snapshot]]);
+        capture.encodingMode = @"hevc-10-420-videotoolbox";
+        assert(![[capture snapshot][@"generation"] isEqual:fullChroma[@"generation"]]);
+        capture.encodingMode = @"invalid";
+        assert(![capture snapshot]);
         capture = nil;
         observer(42, kCGDisplaySetModeFlag, NULL); // no dangling object context
         puts("macos_capture_observer=pass synthetic_cg=1 change_back_invalidated=1 mid_read_rejected=1 process_lifetime=1");

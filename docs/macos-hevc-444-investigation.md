@@ -1,6 +1,6 @@
 # VideoToolbox HEVC 10-bit 4:4:4 investigation
 
-September 8, 2026. Investigation only, on the dedicated Apple M4 development
+September 8, 2026. Qualification and candidate integration on the dedicated Apple M4 development
 Mac: macOS 27.0 build 26A5425a, SDK 27.0, arm64, deployment target 27.0.
 No installed Host, Client, capture, display, input or service changes.
 
@@ -121,7 +121,32 @@ Retained chart hashes:
 - `build/hevc444-live-4k.hevc`: `7d0a24e8927755e104800184f851bca72a2084fe12deb94149c73e4b0bfa56df`
 - `build/hevc444-live-5k.hevc`: `a5039d0808fa094b85a4a6d14b746b83e87686d9ffc20dfe60e1ed092b4f1c8a`
 
-## Remaining product integration, not implemented
+## Candidate integration
+
+The `macos-hevc444` branch now implements a separate per-bookmark Apple HEVC
+10-bit 4:4:4 profile. Authenticated display schema 2 includes the exact encoding
+mode; topology generation includes that mode, and launch rejects disagreement.
+SCK/VideoToolbox select xf44/Main44410 for this profile and retain xf20/Main10
+for 420, including encoder replacement on bitrate changes. Hardware encoding
+is required; no silent fallback or Linux RGB-identity substitution is allowed.
+Client hardware-first decoder probing uses the owned-chart 444 keyframe and
+checks RExt/10-bit/444/full/709/sRGB; runtime frames retain the same checks.
+
+Focused Client tests on linux-client-builder pass: 58 Apple frame-contract checks with
+real software-decoded 420/444 fixtures, 123 launch checks, 15 topology tests,
+and nine bitrate-policy tests. Synthetic hardware metadata is not hardware
+decode qualification. Full Mac Host compilation and native-media lifecycle
+tests pass; updated control/capture-generation tests pass. Full candidate
+packaging, real Client presentation and interactive acceptance are next.
+
+A startup experiment with `MaxFrameDelayCount=1` was rejected by VideoToolbox
+with OSStatus -12900 before frame submission. It is not in production or the
+retained probe source. The original installed Probe was restored and verified.
+No queue size, transport, FEC, or application pacing changes accompany this
+feature. The observed one/two pre-encode source skips at some 5K starts remain
+an explicit qualification limit, not encoded reference-frame loss.
+
+## Remaining qualification
 
 Qualify SCK `xf44` capture into the hardware Main44410 encoder without an
 application CPU readback/copy. The current installed Host requests `xf20`

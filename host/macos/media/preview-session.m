@@ -18,7 +18,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     if (![request isKindOfClass:NSDictionary.class] || request.count != 9 ||
         ![topology isKindOfClass:NSDictionary.class] ||
         !integerInRange(request[@"schema_version"], 1, 1) ||
-        ![request[@"encoding_mode"] isEqual:@"hevc-10-420-videotoolbox"] ||
+        !PLANKMacEncodingProfile(request[@"encoding_mode"]) ||
         !integerInRange(request[@"frame_rate"], 60, 60) ||
         !integerInRange(request[@"bitrate_kbps"], 10000, 150000) ||
         !integerInRange(request[@"max_udp_payload_size"], 1200, 65527) ||
@@ -41,7 +41,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     NSDictionary *expected = PLANKMacFixedCaptureDescription(topology[@"generation"], capture[@"id"],
         [request[@"width"] unsignedIntegerValue], [request[@"height"] unsignedIntegerValue],
         CGRectMake([bounds[@"x"] doubleValue], [bounds[@"y"] doubleValue],
-                   [bounds[@"width"] doubleValue], [bounds[@"height"] doubleValue]));
+                   [bounds[@"width"] doubleValue], [bounds[@"height"] doubleValue]), request[@"encoding_mode"]);
     return expected && [expected isEqual:topology];
 }
 

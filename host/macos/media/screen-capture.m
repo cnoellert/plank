@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "screen-capture.h"
 #import "opus-encoder.h"
+#import "fixed-capture.h"
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 #import <VideoToolbox/VideoToolbox.h>
 #include <time.h>
@@ -25,17 +26,19 @@
     uint32_t _replacementBitrate;
     void (^_replacementCompletion)(uint32_t);
     size_t _width, _height;
+    BOOL _fullChroma;
     CMTime _lastPTS;
     uint64_t _completeFrames, _preEncodeDrops, _encoderDrops, _sendDrops;
     uint64_t _maxEncodeNs, _maxCallbackQueueNs;
     PLANKFrameTiming *_timing;
 }
 
-+ (VTCompressionSessionRef)createEncoder:(uint32_t)bitrate width:(size_t)width height:(size_t)height {
++ (VTCompressionSessionRef)createEncoder:(uint32_t)bitrate width:(size_t)width height:(size_t)height fullChroma:(BOOL)fullChroma {
     VTCompressionSessionRef encoder = NULL;
     NSDictionary *spec = @{(__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES};
     NSDictionary *surface = @{
-        (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr10BiPlanarFullRange),
+        (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(fullChroma ?
+            kCVPixelFormatType_444YpCbCr10BiPlanarFullRange : kCVPixelFormatType_420YpCbCr10BiPlanarFullRange),
         (__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
     };
     if (VTCompressionSessionCreate(NULL, (int32_t)width, (int32_t)height, kCMVideoCodecType_HEVC,
@@ -50,7 +53,10 @@
         (__bridge NSString *)kVTCompressionPropertyKey_AverageBitRate: @((uint64_t)bitrate * 1000),
         // Two times target over one second, in bytes; not an added frame queue.
         (__bridge NSString *)kVTCompressionPropertyKey_DataRateLimits: @[@((uint64_t)bitrate * 250), @1],
-        (__bridge NSString *)kVTCompressionPropertyKey_ProfileLevel: (__bridge NSString *)kVTProfileLevel_HEVC_Main10_AutoLevel,
+        // SDK27 exports this Main44410 value but does not declare it in headers.
+        // Exact hardware setup must succeed; never fall back to Main10 here.
+        (__bridge NSString *)kVTCompressionPropertyKey_ProfileLevel: (__bridge NSString *)(fullChroma ?
+            CFSTR("HEVC_Main44410_AutoLevel") : kVTProfileLevel_HEVC_Main10_AutoLevel),
         (__bridge NSString *)kVTCompressionPropertyKey_ColorPrimaries: (__bridge NSString *)kCVImageBufferColorPrimaries_ITU_R_709_2,
         (__bridge NSString *)kVTCompressionPropertyKey_TransferFunction: (__bridge NSString *)kCVImageBufferTransferFunction_sRGB,
         (__bridge NSString *)kVTCompressionPropertyKey_YCbCrMatrix: (__bridge NSString *)kCVImageBufferYCbCrMatrix_ITU_R_709_2
@@ -77,11 +83,12 @@
     _buildingEncoder = YES;
     size_t width = _width, height = _height;
     uint32_t bitrate = _replacementBitrate;
+    BOOL fullChroma = _fullChroma;
     // No old frame can cross the switch. Framework setup is off the session
     // queue so input, audio, network control and cancellation stay responsive.
     VTCompressionSessionInvalidate(_encoder); CFRelease(_encoder); _encoder = NULL;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        VTCompressionSessionRef replacement = [PLANKMacScreenCapture createEncoder:bitrate width:width height:height];
+        VTCompressionSessionRef replacement = [PLANKMacScreenCapture createEncoder:bitrate width:width height:height fullChroma:fullChroma];
         dispatch_async(self->_queue, ^{
             self->_buildingEncoder = NO; self->_changingEncoder = NO;
             if (self->_stopping) {
@@ -114,6 +121,9 @@
     _width = [topology[@"capture"][@"width"] unsignedIntegerValue];
     _height = [topology[@"capture"][@"height"] unsignedIntegerValue];
     NSString *identifier = topology[@"capture"][@"id"];
+    NSDictionary *profile = topology[@"capture"][@"encoding_profile"];
+    if (![profile isEqual:PLANKMacEncodingProfile(profile[@"encoding_mode"])]) { failed(); return; }
+    _fullChroma = [profile[@"chroma"] isEqual:@"4:4:4"];
     if (!CGPreflightScreenCaptureAccess() || !_width || !_height || _width > 8192 || _height > 8192 ||
         (_width & 1) || (_height & 1)) { failed(); return; }
     _starting = YES;
@@ -131,14 +141,15 @@
             double h = filter.contentRect.size.height * filter.pointPixelScale;
             if (!isfinite(w) || !isfinite(h) || w != self->_width || h != self->_height) { self->_failed(); return; }
             uint32_t peak = bitrate * 2;
-            self->_encoder = [PLANKMacScreenCapture createEncoder:bitrate width:self->_width height:self->_height];
+            self->_encoder = [PLANKMacScreenCapture createEncoder:bitrate width:self->_width height:self->_height fullChroma:self->_fullChroma];
             if (!self->_encoder) { self->_failed(); return; }
             SCStreamConfiguration *config = [SCStreamConfiguration new];
             config.width = self->_width; config.height = self->_height;
             // Native cadence on the qualified 60 Hz displays. An explicit 1/60
             // SCK throttle skipped refresh intervals in capture-only tests.
             config.minimumFrameInterval = kCMTimeZero; config.queueDepth = 3;
-            config.pixelFormat = kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
+            config.pixelFormat = self->_fullChroma ? kCVPixelFormatType_444YpCbCr10BiPlanarFullRange :
+                kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
             config.captureDynamicRange = SCCaptureDynamicRangeSDR; config.colorSpaceName = kCGColorSpaceSRGB;
             // macOS uses ScreenCaptureKit's embedded system/application cursor.
             // This is the Mac contract, not a Linux separate-cursor fallback.
@@ -181,7 +192,8 @@
     CMTime pts = CMSampleBufferGetPresentationTimeStamp(sample);
     if (!pixel || !CVPixelBufferGetIOSurface(pixel) || CVPixelBufferGetWidth(pixel) != _width ||
         CVPixelBufferGetHeight(pixel) != _height ||
-        CVPixelBufferGetPixelFormatType(pixel) != kCVPixelFormatType_420YpCbCr10BiPlanarFullRange ||
+        CVPixelBufferGetPixelFormatType(pixel) != (_fullChroma ? kCVPixelFormatType_444YpCbCr10BiPlanarFullRange :
+            kCVPixelFormatType_420YpCbCr10BiPlanarFullRange) ||
         !CMTIME_IS_NUMERIC(pts) || pts.value < 0 ||
         (CMTIME_IS_VALID(_lastPTS) && CMTimeCompare(pts, _lastPTS) <= 0)) {
         fprintf(stderr, "macos_capture_failure stage=video-sample\n"); _failed(); return;
@@ -202,7 +214,7 @@
         if (timing) timing->stage = 1; // pre-encode skip
         ++_preEncodeDrops; return; // no encoded reference-frame dependency
     }
-    // Explicit qualified SDK-27 xf20 full-range interpretation, distinct from the
+    // Explicit qualified SDK-27 xf20/xf44 full-range interpretation, distinct from the
     // BT.709 encoded output. Revalidate on final OS; no CPU color conversion.
     CVBufferSetAttachment(pixel, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
     CVBufferSetAttachment(pixel, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_sRGB, kCVAttachmentMode_ShouldPropagate);

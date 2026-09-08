@@ -245,7 +245,8 @@ schema.
 The `macos-host` work adds `FixedCaptureFeature = 0x80000` within schema 13.
 This is a distinct fixed-capture description, **not** permission to relax the
 existing Linux topology requirements. Its exact current feature mask is
-`1572977` (`0x180071`): fixed capture, Mac desktop preparation, output topology, topology generation,
+`3670129` (`0x380071`): fixed capture, Mac desktop preparation, Mac encoding-profile
+selection (`0x200000`), output topology, topology generation,
 layout metadata and composite source geometry. All other bits are rejected
 for this preview. It is deliberately excluded from the Client's Linux
 `SupportedFeatureFlags` launch mask.
@@ -268,13 +269,16 @@ no virtual modes; Linux bookmark layout changes are not allowed for it.
 
 `MacDesktopPreparationFeature = 0x100000` additionally requires authenticated
 `POST /plank/display` before constructing a streaming session. The exact JSON
-request is `{ "schema_version": 1, "width": 3840, "height": 2160 }`; values
+request is `{ "schema_version": 2, "width": 3840, "height": 2160,
+"encoding_mode": "hevc-10-444-videotoolbox" }`; numeric values
 are integral, never booleans, and must identify a qualified bookmark mode.
 The Client first fetches authenticated topology to pin the certificate, then
 sends this request through a fresh TLS 1.3 connection pinned to that certificate.
 There is no redirect, new port, unauthenticated mutation, or implicit takeover.
-The Host returns the strict topology object above, describing actual pixels and
-desktop bounds after the change. The Client rejects mismatched dimensions and
+The Host returns the strict topology object above, describing actual pixels,
+desktop bounds and the selected encoding profile after the change. Changing
+the profile changes the topology generation even at unchanged dimensions.
+The Client rejects mismatched dimensions or profile and
 uses the returned geometry before video/window/input initialization. Preparing
 a display does not consume the authentication bearer; stream launch still does.
 An active stream rejects preparation (409); authority loss rejects it (401), and
@@ -283,19 +287,30 @@ an unavailable/failed mode returns 503 without starting a differently sized stre
 The desktop agent owns one virtual display for its whole process lifetime and
 changes only that display's mode between streams. It neither changes a physical
 monitor's mode nor deletes/recreates an output on every disconnect. Agent exit
-is the removal boundary. This desktop-only implementation and its private Apple
-display API require dedicated macOS 27 qualification; it is not LoginWindow
-resolution support. Old fixed-capture-only feature masks are no longer accepted
+is the removal boundary. The sign-in agent owns a separate display under its
+validated LoginWindow authority; both roles use the requested qualified mode.
+This private Apple display API requires dedicated macOS 27 qualification.
+Old fixed-capture-only feature masks are no longer accepted
 by this matching development Client/Host pair.
 
 The explicit tuple is ScreenCaptureKit (`screencapturekit`) → VideoToolbox
 (`videotoolbox`), mode `hevc-10-420-videotoolbox`: HEVC Main10, 10-bit 4:2:0,
 full range, BT.709 matrix and primaries, sRGB transfer, no RGB identity.
+The additional mode `hevc-10-444-videotoolbox` selects HEVC RExt (`profile: rext`),
+10-bit 4:4:4 with the same full-range BT.709/sRGB color contract. It requires
+SCK xf44 capture and hardware VideoToolbox Main44410; the accepted 420 mode
+continues to use xf20/Main10. Neither mode permits a precision/chroma fallback.
+Launch schema 1 already contains `encoding_mode`; it must equal the prepared
+topology profile. The reply repeats that exact capture/profile. Client decoder
+qualification uses a genuine Apple YCbCr fixture for each mode, never Linux's
+GBR-identity fixture. Old feature masks/display schema 1 are rejected by this
+matching development pair. Linux schema/feature negotiation is unchanged.
 No tuple substitution, NVENC naming, Linux 4:4:4 interpretation or HDR inference
-is allowed. This declares the preview contract, not successful encoder/decoder
-activation. Public Mac discovery still advertises zero codecs and zero topology
-readiness until launch/Client integration is complete. Hardware capability and
-encoded stream metadata must be verified again when activating media.
+is allowed. A ready media agent advertises Main10 and RExt10 4:4:4 codec bits
+(`ServerCodecModeSupport=1049088`) and the complete Mac feature mask; an
+unready/non-media endpoint advertises zero capability. Capability advertisement
+does not replace the hardware-required encoder creation or exact-format Client
+decode gate when activating media.
 
 `GET /plank/topology` retains HTTPS and the current `Authorization: Bearer`
 header. The Mac checks the address-bound token and live desktop owner before
@@ -307,9 +322,10 @@ reject an observed reconfiguration during the snapshot. Continuous topology
 monitoring and matching the actual ScreenCaptureKit frame are required before
 media/input launch; this metadata-only check is not that lifecycle gate.
 
-There is no resizing, multi-display selection, takeover, keyboard/mouse/Wacom
-or media permission in this extension. Adding these requires explicit feature
-negotiation and tests. The Linux schema-13 fixture and checks remain unchanged.
+This topology extension does not independently grant input or media authority.
+Those remain owned by the authenticated native launch/session lifecycle.
+It describes one capture canvas, not multiple independently streamed displays.
+The Linux schema-13 fixture and checks remain unchanged.
 
 ## Test Vector
 

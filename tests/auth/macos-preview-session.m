@@ -123,7 +123,7 @@ int main(int argc, const char **argv) {
         __block PLANKSessionAgent *agent = nil;
         NSObject *guard = [NSObject new];
         __block NSDictionary *topology = PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca",
-            @"cgdisplay:42", 3840, 2160, CGRectMake(-1920, 0, 1920, 1080));
+            @"cgdisplay:42", 3840, 2160, CGRectMake(-1920, 0, 1920, 1080), @"hevc-10-420-videotoolbox");
         NSDictionary *(^snapshot)(void) = ^{ @synchronized(guard) { return topology; } };
         PLANKMacAuthenticationSession *auth = [[PLANKMacAuthenticationSession alloc] initWithGraphicalSnapshot:^{
             @synchronized(guard) { return agent ? [agent.connection bindGraphicalScope:desktop] : desktop; }
@@ -131,6 +131,13 @@ int main(int argc, const char **argv) {
         NSData *fixture = [NSData dataWithContentsOfFile:[NSString stringWithUTF8String:argv[4]]];
         NSDictionary *request = fixture ? [NSJSONSerialization JSONObjectWithData:fixture options:0 error:NULL] : nil;
         CHECK(PLANKMacPreviewRequestMatchesTopology(request, topology));
+        NSMutableDictionary *fullRequest = [request mutableCopy];
+        fullRequest[@"encoding_mode"] = @"hevc-10-444-videotoolbox";
+        NSDictionary *fullTopology = PLANKMacFixedCaptureDescription(topology[@"generation"], @"cgdisplay:42",
+            3840, 2160, CGRectMake(-1920, 0, 1920, 1080), @"hevc-10-444-videotoolbox");
+        CHECK(PLANKMacPreviewRequestMatchesTopology(fullRequest, fullTopology));
+        CHECK(!PLANKMacPreviewRequestMatchesTopology(fullRequest, topology));
+        CHECK(!PLANKMacPreviewRequestMatchesTopology(request, fullTopology));
         CHECK(!PLANKMacPreviewRequestMatchesTopology(nil, topology));
         CHECK(!PLANKMacPreviewRequestMatchesTopology(request, nil));
         for (NSString *field in request) {
@@ -346,7 +353,7 @@ int main(int argc, const char **argv) {
             }
             @synchronized(guard) {
                 topology = PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
-                    3840, 2160, CGRectMake(-1920, 0, 1920, 1080));
+                    3840, 2160, CGRectMake(-1920, 0, 1920, 1080), @"hevc-10-420-videotoolbox");
             }
         }
         [auth revokeAll];
