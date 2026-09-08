@@ -390,3 +390,71 @@ counter. Determine whether omitted SCK intervals arise from source updates,
 callback scheduling or another capture constraint before selecting a fix.
 This is distinct from the measured keyframe delivery burst; it does not prove
 all visible stutter has one cause. No capture-policy change made here.
+
+## September 8: capture-cadence investigation, no runtime changes
+
+Reanalyzed the existing complete .51/.53 traces after excluding the first five
+seconds by capture callback time. No new capture, process restart, installation,
+encoder change or OS setting change. Read-only Mac inventory still reports
+Host .53 and a 5120x2160 PLANK Desktop at 60.00 Hz, with Safari/WebKit active.
+That current inventory is not proof of browser frame rate during older traces.
+
+At .53, 6,579 measured intervals contain 6,267 one-tick, 303 two-tick and nine
+three-tick PTS gaps on the 60 Hz grid. Those are 312 gap events / 321 unobserved
+60 Hz slots, not 312 network losses. All 6,580 records reached send stage;
+no pre-encode or encoder skips occur in this post-startup portion. Only one
+gap immediately follows an encoded keyframe. Capture cadence therefore has
+an issue separate from the keyframe delivery burst.
+
+The handler checks `SCFrameStatusComplete` before recording. Idle/incomplete
+SCK callbacks are not recorded, so an absent slot is NOT by itself proof that
+WindowServer lost a changed frame. Nor do encoder-completion timestamps prove
+the exact moment the input IOSurface became reusable.
+
+For .53 one-tick PTS intervals, mean callback interval is 17.193 ms (median
+17.146), versus the 16.667 ms source grid. Define *relative callback lag* as
+`capture_ns - pts_ns - min(capture_ns - pts_ns)` over this trace section. This
+removes the arbitrary clock offset; it is NOT absolute display-to-capture
+latency. Its average rises to 16.544 ms on frames immediately preceding a PTS
+gap, then falls to 5.951 ms on the next captured frame. The normal-interval
+corresponding values are 10.048 and 10.574 ms. Individual sequences show gradual
+lag accumulation and a reset at a missing PTS tick. .51 shows the same pattern.
+
+Previous-frame encode latency averages 21.718 ms before .53 gaps, versus
+20.986 ms otherwise; callback-to-handler delay is 1.135 versus 0.981 ms.
+Thus there is no evidence that a huge encoded-output callback stall precedes
+every capture gap. Relative PTS-to-encode-completion exceeds 33.333 ms before
+292/312 gaps versus 1,768/6,267 normal intervals. That is useful correlation
+with surface-pool pressure, not a direct surface-ownership measurement.
+
+Code audit:
+
+- SCK `minimumFrameInterval=1/60` is a maximum-update-rate request, not a
+  promise of 60 complete updates every second.
+- SCK `queueDepth=3` supplies the minimum surface pool. Hardware encoding
+  receives those IOSurface-backed pixel buffers directly; no CPU image copy.
+- Capture delivery, synchronous Opus conversion, encoded-output handling and
+  lifecycle/control callbacks share the session serial queue. `_inFlight`
+  counts submissions until the output handler runs on that queue; it is not
+  SCK's number of available surfaces.
+- Network FEC/QUIC work is on the transport worker. `sendSample:` converts the
+  compressed payload and enqueues it; its handler time must not be equated
+  with the separately traced full network submission time.
+
+Apple explicitly describes the surface-pool exhaustion failure mode, the
+memory/latency tradeoff, and a five-surface configuration for 4K60 streaming:
+[WWDC22: Take ScreenCaptureKit to the next level](https://developer.apple.com/videos/play/wwdc2022/10155/).
+The [queueDepth reference](https://developer.apple.com/documentation/screencapturekit/scstreamconfiguration/queuedepth)
+confirms the default is three and says not to exceed eight. These are documented
+SCK semantics; final macOS 27 behavior still needs qualification.
+
+Recommended next bounded experiment: change only SCK surface-pool depth from
+three to five, retaining the three-submission in-flight cap, capture rate,
+hardware encoder, timestamps, transport .53 and Client .52. This supplies more
+reusable capture surfaces, not an intentional wait to fill a five-frame playout
+queue; actual latency must nevertheless be compared, not assumed unchanged.
+Keep batching disabled. Compare the same moving workload's PTS gaps, receive/
+render cadence, latency and audio/input behavior. If ineffective, revert that
+single variable and instrument all SCK frame statuses / delivery and submission
+durations before changing threads or the minimum interval. Do not claim that
+either surface starvation or source/browser cadence has been proved yet.
