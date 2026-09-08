@@ -7,7 +7,7 @@
 @property(copy) NSData *peer;
 @property(copy) NSString *username;
 @property uint64_t expires;
-@property PLANKMacDesktopIdentity desktop;
+@property PLANKMacGraphicalIdentity scope;
 @property PLANKMacAccountIdentity account;
 @end
 @implementation PLANKMacAuthRecord
@@ -24,7 +24,7 @@
 @end
 
 @implementation PLANKMacAuthenticationSession {
-    PLANKMacDesktopSnapshot _snapshot;
+    PLANKMacGraphicalSnapshot _snapshot;
     NSMutableDictionary<NSString *, PLANKMacAuthRecord *> *_pending;
     NSMutableDictionary<NSString *, PLANKMacAuthRecord *> *_tokens;
     PLANKMacStreamLease *_lease;
@@ -54,7 +54,7 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
 
 - (instancetype)init { return nil; }
 
-- (instancetype)initWithDesktopSnapshot:(PLANKMacDesktopSnapshot)snapshot {
+- (instancetype)initWithGraphicalSnapshot:(PLANKMacGraphicalSnapshot)snapshot {
     if (!snapshot) return nil;
     self = [super init];
     if (self) {
@@ -67,17 +67,16 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
 
 - (void)prune {
     uint64_t now = monotonicSeconds();
-    PLANKMacDesktopIdentity current = _snapshot();
+    PLANKMacGraphicalIdentity current = _snapshot();
     for (NSMutableDictionary *records in @[_pending, _tokens]) {
         for (NSString *key in records.allKeys) {
             PLANKMacAuthRecord *record = records[key];
-            if (record.expires <= now || !plank_macos_account_may_attach(
-                    record.desktop.account, record.desktop, current))
+            if (record.expires <= now || !plank_macos_same_graphical_scope(record.scope, current))
                 [records removeObjectForKey:key];
         }
     }
     if (_lease && ((!_lease.active && _lease.activateBefore <= now) ||
-            !plank_macos_account_may_attach(_lease.record.account, _lease.record.desktop, current))) {
+            !plank_macos_account_may_attach(_lease.record.account, _lease.record.scope, current))) {
         [self endStreamLease:_lease];
     }
 }
@@ -90,15 +89,15 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
             return denied();
         [self prune];
         if (_pending.count >= 16 || _tokens.count >= 16) return denied();
-        PLANKMacDesktopIdentity desktop = _snapshot();
-        if (!plank_macos_account_may_attach(desktop.account, desktop, desktop)) return denied();
+        PLANKMacGraphicalIdentity scope = _snapshot();
+        if (!plank_macos_graphical_identity_valid(scope)) return denied();
         NSString *conversation = randomToken();
         if (!conversation || _pending[conversation]) return denied();
         PLANKMacAuthRecord *record = [PLANKMacAuthRecord new];
         record.peer = peer;
         record.username = username;
         record.expires = monotonicSeconds() + 120;
-        record.desktop = desktop;
+        record.scope = scope;
         _pending[conversation] = record;
         return @{@"state": @"challenge", @"conversation_id": conversation,
             @"messages": @[@{@"style": @1, @"text": @"Password:"}]};
@@ -130,7 +129,7 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
             @synchronized(self) {
                 if (generation != _revocationGeneration || _tokens.count >= 16 ||
                         result != PLANKMacAuthenticationVerified ||
-                        !plank_macos_account_may_attach(account, record.desktop, _snapshot())) return denied();
+                        !plank_macos_account_may_attach(account, record.scope, _snapshot())) return denied();
                 NSString *token = randomToken();
                 if (!token || _tokens[token]) return denied();
                 record.account = account;
@@ -155,7 +154,7 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
         [self prune];
         PLANKMacAuthRecord *record = _tokens[token];
         if (!record || ![record.peer isEqual:peer] ||
-            !plank_macos_account_may_attach(record.account, record.desktop, _snapshot())) return NO;
+            !plank_macos_account_may_attach(record.account, record.scope, _snapshot())) return NO;
         *identity = record.account;
         return YES;
     }

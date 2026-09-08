@@ -30,7 +30,7 @@ static BOOL readDesktop(PLANKMacAccountIdentity *account, SecuritySessionId *ses
 }
 
 @implementation PLANKMacDesktopAuthority {
-    PLANKMacDesktopIdentity _initial;
+    PLANKMacGraphicalIdentity _initial;
     SecuritySessionId _sessionID;
     BOOL _revoked;
     BOOL _notified;
@@ -63,6 +63,7 @@ static BOOL readDesktop(PLANKMacAccountIdentity *account, SecuritySessionId *ses
             SecRandomCopyBytes(kSecRandomDefault, sizeof(_initial.generation),
                                (uint8_t *)&_initial.generation) == errSecSuccess && _initial.generation) {
             _initial.active = true;
+            _initial.phase = PLANKMacScopeDesktop;
             _revoked = NO;
         }
     }
@@ -73,14 +74,14 @@ static BOOL readDesktop(PLANKMacAccountIdentity *account, SecuritySessionId *ses
     return self;
 }
 
-- (PLANKMacDesktopIdentity)snapshot {
+- (PLANKMacGraphicalIdentity)snapshot {
     @synchronized(self) {
         PLANKMacAccountIdentity account = {0};
         SecuritySessionId sessionID = noSecuritySession;
         if (_revoked || !readDesktop(&account, &sessionID) || sessionID != _sessionID ||
             account.uid != _initial.account.uid || memcmp(account.uuid, _initial.account.uuid, sizeof(account.uuid))) {
             _revoked = YES;
-            return (PLANKMacDesktopIdentity){0};
+            return (PLANKMacGraphicalIdentity){0};
         }
         return _initial;
     }

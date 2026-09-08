@@ -22,8 +22,8 @@ codesign --force --sign - --identifier la.instinctual.PLANK.AgentRegistryTest "$
 codesign --verify --strict "$output/agent-registry"
 "$output/agent-registry" --synthetic
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
-    -Ihost/macos/session -Iprobes/macos host/macos/session/agent-registry.m \
-    host/macos/session/agent-connection.m tests/auth/macos-agent-service.m \
+    -Ihost/macos/session -Ihost/macos/auth -Iprobes/macos host/macos/session/agent-registry.m \
+    host/macos/session/agent-connection.m host/macos/auth/authentication-session.m tests/auth/macos-agent-service.m \
     -framework Foundation -framework Security -framework SystemConfiguration -framework CoreGraphics \
     -o "$output/agent-peer"
 codesign --force --sign - --identifier la.instinctual.PLANK.AgentServiceTest "$output/agent-peer"

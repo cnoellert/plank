@@ -66,12 +66,12 @@ int main(int argc, const char **argv) {
     alarm(60);
     struct rlimit core = {0, 0}; CHECK(!setrlimit(RLIMIT_CORE, &core));
     @autoreleasepool {
-        __block PLANKMacDesktopIdentity desktop = {true, 1, {123, {1}}};
+        __block PLANKMacGraphicalIdentity desktop = {true, 1, {123, {1}}, PLANKMacScopeDesktop};
         NSObject *guard = [NSObject new];
         __block NSDictionary *topology = PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca",
             @"cgdisplay:42", 3840, 2160, CGRectMake(-1920, 0, 1920, 1080));
         NSDictionary *(^snapshot)(void) = ^{ @synchronized(guard) { return topology; } };
-        PLANKMacAuthenticationSession *auth = [[PLANKMacAuthenticationSession alloc] initWithDesktopSnapshot:^{
+        PLANKMacAuthenticationSession *auth = [[PLANKMacAuthenticationSession alloc] initWithGraphicalSnapshot:^{
             @synchronized(guard) { return desktop; }
         }];
         NSData *fixture = [NSData dataWithContentsOfFile:[NSString stringWithUTF8String:argv[4]]];

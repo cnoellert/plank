@@ -81,16 +81,21 @@ not a distributed denial-of-service defense.
 
 `authentication-session.m` emits the existing `challenge`/style-1-password and
 `authenticated`/`session_token` JSON shapes without assuming PAM internally.
-It obtains desktop snapshots only from an injected **trusted session-owner**
+It obtains graphical snapshots only from an injected **trusted session-owner**
 provider, not from Client JSON. Password verification invokes the isolated
 channel. Pending conversations expire after 120 seconds and are consumed
 before verification; a response cannot replay. Random 256-bit conversation IDs
 and tokens are bound to canonical IP bytes supplied by the accepted connection.
 There is a hard cap of 16 pending conversations and 16 unclaimed tokens.
 
-Unclaimed tokens expire after 300 seconds. Every authorization rechecks UID, UUID and
-desktop generation; expiry, logout/replacement and explicit revocation remove
-authority. No LoginWindow token is issued by this desktop-preview component.
+Unclaimed tokens expire after 300 seconds. Every authorization rechecks phase,
+generation and, for a desktop, UID/UUID. Expiry, logout/replacement and explicit
+revocation remove authority. Sign-in is an explicit, positively verified
+LoginWindow scope with no desktop account; an absent/error/zero-initialized
+snapshot cannot authorize it. Only a verified non-root remote account may
+attach there. No token or stream lease can cross into a desktop, including the
+same account and even an erroneously reused generation. A new authenticated
+connection must match that desktop's owner. This is not an automatic macOS login.
 No account/credential/token values are logged.
 
 This state class does not implement HTTP itself. The new Network.framework
@@ -111,7 +116,7 @@ The coordinator must activate the exact lease only after its credential-bound
 native QUIC endpoint reports READY. Pending activation expires after 15 seconds.
 Active authorization has no five-minute expiration: it lasts until explicit
 disconnect/revocation or loss/replacement of the authenticated desktop. Every
-check revalidates trusted UID/UUID/generation. Revocation clears the lease's
+check revalidates trusted phase/UID/UUID/generation. Revocation clears the lease's
 credential and record and cannot be undone by restoring an old desktop snapshot.
 Ending a foreign or stale lease cannot terminate another stream.
 
@@ -125,7 +130,8 @@ Frames already enqueued or in flight before revocation cannot be recalled.
 The lease does not itself own a transport, timer or capture session. The new
 preview coordinator stops capture and its endpoint on disconnect, desktop loss,
 topology replacement or failed activation, including while no frame arrives.
-It owns no remote input yet. Synthetic lifecycle and short live Aqua loopback
+It now also owns native keyboard/mouse delivery and its stop/drain lifetime.
+Synthetic lifecycle and short live Aqua loopback
 tests now exercise that boundary; user-facing takeover and complete machine
 service lifecycle are not qualified by those tests.
 
@@ -138,13 +144,21 @@ the OS recycles a security-session ID or the same user logs in again. The
 network client never chooses that generation. Live capture/input still requires
 continuous revocation handling after attachment.
 
-This predicate intentionally does not grant LoginWindow control or unlock a
-locked session. Normal login-screen operation remains a product requirement,
-with its own authenticated machine-service and graphical-agent lifecycle gate.
+`desktop-authority.m` intentionally still admits only non-root Aqua; it never
+infers LoginWindow from the absence of a desktop and does not unlock a session.
+The new registry `authenticationScope:` obtains a separate sign-in/desktop
+snapshot from the exact admitted XPC lease, after machine scope validation.
+See `macos-session-lifecycle.md`: the graphical owner must independently check
+its own session, permissions and media/input scope. Current HTTPS/A/V probe
+orchestration still uses the desktop provider, not the machine registry. A
+synthetic verifier tests registry-bound admission and revocation in a separate
+service/agent harness; it is never linked into the real verification backend.
 
 ## Qualification and limits
 
-- Twelve pure ownership/identity cases pass on Linux and the dedicated Mac.
+- Twenty-seven pure phase/ownership/identity cases and 119 synthetic conversation/
+  lease checks pass on the dedicated Mac. LoginWindow-to-desktop, reverse-phase,
+  same-phase replacement, root and stale-token denial are explicit cases.
 - Seven malformed-input/root-denial cases pass on the Mac and verify caller
   password buffers are cleared and failure output contains no identity.
 - One real development-account password verification passes without root;

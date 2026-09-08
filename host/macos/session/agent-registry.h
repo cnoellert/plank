@@ -2,6 +2,7 @@
 #pragma once
 #import <Foundation/Foundation.h>
 #import <xpc/xpc.h>
+#include "../auth/account-policy.h"
 
 typedef NS_ENUM(uint32_t, PLANKMacAgentPhase) {
     PLANKMacAgentUnavailable, PLANKMacAgentLoginWindow, PLANKMacAgentDesktop
@@ -41,6 +42,13 @@ typedef NS_ENUM(unsigned, PLANKMacAgentEvent) {
 - (void)revoke;
 // Recheck current OS scope. Scope loss latches; it never re-arms a lease.
 - (void)refresh;
+// Authentication-lane snapshot of this exact admitted agent, on the owner
+// queue. Rechecks machine scope and resolves desktop identity through the OS.
+// Registration is still not remote authorization or permission to post input;
+// the graphical owner must independently guard each capture/input operation.
+// Never call synchronously back into an auth owner from a registry callback
+// when that auth owner's snapshot synchronizes onto this queue.
+- (PLANKMacGraphicalIdentity)authenticationScope:(PLANKMacAgentLease *)lease;
 // Only the trusted controller may release the exclusive slot AFTER old
 // media/input/display cleanup is verified. XPC loss/retired alone cannot do it.
 - (BOOL)completeRetirement:(PLANKMacAgentLease *)lease;

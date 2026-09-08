@@ -2,7 +2,7 @@
 
 Experimental macOS/SDK 27 components under `host/macos/session`. These are
 production IPC/ownership modules, not a new Client transport. They are not yet
-wired to a persistent Host service, remote authentication or the A/V/input
+wired to a persistent Host service, network-facing authentication or the A/V/input
 owner. Qualification launchd jobs are temporary fixtures, not package inputs.
 
 ## Trust boundary
@@ -23,8 +23,32 @@ permissions and geometry, with latched revocation on notifications.
 `agent-connection.m` verifies the machine's signing requirement and OS-reported
 UID. Its trusted local-scope predicate must remain valid. Neither registration
 nor its generation grants remote capture/input; those also require a verified
-principal and current desktop/session authorization. The existing Aqua-only
-authentication policy has not been widened to authorize LoginWindow.
+principal and current desktop/session authorization.
+
+## Scope-bound account admission
+
+`authenticationScope:` returns only the exact currently admitted lease's phase
+and generation. A desktop account is resolved from its OS-reported UID through
+membership services, not request fields. Sign-in requires the positively
+identified root LoginWindow agent and has an empty desktop account. Unknown,
+foreign, retired or lost leases yield no authority; scope is checked again after
+directory resolution. This method belongs on the registry owner queue and is
+an authentication-lane operation, not a per-frame/per-input directory lookup.
+
+The existing authentication/token owner now accepts an explicit graphical
+scope. Sign-in admits a verified non-root remote principal; a desktop admits
+only its verified UID/UUID owner. Phase or generation changes invalidate pending
+challenges, unclaimed tokens and active stream leases. Reusing a generation
+across phases cannot preserve access. Fresh authentication is required after
+replacement; no serialized opaque stream lease or inherited root authority.
+The standalone Aqua provider remains strictly non-root/desktop-only.
+
+When the auth lane synchronizes a snapshot onto the registry queue, registry
+callbacks must not synchronously call back into that auth owner. Revoke local
+agent authority before scheduling drain; avoid reverse queue/lock ordering.
+This admission snapshot does not replace the graphical agent's own positive
+session and permission checks at capture/input delivery. Those checks and real
+resource cleanup still need wiring into the persistent service.
 
 ## Typed private protocol
 
@@ -78,8 +102,10 @@ Native mode also verifies actual graphical/kernel identity. A separate harness
 boots a temporary system Mach service and a different process in LoginWindow
 or Aqua. A signed root Background peer falsely claiming graphical scope must
 be rejected by the machine observer, before a real graphical agent is accepted.
-It tests health, retirement and explicit empty-resource cleanup, not media or
-remote login. Exact results and pending contexts are in HANDOFF.
+It tests health, registry-bound authentication/stream-lease invalidation and
+explicit empty-resource cleanup, not media or remote login. The synthetic
+verifier is linked only into that harness; no real credentials or input are
+involved. Exact results and pending contexts are in HANDOFF.
 
 Next wire verified remote admission, fresh per-agent grants, real capture/input/
 display drain and stable control availability into these components. Keep

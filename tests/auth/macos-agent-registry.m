@@ -217,6 +217,17 @@ int main(int argc, const char **argv) {
                     f.lease.peer.auditSession == asid && f.lease.phase == phase;
             });
             CHECK(matches);
+            dispatch_sync(f.queue, ^{
+                PLANKMacGraphicalIdentity scope = [f.registry authenticationScope:f.lease];
+                CHECK(plank_macos_graphical_identity_valid(scope));
+                CHECK(scope.generation == f.lease.generation);
+                CHECK(scope.account.uid == geteuid());
+                CHECK((scope.phase == PLANKMacScopeSignIn) == (phase == PLANKMacAgentLoginWindow));
+                CHECK(![f.registry authenticationScope:nil].active);
+                CHECK(![f.registry authenticationScope:[PLANKMacAgentLease new]].active);
+                [f.registry revoke];
+                CHECK(![f.registry authenticationScope:f.lease].active);
+            });
             [f close]; xpc_connection_cancel(peer);
             printf("agent_registry_native_scope=%u peer_identity_match=1\n", phase);
         }

@@ -8,7 +8,7 @@
 #include <dispatch/dispatch.h>
 #import "authentication-session.h"
 
-static PLANKMacDesktopIdentity desktop = {true, 1, {123, {1}}};
+static PLANKMacGraphicalIdentity desktop = {true, 1, {123, {1}}, PLANKMacScopeDesktop};
 static unsigned verifications;
 static unsigned checks;
 static dispatch_semaphore_t verificationEntered, verificationRelease;
@@ -20,6 +20,8 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
     [password resetBytesInRange:NSMakeRange(0, password.length)];
     *output = (PLANKMacAccountIdentity){123, {1}};
     if ([name isEqualToString:@"wrong-owner"]) output->uid = 456;
+    if ([name isEqualToString:@"root"]) output->uid = 0;
+    if ([name isEqualToString:@"phase-change"]) desktop.phase = PLANKMacScopeDesktop;
     if ([name isEqualToString:@"replace"]) ++desktop.generation;
     if ([name isEqualToString:@"blocked"]) {
         dispatch_semaphore_signal(verificationEntered);
@@ -42,7 +44,7 @@ int main(void) {
         NSData *peer = [NSData dataWithBytes:"abcd" length:4];
         NSData *other = [NSData dataWithBytes:"efgh" length:4];
         PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc]
-            initWithDesktopSnapshot:^{ return desktop; }];
+            initWithGraphicalSnapshot:^{ return desktop; }];
         CHECK(sessions != nil);
         CHECK([[sessions startForPeer:[NSData data] username:@"test"][@"state"] isEqual:@"denied"]);
         CHECK([[sessions startForPeer:peer username:@""][@"state"] isEqual:@"denied"]);
@@ -173,6 +175,50 @@ int main(void) {
         CHECK([[sessions valueForKey:@"tokens"] count] == 0);
         start = [sessions startForPeer:peer username:@"test"];
         CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"authenticated"]);
+        [sessions revokeAll];
+        // Sign-in requires explicit valid scope. Absence of a desktop is not a
+        // sign-in grant, and a remote principal is never the root GUI agent.
+        desktop = (PLANKMacGraphicalIdentity){0};
+        CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"denied"]);
+        desktop = (PLANKMacGraphicalIdentity){true, 40, {0, {0}}, PLANKMacScopeSignIn};
+        for (NSString *name in @[@"root", @"replace", @"phase-change"]) {
+            desktop.phase = PLANKMacScopeSignIn;
+            start = [sessions startForPeer:peer username:name];
+            CHECK([start[@"state"] isEqual:@"challenge"]);
+            CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"denied"]);
+        }
+        desktop.phase = PLANKMacScopeSignIn;
+        start = [sessions startForPeer:peer username:@"wrong-owner"];
+        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        CHECK([sessions authorizeToken:token peer:peer identity:&identity] && identity.uid == 456);
+        lease = [sessions claimToken:token peer:peer];
+        CHECK([sessions activateStreamLease:lease]);
+        CHECK([sessions performWithStreamLease:lease action:^{ ++enqueues; }]);
+        // Any phase change ends access, even when the verified user becomes the
+        // desktop owner and a faulty fixture reuses the generation.
+        PLANKMacGraphicalIdentity signIn = desktop;
+        desktop.phase = PLANKMacScopeDesktop;
+        desktop.account = identity;
+        CHECK(![sessions authorizeStreamLease:lease identity:&identity]);
+        CHECK(lease.transportToken == nil);
+        desktop = signIn;
+        CHECK(![sessions authorizeStreamLease:lease identity:&identity]);
+        CHECK(![sessions authorizeToken:token peer:peer identity:&identity]);
+        // Pending challenge cannot follow login either, even for the same user.
+        start = [sessions startForPeer:peer username:@"test"];
+        desktop = (PLANKMacGraphicalIdentity){true, signIn.generation, {123, {1}}, PLANKMacScopeDesktop};
+        previous = verifications;
+        CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"denied"]);
+        CHECK(verifications == previous);
+        start = [sessions startForPeer:peer username:@"test"];
+        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        CHECK([sessions authorizeToken:token peer:peer identity:&identity]);
+        desktop = signIn;
+        CHECK(![sessions authorizeToken:token peer:peer identity:&identity]);
+        start = [sessions startForPeer:peer username:@"test"];
+        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        ++desktop.generation; // replacement LoginWindow agent
+        CHECK(![sessions authorizeToken:token peer:peer identity:&identity]);
         [sessions revokeAll];
         printf("macos_authentication_session=pass checks=%u synthetic_only=1\n", checks);
     }

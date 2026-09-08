@@ -36,10 +36,10 @@ int main(int argc, const char **argv) {
         const uint8_t *bytes = fixture.bytes;
         CHECK(!memcmp(bytes, "PAO1", 4) && read32(bytes + 4) == 48000 &&
               read32(bytes + 8) == 2 && read32(bytes + 12) == 240);
-        __block PLANKMacDesktopIdentity desktop = {true, 1, {123, {1}}};
+        __block PLANKMacGraphicalIdentity desktop = {true, 1, {123, {1}}, PLANKMacScopeDesktop};
         __block BOOL validTopology = YES;
         PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc]
-            initWithDesktopSnapshot:^{ return desktop; }];
+            initWithGraphicalSnapshot:^{ return desktop; }];
         NSData *peer = [NSData dataWithBytes:"test" length:4];
         NSDictionary *challenge = [sessions startForPeer:peer username:@"synthetic"];
         NSString *token = [sessions respondForPeer:peer conversation:challenge[@"conversation_id"]

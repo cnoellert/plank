@@ -48,9 +48,9 @@ int main(int argc, const char *argv[]) {
     @autoreleasepool {
         PLANKMacDesktopAuthority *authority = [PLANKMacDesktopAuthority new];
         if (argc == 1) {
-            PLANKMacDesktopIdentity before = [authority snapshot];
+            PLANKMacGraphicalIdentity before = [authority snapshot];
             [authority revoke];
-            PLANKMacDesktopIdentity after = [authority snapshot];
+            PLANKMacGraphicalIdentity after = [authority snapshot];
             printf("macos_desktop_authority active=%d revocation_pass=%d\n", before.active, !after.active);
             return after.active ? 1 : 0;
         }
@@ -71,11 +71,11 @@ int main(int argc, const char *argv[]) {
         if (certificate) CFRelease(certificate);
         if (!identity) { puts("macos_https_identity_create=failed"); return 2; }
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
-        PLANKMacDesktopSnapshot snapshot = ^{ return (PLANKMacDesktopIdentity){true, 1, {123, {1}}}; };
+        PLANKMacGraphicalSnapshot snapshot = ^{ return (PLANKMacGraphicalIdentity){true, 1, {123, {1}}, PLANKMacScopeDesktop}; };
 #else
-        PLANKMacDesktopSnapshot snapshot = ^{ return [authority snapshot]; };
+        PLANKMacGraphicalSnapshot snapshot = ^{ return [authority snapshot]; };
 #endif
-        PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc] initWithDesktopSnapshot:snapshot];
+        PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc] initWithGraphicalSnapshot:snapshot];
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
         NSDictionary *(^topology)(void) = ^{
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",

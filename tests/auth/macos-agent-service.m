@@ -3,6 +3,18 @@
 #import "agent-registry.h"
 #import "agent-connection.h"
 #import "session-boundary.h"
+#import "authentication-session.h"
+
+// Synthetic verifier ONLY in this local IPC harness. Exercise the production
+// conversation/lease owner without credentials, Open Directory or OS input.
+static PLANKMacAccountIdentity testPrincipal;
+PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
+        NSString *name, NSMutableData *password, PLANKMacAccountIdentity *identity) {
+    BOOL accepted = [name isEqual:@"qualification"] && password.length == 4 && !memcmp(password.bytes, "test", 4);
+    [password resetBytesInRange:NSMakeRange(0, password.length)];
+    *identity = accepted ? testPrincipal : (PLANKMacAccountIdentity){0};
+    return accepted ? PLANKMacAuthenticationVerified : PLANKMacAuthenticationDenied;
+}
 
 int main(int argc, const char **argv) {
     if (argc != 3 || strlen(argv[2]) > 180) return 2;
@@ -14,6 +26,8 @@ int main(int argc, const char **argv) {
         if (!strcmp(argv[1], "--service")) {
             if (getuid() != 0) return 2;
             __block __weak PLANKMacAgentRegistry *weakRegistry = nil;
+            __block PLANKMacAuthenticationSession *auth = nil;
+            __block PLANKMacStreamLease *stream = nil;
             PLANKMacAgentRegistry *registry = [[PLANKMacAgentRegistry alloc] initWithQueue:queue requirement:requirement
                 scope:^PLANKMacAgentPhase(PLANKMacAgentPeer peer) {
                     PLANKMacAgentPhase phase = PLANKMacObserveAgentScope(peer);
@@ -23,6 +37,30 @@ int main(int argc, const char **argv) {
                     if (event == PLANKMacAgentAttached) {
                         if (lease.peer.pid == getpid()) _exit(3);
                         printf("agent_service_attached=1 cross_process=1 phase=%u\n", lease.phase);
+                        PLANKMacGraphicalIdentity scope = [weakRegistry authenticationScope:lease];
+                        if (!plank_macos_graphical_identity_valid(scope) || scope.generation != lease.generation ||
+                            (scope.phase == PLANKMacScopeSignIn) != (lease.phase == PLANKMacAgentLoginWindow)) _exit(6);
+                        testPrincipal = scope.phase == PLANKMacScopeDesktop ? scope.account :
+                            (PLANKMacAccountIdentity){123, {1}};
+                        // Same serial queue in this bounded test; no sync calls
+                        // into the auth owner from another registry queue.
+                        auth = [[PLANKMacAuthenticationSession alloc] initWithGraphicalSnapshot:^{
+                            return [weakRegistry authenticationScope:lease];
+                        }];
+                        NSData *peer = [NSData dataWithBytes:"test" length:4];
+                        NSDictionary *challenge = [auth startForPeer:peer username:@"qualification"];
+                        NSMutableData *password = [NSMutableData dataWithBytes:"test" length:4];
+                        NSDictionary *response = [auth respondForPeer:peer conversation:challenge[@"conversation_id"] password:password];
+                        stream = [auth claimToken:response[@"session_token"] peer:peer];
+                        if (![auth activateStreamLease:stream] ||
+                            ![auth performWithStreamLease:stream action:^{}]) _exit(7);
+                        puts("agent_service_admission=1 synthetic_verification=1");
+                    }
+                    if (event == PLANKMacAgentRevoked) {
+                        // Snapshot invalidation, not a manually invoked revokeAll,
+                        // must end access and erase the native transport token.
+                        if ([auth performWithStreamLease:stream action:^{}] || stream.transportToken) _exit(8);
+                        puts("agent_service_admission_revoked=1");
                     }
                     if (event == PLANKMacAgentRetired) {
                         // Test owns no media/input/displays. Real controller must

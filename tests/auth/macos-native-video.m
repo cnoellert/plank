@@ -34,9 +34,9 @@ int main(int argc, const char **argv) {
     struct rlimit noCore = {0, 0};
     CHECK(!setrlimit(RLIMIT_CORE, &noCore));
     @autoreleasepool {
-        __block PLANKMacDesktopIdentity desktop = {true, 1, {123, {1}}};
+        __block PLANKMacGraphicalIdentity desktop = {true, 1, {123, {1}}, PLANKMacScopeDesktop};
         PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc]
-            initWithDesktopSnapshot:^{ return desktop; }];
+            initWithGraphicalSnapshot:^{ return desktop; }];
         NSData *peer = [NSData dataWithBytes:"test" length:4];
         NSDictionary *challenge = [sessions startForPeer:peer username:@"synthetic"];
         NSString *token = [sessions respondForPeer:peer conversation:challenge[@"conversation_id"]

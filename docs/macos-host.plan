@@ -136,8 +136,14 @@ must be qualified through the actual product before acceptance.
 September 7 production integration now includes the machine/agent XPC registry
 and graphical connection under `host/macos/session`. The system-service versus
 LoginWindow-agent cross-process test passes, including rejection of a signed
-Background peer. See `macos-session-lifecycle.md`. Aqua cross-process validation,
-real remote admission, media/display drain and persistent service wiring remain
+Background peer. The same boundary now passes in Aqua. Explicit graphical-scope
+account policy is implemented: verified non-root accounts may access a positively
+identified sign-in scope, while desktop access still requires its owning UID/UUID.
+Every phase/generation change invalidates old tokens/stream leases; new desktop
+access requires fresh authentication. Registry-bound synthetic admission and
+revocation pass in Aqua; the new admission path still needs its LoginWindow run.
+See `macos-session-lifecycle.md`. Network-facing admission, media/display drain
+and persistent service wiring remain
 next; this is not yet an ordinary Client connection or packaged Mac Host.
 
 Add a performant macOS Host to the current PLANK repository, initially served

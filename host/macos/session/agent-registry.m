@@ -4,6 +4,7 @@
 #import <Security/AuthSession.h>
 #import <SystemConfiguration/SystemConfiguration.h>
 #include <time.h>
+#include <membership.h>
 
 PLANKMacAgentPhase PLANKMacObserveAgentScope(PLANKMacAgentPeer peer) {
     if (peer.pid <= 1 || peer.uid == (uid_t)-1 || !peer.auditSession || peer.auditSession == UINT32_MAX)
@@ -162,6 +163,27 @@ static BOOL word(xpc_object_t message, const char *key, uint64_t *value) {
         [self reply:response status:2 link:link];
         _event(link.lease, PLANKMacAgentRetired);
     } else [self close:link];
+}
+
+- (PLANKMacGraphicalIdentity)authenticationScope:(PLANKMacAgentLease *)lease {
+    dispatch_assert_queue(_queue);
+    [self refresh];
+    PLANKMacGraphicalIdentity identity = {0};
+    if (_stopped || !lease || _current.lease != lease || !lease.active) return identity;
+    if (lease.phase == PLANKMacAgentLoginWindow && lease.peer.uid == 0) {
+        identity.phase = PLANKMacScopeSignIn;
+    } else if (lease.phase == PLANKMacAgentDesktop && lease.peer.uid != 0 && lease.peer.uid != (uid_t)-1) {
+        identity.phase = PLANKMacScopeDesktop;
+        identity.account.uid = lease.peer.uid;
+        if (mbr_uid_to_uuid(lease.peer.uid, identity.account.uuid) ||
+            !plank_macos_account_identity_valid(identity.account)) { [self revoke]; return (PLANKMacGraphicalIdentity){0}; }
+    } else { [self revoke]; return identity; }
+    // Directory resolution may wait; never grant a scope that changed meanwhile.
+    [self refresh];
+    if (_current.lease != lease || !lease.active) return (PLANKMacGraphicalIdentity){0};
+    identity.active = true;
+    identity.generation = lease.generation;
+    return identity;
 }
 
 - (void)accept:(xpc_connection_t)peer {

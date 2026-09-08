@@ -9,7 +9,8 @@ Probe signing/installation remains documented in `probes/macos/README.md`.
 
 Build `bash scripts/build-macos-agent-registry.sh SOURCE_ROOT EMPTY_OUTPUT`
 on the dedicated Mac, SDK/target 27, warnings as errors. Include both modules
-under `host/macos/session`, both agent tests, `session-boundary.h`, the service
+under `host/macos/session`, the authentication headers/implementation, both agent
+tests, `session-boundary.h`, the service
 plist and the two build/test scripts in the hash-verified source set. No Rust
 rebuild, TCC permission or app replacement. The test executables are ad-hoc
 signed to pin their exact code, not as a product distribution policy.
@@ -24,6 +25,8 @@ To check actual graphical identity, run the uninstalled `agent-registry` binary
 through the existing graphical runner with no explicit mode argument. Use root
 for LoginWindow or the actual desktop user for Aqua. Default mode requires a
 positive graphical scope; `--synthetic` does not.
+Native mode now includes seven admission-snapshot checks (200 total): phase,
+generation, OS account, and nil/foreign/revoked lease denial.
 
 For cross-process qualification, run as root on the dedicated Mac:
 
@@ -36,6 +39,9 @@ Discover the UID; never assume 501. The runner hash-verifies a root-owned
 temporary executable, boots a uniquely named system Mach service, proves
 rejection of a signed Background peer, then launches the actual graphical agent.
 Expected: `agent_service_cross_process_pass=1 persistent_install=0 media=0 input=0`.
+Require `agent_service_admission=1 synthetic_verification=1` and
+`agent_service_admission_revoked=1` too. The test links a synthetic verifier to
+the production conversation/stream-lease owner; no account password is supplied.
 An EXIT trap removes both exact jobs and all generated files. No persistent
 installation, app replacement, capture, input, credentials or network listener.
 See `macos-session-lifecycle.md` for what these tests do and do not prove.
