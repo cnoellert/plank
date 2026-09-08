@@ -12,7 +12,7 @@ SOURCES += $$PWD/macos-installed-client.cpp \
     $$PLANK_CLIENT_SOURCE/app/backend/outputtopology.cpp
 HEADERS += $$PLANK_CLIENT_SOURCE/app/backend/nvhttp.h
 INCLUDEPATH += $$PLANK_CLIENT_SOURCE/app $$PLANK_COMMON_SOURCE/src $$PWD/../../protocol/plank-transport/include
-PKGCONFIG += libavcodec libavutil opus
+PKGCONFIG += libavcodec libavutil libswresample opus
 LIBS += $$PLANK_TRANSPORT_LIBRARY -lpthread -ldl -lm
 QMAKE_CXXFLAGS += -ffunction-sections -fdata-sections -Wall -Wextra -Werror
 QMAKE_LFLAGS += -Wl,--gc-sections
