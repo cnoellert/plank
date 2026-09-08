@@ -28,9 +28,13 @@ static PlankTransportConfig config(uint32_t mode, NSString *token) {
 
 int main(int argc, const char **argv) {
     // certificate, private-key path, fingerprint, output, optional --4k/--full-range
-    BOOL fullRange = argc == 6 && !strcmp(argv[5], "--full-range");
-    BOOL fourK = argc == 6 && !strcmp(argv[5], "--4k");
-    if (argc != 5 && !(argc == 6 && (fullRange || fourK))) return 2;
+    if (argc < 5 || argc > 7) return 2;
+    BOOL fullRange = NO, fourK = NO;
+    for (int i = 5; i < argc; ++i) {
+        if (!strcmp(argv[i], "--full-range") && !fullRange) fullRange = YES;
+        else if (!strcmp(argv[i], "--4k") && !fourK) fourK = YES;
+        else return 2;
+    }
     const int width = fourK ? 3840 : 1920, height = fourK ? 2160 : 1080;
     alarm(30);
     struct rlimit noCore = {0, 0};
