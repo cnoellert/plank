@@ -131,9 +131,25 @@ int main(int argc, const char **argv) {
         }
         CHECK(VTCompressionSessionPrepareToEncodeFrames(encoder) == 0);
         CFTypeRef hardware = NULL;
-        CHECK(VTSessionCopyProperty(encoder, kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, NULL, &hardware) == 0);
-        CHECK(hardware && CFEqual(hardware, kCFBooleanTrue));
-        CFRelease(hardware);
+        OSStatus hardwareStatus = VTSessionCopyProperty(encoder, kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, NULL, &hardware);
+        CFTypeRef encoderID = NULL;
+        OSStatus idStatus = VTSessionCopyProperty(encoder, kVTCompressionPropertyKey_EncoderID, NULL, &encoderID);
+        CFArrayRef encoderList = NULL;
+        CHECK(VTCopyVideoEncoderList(NULL, &encoderList) == 0);
+        BOOL listedHardware = NO;
+        for (NSDictionary *entry in (__bridge NSArray *)encoderList) {
+            if (encoderID && [entry[(__bridge NSString *)kVTVideoEncoderList_EncoderID] isEqual:(__bridge id)encoderID]) {
+                listedHardware = [entry[(__bridge NSString *)kVTVideoEncoderList_IsHardwareAccelerated] boolValue];
+                fprintf(stderr, "macos_selected_encoder=%s\n", entry.description.UTF8String);
+            }
+        }
+        fprintf(stderr, "macos_hardware_readback=%d encoder_id_status=%d encoder_id=%s listed_hardware=%d\n",
+            (int)hardwareStatus, (int)idStatus, encoderID ? [(__bridge id)encoderID description].UTF8String : "absent", listedHardware);
+        CHECK((!hardwareStatus && hardware && CFEqual(hardware, kCFBooleanTrue)) ||
+              (hardwareStatus == kVTPropertyNotSupportedErr && !idStatus && listedHardware));
+        if (hardware) CFRelease(hardware);
+        if (encoderID) CFRelease(encoderID);
+        CFRelease(encoderList);
         unsigned keyCount = 0;
         for (int frame = 0; frame < frameCount; ++frame) {
             if (frame == 5) [video requestKeyFrame];
