@@ -50,9 +50,14 @@ pinning is not provided by that existing policy and remains a security gate.
 root LaunchDaemon, the designated user's Aqua agent in that user's LaunchAgents
 directory, and a root-owned LoginWindow-only agent in `/Library/LaunchAgents`.
 It does not log out, reboot, disable FileVault or alter TCC. Launchd restarts
-exited jobs with a two-second throttle; each new graphical process must prove
+exited graphical jobs with a two-second throttle; each new graphical process must prove
 its scope and acquire a fresh generation before listening. Restart policy
 does not grant access or allow overlapping media owners.
+The coordinator starts at boot, but deliberately does not gain automatic
+crash-restart here: its in-memory old-agent retirement proof must not be lost
+and replaced with an empty ownership registry while an old agent still drains.
+Unattended coordinator crash recovery needs an independent old-process
+retirement proof before enabling that additional restart policy.
 
 The root sign-in identity is under `/Library/Application Support/PLANK/SignIn`,
 directory 0700/files 0600. Only the public discovery values match the desktop

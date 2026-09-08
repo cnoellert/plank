@@ -163,7 +163,7 @@ def main():
     sign_in_log.touch(mode=0o600, exist_ok=True)
     os.chmod(sign_in_log, 0o600)
     machine = {"Label": machine_label, "ProgramArguments": [executable, "--machine", machine_label],
-        "MachServices": {machine_label: True}, "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 2,
+        "MachServices": {machine_label: True}, "RunAtLoad": True,
         "StandardOutPath": str(machine_log), "StandardErrorPath": str(machine_log)}
     graphical = {"Label": graphical_label, "ProgramArguments": [executable, "--graphical", machine_label, "desktop", str(private)],
         "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 2,
