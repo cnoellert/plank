@@ -166,6 +166,8 @@ int main(int argc, const char **argv) {
             CHECK(VTCompressionSessionEncodeFrameWithOutputHandler(encoder, pixel, CMTimeMake(frame, 60), CMTimeMake(1, 60), (__bridge CFDictionaryRef)options, NULL,
                 ^(OSStatus status, VTEncodeInfoFlags flags, CMSampleBufferRef output) {
                     valid = !status && !(flags & kVTEncodeInfo_FrameDropped) && output != NULL;
+                    if (!valid) fprintf(stderr, "macos_encode_failure frame=%d status=%d flags=%u output=%d pixels=%dx%d low_latency=%d\n",
+                        frame, (int)status, (unsigned)flags, output != NULL, width, height, lowLatency);
                     if (valid) sample = (CMSampleBufferRef)CFRetain(output);
                     dispatch_semaphore_signal(finished);
                 }) == 0);
