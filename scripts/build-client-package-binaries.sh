@@ -1732,12 +1732,18 @@ client_binary="${build_dir}/app/plank-client"
   echo "PLANK client package binary was not produced" >&2
   exit 1
 }
-rg -a -Fq 'Identity GBR requires composed VAAPI layers' \
+rg -a -Fq 'Packed 4:4:4 requires composed VAAPI layers' \
   "$client_binary" || {
   echo "client binary is missing the exact VAAPI EGL identity frontend" >&2
   exit 1
 }
 echo "client_vaapi_egl_identity_binary_gate=pass"
+rg -a -Fq 'Enabling 10-bit packed BT.709 full-range GPU presentation (Y410/XR30)' \
+  "$client_binary" || {
+  echo "client binary is missing the VAAPI EGL BT.709 frontend" >&2
+  exit 1
+}
+echo "client_vaapi_egl_bt709_binary_gate=pass"
 nm -C "$client_binary" | rg ' [Tt] plank_transport_abi_version$' >/dev/null || {
   echo "client binary does not link the PLANK transport ABI" >&2
   exit 1
