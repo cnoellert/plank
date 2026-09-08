@@ -336,7 +336,14 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     _video = nil;
     _audio = nil;
     _input = nil; _inputDevice = nil;
-    if (_endpoint) { plank_transport_native_endpoint_destroy(_endpoint); _endpoint = NULL; }
+    if (_endpoint) {
+        PlankTransportNativeStats stats = {0}; stats.struct_size = sizeof(stats);
+        if (plank_transport_native_endpoint_stats(_endpoint, &stats) == PLANK_TRANSPORT_OK)
+            NSLog(@"PLANK transport summary: video-sent=%llu video-send-drops=%llu audio-sent=%llu audio-send-drops=%llu",
+                (unsigned long long)stats.video_frames_sent, (unsigned long long)stats.video_send_drops,
+                (unsigned long long)stats.audio_packets_sent, (unsigned long long)stats.audio_send_drops);
+        plank_transport_native_endpoint_destroy(_endpoint); _endpoint = NULL;
+    }
     _capture = nil;
     self.state = PLANKMacPreviewStopped;
     NSArray *callbacks = [_stopCallbacks copy]; [_stopCallbacks removeAllObjects];

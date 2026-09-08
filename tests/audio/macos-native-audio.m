@@ -38,8 +38,9 @@ int main(int argc, const char **argv) {
               read32(bytes + 8) == 2 && read32(bytes + 12) == 240);
         __block PLANKMacGraphicalIdentity desktop = {true, 1, {123, {1}}, PLANKMacScopeDesktop};
         __block BOOL validTopology = YES;
+        __block unsigned snapshots = 0, topologyChecks = 0;
         PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc]
-            initWithGraphicalSnapshot:^{ return desktop; }];
+            initWithGraphicalSnapshot:^{ ++snapshots; return desktop; }];
         NSData *peer = [NSData dataWithBytes:"test" length:4];
         NSDictionary *challenge = [sessions startForPeer:peer username:@"synthetic"];
         NSString *token = [sessions respondForPeer:peer conversation:challenge[@"conversation_id"]
@@ -60,7 +61,7 @@ int main(int argc, const char **argv) {
         CHECK(plank_transport_native_endpoint_wait_ready(client, 5000) == PLANK_TRANSPORT_OK);
         CHECK(plank_transport_native_endpoint_wait_ready(server, 5000) == PLANK_TRANSPORT_OK);
         PLANKMacNativeAudio *audio = [[PLANKMacNativeAudio alloc] initWithEndpoint:server
-            sessions:sessions lease:lease validity:^BOOL { return validTopology; }];
+            sessions:sessions lease:lease validity:^BOOL { ++topologyChecks; return validTopology; }];
         CHECK(audio != nil);
         CHECK([audio sendOpusPacket:nil presentationTime:kCMTimeZero] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
         CHECK([sessions activateStreamLease:lease]);
@@ -83,7 +84,9 @@ int main(int argc, const char **argv) {
                 CHECK([audio sendOpusPacket:packet presentationTime:pts] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
                 validTopology = YES;
             }
+            unsigned beforeSnapshots = snapshots, beforeTopology = topologyChecks;
             CHECK([audio sendOpusPacket:packet presentationTime:pts] == PLANK_TRANSPORT_OK);
+            CHECK(snapshots == beforeSnapshots + 1 && topologyChecks == beforeTopology + 1);
             CHECK([audio sendOpusPacket:packet presentationTime:pts] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
             CHECK([audio sendOpusPacket:packet presentationTime:CMTimeAdd(pts, CMTimeMake(1, 1))] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
             uint8_t output[65536]; size_t receivedSize = 0;

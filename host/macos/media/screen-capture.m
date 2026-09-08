@@ -25,6 +25,8 @@
     void (^_replacementCompletion)(uint32_t);
     size_t _width, _height;
     CMTime _lastPTS;
+    uint64_t _completeFrames, _preEncodeDrops, _encoderDrops, _sendDrops;
+    uint64_t _maxEncodeNs, _maxCallbackQueueNs;
 }
 
 + (VTCompressionSessionRef)createEncoder:(uint32_t)bitrate width:(size_t)width height:(size_t)height {
@@ -180,7 +182,10 @@
         fprintf(stderr, "macos_capture_failure stage=video-sample\n"); _failed(); return;
     }
     _lastPTS = pts;
-    if (_changingEncoder || _inFlight >= 3) return; // drop before encoding; no reference-frame dependency
+    ++_completeFrames;
+    if (_changingEncoder || _inFlight >= 3) {
+        ++_preEncodeDrops; return; // no encoded reference-frame dependency
+    }
     // Explicit qualified SDK-27 xf20 full-range interpretation, distinct from the
     // BT.709 encoded output. Revalidate on final OS; no CPU color conversion.
     CVBufferSetAttachment(pixel, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
@@ -191,14 +196,21 @@
     ++_inFlight;
     OSStatus result = VTCompressionSessionEncodeFrameWithOutputHandler(_encoder, pixel, pts, kCMTimeInvalid,
         (__bridge CFDictionaryRef)options, NULL, ^(OSStatus status, VTEncodeInfoFlags flags, CMSampleBufferRef output) {
+        uint64_t completed = clock_gettime_nsec_np(CLOCK_MONOTONIC);
         if (output) CFRetain(output);
         dispatch_async(self->_queue, ^{
             --self->_inFlight;
+            self->_maxEncodeNs = MAX(self->_maxEncodeNs, completed - submitted);
+            self->_maxCallbackQueueNs = MAX(self->_maxCallbackQueueNs,
+                clock_gettime_nsec_np(CLOCK_MONOTONIC) - completed);
             if (!self->_stopping) {
-                if (status || !output || (flags & kVTEncodeInfo_FrameDropped)) [self->_video requestKeyFrame];
+                if (status || !output || (flags & kVTEncodeInfo_FrameDropped)) {
+                    ++self->_encoderDrops; [self->_video requestKeyFrame];
+                }
                 else {
                     uint64_t latency = (clock_gettime_nsec_np(CLOCK_MONOTONIC) - submitted) / 100000;
                     int32_t sent = [self->_video sendSample:output processingLatency:(uint16_t)MIN(latency, UINT16_MAX)];
+                    if (sent == PLANK_TRANSPORT_DROPPED) ++self->_sendDrops;
                     if (sent != PLANK_TRANSPORT_OK && sent != PLANK_TRANSPORT_DROPPED) self->_failed();
                 }
             }
@@ -230,6 +242,10 @@
 }
 - (void)finishStop {
     if (!_stopping || !_captureStopped || _inFlight || _buildingEncoder) return;
+    if (_drained) NSLog(@"PLANK capture summary: complete=%llu pre-encode-drops=%llu encoder-drops=%llu recovery-or-send-drops=%llu encode-max-ms=%.3f callback-queue-max-ms=%.3f",
+        (unsigned long long)_completeFrames, (unsigned long long)_preEncodeDrops,
+        (unsigned long long)_encoderDrops, (unsigned long long)_sendDrops,
+        _maxEncodeNs / 1e6, _maxCallbackQueueNs / 1e6);
     if (_encoder) { VTCompressionSessionInvalidate(_encoder); CFRelease(_encoder); _encoder = NULL; }
     _stream = nil; _video = nil; _audio = nil;
     void (^completion)(void) = _drained; _drained = nil;
