@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "screen-capture.h"
 #import "opus-encoder.h"
+#import "audio-tap.h"
 #import "fixed-capture.h"
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 #import <VideoToolbox/VideoToolbox.h>
@@ -16,6 +17,8 @@
     PLANKMacNativeVideo *_video;
     PLANKMacNativeAudio *_audio;
     PLANKMacOpusEncoder *_audioEncoder;
+    PLANKMacAudioTap *_audioTap;
+    BOOL _desktopAudioTap, _audioStopped;
     SCStream *_stream;
     VTCompressionSessionRef _encoder;
     void (^_failed)(void);
@@ -31,6 +34,12 @@
     uint64_t _completeFrames, _preEncodeDrops, _encoderDrops, _sendDrops;
     uint64_t _maxEncodeNs, _maxCallbackQueueNs;
     PLANKFrameTiming *_timing;
+}
+- (instancetype)init { return [self initWithDesktopAudioTap:NO]; }
+- (instancetype)initWithDesktopAudioTap:(BOOL)desktopAudioTap {
+    self = [super init];
+    if (self) { _desktopAudioTap = desktopAudioTap; _audioStopped = YES; }
+    return self;
 }
 
 + (VTCompressionSessionRef)createEncoder:(uint32_t)bitrate width:(size_t)width height:(size_t)height fullChroma:(BOOL)fullChroma {
@@ -117,6 +126,17 @@
         int32_t sent = [capture->_audio sendOpusPacket:packet presentationTime:pts];
         return sent == PLANK_TRANSPORT_OK || sent == PLANK_TRANSPORT_DROPPED;
     }];
+    if (_desktopAudioTap) {
+        _audioTap = [[PLANKMacAudioTap alloc] initWithQueue:_queue sample:^BOOL(CMSampleBufferRef sample) {
+            typeof(self) capture = weakSelf;
+            return capture && !capture->_stopping && [capture->_audioEncoder encodeSample:sample];
+        } failed:^{
+            typeof(self) capture = weakSelf;
+            if (capture && !capture->_stopping) capture->_failed();
+        }];
+        if (!_audioTap) { failed(); return; }
+        _audioStopped = NO;
+    }
     _lastPTS = kCMTimeInvalid;
     _width = [topology[@"capture"][@"width"] unsignedIntegerValue];
     _height = [topology[@"capture"][@"height"] unsignedIntegerValue];
@@ -153,12 +173,12 @@
             config.captureDynamicRange = SCCaptureDynamicRangeSDR; config.colorSpaceName = kCGColorSpaceSRGB;
             // macOS uses ScreenCaptureKit's embedded system/application cursor.
             // This is the Mac contract, not a Linux separate-cursor fallback.
-            config.showsCursor = YES; config.capturesAudio = YES;
+            config.showsCursor = YES; config.capturesAudio = !self->_desktopAudioTap;
             config.captureMicrophone = NO; config.sampleRate = 48000; config.channelCount = 2;
             config.excludesCurrentProcessAudio = YES;
             self->_stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:self];
             if (![self->_stream addStreamOutput:self type:SCStreamOutputTypeScreen sampleHandlerQueue:self->_queue error:NULL] ||
-                ![self->_stream addStreamOutput:self type:SCStreamOutputTypeAudio sampleHandlerQueue:self->_queue error:NULL]) {
+                (!self->_desktopAudioTap && ![self->_stream addStreamOutput:self type:SCStreamOutputTypeAudio sampleHandlerQueue:self->_queue error:NULL])) {
                 self->_failed(); return;
             }
             self->_starting = YES;
@@ -167,7 +187,13 @@
                     self->_starting = NO;
                     if (self->_stopping) { [self stopCapture]; return; }
                     if (startError) self->_failed();
-                    else started(peak);
+                    else if (self->_audioTap) {
+                        [self->_audioTap startWithCompletion:^(BOOL ready) {
+                            if (self->_stopping) return;
+                            if (ready) started(peak);
+                            else self->_failed();
+                        }];
+                    } else started(peak);
                 });
             }];
         });
@@ -278,6 +304,10 @@
     _stopping = YES; _failed = nil; _drained = [completion copy];
     _replacementCompletion = nil;
     [_audioEncoder stop]; _audioEncoder = nil;
+    if (_audioTap) [_audioTap stopWithCompletion:^{
+        self->_audioStopped = YES; self->_audioTap = nil;
+        [self finishStop];
+    }];
     if (!_starting) [self stopCapture];
 }
 - (void)stopCapture {
@@ -288,7 +318,7 @@
     }];
 }
 - (void)finishStop {
-    if (!_stopping || !_captureStopped || _inFlight || _buildingEncoder) return;
+    if (!_stopping || !_captureStopped || !_audioStopped || _inFlight || _buildingEncoder) return;
     if (_timing) {
         // The launch agent directs stderr to its product log. All callbacks are
         // drained before exporting; no frame can still reference these records.

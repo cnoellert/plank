@@ -2,8 +2,9 @@
 #pragma once
 #import "preview-session.h"
 
-// Dedicated macOS 27 preview backend. No display creation, consent prompts,
-// or remote input. Includes system audio, never microphone capture.
-// Existing capture consent must already be granted.
+// Dedicated macOS 27 capture backend. No display creation or remote input.
+// Includes system audio, never microphone capture. Desktop system-audio consent
+// is required for the tap; the OS may request it on first use.
 @interface PLANKMacScreenCapture : NSObject <PLANKMacPreviewCapture>
+- (instancetype)initWithDesktopAudioTap:(BOOL)desktopAudioTap;
 @end

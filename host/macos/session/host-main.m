@@ -211,7 +211,11 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
         topology:^{ return [capture snapshot]; } address:config[@"Address"]
         certificate:[directory stringByAppendingPathComponent:@"cert.pem"]
         privateKey:[directory stringByAppendingPathComponent:@"key.pem"]
-        capture:^id<PLANKMacPreviewCapture> { return [PLANKMacScreenCapture new]; }
+        capture:^id<PLANKMacPreviewCapture> {
+            // Root LoginWindow retains its existing session-scoped SCK path;
+            // never construct a global root Core Audio tap.
+            return [[PLANKMacScreenCapture alloc] initWithDesktopAudioTap:phase == PLANKMacScopeDesktop];
+        }
         input:^id<PLANKMacInputDevice> { return [PLANKMacQuartzInput new]; }];
     runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, NSString *encodingMode, BOOL (^valid)(void)) {
         if (!PLANKMacDesktopModeSupported(width, height)) return NO;

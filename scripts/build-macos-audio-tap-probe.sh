@@ -17,10 +17,11 @@ install -m 0644 "$1/probes/macos/Info.plist" "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier la.instinctual.PLANK.AudioTapProbe' "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleName PLANK Audio Tap Probe' "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName PLANK Audio Tap Probe' "$app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 3' "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 4' "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Add :NSAudioCaptureUsageDescription string Test streaming system audio while suppressing local speaker playback. No microphone or audio recordings.' "$app/Contents/Info.plist"
 xcrun --sdk macosx clang -fobjc-arc -Wall -Wextra -Werror -mmacosx-version-min=27.0 \
     -I"$1/host/macos/media" "$1/probes/macos/audio-tap.m" \
+    "$1/probes/macos/session-audio-tap.m" "$1/host/macos/media/audio-tap.m" \
     "$1/host/macos/media/opus-encoder.m" -framework AppKit -framework CoreAudio \
     -framework CoreMedia -framework AudioToolbox \
     -o "$app/Contents/MacOS/plank-host-probe"

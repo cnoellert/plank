@@ -22,7 +22,7 @@ common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -Ihost/macos/session -Iprotocol/plank-transport/include
     -framework Foundation -framework Security -framework SystemConfiguration -framework CoreFoundation
     -framework CoreGraphics -framework AppKit -framework Network -framework CoreMedia
-    -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox
+    -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox -framework CoreAudio
     -framework Carbon -framework ApplicationServices -framework OpenDirectory
     -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null)
 sources=(host/macos/auth/authentication-session.m host/macos/auth/graphical-authority.m
@@ -30,7 +30,7 @@ sources=(host/macos/auth/authentication-session.m host/macos/auth/graphical-auth
     host/macos/control/http-request.m host/macos/control/server-information.m
     host/macos/control/fixed-capture.m host/macos/control/desktop-display.m host/macos/control/https-auth-server.m
     host/macos/media/native-video.m host/macos/media/preview-session.m host/macos/media/screen-capture.m
-    host/macos/media/native-audio.m host/macos/media/opus-encoder.m
+    host/macos/media/native-audio.m host/macos/media/opus-encoder.m host/macos/media/audio-tap.m
     host/macos/input/input-events.m host/macos/input/native-input.m host/macos/input/quartz-input.m
     host/macos/session/agent-registry.m host/macos/session/agent-connection.m
     host/macos/session/host-runtime.m host/macos/session/host-main.m)

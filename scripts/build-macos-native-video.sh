@@ -44,12 +44,12 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     host/macos/session/agent-registry.m host/macos/session/agent-connection.m \
     host/macos/auth/authentication-session.m host/macos/control/fixed-capture.m \
     host/macos/media/native-video.m host/macos/media/preview-session.m \
-    host/macos/media/screen-capture.m host/macos/media/native-audio.m host/macos/media/opus-encoder.m \
+    host/macos/media/screen-capture.m host/macos/media/native-audio.m host/macos/media/opus-encoder.m host/macos/media/audio-tap.m \
     host/macos/input/input-events.m host/macos/input/native-input.m host/macos/input/quartz-input.m \
     tests/auth/macos-preview-session.m tests/input/macos-fake-input.m "$transport_library" \
     -framework Foundation -framework Security -framework SystemConfiguration \
     -framework CoreFoundation -framework CoreMedia -framework CoreGraphics \
-    -framework CoreVideo -framework VideoToolbox -framework ScreenCaptureKit -framework AudioToolbox \
+    -framework CoreVideo -framework VideoToolbox -framework ScreenCaptureKit -framework AudioToolbox -framework CoreAudio \
     -framework AppKit -framework Carbon -framework ApplicationServices \
     -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null -lpthread -lm -o "$video_build/preview-session"
 umask 077

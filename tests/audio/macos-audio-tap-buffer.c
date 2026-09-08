@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+#include "audio-tap-buffer.h"
+#include <assert.h>
+#include <pthread.h>
+#include <sched.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+static void *produce(void *context) {
+    PLANKTapBuffer *buffer = context;
+    for (unsigned i = 1; i <= 100000; i++) {
+        while ((uint32_t)(atomic_load(&buffer->writeIndex) - atomic_load(&buffer->readIndex)) == PLANKTapSlots) sched_yield();
+        float samples[] = {(float)i, -(float)i};
+        assert(PLANKTapPush(buffer, samples, NULL, 1, i));
+    }
+    return NULL;
+}
+int main(void) {
+    PLANKTapBuffer *buffer = calloc(1, sizeof(*buffer)); assert(buffer);
+    PLANKTapBufferInit(buffer);
+    assert(atomic_is_lock_free(&buffer->readIndex));
+    assert(atomic_is_lock_free(&buffer->writeIndex));
+    assert(!PLANKTapPeek(buffer));
+    float stereo[] = {1, -1, 0.5, -0.5}, left[] = {1, 0.5}, right[] = {-1, -0.5};
+    assert(PLANKTapPush(buffer, left, right, 2, 42));
+    PLANKTapBlock *block = PLANKTapPeek(buffer);
+    assert(block && block->frames == 2 && block->hostTime == 42);
+    assert(!memcmp(block->samples, stereo, sizeof(stereo)));
+    PLANKTapPop(buffer); assert(!PLANKTapPeek(buffer));
+    for (unsigned i = 0; i < PLANKTapSlots; i++) assert(PLANKTapPush(buffer, stereo, NULL, 2, 1));
+    assert(!PLANKTapPush(buffer, stereo, NULL, 2, 1)); assert(atomic_load(&buffer->failed) == 2);
+    PLANKTapBufferInit(buffer);
+    assert(!PLANKTapPush(buffer, NULL, NULL, 1, 1)); assert(atomic_load(&buffer->failed) == 1);
+    assert(!PLANKTapPush(buffer, stereo, NULL, 0, 1));
+    assert(!PLANKTapPush(buffer, stereo, NULL, PLANKTapMaxFrames + 1, 1));
+    assert(!PLANKTapPush(buffer, stereo, NULL, 2, 0));
+    stereo[0] = NAN; assert(!PLANKTapPush(buffer, stereo, NULL, 2, 1));
+    PLANKTapBufferInit(buffer); atomic_store(&buffer->stopped, true);
+    assert(!PLANKTapPush(buffer, left, right, 2, 1)); assert(!PLANKTapPeek(buffer));
+    PLANKTapBufferInit(buffer);
+    atomic_store(&buffer->readIndex, UINT32_MAX - 10); atomic_store(&buffer->writeIndex, UINT32_MAX - 10);
+    pthread_t producer; assert(!pthread_create(&producer, NULL, produce, buffer));
+    for (unsigned i = 1; i <= 100000; i++) {
+        while (!(block = PLANKTapPeek(buffer))) sched_yield();
+        assert(block->frames == 1 && block->hostTime == i);
+        assert(block->samples[0] == i && block->samples[1] == -(float)i);
+        PLANKTapPop(buffer);
+    }
+    assert(!pthread_join(producer, NULL)); assert(!atomic_load(&buffer->failed));
+    assert(!PLANKTapPeek(buffer)); free(buffer);
+    puts("audio_tap_buffer_pass blocks=100000 wrap=1 bounds=1 stop=1");
+}

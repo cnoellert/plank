@@ -99,8 +99,11 @@ static OSStatus capture(AudioObjectID device, const AudioTimeStamp* now,
     return noErr;
 }
 
+extern int PLANKSessionAudioTapProbe(BOOL cancelImmediately);
 int main(int argc, const char* argv[]) {
     @autoreleasepool {
+        if (argc == 2 && (!strcmp(argv[1], "--session-tap") || !strcmp(argv[1], "--session-tap-cancel")))
+            return PLANKSessionAudioTapProbe(!strcmp(argv[1], "--session-tap-cancel"));
         BOOL hold = argc == 2 && strcmp(argv[1], "--hold") == 0;
         if (argc != 1 && !hold) { fprintf(stderr, "Usage: audio-tap [--hold]\n"); return 2; }
         if (geteuid() == 0) { fprintf(stderr, "Run as the logged-in desktop user, not root.\n"); return 2; }

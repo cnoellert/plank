@@ -10,5 +10,7 @@
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>27.0</string>
     <key>LSUIElement</key><true/>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Stream your desktop audio to the connected PLANK Client while suppressing playback on this Mac. No microphone audio is captured.</string>
 </dict>
 </plist>
