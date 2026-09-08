@@ -211,11 +211,28 @@ int main(int argc, const char **argv) {
             [app setActivationPolicy:NSApplicationActivationPolicyRegular];
             dispatch_async(dispatch_get_main_queue(), ^{
                 BOOL screen = CGPreflightScreenCaptureAccess();
+                BOOL input = AXIsProcessTrusted();
+                if (screen && input) {
+                    puts("PLANK Host permissions ready");
+                    [app terminate:nil];
+                    return;
+                }
                 if (!screen) screen = CGRequestScreenCaptureAccess();
-                NSDictionary *options = @{(__bridge id)kAXTrustedCheckOptionPrompt: @YES};
-                BOOL input = AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)options);
+                if (!input) {
+                    NSDictionary *options = @{(__bridge id)kAXTrustedCheckOptionPrompt: @YES};
+                    input = AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)options);
+                }
+                // A permission request may complete before returning. Do not
+                // show stale setup instructions after permission was granted.
+                screen = CGPreflightScreenCaptureAccess();
+                input = AXIsProcessTrusted();
+                if (screen && input) {
+                    puts("PLANK Host permissions ready");
+                    [app terminate:nil];
+                    return;
+                }
                 NSAlert *alert = [NSAlert new];
-                alert.messageText = @"PLANK Host permissions";
+                alert.messageText = @"PLANK Host permission required";
                 alert.informativeText = [NSString stringWithFormat:
                     @"Version %s\n\nScreen & System Audio Recording: %@\nAccessibility: %@\n\n"
                      "Enable PLANK Host in System Settings → Privacy & Security. These permissions belong to "
