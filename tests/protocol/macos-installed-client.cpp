@@ -106,7 +106,7 @@ int main(int argc, char** argv)
                 int status;
                 while ((status = avcodec_receive_frame(codec, frame)) == 0) {
                     CHECK(frame->width == topology.desktopWidth && frame->height == topology.desktopHeight);
-                    CHECK(frame->format == AV_PIX_FMT_YUV420P10LE && frame->color_range == AVCOL_RANGE_MPEG);
+                    CHECK(frame->format == AV_PIX_FMT_YUV420P10LE && frame->color_range == AVCOL_RANGE_JPEG);
                     CHECK(frame->colorspace == AVCOL_SPC_BT709 && frame->color_primaries == AVCOL_PRI_BT709);
                     CHECK(plankAppleVideoFrameMatches(frame, codec->profile));
                     ++decoded;

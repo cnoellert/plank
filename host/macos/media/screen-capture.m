@@ -40,7 +40,7 @@
 - (BOOL)prepareEncoder:(uint32_t)bitrate peak:(uint32_t *)peak {
     NSDictionary *spec = @{(__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES};
     NSDictionary *surface = @{
-        (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange),
+        (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr10BiPlanarFullRange),
         (__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
     };
     if (VTCompressionSessionCreate(NULL, (int32_t)_width, (int32_t)_height, kCMVideoCodecType_HEVC,
@@ -102,7 +102,7 @@
             SCStreamConfiguration *config = [SCStreamConfiguration new];
             config.width = self->_width; config.height = self->_height;
             config.minimumFrameInterval = CMTimeMake(1, 60); config.queueDepth = 3;
-            config.pixelFormat = kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
+            config.pixelFormat = kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
             config.captureDynamicRange = SCCaptureDynamicRangeSDR; config.colorSpaceName = kCGColorSpaceSRGB;
             // macOS uses ScreenCaptureKit's embedded system/application cursor.
             // This is the Mac contract, not a Linux separate-cursor fallback.
@@ -145,14 +145,14 @@
     CMTime pts = CMSampleBufferGetPresentationTimeStamp(sample);
     if (!pixel || !CVPixelBufferGetIOSurface(pixel) || CVPixelBufferGetWidth(pixel) != _width ||
         CVPixelBufferGetHeight(pixel) != _height ||
-        CVPixelBufferGetPixelFormatType(pixel) != kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
+        CVPixelBufferGetPixelFormatType(pixel) != kCVPixelFormatType_420YpCbCr10BiPlanarFullRange ||
         !CMTIME_IS_NUMERIC(pts) || pts.value < 0 ||
         (CMTIME_IS_VALID(_lastPTS) && CMTimeCompare(pts, _lastPTS) <= 0)) {
         fprintf(stderr, "macos_capture_failure stage=video-sample\n"); _failed(); return;
     }
     _lastPTS = pts;
     if (_inFlight >= 3) return; // drop before encoding; no reference-frame dependency
-    // Explicit qualified SDK-27 x420 input interpretation, distinct from the
+    // Explicit qualified SDK-27 xf20 full-range interpretation, distinct from the
     // BT.709 encoded output. Revalidate on final OS; no CPU color conversion.
     CVBufferSetAttachment(pixel, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
     CVBufferSetAttachment(pixel, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_sRGB, kCVAttachmentMode_ShouldPropagate);

@@ -62,10 +62,10 @@ queues capture drain without a dangling endpoint pointer.
 
 `screen-capture.m` requires existing TCC consent, selects the exact display,
 checks SCK's actual pixel geometry and retains at most three encoder submissions.
-It requests x420 IOSurfaces, hardware-required HEVC Main10, no reordering, and
+It requests full-range xf20 IOSurfaces, hardware-required HEVC Main10, no reordering, and
 the speed-priority property qualified against mixed idle/motion in probe 42.
-It preserves actual SCK timestamps. The provisional SDK-27 x420 source contract
-is BT.601 matrix/sRGB; VideoToolbox produces limited BT.709/sRGB output. This
+It preserves actual SCK timestamps. The qualified beta SDK-27 xf20 source contract
+is full-range BT.601 matrix/sRGB; VideoToolbox produces full-range BT.709/sRGB output. This
 must be requalified against final macOS 27 and representative content.
 No CPU pixel map/download/color conversion is introduced. The output cursor is
 embedded in pixels for this video-only preview; audio and input remain absent.

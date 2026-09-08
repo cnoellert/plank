@@ -15,7 +15,7 @@
       "profile": "main10",
       "bit_depth": 10,
       "chroma": "4:2:0",
-      "range": "limited",
+      "range": "full",
       "matrix": "bt709",
       "primaries": "bt709",
       "transfer": "srgb",

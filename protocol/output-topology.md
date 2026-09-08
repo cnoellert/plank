@@ -290,7 +290,7 @@ by this matching development Client/Host pair.
 
 The explicit tuple is ScreenCaptureKit (`screencapturekit`) → VideoToolbox
 (`videotoolbox`), mode `hevc-10-420-videotoolbox`: HEVC Main10, 10-bit 4:2:0,
-limited/video range, BT.709 matrix and primaries, sRGB transfer, no RGB identity.
+full range, BT.709 matrix and primaries, sRGB transfer, no RGB identity.
 No tuple substitution, NVENC naming, Linux 4:4:4 interpretation or HDR inference
 is allowed. This declares the preview contract, not successful encoder/decoder
 activation. Public Mac discovery still advertises zero codecs and zero topology
