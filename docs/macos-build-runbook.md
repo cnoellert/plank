@@ -196,6 +196,39 @@ display configuration. The check inspects BGRA before encoding; it does not
 measure cursor latency, HEVC decoded quality or ordinary Client presentation.
 Two independent launches passed on September 7. Exact hashes are in HANDOFF.
 
+## Isolated capture cadence (no transport)
+
+`scripts/build-macos-capture-cadence.sh SOURCE EMPTY_OUTPUT` builds signed
+Probe58 on the dedicated Mac, SDK/deployment27, with the existing signing
+identity. No Host/Client/runtime library is linked. Preserve the current signed
+`PLANK Host Probe.app`, temporarily install this probe at its consented path,
+and restore/signature/hash-verify the original afterward. Keep the separate
+installed `PLANK Host.app` untouched and require no active stream during tests.
+
+Run through `probes/macos/run-graphical-probe.sh gui/UID ...` with
+`--cadence-60` or `--cadence-native`. Both inspect the current main display at
+its real pixel dimensions using the Host's xf20 full-range capture format,
+SDR/sRGB and three surfaces. Only the minimum frame interval differs:1/60 or0.
+No encoder, network, audio, pixel mapping, retained samples, focus/input events
+or permission requests. Require existing capture consent. Count all
+sample statuses, not just complete frames. Record numeric callback/PTS/status
+rows in bounded memory; flush only after stop. Each run captures25seconds with
+a35second process alarm and the runner's40second outer deadline. Alternate
+both modes twice on the same unchanged moving desktop. This is capture cadence,
+not proof of encoder, network, Client presentation or A/V-sync performance.
+
+For continuous source updates independent of browser content, use
+`--cadence-pattern-60` / `--cadence-pattern-native`. These temporarily cover the
+current display with a nonactivating, input-transparent panel whose bar is
+animated by Core Animation, not a CPU timer. The panel is hidden at completion
+and disappears if the bounded probe exits. Do not assume a logged-in console
+owner implies an unlocked desktop; verify scope and lock state before testing.
+Report actual display geometry: restarting the Host can destroy its virtual
+display and return the Mac to the1080p fallback. A probe of that fallback does
+not qualify5120x2160 streaming. Discard the first2seconds of callback records
+when comparing rates; use timestamp spans, not row-count divided by25 (sample
+delivery can precede the asynchronous start acknowledgement).
+
 ## Transport qualification
 
 For bounded submission qualification, use `PLANK_MACOS_DATAGRAM_BATCH=1`.

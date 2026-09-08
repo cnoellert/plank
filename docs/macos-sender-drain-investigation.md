@@ -481,3 +481,49 @@ must not be reused for another binary. HANDOFF records hashes and log paths.
 This test weakens the three-surface-pool hypothesis as the dominant cause.
 Next useful isolation is SCK without encoding/transport, counting non-complete
 statuses too, before changing callback threading, throttling or queue limits.
+
+## Isolated SCK probe: explicit interval versus native delivery
+
+Built a separate metadata-only signed Probe, no Host runtime/encoder/transport
+linked. Existing desktop, three SCK surfaces and the production xf20 full-range
+SDR/sRGB capture format. Retained no samples and mapped no pixels. Recorded all
+statuses/callback/PTS values in bounded memory, flushed after stop.25seconds
+after asynchronous start acknowledgement,35second hard process deadline.
+
+After the .53 restore, the virtual display was gone and the Mac had returned to
+1920x1080@60Hz. These are not5120x2160 tests. The first four runs on the existing
+desktop had numerous idle frames: explicit1/60 yielded38–40 completefps versus
+42–44 with interval0. Total callbacks including idle were49–50 versus57–58/sec.
+Do not label those total callback rates as usable video FPS. User confirmed the
+Mac was not at LoginWindow; console/session and on-screen owners agreed.
+
+Then a nonactivating, input-transparent panel with a Core Animation moving bar
+provided continuously changing content. No CPU animation timer, focus/input
+event or Host restart. Four alternating tests, excluding first2seconds:
+
+| Minimum interval | Complete fps | Two-tick PTS gaps | Idle frames |
+| --- | ---: | ---: | ---: |
+| 1/60 | 56.8085 | 79 | 0 |
+| 0 (native) | 59.9984 | 0 | 0 |
+| 1/60 | 56.5369 | 85 | 0 |
+| 0 (native) | 59.9994 | 0 | 0 |
+
+All rows/counts and monotonic PTS validated; every run exited0. Native maximum
+PTS gap16.667ms versus33.333ms for explicit throttling. This reproduces the
+~57fps symptom without encoder/networking and removes it by changing only the
+SCK interval in the controlled probe. It does not establish the framework's
+internal scheduling mechanism, qualify high-refresh displays, prove full-stream
+latency, or eliminate separately measured keyframe delivery bursts.
+
+Next proposed production test: native SCK interval0 on our60Hz virtual display,
+retaining .53 transport, encoder, Client and both existing bounds. No such Host
+change is implemented here. Installed .53 and original Probe restored and
+SHA/signature verified; temporary panel/launchd jobs gone. See HANDOFF for
+source/build provenance and the build runbook for reproduction modes.
+
+Raw pattern logs in both machines' `PLANK_WORK_ROOT/capture-cadence-bundles`:
+
+- `pattern-1.log`: `08ef72f7204e1217c00c3b459956741458e25342261410257f460c9905c928f7`
+- `pattern-2.log`: `b13c3be9e485eacbf40ad405c76d94008bc67f5f393a181f4399232695f21d69`
+- `pattern-3.log`: `965f2d55019017501b8d1eb141f39f8253ec41cdb2832e47d5b92a2a1494c84e`
+- `pattern-4.log`: `9880df439cd3fca85e9309ec16bc41244622233cd845844b4af9de0ef627acde`
