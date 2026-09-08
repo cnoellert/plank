@@ -458,3 +458,26 @@ render cadence, latency and audio/input behavior. If ineffective, revert that
 single variable and instrument all SCK frame statuses / delivery and submission
 durations before changing threads or the minimum interval. Do not claim that
 either surface starvation or source/browser cadence has been proved yet.
+
+## .56 live result: five surfaces did not help; reverted
+
+User reported unchanged stutter and approximately57.6fps. The complete Host
+trace spans104.55seconds (6,003frames), with10pre-encode skips,0encoder drops,
+2recovery/send drops and0video/audio sender queue evictions. In matched5–100s,
+capture FPS changes57.232→57.400; .56 retains245two-tick and1three-tick PTS gaps,
+versus249and7in .53. Nine .56 pre-encode skips occur in this interval. Bitrate
+was changed during the run, triggering encoder replacements; do not attribute
+those skips to pool depth or treat this as identical encoding work.
+
+Client receive/decode/render final rates are57.26/57.26/57.16fps. All three trace
+lanes are complete, with5,966receive,5,962decode and23,829render records; no
+ambiguous PTS joins. Final queue drops2render/8overflow; source-symbol telemetry
+68missing of224,783, plus6video receive/5KyProto/17audio drops. Network was not
+perfect, but the sustained FPS shortfall already exists in Host capture.
+
+Restored exact installed .53 after confirming no active session, and reset
+source queueDepth to3. Failed .56 app remains recoverable; its version number
+must not be reused for another binary. HANDOFF records hashes and log paths.
+This test weakens the three-surface-pool hypothesis as the dominant cause.
+Next useful isolation is SCK without encoding/transport, counting non-complete
+statuses too, before changing callback threading, throttling or queue limits.

@@ -135,10 +135,7 @@
             if (!self->_encoder) { self->_failed(); return; }
             SCStreamConfiguration *config = [SCStreamConfiguration new];
             config.width = self->_width; config.height = self->_height;
-            config.minimumFrameInterval = CMTimeMake(1, 60);
-            // Capture surfaces, not a playout queue. Give SCK headroom while
-            // hardware encoding holds a surface; the in-flight cap stays three.
-            config.queueDepth = 5;
+            config.minimumFrameInterval = CMTimeMake(1, 60); config.queueDepth = 3;
             config.pixelFormat = kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
             config.captureDynamicRange = SCCaptureDynamicRangeSDR; config.colorSpaceName = kCGColorSpaceSRGB;
             // macOS uses ScreenCaptureKit's embedded system/application cursor.
