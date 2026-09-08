@@ -15,6 +15,7 @@ quinn-telemetry = ["quinn-proto/plank-telemetry"]
 sender-timing = ["kynet/sender-timing", "kyproto/sender-timing"]
 # Temporary combined experiment; ordinary Linux/Mac builds are unchanged.
 macos-fast-send = ["sender-timing"]
+macos-source-first = ["macos-fast-send", "kyproto/source-first-fec"]
 
 [dependencies]
 anyhow = "1.0"

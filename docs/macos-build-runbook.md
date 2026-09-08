@@ -198,6 +198,15 @@ Two independent launches passed on September 7. Exact hashes are in HANDOFF.
 
 ## Transport qualification
 
+For .53 source-first FEC qualification, use `PLANK_MACOS_SOURCE_FIRST=1`.
+This includes the .51 fast-send/timing experiment and enables source-first
+packet submission only on macOS. The wire format, repair count and library's
+repair encoder remain unchanged. The runner additionally checks byte-identical
+source packets against the retained RaptorQ library, multi-block/sub-block
+padding, recovery at 0/5/10/20% omitted sources, and preparation timing. The
+timing test is synthetic CPU preparation, not a network/performance gate.
+Keep the .51 archive and signed app for comparison; Client .52 stays unchanged.
+
 For the user-authorized combined sender experiment (.51), use
 `PLANK_MACOS_FAST_SEND=1` instead. This selects `macos-fast-send`, which includes
 sender timing. On macOS only, it passes no application datagram pacer to either

@@ -46,8 +46,23 @@ if [[ ${PLANK_MACOS_FAST_SEND:-0} == 1 ]]; then
 elif [[ ${PLANK_MACOS_FAST_SEND:-0} != 0 ]]; then
     echo 'PLANK_MACOS_FAST_SEND must be 0 or 1' >&2; exit 2
 fi
+if [[ ${PLANK_MACOS_SOURCE_FIRST:-0} == 1 ]]; then
+    features=(--features macos-source-first)
+elif [[ ${PLANK_MACOS_SOURCE_FIRST:-0} != 0 ]]; then
+    echo 'PLANK_MACOS_SOURCE_FIRST must be 0 or 1' >&2; exit 2
+fi
 cargo +1.89.0 build --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
 cargo +1.89.0 test --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
+if [[ ${PLANK_MACOS_SOURCE_FIRST:-0} == 1 ]]; then
+    # Dependency unit tests are not run by the root Cargo test command.
+    # Compile the production helper/tests against this exact archive's rlib.
+    fec_rlibs=("$transport_build"/release/deps/libraptorq-*.rlib)
+    test ${#fec_rlibs[@]} -eq 1 && test -f "${fec_rlibs[0]}"
+    rustc +1.89.0 --edition=2024 --test -O tests/protocol/source-first-fec.rs \
+        -L "dependency=$transport_build/release/deps" --extern "raptorq=${fec_rlibs[0]}" \
+        -o "$transport_build/source-first-test"
+    "$transport_build/source-first-test" --nocapture --test-threads=1
+fi
 shasum -a 256 "$transport_build/release/libplank_transport.a"
 
 # Exercise the same real C ABI as Linux, with Apple platform link libraries.

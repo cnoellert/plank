@@ -188,3 +188,60 @@ A bounded Client trace should capture these in one workload, with the .51 Host
 unchanged, rather than another series of sender-rate changes. Normal Linux
 Host→Client playback, A/V sync, high-refresh output, reconnect and prolonged
 stall recovery remain gates for any shared Client policy change.
+
+## Synchronized Client .52 result
+
+User installed .52 and ran the same workload, then disconnected. Received
+complete numeric traces:6834 receive rows,6824 decode rows,27205 render events;
+no ambiguous millisecond PTS joins or capacity exhaustion. First120seconds of
+this run begin around00:45:31 local time. Excluding startup's first5seconds:
+
+- 56keyframes: mean preceding complete-receive gap43.772ms, median43.760ms,
+  p9556.702ms, maximum65.903ms. Delta receive gap mean17.341ms.
+- Complete-receive→decoded-output mean0.829ms, p951.032ms, maximum5.461ms.
+- 27render catch-up drops;26occur within200ms after a keyframe is received.
+  Their local decoded-queue ages average13.963ms, maximum19ms.
+- GPU-wait mean6.919ms, p9516.194ms, maximum32.501ms. Render-call mean4.487ms,
+  p955.491ms, maximum19.786ms. These are CPU-side elapsed intervals, not scanout.
+
+Concrete normal keyframe331:54.947ms gap since the preceding complete receive;
+1113876byte payload; decoded4.635ms after receive; rendered from+4.648to+21.052ms.
+Following delta332 arrives at+7.978ms,333at+10.102ms,334at+13.272ms. Their decode
+delays are0.838/0.869/1.687ms. Render enqueue depth rises1→2→3. Immediately after
+key331's render call completes,332 is dropped at+21.059ms with local age12ms,
+while333and334 are later rendered. This proves the short burst exists before
+decoder output and that depth-only trimming discards a frame from that burst.
+It does not prove that the original54.947ms delivery gap can be removed by a
+Client queue-policy change. Capture, FEC/QUIC and reliable group marker timing
+remain upstream of the Client's complete-receive measurement.
+
+The unchanged .51 sender has zero queue evictions and zero failed submissions
+in its120second trace; mean key submission26.208ms, max37.369ms. Full Host:
+9574complete captures,0pre-encode/encoder drops,3recovery/send drops,
+9569video sent,33594audio sent,0audio-send drops.
+
+Full Client run:9567video received,11receive drops,10KyProto drops,
+824335source symbols with88missing;34audio receive drops. Thus this run is NOT
+loss-free, unlike .51's previous Client sample. Trace receive sequence gaps
+occur around0.273/3.573/3.636/94.232/94.310seconds; their presence must not be
+conflated with render-only losses. Final Client frame queue counts40render
+catch-up/16overflow; within the trace30catch-up/16overflow, all overflow within
+startup's first5seconds. Final network/decode/render56.90/56.90/56.56fps. The
+reported after-FEC0.17% still uses the existing frame/hole semantics, not the
+uncommitted packet-based telemetry redesign.
+
+Next proposed correction: make render catch-up distinguish brief keyframe
+bursts from persistent lateness, keeping the existing finite surface/queue cap
+and stall recovery. Do not simply remove drop limits or impose a blanket
+playout delay. This can prevent the extra skipped frame, but cannot erase the
+preceding complete-frame arrival gap. Preserve this diagnostic baseline for
+both smoothness and latency comparison. No further live testing is needed to
+establish that the observed short burst predates decoding.
+
+Raw logs retained outside Git:
+`~/.cache/plank-build/work/client-frame-flow-1.0.52.log`, SHA-256
+`eca279f8aa63fb0c5ec90f633f75051b4a25785d17d1ef91f7b1bfc6c3f24265`;
+`~/.cache/plank-build/work/host-sender-client52.log`, SHA-256
+`8eae146a2b0621837024988f344d60c447bf183b421ef9bdf1d285e3197931f0`.
+The mode0600 diagnostic transfer copy on wan-test-client was removed after hash-verified
+collection; the original Client product log remains untouched.
