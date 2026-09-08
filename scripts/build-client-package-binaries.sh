@@ -1651,6 +1651,27 @@ echo "client_authenticated_desktop_stage_test=pass"
 python3 "$repo_dir/tests/packaging/test-client-reconnect-status.py" "$source_dir"
 echo "client_no_video_reconnect_status_gate=pass"
 
+bookmark_test_build=$(mktemp -d --tmpdir plank-client-bookmark-test.XXXXXX)
+cleanup_bookmark_test() {
+  if [[ -d ${bookmark_test_build} ]]; then
+    find "$bookmark_test_build" -xdev -depth -mindepth 1 -delete
+    rmdir "$bookmark_test_build"
+  fi
+}
+trap cleanup_bookmark_test EXIT
+for bookmark_test in outputtopology hostchoices; do
+  mkdir "$bookmark_test_build/$bookmark_test"
+  qmake6 "$source_dir/tests/$bookmark_test/$bookmark_test.pro" \
+    -o "$bookmark_test_build/$bookmark_test/Makefile"
+  make -C "$bookmark_test_build/$bookmark_test" -j"$(nproc)"
+  PLANK_REPO_ROOT="$repo_dir" PLANK_CLIENT_SOURCE="$source_dir" \
+    QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+    "$bookmark_test_build/$bookmark_test/$bookmark_test"
+done
+cleanup_bookmark_test
+trap - EXIT
+echo "client_host_aware_bookmark_test=pass"
+
 export PKG_CONFIG_PATH="${ffmpeg_prefix}/lib/pkgconfig"
 export LD_LIBRARY_PATH="${ffmpeg_prefix}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 [[ $(pkg-config --modversion libavcodec) == 63.* ]] || {
