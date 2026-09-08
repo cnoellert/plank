@@ -198,6 +198,17 @@ Two independent launches passed on September 7. Exact hashes are in HANDOFF.
 
 ## Transport qualification
 
+For the explicitly authorized sender-drain diagnostic only, set
+`PLANK_MACOS_SENDER_TIMING=1` before `build-macos-transport.sh`. It selects the
+compile-time `sender-timing` feature (off by default), retaining ABI12 and the
+same wire/pacing/FEC policy. Build a separate verified archive; do not overwrite
+the retained baseline archive. Numeric measurements are future-local, capped at
+8192 frames/120seconds, and flushed only after worker join into existing stderr
+product logging. No runtime preference, extra listener, Client change or live
+per-frame log output. Normal feature-disabled builds remain the release default.
+Run the feature's bounded-window/context-isolation tests plus both C loopbacks,
+and check the feature-disabled build. See HANDOFF for exact diagnostic artifacts.
+
 The first integration build reuses `protocol/plank-transport` and its exact
 Kymux/Quinn sources, Cargo lockfile and Rust 1.89.0. No networking policy change
 or macOS-specific transport replacement is implied. Passing this build is not
@@ -366,6 +377,12 @@ TLS material, leaving the binary and synthetic first-frame HEVC files. It
 does not request TCC, install an app or capture the desktop. The synthetic
 account backend is linked only into the test executable. Preserve source,
 archive and binary hashes separately; this is not a clean release build.
+
+The optional fourth argument `--low-latency` adds specialized RTVC qualification
+at3840x2160 and5120x2160. This is a paused experiment, not the .50 live encoder
+configuration or a routine-build gate. See HANDOFF for the unpaced frame-drop
+observation; the updated60Hz paced test has not yet been run. Do not enable
+RTVC in the production Host merely because session creation succeeds.
 
 Inspect the synthetic files with the pinned Client FFmpeg on linux-client-builder,
 using its private `LD_LIBRARY_PATH`. Expect HEVC Main10, `yuv420p10le`, limited
