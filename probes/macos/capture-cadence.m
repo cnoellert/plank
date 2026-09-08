@@ -20,7 +20,7 @@ typedef struct { uint64_t callback; int64_t pts; NSInteger status; } Record;
     NSPanel *_pattern;
 }
 @property BOOL nativeRate;
-@property BOOL pattern;
+@property BOOL animatedPattern;
 @property int result;
 - (void)begin;
 @end
@@ -77,7 +77,7 @@ typedef struct { uint64_t callback; int64_t pts; NSInteger status; } Record;
 }
 - (void)begin {
     _display = CGMainDisplayID();
-    if (self.pattern) {
+    if (self.animatedPattern) {
         NSScreen *screen = nil;
         for (NSScreen *candidate in NSScreen.screens)
             if ([candidate.deviceDescription[@"NSScreenNumber"] unsignedIntValue] == _display) screen = candidate;
@@ -104,7 +104,7 @@ typedef struct { uint64_t callback; int64_t pts; NSInteger status; } Record;
     dispatch_async(_queue, ^{
         BOOL allowed = CGPreflightScreenCaptureAccess();
         printf("cadence_begin native_rate=%d pattern=%d capture_preflight=%d encoder=0 network=0 audio=0\n",
-               self.nativeRate, self.pattern, allowed);
+               self.nativeRate, self.animatedPattern, allowed);
         if (!allowed) { [self finish:2]; return; } // Never request new consent.
         [SCShareableContent getShareableContentExcludingDesktopWindows:NO onScreenWindowsOnly:YES
             completionHandler:^(SCShareableContent *content, NSError *error) {
@@ -158,7 +158,7 @@ int main(int argc, const char **argv) {
         [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
         PLANKCaptureCadence *probe = [PLANKCaptureCadence new];
         probe.nativeRate = strstr(argv[1], "native") != NULL;
-        probe.pattern = strstr(argv[1], "pattern") != NULL; probe.result = 4;
+        probe.animatedPattern = strstr(argv[1], "pattern") != NULL; probe.result = 4;
         dispatch_async(dispatch_get_main_queue(), ^{ [probe begin]; });
         CFRunLoopRun();
         return probe.result;
