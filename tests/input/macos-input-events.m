@@ -143,7 +143,8 @@ int main(void) {
         // Invalid providers cannot reverse, disable, or amplify scrolling.
         for (NSNumber *invalid in @[@(NAN), @(INFINITY), @0, @(-1), @9]) {
             mapper.scrollLinesPerNotch = ^double { return invalid.doubleValue; };
-            event = send(mapper, 3, packet((uint8_t[]){120, 0}, 2), PLANKMacInputEvent);
+            uint8_t p[2]; plank_transport_input_write_u16(p, 120);
+            event = send(mapper, 3, packet(p, 2), PLANKMacInputEvent);
             CHECK(CGEventGetDoubleValueField(event, kCGScrollWheelEventFixedPtDeltaAxis1) == 1);
             CFRelease(event);
         }
