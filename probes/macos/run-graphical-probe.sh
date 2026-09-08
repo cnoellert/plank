@@ -12,7 +12,7 @@ case $probe_mode in
 esac
 case $probe_mode in
     --encode-hevc-full-range|--encode-hevc-full-range-444|--pattern-hevc-full-range) ;;
-    --cursor|--login-pointer) ;;
+    --cursor|--login-pointer|--cadence-60|--cadence-native) ;;
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) ;;
     --audio|--capture|--capture-virtual|--input|--pointer|--pointer-session|--encode-h264|--encode-hevc|--encode-h264-owned|--encode-hevc-owned|--encode-owned-replace|--encode-owned-crash|--encode-session|--encode-session-revoke|--pattern-h264|--pattern-hevc|--pattern-h264-2160|--pattern-hevc-2160|--pattern-hevc-2160-speed|--select-mode|--restore-mode|--descriptor-comparison|--hidpi-comparison) ;;
     *) echo "Unsupported probe mode." >&2; exit 2 ;;
@@ -31,6 +31,9 @@ if [[ $probe_mode == --login-pointer && $probe_domain != loginwindow ]]; then
 fi
 if [[ $probe_mode == --cursor && $probe_domain == loginwindow ]]; then
     echo "The owned-window cursor test requires an unlocked Aqua desktop." >&2; exit 2
+fi
+if [[ $probe_mode == --cadence-* && $probe_domain == loginwindow ]]; then
+    echo "Capture cadence requires the existing Aqua desktop." >&2; exit 2
 fi
 probe_session=Aqua
 if [[ $probe_domain == loginwindow && $(id -u) == 0 ]]; then
