@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Status: macos-host branch; the actual installed Host and ordinary Client launch
-are integrated for the current desktop. Matching Host/Client 1.0.41-macos-host
+are integrated for the current desktop. Matching Host/Client 1.0.42-macos-host
 is built; Host is installed and Client is packaged for manual installation.
 The real Ubuntu Client HTTPS/auth/launch implementation has connected to the
 installed Mac Host, decoded exact Main10 video and Opus audio, changed bitrate,
@@ -13,6 +13,19 @@ Visible LoginWindow cursor/input remains unverified and deferred by the operator
 See macos-host-investigation.md for measured results and remaining gates.
 
 ### Current next test
+
+1.0.42 fixes live bitrate recovery using bounded encoder-only replacement,
+preserving capture/audio/transport. Synthetic high/low/high reproduction and
+installed 5120x2160 live repeated changes pass; user visual recovery remains
+to be accepted. Strict installed-Host reruns at 3840x2160 and 5120x2160 also
+passed without decoder errors or native sequence gaps. One earlier, less
+strict 3840x2160 run logged missing HEVC references; its cause remains unknown
+and needs moving-content observation, not an assumption of transport loss.
+The Client also removes the stale Apple-profile rejection
+that disabled all resolution dropdown entries. Select the desired resolution,
+save/reopen the bookmark, connect, and test lowering then raising bitrate.
+Use `artifacts/packages/plank-client_1.0.42-macos-host_amd64.deb` with the
+installed matching Host. Earlier candidate instructions below are history.
 
 September 7 follow-up: the user connected successfully with 1.0.38 and observed
 the fixed 1080p desktop and disabled bitrate control. The next matching candidate

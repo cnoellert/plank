@@ -80,6 +80,7 @@ int main(int argc, char** argv)
         AVCodecContext* codec = avcodec_alloc_context3(avcodec_find_decoder(AV_CODEC_ID_HEVC));
         CHECK(codec);
         codec->thread_count = 4;
+        codec->err_recognition = AV_EF_EXPLODE;
         CHECK(avcodec_open2(codec, codec->codec, nullptr) == 0);
         AVFrame* frame = av_frame_alloc();
         AVPacket* packet = av_packet_alloc();
@@ -89,7 +90,7 @@ int main(int argc, char** argv)
         std::vector<uint8_t> bytes(64 * 1024 * 1024);
         unsigned frames = 0, decoded = 0, audioPackets = 0, rateSent = 0, rateAck = 0;
         const uint32_t cycleRates[] = {10000, 150000, 10000, 150000};
-        uint64_t lastPTS = 0;
+        uint64_t lastPTS = 0, lastFrameNumber = 0;
         QElapsedTimer clock; clock.start();
         while (clock.elapsed() < 15000) {
             if (rateSent < 4 && clock.elapsed() >= (rateSent + 1) * 3000) {
@@ -118,6 +119,11 @@ int main(int argc, char** argv)
             CHECK(result == PLANK_TRANSPORT_OK || result == PLANK_TRANSPORT_TIMEOUT);
             if (result == PLANK_TRANSPORT_OK) {
                 CHECK(video.codec == PLANK_TRANSPORT_NATIVE_VIDEO_CODEC_HEVC && count > 0);
+                if (lastFrameNumber && video.frame_number != lastFrameNumber + 1)
+                    std::fprintf(stderr, "native_frame_gap previous=%llu current=%llu key=%u\n",
+                        static_cast<unsigned long long>(lastFrameNumber),
+                        static_cast<unsigned long long>(video.frame_number), video.flags);
+                lastFrameNumber = video.frame_number;
                 CHECK(!frames || video.pts > lastPTS);
                 lastPTS = video.pts; ++frames;
                 CHECK(av_new_packet(packet, static_cast<int>(count)) == 0);
