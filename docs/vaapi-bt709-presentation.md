@@ -1,5 +1,11 @@
 # Intel VA-API packed BT.709 presentation
 
+Accepted September 8, 2026: the operator tested `1.0.68-vaapi-bt709` on
+the Dev NUC and reported that playback works and the flashes are gone.
+Offscreen and Intel GPU shader pixel checks passed. Post-install GPU-engine
+telemetry and a Linux identity streaming regression test were not independently
+recorded; those are separate from this functional acceptance.
+
 ## Scope and failure
 
 The Dev NUC's 1.0.66 Mac HEVC 10-bit 4:4:4 connection passed exact
