@@ -145,8 +145,8 @@ int main(int argc, const char **argv) {
         }
         fprintf(stderr, "macos_hardware_readback=%d encoder_id_status=%d encoder_id=%s listed_hardware=%d\n",
             (int)hardwareStatus, (int)idStatus, encoderID ? [(__bridge id)encoderID description].UTF8String : "absent", listedHardware);
-        CHECK((!hardwareStatus && hardware && CFEqual(hardware, kCFBooleanTrue)) ||
-              (hardwareStatus == kVTPropertyNotSupportedErr && !idStatus && listedHardware));
+        BOOL hardwareVerified = (!hardwareStatus && hardware && CFEqual(hardware, kCFBooleanTrue)) ||
+              (hardwareStatus == kVTPropertyNotSupportedErr && !idStatus && listedHardware);
         if (hardware) CFRelease(hardware);
         if (encoderID) CFRelease(encoderID);
         CFRelease(encoderList);
@@ -228,6 +228,9 @@ int main(int argc, const char **argv) {
         video = nil;
         plank_transport_native_endpoint_destroy(client);
         plank_transport_native_endpoint_destroy(server);
+        // Retain the synthetic bitstream even if the hardware identity gate
+        // fails, so its actual precision can be inspected independently.
+        CHECK(hardwareVerified);
         printf("macos_native_video=pass checks=%u pixels=%dx%d encoded=%d received=%d hardware_vt=1 exact_quic_payload=1 recovery_key=1 synthetic_only=1 low_latency=%d keys=%u\n", checks, width, height, frameCount, frameCount - 1, lowLatency, keyCount);
     }
     return 0;
