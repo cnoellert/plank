@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "native-video.h"
+#include "video-recovery.h"
 
 static const size_t maximumFrameBytes = 64 * 1024 * 1024; // native transport ceiling
 
@@ -81,7 +82,8 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
     PLANKMacAuthenticationSession *_sessions;
     PLANKMacStreamLease *_lease;
     int _width, _height;
-    BOOL _needsKeyFrame, _hasTimestamp;
+    BOOL _hasTimestamp;
+    PLANKMacVideoRecovery _recovery;
     uint64_t _lastPTS, _frameNumber;
     BOOL (^_validity)(void);
 }
@@ -95,14 +97,16 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
     self = [super init];
     if (self) {
         _endpoint = endpoint; _sessions = sessions; _lease = lease;
-        _width = width; _height = height; _needsKeyFrame = YES;
+        _width = width; _height = height; _recovery.requested = true;
         _validity = [validity copy];
     }
     return self;
 }
-- (BOOL)needsKeyFrame { return _needsKeyFrame; }
+- (BOOL)needsKeyFrame { return _recovery.requested; }
 - (uint64_t)lastFrameNumber { return _frameNumber; }
-- (void)requestKeyFrame { _needsKeyFrame = YES; }
+- (void)requestKeyFrame { _recovery.requested = true; }
+- (BOOL)beginKeyFrameRequest { return PLANKMacVideoRecoveryBegin(&_recovery); }
+- (void)completeKeyFrameRequest { _recovery.encoding = false; }
 - (int32_t)sendSample:(CMSampleBufferRef)sample processingLatency:(uint16_t)latency {
     PLANKMacAccountIdentity identity = {0};
     if (![_sessions authorizeStreamLease:_lease identity:&identity] ||
@@ -116,7 +120,7 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
         return PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT;
     // Count deliberately skipped encoded frames too: the receiver must see the
     // discontinuity instead of interpreting the next frame as contiguous.
-    if (_needsKeyFrame && !key) {
+    if (_recovery.requested && !key) {
         _lastPTS = pts; _hasTimestamp = YES; ++_frameNumber;
         return PLANK_TRANSPORT_DROPPED;
     }
@@ -135,7 +139,9 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
             result = plank_transport_native_video_send(self->_endpoint, &info, payload.bytes, payload.length);
     }]) return PLANK_TRANSPORT_ERROR_INVALID_STATE;
     _lastPTS = pts; _hasTimestamp = YES; ++_frameNumber;
-    _needsKeyFrame = result != PLANK_TRANSPORT_OK;
+    PLANKMacVideoRecoverySent(&_recovery, key,
+        result == PLANK_TRANSPORT_OK || result == PLANK_TRANSPORT_DROPPED,
+        result == PLANK_TRANSPORT_DROPPED);
     return result;
 }
 @end

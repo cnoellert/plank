@@ -65,6 +65,13 @@ int main(int argc, const char **argv) {
         PLANKMacNativeVideo *video = [[PLANKMacNativeVideo alloc] initWithEndpoint:server
             sessions:sessions lease:lease width:width height:height validity:^BOOL { return YES; }];
         CHECK(video != nil && video.needsKeyFrame);
+        CHECK([video beginKeyFrameRequest]);
+        CHECK(![video beginKeyFrameRequest]);
+        [video requestKeyFrame];
+        CHECK(![video beginKeyFrameRequest]);
+        [video completeKeyFrameRequest];
+        CHECK(video.needsKeyFrame && [video beginKeyFrameRequest]);
+        [video completeKeyFrameRequest];
         CHECK([video sendSample:NULL processingLatency:0] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
         CHECK([sessions activateStreamLease:lease]);
         CHECK([video sendSample:NULL processingLatency:0] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
@@ -116,7 +123,8 @@ int main(int argc, const char **argv) {
         for (int frame = 0; frame < 12; ++frame) {
             if (frame == 5) [video requestKeyFrame];
             // Skip one dependent frame, then ask VT for a genuine recovery key.
-            NSDictionary *options = frame == 6 ?
+            BOOL force = frame != 5 && [video beginKeyFrameRequest];
+            NSDictionary *options = force ?
                 @{(__bridge NSString *)kVTEncodeFrameOptionKey_ForceKeyFrame: @YES} : nil;
             dispatch_semaphore_t finished = dispatch_semaphore_create(0);
             __block CMSampleBufferRef sample = NULL;
@@ -161,7 +169,9 @@ int main(int argc, const char **argv) {
                 CFRelease(bad); CFRelease(block);
             }
             CHECK([video sendSample:sample processingLatency:123] == PLANK_TRANSPORT_OK);
+            if (force) [video completeKeyFrameRequest];
             CHECK(!video.needsKeyFrame);
+            CHECK(![video beginKeyFrameRequest]);
             CHECK([video sendSample:sample processingLatency:123] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
             NSMutableData *received = [NSMutableData dataWithLength:expected.length];
             PlankTransportNativeVideoFrameInfo info = {0}; info.struct_size = sizeof(info);

@@ -14,6 +14,9 @@ cd "$source_root"
 xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/media tests/video/macos-frame-timing.c -o "$output/frame-timing-test"
 "$output/frame-timing-test"
+xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
+    -Ihost/macos/media tests/video/macos-video-recovery.c -o "$output/video-recovery-test"
+"$output/video-recovery-test"
 common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -Ihost/macos/auth -Ihost/macos/control -Ihost/macos/media -Ihost/macos/input
     -Ihost/macos/session -Iprotocol/plank-transport/include

@@ -205,7 +205,8 @@
     CVBufferSetAttachment(pixel, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
     CVBufferSetAttachment(pixel, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_sRGB, kCVAttachmentMode_ShouldPropagate);
     CVBufferSetAttachment(pixel, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_601_4, kCVAttachmentMode_ShouldPropagate);
-    NSDictionary *options = _video.needsKeyFrame ? @{(__bridge NSString *)kVTEncodeFrameOptionKey_ForceKeyFrame: @YES} : nil;
+    BOOL forceKey = [_video beginKeyFrameRequest];
+    NSDictionary *options = forceKey ? @{(__bridge NSString *)kVTEncodeFrameOptionKey_ForceKeyFrame: @YES} : nil;
     uint64_t submitted = clock_gettime_nsec_np(CLOCK_MONOTONIC);
     if (timing) { timing->submitted_ns = submitted; timing->forced = options != nil; }
     ++_inFlight;
@@ -241,12 +242,14 @@
                 }
             }
             else if (timing) timing->stage = 5; // stop suppressed delivery
+            if (forceKey) [self->_video completeKeyFrameRequest];
             if (output) CFRelease(output);
             [self replaceEncoderWhenDrained];
             [self finishStop];
         });
     });
     if (result) {
+        if (forceKey) [_video completeKeyFrameRequest];
         if (timing) { timing->stage = 4; timing->result = result; }
         --_inFlight; _failed();
     }

@@ -23,6 +23,10 @@ NSData *PLANKMacHEVCAnnexB(CMSampleBufferRef sample, int width, int height,
 @property(nonatomic, readonly) uint64_t lastFrameNumber;
 // Called on the same serial queue for a native receiver recovery request.
 - (void)requestKeyFrame;
+// Pair a successful begin with completion after send or encoder failure.
+// At most one forced recovery picture may be in flight; requests coalesce.
+- (BOOL)beginKeyFrameRequest;
+- (void)completeKeyFrameRequest;
 // Latency is capture-to-submit in tenths of a millisecond, matching native ABI.
 // A dropped frame requests a new encoder keyframe; no private retry queue.
 - (int32_t)sendSample:(CMSampleBufferRef)sample processingLatency:(uint16_t)latency;
