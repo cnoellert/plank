@@ -220,6 +220,10 @@ typedef struct {
     if (timing) timing->complete++;
     if (self.inFlight >= 3) {
         self.overflow++;
+        if (qualifyMain44410 && self.overflow <= 8)
+            printf("main44410_overflow submitted=%lu encoded=%lu in_flight=%lu elapsed_s=%.3f\n",
+                (unsigned long)self.submitted, (unsigned long)self.encoded,
+                (unsigned long)self.inFlight, hostSeconds() - self.started);
         if (timing) timing->overflow++;
         return;
     }

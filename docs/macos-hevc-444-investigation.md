@@ -62,7 +62,66 @@ describes these exported-but-undocumented values working; it had no Apple reply
 when inspected. Local runtime and bitstream tests are the stronger evidence for
 this particular hardware/OS combination. No Chromium code was copied.
 
-## Proposed next work, not implemented
+## Live ScreenCaptureKit qualification
+
+After operator desktop login, the guarded owned-chart tests ran on the same
+M4/SDK27 combination. The installed Host was not replaced or restarted.
+The signed Probe was temporarily replaced, then restored with its original
+SHA256 `6056054b6c99fe0195220bc9b991d21a7850d5378e037cd2df32b8dc8bd02f77`.
+Every run verified capture/encoder teardown and removal of its owned display;
+the temporary graphical job and probe processes are absent afterward.
+
+Both 3840x2160 and 5120x2160 captured exact IOSurface-backed `xf44` and encoded
+with hardware Main44410. Actual SCK samples are untagged, full-range BT.601
+YCbCr: interpreting the chart as 709 gives 32.662 maximum error in 8-bit
+equivalent units, versus 2.000 for 601 (including the coarse grayscale ramp).
+Declaring this measured source matrix lets VideoToolbox convert to full-range
+BT.709 output without an application pixel-buffer conversion/copy. Decoded
+sample agreement is 0.138 maximum in 8-bit equivalent units. This is NOT RGB
+identity, and these coarse chart samples do not qualify native 10-bit desktop
+precision or one-pixel chroma retention across ScreenCaptureKit.
+
+Independent private FFmpeg 9.0.1 inspection on linux-client-builder confirms each saved
+chart keyframe as HEVC Rext, `yuv444p10le`, PC/full range, BT.709 primaries and
+matrix, sRGB transfer, and exact 4K/5120x2160 dimensions. Independently decoded
+4K primary patches differ from ideal full-range BT.709 by at most 0.793 of one
+10-bit code unit; black/white are 0/1023. Only the guarded chart keyframe is
+saved, not arbitrary desktop video. Temporary linux-client-builder inspection copies
+were removed after retaining artifacts in the root's ignored `build/`.
+
+| Live chart run | Submitted/encoded | Overflow | FPS | Mean/p95/max encode callback ms |
+| --- | ---: | ---: | ---: | --- |
+| 4K | 897/897 | 0 | 60.000 | 15.928/16.227/40.122 |
+| 5K initial | 897/897 | 1 | 59.933 | 20.658/21.011/50.219 |
+| 5K repeat | 897/897 | 1 | 59.933 | 20.580/20.863/48.433 |
+| 5K diagnostic 1 | 898/898 | 0 | 60.000 | 20.519/21.061/47.843 |
+| 5K diagnostic 2 | 896/896 | 2 | 59.866 | 20.973/21.538/64.466 |
+| 5K diagnostic 3 | 892/892 | 1 | 59.933 | 20.596/21.048/49.188 |
+| 5K diagnostic 4 | 897/897 | 1 | 59.933 | 20.682/20.966/48.465 |
+
+Runs last approximately 15 seconds. Encoder drops are zero throughout. Added
+bounded probe-only overflow reporting locates all observed diagnostic skips
+at submitted frame 3 or 4, 0.184–0.217 seconds after initialization; none occur
+later. This supports startup pressure, not sustained encoder backlog, but the
+strict zero-overflow gate **remains open**. Do not hide those failures, increase
+queues silently, or extrapolate this simple moving-marker chart to complex
+5K60 footage. Capture-to-submit timing is unavailable for these xf44 callbacks;
+encode callback timing is not glass-to-glass latency.
+
+The unchanged older 4K Main10/x420 speed-chart control also passed color,
+858/858 encode, zero overflow/drop and cleanup. It retains its historical
+1/60 SCK interval and measures 57.324 FPS; it is not a same-cadence performance
+comparison or a test of the installed full-range Host profile.
+
+Diagnostic-2 executable SHA256:
+`f56dfcb1f57b30fe4a86849f1bb3dc9055e07e9b299e456c906018adf1794d4e`.
+It adds logging only; SDK27 warnings-as-errors build and signing pass.
+Retained chart hashes:
+
+- `build/hevc444-live-4k.hevc`: `7d0a24e8927755e104800184f851bca72a2084fe12deb94149c73e4b0bfa56df`
+- `build/hevc444-live-5k.hevc`: `a5039d0808fa094b85a4a6d14b746b83e87686d9ffc20dfe60e1ed092b4f1c8a`
+
+## Remaining product integration, not implemented
 
 Qualify SCK `xf44` capture into the hardware Main44410 encoder without an
 application CPU readback/copy. The current installed Host requests `xf20`
@@ -100,7 +159,8 @@ The signed multi-mode probe now accepts `--pattern-hevc444-4k` and
 `--pattern-hevc444-5k`. Both require an existing unlocked desktop; create and
 retire a separate owned display/chart through the existing bounded lifecycle.
 New synthetic sample-position checks pass for all four supported 420/444 pixel
-formats. The signed SDK27 build passes; real capture tests await desktop login.
+formats. The signed SDK27 build and live color checks pass; 5K startup overflow
+and end-to-end moving-content qualification remain open.
 Use the existing Mac runbook's backup/install/run/restore procedure at the
 consented Probe path. The ordinary installed Host must remain untouched during
 this component gate. No active Client stream may be disrupted for the probe.
