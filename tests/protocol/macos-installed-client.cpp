@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     CHECK(!password.isEmpty() && password.size() <= 4096);
     try {
         NvHTTP http(NvAddress(QString::fromLocal8Bit(argv[1]), static_cast<quint16>(port)));
-        const QString info = http.getServerInfo(NvLogLevel::NVLL_NONE);
+        const QString info = http.getServerInfo(NvHTTP::NVLL_NONE);
         CHECK(NvHTTP::getXmlString(info, "ServerCodecModeSupport") == "512");
         const QString token = http.authenticate(QString::fromLocal8Bit(argv[3]), QString::fromUtf8(password));
         password.fill('\0'); password.clear();
