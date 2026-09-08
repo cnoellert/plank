@@ -4,6 +4,8 @@
 #import <VideoToolbox/VideoToolbox.h>
 #include <unistd.h>
 #include <sys/resource.h>
+#include <time.h>
+#include <errno.h>
 
 static unsigned checks;
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "check failed line %d: %s\n", __LINE__, #x); exit(1); } ++checks; } while (0)
@@ -154,7 +156,23 @@ int main(int argc, const char **argv) {
         if (encoderID) CFRelease(encoderID);
         CFRelease(encoderList);
         unsigned keyCount = 0;
+        struct timespec startTime;
+        CHECK(clock_gettime(CLOCK_MONOTONIC, &startTime) == 0);
+        uint64_t startNs = (uint64_t)startTime.tv_sec * NSEC_PER_SEC + startTime.tv_nsec;
         for (int frame = 0; frame < frameCount; ++frame) {
+            // RTVC is a live encoder: qualify at the intended source cadence,
+            // not an offline loop's fastest-possible submission rate.
+            if (lowLatency) {
+                struct timespec now;
+                CHECK(clock_gettime(CLOCK_MONOTONIC, &now) == 0);
+                uint64_t nowNs = (uint64_t)now.tv_sec * NSEC_PER_SEC + now.tv_nsec;
+                uint64_t deadline = startNs + (uint64_t)frame * NSEC_PER_SEC / 60;
+                if (deadline > nowNs) {
+                    uint64_t delay = deadline - nowNs;
+                    struct timespec remaining = {(time_t)(delay / NSEC_PER_SEC), (long)(delay % NSEC_PER_SEC)};
+                    while (nanosleep(&remaining, &remaining) != 0) CHECK(errno == EINTR);
+                }
+            }
             if (frame == 5) [video requestKeyFrame];
             // Skip one dependent frame, then ask VT for a genuine recovery key.
             BOOL force = frame != 5 && [video beginKeyFrameRequest];
