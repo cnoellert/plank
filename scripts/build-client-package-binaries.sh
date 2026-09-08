@@ -1005,8 +1005,14 @@ fi
 for native_capture_label in \
   'Native X11/XShm — 10-bit (Experimental)'; do
   rg -Fq "$native_capture_label" \
-    "$source_dir/app/gui/main.qml" "$source_dir/app/gui/PcView.qml" || {
+    "$source_dir/app/gui/PlankCaptureSourceBox.qml" || {
     echo "native X11 capture must retain its Experimental label" >&2
+    exit 1
+  }
+done
+for bookmark_dialog in main.qml PcView.qml; do
+  rg -Fq 'PlankCaptureSourceBox {' "$source_dir/app/gui/$bookmark_dialog" || {
+    echo "bookmark dialog must use the shared host-aware capture selector" >&2
     exit 1
   }
 done
