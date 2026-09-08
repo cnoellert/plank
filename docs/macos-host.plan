@@ -1,15 +1,31 @@
 # PLANK macOS Host implementation plan
 
 Date: 2026-09-06
-Status: macos-host branch; dedicated-Mac capture/display probes, account/control
-integration, gated Apple Client profile and hardware-encoder/native-QUIC adapter
-tests pass. Authenticated live capture now passes a short native loopback test;
-the Client's explicit optional-service state machine and typed launch manifest
-pass standalone tests and the uninstalled Client build passes. The ordinary
-Client is not connected yet: HTTPS launch, fixed geometry and embedded-cursor
-presentation still need Session wiring before lifting the gate. Visible
-LoginWindow cursor/input is unverified and deferred by the operator.
+Status: macos-host branch; the actual installed Host and ordinary Client launch
+are integrated for the current desktop. Client 1.0.36-macos-host is packaged.
+The real Ubuntu Client HTTPS/auth/launch implementation has connected to the
+installed Mac Host, decoded exact Main10 video and Opus audio, changed bitrate,
+and disconnected. Graphical Client acceptance remains pending because the
+Development NUC was unreachable. This headless contract test is not a GPU,
+presentation, audible synchronization, or interactive input acceptance result.
+Visible LoginWindow cursor/input remains unverified and deferred by the operator.
 See macos-host-investigation.md for measured results and remaining gates.
+
+### Current next test
+
+Install `artifacts/packages/plank-client_1.0.36-macos-host_amd64.deb` on a
+hardware Client. Create/edit a bookmark for the dedicated Mac with
+`ScreenCaptureKit — macOS (Experimental)`, the Apple HEVC Main10 profile, and
+the current Mac display. Check continuing video, mouse alignment/buttons/scroll,
+keyboard, embedded custom cursor, audio, toolbar, and disconnect/reconnect.
+The signed 1.0.35-macos-host app/services are already installed on the Mac;
+the 1.0.36 Client fixes a TLS response-close issue without changing its wire
+contract. Do not use the superseded 1.0.35 Client package.
+
+Do not ask for another isolated login/logout cycle in place of this test.
+Current development installation registers only the existing user's desktop;
+LoginWindow installation, headless ownership and login/logout continuity are
+remaining product gates, not claims made by this first test candidate.
 
 ## September 7 direction change — Host first
 
