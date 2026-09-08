@@ -25,6 +25,7 @@ static BOOL timingLowLatency = NO;
 static BOOL timingEncodingSpeed = NO;
 static BOOL chartMixedCadence = NO;
 static BOOL qualifyFullRange = NO;
+static BOOL qualifyFullRange444 = NO;
 
 // Fixed one-second records, emitted only after capture stops. Updates stay on
 // the existing serial queue; no tracing thread, frame log or pixel readback.
@@ -121,6 +122,7 @@ typedef struct {
     self.pixelFormat = self.hevc ? kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange :
                                  kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
     if (qualifyFullRange) self.pixelFormat = kCVPixelFormatType_420YpCbCr10BiPlanarFullRange;
+    if (qualifyFullRange444) self.pixelFormat = kCVPixelFormatType_444YpCbCr10BiPlanarFullRange;
     printf("capture_encode_build=%s capture_preflight=%d display=%u\n",
         [[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"] UTF8String],
         CGPreflightScreenCaptureAccess(), self.displayID);
@@ -202,7 +204,8 @@ typedef struct {
     }
     if (!self.submitted) {
         printf("capture_surface=%s pixels=%zux%zu iosurface=1 encode_path_cpu_pixel_maps=0 app_pixel_copies=0 chart_readback=%d\n",
-            qualifyFullRange ? "xf20" : (self.hevc ? "x420" : "420v"), self.width, self.height, self.pattern);
+            qualifyFullRange444 ? "xf44" : (qualifyFullRange ? "xf20" : (self.hevc ? "x420" : "420v")),
+            self.width, self.height, self.pattern);
         const CFStringRef keys[] = {kCVImageBufferColorPrimariesKey, kCVImageBufferTransferFunctionKey,
                                    kCVImageBufferYCbCrMatrixKey};
         for (unsigned int i = 0; i < 3; i++) {
@@ -581,10 +584,11 @@ int PLANKRunCaptureEncodeProbe(BOOL hevc, BOOL pattern, BOOL owned4K) {
     return runMedia(hevc, pattern, owned4K ? 3840 : 0, NO);
 }
 
-int PLANKRunFullRangeQualification(void) {
+int PLANKRunFullRangeQualification(BOOL capture444) {
     // Capability probe only: no chart or claim of color qualification. Reject
     // SCK substituting a different pixel format. Existing product stays intact.
     qualifyFullRange = YES;
+    qualifyFullRange444 = capture444;
     return runMedia(YES, NO, 0, NO);
 }
 

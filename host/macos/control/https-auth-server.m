@@ -241,6 +241,11 @@
                 [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
                 request.bytes = nil;
                 owner->_authBusy = YES;
+                // Header/body admission retains its five-second deadline.
+                // Only a complete display operation gets time for the bounded
+                // graphical mode transaction; slow senders gain no extra time.
+                if ([path isEqual:@"/plank/display"])
+                    request.deadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 10 * NSEC_PER_SEC;
                 dispatch_async(owner->_authQueue, ^{ [owner handlePath:path body:body authorization:authorization request:request]; });
             } else if (complete) {
                 [owner finish:request];
