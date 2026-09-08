@@ -136,7 +136,8 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
                 record.username = nil;
                 record.expires = monotonicSeconds() + 300;
                 _tokens[token] = record;
-                return @{@"state": @"authenticated", @"session_token": token};
+                return @{@"state": @"authenticated", @"session_token": token,
+                    @"desktop_stage": record.scope.phase == PLANKMacScopeSignIn ? @"greeter" : @"desktop"};
             }
         } @finally {
             @synchronized(self) { _verifying = NO; }

@@ -57,6 +57,7 @@ int main(void) {
         CHECK(verifications == 0);
         NSDictionary *success = respond(sessions, peer, start[@"conversation_id"]);
         CHECK([success[@"state"] isEqual:@"authenticated"]);
+        CHECK([success[@"desktop_stage"] isEqual:@"desktop"]);
         NSString *token = success[@"session_token"];
         CHECK(token.length == 44 && [NSJSONSerialization isValidJSONObject:success]);
         CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"denied"]);
@@ -189,7 +190,9 @@ int main(void) {
         }
         desktop.phase = PLANKMacScopeSignIn;
         start = [sessions startForPeer:peer username:@"wrong-owner"];
-        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        success = respond(sessions, peer, start[@"conversation_id"]);
+        CHECK([success[@"desktop_stage"] isEqual:@"greeter"]);
+        token = success[@"session_token"];
         CHECK([sessions authorizeToken:token peer:peer identity:&identity] && identity.uid == 456);
         lease = [sessions claimToken:token peer:peer];
         CHECK([sessions activateStreamLease:lease]);
