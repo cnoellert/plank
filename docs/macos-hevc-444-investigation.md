@@ -7,6 +7,12 @@ is now installed on the dedicated development Mac; see the integration record.
 
 ## Result
 
+**Accepted September 8:** the operator tested candidate1.0.64 and reported
+"That works. I accept", authorizing commit, push and merge. This is functional
+acceptance of the additional profile, not a claim that every remaining
+instrumented release gate below was exercised. No queue/transport change or
+format fallback was added after the tested candidate.
+
 `kVTProfileLevel_HEVC_Main44410_AutoLevel` is exported in the SDK's
 VideoToolbox.tbd but absent from VTCompressionProperties.h. Runtime `dlsym`
 resolves it to the CFString `HEVC_Main44410_AutoLevel`. The hardware session's
