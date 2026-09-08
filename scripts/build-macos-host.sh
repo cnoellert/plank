@@ -47,7 +47,13 @@ shasum -a 256 "$archive" "$output/plank-host"
 if [[ -n ${PLANK_MACOS_SIGNING_IDENTITY:-} ]]; then
     [[ $PLANK_MACOS_SIGNING_IDENTITY =~ ^[[:xdigit:]]{40}$ ]]
     app="$output/PLANK Host.app"
-    mkdir -p "$app/Contents/MacOS"
+    mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$output/plank.iconset"
+    xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+        scripts/macos-app-icon.m -framework Foundation -framework CoreGraphics \
+        -framework ImageIO -o "$output/macos-app-icon"
+    "$output/macos-app-icon" "$source_root/branding/assets/plank-logo.png" "$output/plank.iconset"
+    iconutil -c icns "$output/plank.iconset" -o "$app/Contents/Resources/plank.icns"
+    test -s "$app/Contents/Resources/plank.icns"
     install -m 0755 "$output/plank-host" "$app/Contents/MacOS/plank-host"
     install -m 0644 packaging/macos/host-info.plist "$app/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Add :PLANKVersion string $PLANK_MACOS_HOST_VERSION" "$app/Contents/Info.plist"

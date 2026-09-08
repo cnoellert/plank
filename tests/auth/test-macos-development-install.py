@@ -2,6 +2,7 @@
 """Non-installing checks of development role identities; no services or OS input."""
 import importlib.util
 import os
+import plistlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -15,6 +16,14 @@ PUBLIC = {"Address": "0.0.0.0", "Port": 28989, "Name": "PLANK test",
 
 
 class RoleIdentityTests(unittest.TestCase):
+    def test_host_icon_is_generated_from_shared_client_artwork(self):
+        info = plistlib.loads((ROOT / "packaging/macos/host-info.plist").read_bytes())
+        self.assertEqual(info["CFBundleIconFile"], "plank.icns")
+        build = (ROOT / "scripts/build-macos-host.sh").read_text()
+        self.assertIn('branding/assets/plank-logo.png', build)
+        self.assertIn('Contents/Resources/plank.icns', build)
+        self.assertLess(build.index('iconutil -c icns'), build.index('codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY"'))
+
     def test_preserves_private_identity_and_does_not_share_keys(self):
         with tempfile.TemporaryDirectory(prefix="plank-role-identity-") as temporary:
             first, second = Path(temporary) / "first", Path(temporary) / "second"
