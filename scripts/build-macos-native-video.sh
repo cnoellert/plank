@@ -69,5 +69,9 @@ certificate_hash=${certificate_hash%% *}
     "$certificate_hash" "$video_build/synthetic-first-frame-full-range.hevc" --full-range
 "$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
     "$certificate_hash" "$video_build/synthetic-first-frame-full-range-4k.hevc" --full-range --4k
+"$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
+    "$certificate_hash" "$video_build/synthetic-low-latency-full-range-4k.hevc" --full-range --4k --low-latency
+"$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
+    "$certificate_hash" "$video_build/synthetic-low-latency-full-range-wide.hevc" --full-range --wide --low-latency
 shasum -a 256 "$video_build/native-video" "$video_build/preview-session" "$video_build/synthetic-first-frame.hevc" \
     "$video_build/synthetic-first-frame-4k.hevc"

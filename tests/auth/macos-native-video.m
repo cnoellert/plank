@@ -27,16 +27,20 @@ static PlankTransportConfig config(uint32_t mode, NSString *token) {
 }
 
 int main(int argc, const char **argv) {
-    // certificate, private-key path, fingerprint, output, optional --4k/--full-range
-    if (argc < 5 || argc > 7) return 2;
-    BOOL fullRange = NO, fourK = NO;
+    // Optional --low-latency is a qualification mode, never a runtime fallback.
+    if (argc < 5 || argc > 8) return 2;
+    BOOL fullRange = NO, fourK = NO, wide = NO, lowLatency = NO;
     for (int i = 5; i < argc; ++i) {
         if (!strcmp(argv[i], "--full-range") && !fullRange) fullRange = YES;
         else if (!strcmp(argv[i], "--4k") && !fourK) fourK = YES;
+        else if (!strcmp(argv[i], "--wide") && !wide) wide = YES;
+        else if (!strcmp(argv[i], "--low-latency") && !lowLatency) lowLatency = YES;
         else return 2;
     }
-    const int width = fourK ? 3840 : 1920, height = fourK ? 2160 : 1080;
-    alarm(30);
+    if (wide && fourK) return 2;
+    const int width = wide ? 5120 : fourK ? 3840 : 1920, height = (wide || fourK) ? 2160 : 1080;
+    const int frameCount = lowLatency ? 360 : 12;
+    alarm(lowLatency ? 55 : 30);
     struct rlimit noCore = {0, 0};
     CHECK(!setrlimit(RLIMIT_CORE, &noCore));
     @autoreleasepool {
@@ -99,28 +103,38 @@ int main(int argc, const char **argv) {
         CVBufferSetAttachment(pixel, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_sRGB, kCVAttachmentMode_ShouldPropagate);
         CVBufferSetAttachment(pixel, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
         VTCompressionSessionRef encoder = NULL;
-        NSDictionary *spec = @{(__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES};
+        NSMutableDictionary *spec = [@{(__bridge NSString *)kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES} mutableCopy];
+        if (lowLatency) spec[(__bridge NSString *)kVTVideoEncoderSpecification_EnableLowLatencyRateControl] = @YES;
         NSDictionary *source = @{(__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(pixelFormat),
                                 (__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}};
-        CHECK(VTCompressionSessionCreate(NULL, width, height, kCMVideoCodecType_HEVC,
-            (__bridge CFDictionaryRef)spec, (__bridge CFDictionaryRef)source, NULL, NULL, NULL, &encoder) == 0);
+        OSStatus created = VTCompressionSessionCreate(NULL, width, height, kCMVideoCodecType_HEVC,
+            (__bridge CFDictionaryRef)spec, (__bridge CFDictionaryRef)source, NULL, NULL, NULL, &encoder);
+        printf("macos_low_latency_create=%d requested=%d pixels=%dx%d\n", (int)created, lowLatency, width, height);
+        CHECK(created == 0);
         NSDictionary *properties = @{
             (__bridge NSString *)kVTCompressionPropertyKey_RealTime: @YES,
             (__bridge NSString *)kVTCompressionPropertyKey_AllowFrameReordering: @NO,
             (__bridge NSString *)kVTCompressionPropertyKey_ProfileLevel: (__bridge NSString *)kVTProfileLevel_HEVC_Main10_AutoLevel,
             (__bridge NSString *)kVTCompressionPropertyKey_AverageBitRate: @20000000,
+            (__bridge NSString *)kVTCompressionPropertyKey_DataRateLimits: @[@5000000, @1],
+            (__bridge NSString *)kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality: @YES,
             (__bridge NSString *)kVTCompressionPropertyKey_ExpectedFrameRate: @60,
             (__bridge NSString *)kVTCompressionPropertyKey_ColorPrimaries: (__bridge NSString *)kCVImageBufferColorPrimaries_ITU_R_709_2,
             (__bridge NSString *)kVTCompressionPropertyKey_TransferFunction: (__bridge NSString *)kCVImageBufferTransferFunction_sRGB,
             (__bridge NSString *)kVTCompressionPropertyKey_YCbCrMatrix: (__bridge NSString *)kCVImageBufferYCbCrMatrix_ITU_R_709_2
         };
-        CHECK(VTSessionSetProperties(encoder, (__bridge CFDictionaryRef)properties) == 0);
+        for (NSString *property in properties) {
+            OSStatus set = VTSessionSetProperty(encoder, (__bridge CFStringRef)property, (__bridge CFTypeRef)properties[property]);
+            if (set) fprintf(stderr, "macos_encoder_property=%s status=%d\n", property.UTF8String, (int)set);
+            CHECK(set == 0);
+        }
         CHECK(VTCompressionSessionPrepareToEncodeFrames(encoder) == 0);
         CFTypeRef hardware = NULL;
         CHECK(VTSessionCopyProperty(encoder, kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, NULL, &hardware) == 0);
         CHECK(hardware && CFEqual(hardware, kCFBooleanTrue));
         CFRelease(hardware);
-        for (int frame = 0; frame < 12; ++frame) {
+        unsigned keyCount = 0;
+        for (int frame = 0; frame < frameCount; ++frame) {
             if (frame == 5) [video requestKeyFrame];
             // Skip one dependent frame, then ask VT for a genuine recovery key.
             BOOL force = frame != 5 && [video beginKeyFrameRequest];
@@ -142,6 +156,8 @@ int main(int argc, const char **argv) {
             CHECK(PLANKMacHEVCAnnexB(sample, 1280, 720, &key, &pts) == nil && !key && !pts);
             NSData *expected = PLANKMacHEVCAnnexB(sample, width, height, &key, &pts);
             CHECK(expected && (frame != 0 || key));
+            if (key) ++keyCount;
+            if (lowLatency) CHECK(key == (frame == 0 || frame == 6));
             if (frame == 5) {
                 CHECK(!key);
                 CHECK([video sendSample:sample processingLatency:123] == PLANK_TRANSPORT_DROPPED);
@@ -186,6 +202,7 @@ int main(int argc, const char **argv) {
             CHECK(info.host_processing_latency == 123);
             CFRelease(sample);
         }
+        if (lowLatency) CHECK(keyCount == 2);
         desktop.active = false;
         CHECK([video sendSample:NULL processingLatency:0] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
         CHECK(lease.transportToken == nil);
@@ -194,7 +211,7 @@ int main(int argc, const char **argv) {
         video = nil;
         plank_transport_native_endpoint_destroy(client);
         plank_transport_native_endpoint_destroy(server);
-        printf("macos_native_video=pass checks=%u pixels=%dx%d encoded=12 received=11 hardware_vt=1 exact_quic_payload=1 recovery_key=1 synthetic_only=1\n", checks, width, height);
+        printf("macos_native_video=pass checks=%u pixels=%dx%d encoded=%d received=%d hardware_vt=1 exact_quic_payload=1 recovery_key=1 synthetic_only=1 low_latency=%d keys=%u\n", checks, width, height, frameCount, frameCount - 1, lowLatency, keyCount);
     }
     return 0;
 }
