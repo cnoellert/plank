@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "agent-registry.h"
+#import "../auth/boot-sign-in.h"
 #import <Security/Security.h>
 #import <Security/AuthSession.h>
 #import <SystemConfiguration/SystemConfiguration.h>
@@ -14,6 +15,8 @@ PLANKMacAgentPhase PLANKMacObserveAgentScope(PLANKMacAgentPeer peer) {
     if (SessionGetInfo(peer.auditSession, &actual, &attributes) != errSecSuccess ||
         actual != peer.auditSession || !(attributes & sessionHasGraphicAccess))
         return PLANKMacAgentUnavailable;
+    if (peer.uid == 0 && PLANKMacBootSignInSession(peer.auditSession))
+        return PLANKMacAgentLoginWindow;
     uid_t console = (uid_t)-1;
     NSString *name = CFBridgingRelease(SCDynamicStoreCopyConsoleUser(NULL, &console, NULL));
     if (!name || console != peer.uid) return PLANKMacAgentUnavailable;

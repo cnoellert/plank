@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "graphical-authority.h"
+#import "boot-sign-in.h"
 #import <AppKit/AppKit.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <Security/AuthSession.h>
@@ -21,8 +22,11 @@ static BOOL readGraphical(PLANKMacGraphicalPhase phase, PLANKMacAccountIdentity 
     id number = session[(__bridge NSString *)kCGSessionUserIDKey];
     int64_t uid = -1;
     if (!number || CFGetTypeID((__bridge CFTypeRef)number) != CFNumberGetTypeID() ||
-        !CFNumberGetValue((__bridge CFNumberRef)number, kCFNumberSInt64Type, &uid) ||
-        uid != geteuid()) return NO;
+        !CFNumberGetValue((__bridge CFNumberRef)number, kCFNumberSInt64Type, &uid)) return NO;
+    if (phase == PLANKMacScopeSignIn &&
+        PLANKMacBootSignInRecord(session, *sessionID, PLANKMacWindowServerUID()) &&
+        PLANKMacBootSignInSession(*sessionID)) return YES;
+    if (uid != geteuid()) return NO;
     uid_t consoleUID = (uid_t)-1;
     NSString *name = CFBridgingRelease(SCDynamicStoreCopyConsoleUser(NULL, &consoleUID, NULL));
     if (!name || consoleUID != geteuid()) return NO;

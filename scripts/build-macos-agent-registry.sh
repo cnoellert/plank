@@ -14,6 +14,10 @@ output=$2
 mkdir "$output"
 cd "$source_root"
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/auth tests/auth/macos-boot-sign-in.m \
+    -framework Foundation -framework SystemConfiguration -o "$output/boot-sign-in"
+"$output/boot-sign-in"
+xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/session host/macos/session/agent-registry.m host/macos/session/agent-connection.m \
     tests/auth/macos-agent-registry.m \
     -framework Foundation -framework Security -framework SystemConfiguration \
