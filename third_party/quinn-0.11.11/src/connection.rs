@@ -425,7 +425,7 @@ impl Connection {
         conn.close(error_code, Bytes::copy_from_slice(reason), &self.0.shared);
     }
 
-    /// Submit already-ready datagrams with at most sixteen packets per lock.
+    /// Submit already-ready datagrams with at most four packets per lock.
     ///
     /// PLANK experiment: no accumulation timer, packet merging, extra queue, or
     /// change to ordinary send/eviction semantics. Earlier packets can have
@@ -434,7 +434,7 @@ impl Connection {
     /// and occurs outside the lock.
     #[cfg(feature = "plank-datagram-batch")]
     pub fn send_datagram_batch(&self, datagrams: &[Bytes]) -> Result<(), SendDatagramError> {
-        for batch in datagrams.chunks(16) {
+        for batch in datagrams.chunks(4) {
             let conn = &mut *self.0.state.lock("send_datagram_batch");
             if let Some(ref x) = conn.error {
                 return Err(SendDatagramError::ConnectionLost(x.clone()));

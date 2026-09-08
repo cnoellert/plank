@@ -6,7 +6,7 @@ Exact crates.io Quinn 0.11.11, upstream VCS
 Retain MIT/Apache licenses and original Cargo/VCS metadata.
 
 The optional `plank-datagram-batch` feature adds one connection API:
-`send_datagram_batch(&[Bytes])`. Each lock accepts at most sixteen already-ready
+`send_datagram_batch(&[Bytes])`. Each lock accepts at most four already-ready
 packets, then wakes the existing driver. No wait-for-fill, packet merging,
 queue enlargement, MTU change, congestion-controller change or new worker.
 Packet errors/oldest-datagram eviction are identical to `send_datagram`; a
@@ -18,3 +18,7 @@ async connection wrapper, distinct from our existing `quinn-proto` repair.
 Keep both pinned sources synchronized through the root transport Cargo lock.
 Do not claim reduced latency from submission time alone: compare complete-frame
 receive and concurrent interaction delivery against .53 before live acceptance.
+
+The initial uninstalled .54 candidate used sixteen packets. Its concurrent
+control stress test showed worse worst-case delays; .55 tests the smaller
+four-packet bound before deciding whether batching should be deployed at all.

@@ -39,7 +39,7 @@ async fn main() {
     let args: Vec<_> = std::env::args().collect();
     assert_eq!(args.len(), 3);
     let (_ce, _se, client, server) = pair(&args[1], &args[2], true).await;
-    for count in [0usize, 1, 15, 16, 17, 65] {
+    for count in [0usize, 1, 3, 4, 5, 15, 16, 17, 65] {
         let packets: Vec<_> = (0..count).map(|i| Bytes::from(format!("packet-{count}-{i}"))).collect();
         client.send_datagram_batch(&packets).unwrap();
         let expected: std::collections::HashSet<_> = packets.into_iter().collect();
