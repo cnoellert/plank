@@ -22,8 +22,8 @@ cd "$source_root"
 shasum -a 256 host/macos/input/input-events.{h,m} tests/input/macos-input-events.m
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/input -Iprotocol/plank-transport/include \
-    host/macos/input/input-events.m tests/input/macos-input-events.m \
-    -framework Foundation -framework CoreGraphics -framework Carbon \
+    host/macos/input/input-events.m host/macos/input/quartz-input.m tests/input/macos-input-events.m \
+    -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit -framework ApplicationServices \
     -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null -o "$output/input-events"
 "$output/input-events"
 shasum -a 256 "$output/input-events"

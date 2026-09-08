@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Constructs/inspects Quartz events only. Never posts or records OS input.
 #import "input-events.h"
+#import "quartz-input.h"
 #include "plank_transport_input.h"
 #include <math.h>
 #include <unistd.h>
@@ -111,6 +112,42 @@ int main(void) {
             CFRelease(event);
         }
         send(mapper, 3, packet((uint8_t[]){0, 0}, 2), PLANKMacInputNoEvent);
+        // Exact measured OS slider positions, odd persisted values, and safe
+        // fallbacks. Never read or modify the test account's OS preferences.
+        double positions[] = {0, 0.0735, 0.1265, 0.1838, 0.3125, 0.4412, 0.5882, 1};
+        CHECK(PLANKMacScrollLinesForPreference(NULL) == 1);
+        CHECK(PLANKMacScrollLinesForPreference(kCFBooleanTrue) == 1);
+        CHECK(PLANKMacScrollLinesForPreference(CFSTR("1")) == 1);
+        CHECK(PLANKMacScrollLinesForPreference((__bridge CFTypeRef)@(NAN)) == 1);
+        CHECK(PLANKMacScrollLinesForPreference((__bridge CFTypeRef)@(INFINITY)) == 1);
+        CHECK(PLANKMacScrollLinesForPreference((__bridge CFTypeRef)@(-2)) == 1);
+        CHECK(PLANKMacScrollLinesForPreference((__bridge CFTypeRef)@(2)) == 8);
+        for (unsigned step = 0; step < 8; ++step) {
+            double lines = PLANKMacScrollLinesForPreference((__bridge CFTypeRef)@(positions[step]));
+            CHECK(fabs(lines - (step + 1)) < 1e-9);
+            if (step) {
+                double between = (positions[step - 1] + positions[step]) / 2;
+                CHECK(fabs(PLANKMacScrollLinesForPreference((__bridge CFTypeRef)@(between)) - (step + 0.5)) < 1e-9);
+            }
+            mapper.scrollLinesPerNotch = ^double { return lines; };
+            for (unsigned axis = 0; axis < 2; ++axis) for (unsigned a = 0; a < 8; ++a) {
+                uint8_t p[2]; plank_transport_input_write_u16(p, (uint16_t)amounts[a]);
+                event = send(mapper, axis ? 4 : 3, packet(p, 2), PLANKMacInputEvent);
+                double expected = amounts[a] / 120.0 * lines;
+                CHECK(CGEventGetIntegerValueField(event, axis ? kCGScrollWheelEventDeltaAxis2 : kCGScrollWheelEventDeltaAxis1) == (int64_t)expected);
+                CHECK(fabs(CGEventGetDoubleValueField(event, axis ? kCGScrollWheelEventFixedPtDeltaAxis2 : kCGScrollWheelEventFixedPtDeltaAxis1) - expected) < 1.0 / 65536);
+                CHECK(CGEventGetIntegerValueField(event, axis ? kCGScrollWheelEventPointDeltaAxis2 : kCGScrollWheelEventPointDeltaAxis1) == llround(expected * 10));
+                CFRelease(event);
+            }
+        }
+        // Invalid providers cannot reverse, disable, or amplify scrolling.
+        for (NSNumber *invalid in @[@(NAN), @(INFINITY), @0, @(-1), @9]) {
+            mapper.scrollLinesPerNotch = ^double { return invalid.doubleValue; };
+            event = send(mapper, 3, packet((uint8_t[]){120, 0}, 2), PLANKMacInputEvent);
+            CHECK(CGEventGetDoubleValueField(event, kCGScrollWheelEventFixedPtDeltaAxis1) == 1);
+            CFRelease(event);
+        }
+        mapper.scrollLinesPerNotch = nil;
         // Explicit expected public Mac keycodes (not reusing mapper's table).
         unsigned vk[] = {0x41, 0x5a, 0x30, 0x31, 0x60, 0x69, 0x70, 0x83,
             0x08, 0x09, 0x0d, 0x1b, 0x25, 0x28, 0xba, 0xde};

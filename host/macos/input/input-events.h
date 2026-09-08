@@ -17,6 +17,9 @@ typedef NS_ENUM(NSInteger, PLANKMacInputResult) {
 // The owner calls on one serial queue, inside its authorized delivery boundary,
 // and destroys/recreates the mapper when the captured topology changes.
 @interface PLANKMacInputEvents : NSObject
+// Local, nonblocking cached policy supplied by the graphical owner. Invoked
+// only for validated nonzero scroll input; nil keeps the one-line baseline.
+@property(nonatomic, copy) double (^scrollLinesPerNotch)(void);
 // Bounds are global Quartz points; pixels are the captured display's physical
 // pixels, not a client window size or a guessed Retina scale. Source is retained.
 - (instancetype)initWithSource:(CGEventSourceRef)source bounds:(CGRect)bounds

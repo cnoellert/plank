@@ -14,3 +14,7 @@
 // helper, permission bypass, global event tap or private capture API.
 @interface PLANKMacQuartzInput : NSObject <PLANKMacInputDevice>
 @end
+
+// Bounded product response to the OS acceleration preference, not Apple's
+// hardware acceleration curve. Exposed for non-posting qualification only.
+double PLANKMacScrollLinesForPreference(CFTypeRef value);

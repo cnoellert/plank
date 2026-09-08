@@ -196,13 +196,16 @@ typedef struct {
             // 120 protocol units = one wheel notch/line. Fixed-point fields
             // preserve high-resolution sub-notch input instead of truncating it.
             BOOL horizontal = type == PLANK_TRANSPORT_INPUT_HORIZONTAL_SCROLL;
+            double scale = self.scrollLinesPerNotch ? self.scrollLinesPerNotch() : 1;
+            if (!isfinite(scale) || scale < 1 || scale > 8) scale = 1;
+            double lines = amount / 120.0 * scale;
             event = CGEventCreateScrollWheelEvent(_source, kCGScrollEventUnitLine, 2, 0, 0);
             if (event) {
                 CGEventSetLocation(event, _state.position);
-                CGEventSetIntegerValueField(event, horizontal ? kCGScrollWheelEventDeltaAxis2 : kCGScrollWheelEventDeltaAxis1, amount / 120);
-                CGEventSetDoubleValueField(event, horizontal ? kCGScrollWheelEventFixedPtDeltaAxis2 : kCGScrollWheelEventFixedPtDeltaAxis1, amount / 120.0);
+                CGEventSetIntegerValueField(event, horizontal ? kCGScrollWheelEventDeltaAxis2 : kCGScrollWheelEventDeltaAxis1, (int64_t)lines);
+                CGEventSetDoubleValueField(event, horizontal ? kCGScrollWheelEventFixedPtDeltaAxis2 : kCGScrollWheelEventFixedPtDeltaAxis1, lines);
                 CGEventSetIntegerValueField(event, horizontal ? kCGScrollWheelEventPointDeltaAxis2 : kCGScrollWheelEventPointDeltaAxis1,
-                    llround(amount / 120.0 * CGEventSourceGetPixelsPerLine(_source)));
+                    llround(lines * CGEventSourceGetPixelsPerLine(_source)));
             }
             break;
         }

@@ -1,8 +1,46 @@
 # Native Mac input qualification
 
 Experimental macOS/SDK 27 components, integrated with the authenticated A/V
-capture owner but not the ordinary Client. Linux input and shared wire types are
+capture owner and ordinary Ubuntu Client. Linux input and shared wire types are
 unchanged. General desktop keyboard/mouse is the scope; Wacom comes later.
+
+## Mac scroll-speed preference (1.0.43 candidate)
+
+The operator measured all eight Pointer Control Scroll Speed positions on
+macOS 27 beta 26A5425a. The current-user global preference
+`com.apple.scrollwheel.scaling` has these values:
+
+| Slider position | Stored value | PLANK lines per wheel notch |
+| --- | --- | --- |
+| 1 / Slow | 0 | 1 |
+| 2 | 0.0735 | 2 |
+| 3 | 0.1265 | 3 |
+| 4 | 0.1838 | 4 |
+| 5 | 0.3125 | 5 |
+| 6 | 0.4412 | 6 |
+| 7 | 0.5882 | 7 |
+| 8 / Fast | 1 | 8 |
+
+These output distances are PLANK policy, not a measurement or reproduction of
+Apple's velocity-dependent HID acceleration. Intermediate persisted values are
+interpolated; finite values outside the observed range clamp to the endpoints.
+Missing/non-numeric/non-finite values retain one-line baseline behavior. The
+legacy `com.apple.driver.AppleHIDMouse` ScrollS setting did not change with this
+slider and is not a second configuration source. No PLANK UI setting is added.
+
+Each input mapper owns a cached preference reader. It initially refreshes and
+then requests at most one read per second during active scrolling, using an
+existing system dispatch worker; no polling timer or dedicated thread runs
+while idle. CFPreferences synchronization/read is outside the event delivery
+path and authorization lock. Scrolling uses the last cached value immediately;
+the first event after an idle preference change can still use the previous
+value. Preference-read failure retains the cache. No user preference is written.
+The same scale applies to line, fractional and point fields on both axes;
+button, pointer, key, modifier, capture and transport paths are unchanged.
+
+The read-only `probes/macos/scroll-preference.m` watcher confirmed that the same
+process observes Slow-to-Fast changes without restart. Application feel and
+final macOS 27 release behavior still require qualification.
 
 ## Boundary
 
