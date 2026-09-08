@@ -39,12 +39,14 @@ int main(int argc, char** argv)
         CHECK(NvOutputTopology::supportsDescription(
                     NvHTTP::getXmlString(info, "PlankTopologyVersion").toInt(),
                     NvHTTP::getXmlString(info, "PlankFeatureFlags").toInt()));
-        const QString token = http.authenticate(QString::fromLocal8Bit(argv[3]), QString::fromUtf8(password));
+        bool greeter = false;
+        const QString token = http.authenticate(QString::fromLocal8Bit(argv[3]), QString::fromUtf8(password), &greeter);
         password.fill('\0'); password.clear();
         http.setPlankSessionToken(token);
         if (argc == 5) {
-            const auto prepared = http.prepareMacDisplay(QString::fromLocal8Bit(argv[4]));
+            const auto prepared = http.prepareMacDisplay(QString::fromLocal8Bit(argv[4]), greeter);
             CHECK(prepared.displayPolicyKnown());
+            if (greeter) CHECK(prepared.desktopWidth == 1920 && prepared.desktopHeight == 1080);
         }
         CHECK(NvHTTP::getXmlString(http.getServerInfo(NvHTTP::NVLL_NONE), "PairStatus") == "1");
         NvHTTP anonymous(http.address());
@@ -119,10 +121,19 @@ int main(int argc, char** argv)
             CHECK(result == PLANK_TRANSPORT_OK || result == PLANK_TRANSPORT_TIMEOUT);
             if (result == PLANK_TRANSPORT_OK) {
                 CHECK(video.codec == PLANK_TRANSPORT_NATIVE_VIDEO_CODEC_HEVC && count > 0);
-                if (lastFrameNumber && video.frame_number != lastFrameNumber + 1)
+                if (lastFrameNumber && video.frame_number != lastFrameNumber + 1) {
                     std::fprintf(stderr, "native_frame_gap previous=%llu current=%llu key=%u\n",
                         static_cast<unsigned long long>(lastFrameNumber),
                         static_cast<unsigned long long>(video.frame_number), video.flags);
+                    PlankTransportNativeStats stats {}; stats.struct_size = sizeof(stats);
+                    if (plank_transport_native_endpoint_stats(raw, &stats) == PLANK_TRANSPORT_OK)
+                        std::fprintf(stderr, "native_gap_counters receive_drops=%llu kyproto_drops=%llu source=%llu missing=%llu unrecovered=%llu\n",
+                            static_cast<unsigned long long>(stats.video_receive_drops),
+                            static_cast<unsigned long long>(stats.kyproto_packets_dropped),
+                            static_cast<unsigned long long>(stats.video_fec_source_symbols),
+                            static_cast<unsigned long long>(stats.video_fec_source_symbols_missing),
+                            static_cast<unsigned long long>(stats.video_fec_source_symbols_unrecovered));
+                }
                 lastFrameNumber = video.frame_number;
                 CHECK(!frames || video.pts > lastPTS);
                 lastPTS = video.pts; ++frames;
