@@ -79,11 +79,28 @@ impl TransportRatePolicy {
     }
 
     pub fn active_wire_bps(&self) -> u64 {
-        video_to_wire_bps(self.active_peak_video_bps.load(Ordering::Acquire))
+        let budget = video_to_wire_bps(self.active_peak_video_bps.load(Ordering::Acquire));
+        // Authorized experiment: decouple the window budget from the encoder
+        // target without enlarging any queue or changing the actual encoder.
+        #[cfg(all(feature = "macos-fast-send", target_os = "macos"))]
+        let budget = budget.max(1_000_000_000);
+        budget
     }
 
     pub fn pacer(&self) -> Arc<DatagramPacer> {
         self.pacer.clone()
+    }
+
+    pub fn outgoing_pacer(&self) -> Option<Arc<DatagramPacer>> {
+        #[cfg(all(feature = "macos-fast-send", target_os = "macos"))]
+        {
+            eprintln!("PLANK sender experiment: application-pacer=off controller-budget-floor-bps=1000000000");
+            None
+        }
+        #[cfg(not(all(feature = "macos-fast-send", target_os = "macos")))]
+        {
+            Some(self.pacer())
+        }
     }
 
     pub fn set_requested_video_bps(&self, requested_video_bps: u64, peak_video_bps: u64) {
@@ -220,6 +237,24 @@ mod tests {
     fn wire_budget_includes_fixed_raptorq_and_packet_overhead() {
         assert_eq!(video_to_wire_bps(100_000_000), 136_000_000);
         assert_eq!(video_to_wire_bps(150_000_000), 203_500_000);
+    }
+
+    #[test]
+    fn combined_experiment_does_not_change_encoder_target() {
+        let policy = TransportRatePolicy::new(50_000_000);
+        policy.set_requested_video_bps(50_000_000, 100_000_000);
+        assert_eq!(policy.requested_video_bps(), 50_000_000);
+        assert_eq!(policy.active_video_bps(), 50_000_000);
+        #[cfg(all(feature = "macos-fast-send", target_os = "macos"))]
+        {
+            assert_eq!(policy.active_wire_bps(), 1_000_000_000);
+            assert!(policy.outgoing_pacer().is_none());
+        }
+        #[cfg(not(all(feature = "macos-fast-send", target_os = "macos")))]
+        {
+            assert_eq!(policy.active_wire_bps(), 136_000_000);
+            assert!(policy.outgoing_pacer().is_some());
+        }
     }
 
     #[test]

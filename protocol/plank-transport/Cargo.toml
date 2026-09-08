@@ -13,6 +13,8 @@ default = []
 quinn-bbr = ["quinn-proto/plank-bbr-default"]
 quinn-telemetry = ["quinn-proto/plank-telemetry"]
 sender-timing = ["kynet/sender-timing", "kyproto/sender-timing"]
+# Temporary combined experiment; ordinary Linux/Mac builds are unchanged.
+macos-fast-send = ["sender-timing"]
 
 [dependencies]
 anyhow = "1.0"

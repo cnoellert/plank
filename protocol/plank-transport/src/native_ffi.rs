@@ -911,7 +911,7 @@ async fn run_server(
         congestion_controller_factory: Some(PlankRateControllerFactory::new(
             shared.rate_policy.clone(),
         )),
-        datagram_pacer: Some(shared.rate_policy.pacer()),
+        datagram_pacer: shared.rate_policy.outgoing_pacer(),
     };
     let server = kynet::Connection::start_server_on_addr(
         bind_address,
@@ -961,7 +961,7 @@ async fn run_setup_server(
         congestion_controller_factory: Some(PlankRateControllerFactory::new(
             shared.rate_policy.clone(),
         )),
-        datagram_pacer: Some(shared.rate_policy.pacer()),
+        datagram_pacer: shared.rate_policy.outgoing_pacer(),
     };
     let server = kynet::Connection::start_server_on_addr(
         bind_address,

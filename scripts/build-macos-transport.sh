@@ -41,6 +41,11 @@ if [[ ${PLANK_MACOS_SENDER_TIMING:-0} == 1 ]]; then
 elif [[ ${PLANK_MACOS_SENDER_TIMING:-0} != 0 ]]; then
     echo 'PLANK_MACOS_SENDER_TIMING must be 0 or 1' >&2; exit 2
 fi
+if [[ ${PLANK_MACOS_FAST_SEND:-0} == 1 ]]; then
+    features=(--features macos-fast-send)
+elif [[ ${PLANK_MACOS_FAST_SEND:-0} != 0 ]]; then
+    echo 'PLANK_MACOS_FAST_SEND must be 0 or 1' >&2; exit 2
+fi
 cargo +1.89.0 build --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
 cargo +1.89.0 test --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
 shasum -a 256 "$transport_build/release/libplank_transport.a"
