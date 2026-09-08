@@ -101,6 +101,8 @@ int main(void) {
             measurements.format.mChannelsPerFrame != 2 || measurements.format.mBitsPerChannel != 32 ||
             !(measurements.format.mFormatFlags & kAudioFormatFlagIsFloat) ||
             (measurements.format.mFormatFlags & kAudioFormatFlagIsBigEndian) ||
+            measurements.format.mBytesPerFrame !=
+                ((measurements.format.mFormatFlags & kAudioFormatFlagIsNonInterleaved) ? 4u : 8u) ||
             !isfinite(measurements.format.mSampleRate) || measurements.format.mSampleRate <= 0) goto cleanup;
         {
             NSDictionary* specification = @{
@@ -121,7 +123,11 @@ int main(void) {
         status = AudioDeviceStart(aggregate, proc);
         if (status) { printf("io_start_status=%d\n", (int)status); goto cleanup; }
         started = YES;
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10, false);
+        {
+            CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + 10;
+            while (CFAbsoluteTimeGetCurrent() < deadline)
+                CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false);
+        }
         result = 0;
 cleanup:
         if (started) {
@@ -144,11 +150,11 @@ cleanup:
             printf("tap_destroy_status=%d\n", (int)status);
             if (status) result = 1;
         }
+        if (!measurements.callbacks || measurements.invalid) result = 1;
         printf("tap_probe callbacks=%llu frames=%llu invalid=%llu chunk_min=%u chunk_max=%u max_rms=%.6f sample_gap_frames=%.3f host_gap_us=%.3f max_age_ms=%.3f result=%d\n",
             (unsigned long long)measurements.callbacks, (unsigned long long)measurements.frames,
             (unsigned long long)measurements.invalid, measurements.minFrames, measurements.maxFrames,
             measurements.maxRMS, measurements.maxSampleGap, measurements.maxHostGapUs, measurements.maxAgeMs, result);
-        if (!measurements.callbacks || measurements.invalid) result = 1;
         return result;
     }
 }

@@ -38,6 +38,16 @@ ScreenCaptureKit video, VideoToolbox, transport, Opus and the Client remain inta
 
 ## Current state
 
-Standalone probe and build script prepared. No production code, installed Host,
-saved audio settings or permissions have been changed. The probe has not yet
-qualified capture, muting, crash cleanup or synchronization.
+Standalone probe and build script prepared. The first clean Mac worktree at
+`e86bbf4` compiled with macOS SDK/deployment 27 and warnings-as-errors. Apple
+Development signing failed with `errSecInternalComponent`; an independent
+keychain settings query reported `User interaction is not allowed`. The operator
+has been asked to unlock the existing login signing keychain locally. Do not
+reset permissions, create a replacement signing identity, or copy credentials.
+
+No production code, installed Host, saved audio settings or permissions have
+been changed. The probe has not run and has not qualified capture, muting, crash
+cleanup or synchronization. The follow-up probe source adds an explicit duration
+loop, verifies bytes per frame and reports failed zero-callback runs correctly;
+rebuild that exact source after keychain unlock, rather than treating the first
+unsigned executable as the current probe.
