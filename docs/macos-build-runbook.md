@@ -14,6 +14,12 @@ the app payload at `/Applications/PLANK Host.app` and three system launchd
 entries. Bash pre/post-install scripts create administrator configuration,
 private identity and logs. Private state is not a payload and survives uninstall.
 There is no compiled installer helper or persistent installation service.
+All three launchd definitions must carry `AssociatedBundleIdentifiers` pointing
+to `la.instinctual.PLANK.Host`. Otherwise Background App Activity falls back to
+the signing certificate's publisher name rather than PLANK Host. Keep the
+development installer consistent. Package tests check the association against
+the app Info.plist; no certificate rename, TCC reset or global BTM reset is
+needed. Verify the displayed grouping after an actual package upgrade.
 
 Export `PLANK_BUILD_BRANCH`, `PLANK_MACOS_SIGNING_IDENTITY` (Developer ID
 Application SHA-1), `PLANK_MACOS_INSTALLER_IDENTITY` (Developer ID Installer

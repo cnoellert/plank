@@ -327,6 +327,7 @@ def main():
     agent_path = Path("/Library/LaunchAgents") / (graphical_label + ".plist")
     sign_in_path = Path("/Library/LaunchAgents") / (sign_in_label + ".plist")
     for path, content in ((machine_path, machine), (agent_path, graphical), (sign_in_path, sign_in)):
+        content["AssociatedBundleIdentifiers"] = ["la.instinctual.PLANK.Host"]
         assert not path.is_symlink()
         path.write_bytes(plistlib.dumps(content))
         os.chmod(path, 0o644)

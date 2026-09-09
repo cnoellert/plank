@@ -80,6 +80,10 @@ if [[ $(uname -s) = Darwin ]]; then
         /usr/bin/plutil -lint "$plist" >/dev/null
         [[ $(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:0' "$plist") = "$executable" ]]
         ok
+        [[ $(/usr/bin/plutil -extract AssociatedBundleIdentifiers raw -expect array "$plist") = 1 ]]
+        [[ $(/usr/bin/plutil -extract AssociatedBundleIdentifiers.0 raw -expect string "$plist") = \
+           "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$root/packaging/macos/host-info.plist")" ]]
+        ok
     done
 fi
 
