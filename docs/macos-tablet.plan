@@ -1,14 +1,17 @@
 # macOS tablet input and embedded cursor
 
 Branch: `macos-tablet` (Client `plank/macos-tablet`), based on main80acb10.
-Keep Linux raw-HID/normalized-pen behavior unchanged. No code is deployed yet.
+Keep Linux raw-HID/normalized-pen behavior unchanged. Candidate1.0.79 is now
+installed on the dedicated Mac after the user disconnected; Client install is manual.
 
 Implementation checkpoint: native mapper and schema2 launch negotiation are now
 implemented for candidate1.0.79-macos-tablet. Shared type7 payload/common-c and
 transport archive are unchanged. Mac mapper tests pass775 checks, keyboard/mouse
 suite2567 checks, real QUIC/auth-input suite200 checks/eight scenarios. Side
 buttons and tip multi-click are retained, with per-event revocation rollback.
-Full package builds and user pressure/cursor acceptance are still pending.
+Clean package builds passed from rootcf40262/Clientde18b22d. Both artifacts are
+in `artifacts/packages/`. User pressure/cursor acceptance and Linux live regression
+remain open. No merge or push has been performed.
 
 1. Fix embedded-session cursor visibility. SDL3.4.2's Wayland ShowCursor
    implementation uses `mouse->cur_cursor` for tablet tools even when passed
@@ -38,8 +41,8 @@ the user deferred further alert-startup investigation. Do not modify that path.
 
 - Client transparent-cursor unit passes on linux-client-builder with SDL3.4.2 headers:
   100 hide/show cycles, one allocation, failure handling, teardown restoration,
-  unused helper makes no SDL calls. It is now a package-build gate. Full Client
-  compilation and real Wayland/Wacom acceptance remain pending.
+  unused helper makes no SDL calls. Full Client compilation and package gates pass;
+  real Wayland/Wacom acceptance remains pending.
 - SDK27 warnings-as-errors pressure probe passes six construction inspections.
   Signed own-process Aqua delivery passes all six events (mask63): proximity
   enter/exit, down(.25), drag(.75), drag(.50), up(0). No permission changes,
@@ -55,6 +58,6 @@ the user deferred further alert-startup investigation. Do not modify that path.
   dedicated Mac and run `run-graphical-probe.sh gui/UID ... --tablet-pressure`.
   Normal launch has no test mode. Runner refuses LoginWindow and cleans its job.
 - The temporary Probe application was moved out of Applications after testing;
-  no previous Probe was installed. The existing Host remains1.0.78 unchanged.
-  Next: implement native pen state/validation and feature negotiation, then real
-  pressure-sensitive-app and Client cursor tests. Do not advertise pen yet.
+  no previous Probe was installed. Host stayed1.0.78 during those probes. The
+  subsequent native mapper/negotiation implementation is now candidate1.0.79.
+  Next: user pressure-sensitive-app, cursor, toolbar and reconnect tests.
