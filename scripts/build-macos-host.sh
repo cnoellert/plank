@@ -20,6 +20,10 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
 # Only this non-posting fixture uses the console bootstrap; the build/signing
 # remain under the build account. Never skip the test or change TCC to run it.
 console_uid=$(/usr/bin/stat -f %u /dev/console)
+if [[ $console_uid = 0 ]]; then
+    echo 'The non-posting graphics fixture needs a logged-in desktop on the development Mac. Log in, then rebuild.' >&2
+    exit 1
+fi
 if [[ $console_uid = "$(id -u)" ]]; then
     "$output/pen-events-test"
 else
