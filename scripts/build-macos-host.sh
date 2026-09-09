@@ -15,7 +15,17 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/input -Iprotocol/plank-transport/include \
     host/macos/input/input-events.m tests/input/macos-pen-events.m \
     -framework Foundation -framework CoreGraphics -framework Carbon -o "$output/pen-events-test"
-"$output/pen-events-test"
+# CGEventSourceCreate needs access to WindowServer even though this fixture
+# never posts events. SSH from a different account cannot obtain that source.
+# Only this non-posting fixture uses the console bootstrap; the build/signing
+# remain under the build account. Never skip the test or change TCC to run it.
+console_uid=$(/usr/bin/stat -f %u /dev/console)
+if [[ $console_uid = "$(id -u)" ]]; then
+    "$output/pen-events-test"
+else
+    echo "Checking non-posting pen fixture in console bootstrap UID $console_uid"
+    sudo -n /bin/launchctl asuser "$console_uid" "$output/pen-events-test"
+fi
 xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/session tests/auth/macos-permission-status.c -o "$output/permission-status-test"
 "$output/permission-status-test"

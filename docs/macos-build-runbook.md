@@ -72,6 +72,15 @@ Omitting `-target /` returns failure even when the package is valid.
 
 ## Native Host executable and application
 
+The non-posting pen construction fixture needs a WindowServer connection.
+If the SSH build account differs from `/dev/console`'s owner,
+`CGEventSourceCreate` may return NULL (`pen failure line28: source`), including
+for an unchanged previously passing binary. Authenticate `sudo -v` in the build
+TTY before starting; the runner uses `sudo -n launchctl asuser CONSOLE_UID`
+only for this fixture. Compilation and signing remain unprivileged. It posts
+no input and changes no TCC settings or services. Do not skip the test, change
+the console login, or rebuild dependencies to work around the session boundary.
+
 ### Non-prompting permission qualification
 
 Follow `macos-provisioning.plan`. The installed signed Host supports
