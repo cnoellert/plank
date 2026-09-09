@@ -103,6 +103,16 @@ declaring this complete. Actual all-user login/logout and reboot remain live
 gates; no automatic login/logout/reboot is authorized by these implementation
 steps.
 
+1.0.77-macos-system-provisioning clean signed build and component qualification
+passed on the dedicated Mac. Its17 Python checks include launchd timeout/error
+handling, signature preservation, key-only reinstall, uninstaller target
+validation and GUI-domain selection. Native first-run tests use the production
+filesystem/crypto module. macOS reports125 for unavailable GUI domains and
+refuses inspection of inactive LoginWindow; the installer recognizes only that
+specific GUI condition and independently waits for root graphical process exit.
+Generic permission errors fail closed. Installation and actual uninstall/reinstall
+are pending the user's disconnect; the active1.0.74 stream was not interrupted.
+
 ## Phase 3 — durable deployment
 
 Evaluate approved Persistent Content Capture and optional managed PostEvent
