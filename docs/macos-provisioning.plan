@@ -110,8 +110,13 @@ validation and GUI-domain selection. Native first-run tests use the production
 filesystem/crypto module. macOS reports125 for unavailable GUI domains and
 refuses inspection of inactive LoginWindow; the installer recognizes only that
 specific GUI condition and independently waits for root graphical process exit.
-Generic permission errors fail closed. Installation and actual uninstall/reinstall
-are pending the user's disconnect; the active1.0.74 stream was not interrupted.
+Generic permission errors fail closed. After the user's explicit disconnect,
+installation and actual uninstall/reinstall passed on development-mac. The app and three
+launch entries/listener disappeared during uninstall, then the identical signed
+candidate returned. Config, role/user identity-file metadata and log inodes were
+preserved. Actual signed Aqua preflights passed after both installs. User's live
+desktop/audio and logout/login account-switch test remain next; no automatic
+login/logout/reboot or permission change occurred.
 
 ## Phase 3 — durable deployment
 

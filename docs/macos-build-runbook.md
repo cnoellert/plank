@@ -72,8 +72,14 @@ It drains the same jobs, removes only verified PLANK system launch entries,
 and moves the app to a printed root-only recovery directory in `/Library/Caches`.
 Configuration, identities and logs remain for reinstall; no TCC reset or user
 account removal. This is Python3-based development tooling, not a notarized
-production installer/uninstaller. Do not claim uninstall validation until the
-dedicated-Mac uninstall/reinstall test passes.
+production installer/uninstaller. The1.0.77 dedicated-Mac install/uninstall/
+reinstall test passed. Repeat after lifecycle changes using
+`tests/auth/macos-install-uninstall.py --source CLEAN_SOURCE --app SIGNED_APP
+--sha256 EXECUTABLE_SHA256`; add explicit `--retire-user-agent USER` only when
+upgrading a prior per-user development job. The operator must disconnect first.
+The fixture records no private-key contents; it checks identity metadata,
+configuration, logs, signatures, actual Aqua preflights and listener removal/
+restoration. It deliberately does not log out, reboot or qualify live media.
 
 For LoginWindow candidates, run
 `python3 tests/auth/test-macos-development-install.py` and the Client's
