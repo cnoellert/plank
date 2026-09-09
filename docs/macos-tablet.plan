@@ -10,8 +10,11 @@ transport archive are unchanged. Mac mapper tests pass775 checks, keyboard/mouse
 suite2567 checks, real QUIC/auth-input suite200 checks/eight scenarios. Side
 buttons and tip multi-click are retained, with per-event revocation rollback.
 Clean package builds passed from rootcf40262/Clientde18b22d. Both artifacts are
-in `artifacts/packages/`. User pressure/cursor acceptance and Linux live regression
-remain open. No merge or push has been performed.
+in `artifacts/packages/`. User reports working pressure in Pixelmator and accepts
+the candidate, explicitly authorizing commit, push and merge. The browser tester
+still reports 0/50% (browser unspecified); browser pressure is not qualified.
+A separate Linux live regression run and detailed button/cursor matrix were not
+performed; do not infer those results from the overall user acceptance.
 
 1. Fix embedded-session cursor visibility. SDL3.4.2's Wayland ShowCursor
    implementation uses `mouse->cur_cursor` for tablet tools even when passed
@@ -31,8 +34,10 @@ remain open. No merge or push has been performed.
    selects one source, with no duplicate mouse synthesis. Preserve local toolbar,
    letterbox and timeout pointer behavior; test layout changes and reconnects.
 5. Build on the designated Mac/linux-client-builder; user installs End-User Client.
-   Require real pressure-sensitive application acceptance plus Linux regression
-   checks before merge. No Tablet Margins/ExpressKeys/ring support in this scope.
+   Record real pressure-sensitive application acceptance and Linux regression
+   coverage separately. User authorized merging after Pixelmator acceptance;
+   Linux live checks remain unperformed. No Tablet Margins/ExpressKeys/ring
+   support in this scope.
 
 No fixed30s audio startup delay was found in the earlier read-only inspection;
 the user deferred further alert-startup investigation. Do not modify that path.
@@ -42,7 +47,7 @@ the user deferred further alert-startup investigation. Do not modify that path.
 - Client transparent-cursor unit passes on linux-client-builder with SDL3.4.2 headers:
   100 hide/show cycles, one allocation, failure handling, teardown restoration,
   unused helper makes no SDL calls. Full Client compilation and package gates pass;
-  real Wayland/Wacom acceptance remains pending.
+  user native-app acceptance is recorded above, without a separate cursor matrix.
 - SDK27 warnings-as-errors pressure probe passes six construction inspections.
   Signed own-process Aqua delivery passes all six events (mask63): proximity
   enter/exit, down(.25), drag(.75), drag(.50), up(0). No permission changes,
@@ -60,4 +65,5 @@ the user deferred further alert-startup investigation. Do not modify that path.
 - The temporary Probe application was moved out of Applications after testing;
   no previous Probe was installed. Host stayed1.0.78 during those probes. The
   subsequent native mapper/negotiation implementation is now candidate1.0.79.
-  Next: user pressure-sensitive-app, cursor, toolbar and reconnect tests.
+  User subsequently accepted native pressure in Pixelmator. Browser pressure
+  remains an optional follow-up, not a reason to modify the accepted path.

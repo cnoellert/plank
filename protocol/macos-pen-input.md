@@ -12,7 +12,8 @@ and rotation are validated but not injected in this initial pressure-only scope.
 Button bits are conveyed in Quartz tablet metadata and paired mouse events:
 primary barrel button maps to right, secondary to middle, tertiary to button4.
 Tip multi-click uses the same OS double-click interval as mouse handling.
-Live application/button acceptance remains pending. No Tablet Margins claim.
+User accepted native pressure behavior in Pixelmator on September 9, 2026.
+No separate button matrix or Tablet Margins claim.
 
 Normalized coordinates map through the captured display's current global Quartz
 point bounds and physical pixel dimensions, including negative origins/Retina.
@@ -27,5 +28,7 @@ must not create a phantom held tip. No permission prompt or authorization bypass
 
 Qualification: synthetic own-process AppKit pressure/proximity passes, production
 mapper validation/geometry tests are in `tests/input/macos-pen-events.m`. Real
-Wacom input, pressure-sensitive application behavior, session cleanup and Linux
-input regressions remain release gates. See `docs/macos-tablet.plan`.
+Wacom pressure in Pixelmator has user acceptance; the browser tester's 0/50%
+result does not qualify browser pressure support. Detailed session cleanup and
+Linux live input regression checks were not rerun for this candidate. See
+`docs/macos-tablet.plan` for coverage and limitations.
