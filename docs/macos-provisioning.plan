@@ -1,0 +1,109 @@
+# macOS one-time provisioning and durable access
+
+Date: 2026-09-08. Branch: `macos-provisioning`.
+
+## Objective and boundaries
+
+An administrator installs and approves PLANK once, then ordinary authorized
+desktop users and OS updates do not unexpectedly strand the headless Mac.
+This is a goal to qualify, not a claim that macOS grants all consent machine-wide.
+Keep ScreenCaptureKit, VideoToolbox, existing audio ownership, graphical-scope
+checks and remote account authorization unchanged. No privacy-database edits,
+SIP changes, automatic consent clicks, automatic login, reboot or root desktop
+capture fallback. The reference PCoIP Mac remains read-only.
+
+## Evidence before implementation
+
+- Current development installation provisions one explicitly named desktop
+  account. Other users have neither the desktop LaunchAgent nor a private
+  identity prepared. Missing startup must not be diagnosed as denied consent.
+- Current app uses `la.instinctual.PLANK.Host` with Apple Development signing.
+  An upgrade must preserve the designated requirement and Team ID, not pin the
+  changing binary hash. An intentional Developer ID transition is a separate
+  approval/qualification step. No notarized-distribution claim yet.
+- Installed PCoIP 26.05.3 has a root recovery service. Read-only binary inspection
+  found OS-update checks, missing login/lock-screen plugin detection, auth-plugin
+  reinstallation and a wait-for-reboot state. This supports repair of login
+  integration, not proof that it grants fresh TCC consent. HP's
+  [26.05.1 notes](https://anyware.hp.com/components/graphics-agent-for-macos/26.05.1/release-notes)
+  describe automatic OS-update recovery without documenting its full mechanism.
+- Apple's current [PPPC schema](https://github.com/apple/device-management/blob/release/mdm/profiles/com.apple.TCC.configuration-profile-policy.yaml)
+  disallows granting ScreenCapture through that payload, and says Accessibility
+  grants through it are removed in macOS 27. PostEvent is a separate policy.
+  Do not claim generic MDM enrollment solves every permission. The development
+  Mac currently has no MDM enrollment.
+- [Persistent Content Capture](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.persistent-content-capture)
+  requires Apple approval. Requesting this entitlement needs the account owner's
+  participation. Its documentation does not establish blanket initial consent,
+  cross-user approval, or audio/input rights. Do not add an unapproved entitlement.
+
+## Phase 1 — measure consent without granting it
+
+Add `--check-permissions` to the actual signed Host app. Emit version, UID,
+valid graphical context, ScreenCapture preflight, PostEvent preflight and
+Accessibility status. Readiness is screen/input only; audio-tap permission is
+explicitly `not-checked`. This opens no listener, captures no content, posts no
+input, creates no display/tap and makes no permission request. It is a point-in-
+time diagnostic, never a reusable authorization token. Exit 0 means all measured
+screen/input conditions pass; 3 means one or more do not; 2 means diagnostic error.
+
+Use a temporary Aqua launchd job for the installed signed executable in the
+actual target user's GUI domain. Plain SSH, `sudo -u`, or the root Background
+domain cannot establish another user's graphical readiness. Do not replace
+the app with a differently identified probe or infer consent from System
+Settings appearances. Preserve the working app until candidate signature and
+upgrade checks pass. A same-signature installation still needs a real check.
+
+Qualification matrix:
+
+1. Existing approved desktop: record preflights and confirm normal access.
+2. New standard account with no manually granted PLANK permissions: record the
+   same preflights before opening the permission-request UI.
+3. If denied, record exactly which permissions require approval; stop and ask
+   the operator. Do not invoke prompt APIs from background jobs.
+4. If approved, test real capture/input and same-user desktop audio separately.
+   Successful Boolean preflights are not proof of event delivery or audio.
+5. Logout/LoginWindow/new desktop/return to original account, then an
+   operator-controlled reboot. Never reuse a prior user's stream or TLS key.
+6. Same-identity app update; later, operator-scheduled OS update and final macOS
+   27 requalification. No automatic OS update or reboot in this task.
+
+## Phase 2 — system-wide product provisioning
+
+After the matrix establishes the permission behavior, replace the single-user
+startup arrangement with one root-owned Aqua LaunchAgent in
+`/Library/LaunchAgents`, alongside the existing LoginWindow agent. All desktop
+workers still run as their actual user; they do not inherit root capture/input.
+Use one root-owned public machine configuration for listener address/port/name/
+UUID. Generate each user's independent private TLS identity under that user's
+authority on first graphical startup; never copy the LoginWindow private key.
+Preserve administrator settings and identities on upgrade. No scanning every
+home directory, per-login privileged writes into homes, or extra watcher.
+
+Qualify different users, inactive/fast-switched sessions, locked accounts,
+ownership handoff, denied cross-account access, user-controlled path/symlink
+failures and shared configuration tampering before enabling all-user startup.
+Changing the LaunchAgent does not grant macOS privacy consent.
+
+## Phase 3 — durable deployment
+
+Evaluate approved Persistent Content Capture and optional managed PostEvent
+policy against the exact macOS 27 APIs we use. Keep any profile opt-in and
+derive code requirements from the signed product, not guessed bundle IDs.
+Provisioning UI must distinguish service health, permission denial and actual
+capture/input/audio readiness. Recheck locally after account/OS transitions;
+repair only PLANK-owned service registration/configuration when safe. Do not
+reset consent or blindly restart the ownership coordinator while an old
+graphical agent may retain resources. Maintain a separately qualified recovery
+path until unattended new-user/update tests pass.
+
+## Initial implementation gates
+
+- All 16 screen/input readiness combinations, including missing graphical
+  scope, fail closed except the fully permitted state.
+- Upgrade identity gate runs before state writes or service shutdown. Reject
+  ad-hoc signing, changed team/requirement, invalid signature and app symlinks.
+- Compile using SDK/deployment 27 and warnings-as-errors. Preserve whole signed
+  app bundle when checking it. No change to shared Linux or transport code.
+- Record actual machine tests and the next operator action in HANDOFF; never
+  advertise a preflight or unit test as full multi-user acceptance.

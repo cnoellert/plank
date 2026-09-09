@@ -22,6 +22,38 @@ def run(*args, check=True):
     return subprocess.run(args, check=check, capture_output=True, text=True, timeout=30)
 
 
+def signing_identity(app):
+    """Verify code before trusting its metadata; never silently reset TCC identity."""
+    if app.is_symlink() or not app.is_dir():
+        raise ValueError("Host application must be a real application directory")
+    run("codesign", "--verify", "--strict", str(app))
+    signature = run("codesign", "-d", "--verbose=4", str(app)).stderr
+    teams = re.findall(r"^TeamIdentifier=([A-Z0-9]{10})$", signature, re.MULTILINE)
+    if "Authority=Apple Development:" not in signature or len(teams) != 1:
+        raise ValueError("Development installer requires an Apple Development-signed Host")
+    detail = run("codesign", "-d", "-r-", str(app)).stderr
+    requirements = re.findall(r"^designated => (.+)$", detail, re.MULTILINE)
+    if len(requirements) != 1:
+        raise ValueError("Host has no unambiguous designated signing requirement")
+    return teams[0], requirements[0]
+
+
+def verify_upgrade_identity(source, installed):
+    """Fail before changing state or stopping services if consent identity changes.
+
+    An intentional transition to Developer ID distribution needs its own
+    administrator-approved provisioning/consent test, not an automatic bypass.
+    Equality is deliberately conservative; no CDHash/version pinning, so an
+    ordinary rebuild under the same signing requirement remains installable.
+    """
+    candidate = signing_identity(source)
+    if installed.exists() or installed.is_symlink():
+        current = signing_identity(installed)
+        if current != candidate:
+            raise ValueError("Host signing identity changed; preserving installed app and services. "
+                             "Qualify permission continuity before changing signer or designated requirement.")
+
+
 def prepare_sign_in_identity(private, public_config):
     """Root LoginWindow gets its own key, never a copy of the desktop key.
 
@@ -76,9 +108,8 @@ def main():
     info = plistlib.loads((source / "Contents/Info.plist").read_bytes())
     assert info["CFBundleIdentifier"] == "la.instinctual.PLANK.Host"
     assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z][a-z0-9.-]*)?", info["PLANKVersion"])
-    run("codesign", "--verify", "--strict", str(source))
-    signature = run("codesign", "-d", "--verbose=4", str(source)).stderr
-    assert "Authority=Apple Development:" in signature and "TeamIdentifier=" in signature
+    installed = Path("/Applications/PLANK Host.app")
+    verify_upgrade_identity(source, installed)
 
     home = Path(account.pw_dir)
     # User configuration is prepared with the user's authority, never by
@@ -146,7 +177,6 @@ def main():
     domain = f"gui/{account.pw_uid}"
     for job in ("loginwindow/" + sign_in_label, domain + "/" + graphical_label, "system/" + machine_label):
         run("launchctl", "bootout", job, check=False)
-    installed = Path("/Applications/PLANK Host.app")
     if installed.exists():
         backup = Path(tempfile.mkdtemp(prefix="plank-host-previous-", dir="/Library/Caches"))
         os.replace(installed, backup / installed.name)

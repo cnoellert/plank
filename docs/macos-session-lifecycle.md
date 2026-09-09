@@ -89,8 +89,15 @@ The existing desktop can be preserved while installing the next-login job;
 installation itself does not prove the cold-boot gate.
 
 Opening the signed PLANK Host application requests its own Screen Recording
-and Accessibility consent. Probe consent does not transfer across bundle IDs.
+and input consent. Probe consent does not transfer across bundle IDs.
 The permission window does not start a listener or a remote session.
+`--check-permissions` instead performs non-prompting screen/input preflights in
+the calling graphical context and emits JSON. It explicitly does not qualify
+desktop audio-tap consent. Run the installed signed app in the actual user's
+Aqua domain, not through plain SSH as a substitute. The development installer
+now rejects changes to the installed Team ID/designated signing requirement
+before changing state or stopping services. The multi-user provisioning and
+OS-update qualification sequence is in `macos-provisioning.plan`.
 
 ## Trust boundary
 
