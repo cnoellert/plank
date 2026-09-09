@@ -168,17 +168,37 @@ def gui_domains():
         result = run("launchctl", "print", domain, check=False)
         if result.returncode == 0:
             domains.append(domain)
-        elif "Could not find domain for" not in result.stderr:
+        elif "Could not find domain for" not in result.stderr and \
+                "125: Domain does not support specified action" not in result.stderr:
             raise RuntimeError("Cannot inspect graphical domain: " + domain)
     return domains
 
 
 def stop_roles():
-    stop_job("loginwindow/" + SIGN_IN_LABEL)
+    if os.stat("/dev/console").st_uid == 0:
+        stop_job("loginwindow/" + SIGN_IN_LABEL)
     # Enumerate OS accounts, not home directories. Stop existing Aqua jobs,
     # including fast-switched users, before retiring the exclusive coordinator.
     for domain in gui_domains():
         stop_job(domain + "/" + DESKTOP_LABEL)
+    # macOS refuses inspection of the inactive LoginWindow domain, even for
+    # root. Do not call that error "job absent". Before replacing its coordinator,
+    # separately prove any root graphical process has actually exited.
+    prefixes = ("/Applications/PLANK Host.app/Contents/MacOS/plank-host --sign-in ",
+                "/Applications/PLANK Host.app/Contents/MacOS/plank-host --graphical ")
+    pids = set()
+    for line in run("ps", "-ax", "-o", "pid=", "-o", "uid=", "-o", "command=").stdout.splitlines():
+        fields = line.strip().split(None, 2)
+        if len(fields) == 3 and fields[0].isdigit() and fields[1] == "0" and fields[2].startswith(prefixes):
+            pids.add(int(fields[0]))
+    deadline = time.monotonic() + 20
+    while pids:
+        pids = {pid for pid in pids if process_exists(pid)}
+        if not pids:
+            break
+        if time.monotonic() >= deadline:
+            raise RuntimeError("Root graphical process still retiring; coordinator replacement cancelled")
+        time.sleep(0.1)
     stop_job("system/" + MACHINE_LABEL)
 
 
@@ -266,6 +286,8 @@ def main():
     graphical_label = "la.instinctual.PLANK.Host.desktop"
     sign_in_label = "la.instinctual.PLANK.Host.sign-in"
     stop_roles()
+    if os.stat("/dev/console").st_uid != console_uid:
+        raise RuntimeError("Console changed while draining services; app replacement cancelled")
     for name in args.retire_user_agent:
         retire_user_agent(name)
     if installed.exists():

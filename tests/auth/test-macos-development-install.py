@@ -17,12 +17,30 @@ PUBLIC = {"Address": "0.0.0.0", "Port": 28989, "Name": "PLANK test",
 
 
 class RoleIdentityTests(unittest.TestCase):
+    def test_graphical_drain_precedes_coordinator(self):
+        from types import SimpleNamespace
+        with patch.object(INSTALLER.os, "stat", return_value=SimpleNamespace(st_uid=502)), \
+             patch.object(INSTALLER, "gui_domains", return_value=["gui/502"]), \
+             patch.object(INSTALLER, "run", return_value=SimpleNamespace(stdout=
+                 "20 0 /Applications/PLANK Host.app/Contents/MacOS/plank-host --sign-in service\n"
+                 "99 0 /Applications/Other.app/Contents/MacOS/plank-host --sign-in other\n")), \
+             patch.object(INSTALLER, "process_exists", return_value=False) as exists, \
+             patch.object(INSTALLER, "stop_job") as stop:
+            INSTALLER.stop_roles()
+            self.assertEqual([call.args[0] for call in stop.call_args_list], [
+                "gui/502/" + INSTALLER.DESKTOP_LABEL, "system/" + INSTALLER.MACHINE_LABEL])
+            exists.assert_called_once_with(20)
+
     def test_existing_gui_domains_are_unique_and_errors_fail_closed(self):
         from types import SimpleNamespace
         with patch.object(INSTALLER.pwd, "getpwall", return_value=[SimpleNamespace(pw_uid=uid) for uid in (0,501,501,502)]), \
              patch.object(INSTALLER, "run", side_effect=[SimpleNamespace(returncode=0),
                  SimpleNamespace(returncode=113, stderr="Could not find domain for user gui: 502")]):
             self.assertEqual(INSTALLER.gui_domains(), ["gui/501"])
+        with patch.object(INSTALLER.pwd, "getpwall", return_value=[SimpleNamespace(pw_uid=501)]), \
+             patch.object(INSTALLER, "run", return_value=SimpleNamespace(returncode=125,
+                 stderr="Could not print domain: 125: Domain does not support specified action")):
+            self.assertEqual(INSTALLER.gui_domains(), [])
         with patch.object(INSTALLER.pwd, "getpwall", return_value=[SimpleNamespace(pw_uid=501)]), \
              patch.object(INSTALLER, "run", return_value=SimpleNamespace(returncode=1, stderr="Permission denied")):
             with self.assertRaises(RuntimeError):
