@@ -55,8 +55,24 @@ class RoleIdentityTests(unittest.TestCase):
                     INSTALLER.signing_identity(app)
             signature = "Authority=Apple Development: Test\nTeamIdentifier=ABCDEFGHIJ\n"
             with patch.object(INSTALLER, "run", side_effect=[SimpleNamespace(stderr=""),
-                              SimpleNamespace(stderr=signature), SimpleNamespace(stderr="")]):
+                              SimpleNamespace(stderr=signature), SimpleNamespace(stdout="", stderr="")]):
                 with self.assertRaisesRegex(ValueError, "designated"):
+                    INSTALLER.signing_identity(app)
+
+    def test_requirement_output_streams(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory(prefix="plank-signature-") as temporary:
+            app = Path(temporary)
+            signature = "Authority=Apple Development: Test\nTeamIdentifier=ABCDEFGHIJ\n"
+            requirement = 'identifier "la.instinctual.PLANK.Host" and anchor apple generic'
+            line = "designated => " + requirement + "\n"
+            for stdout, stderr in ((line, "Executable=/test\n"), ("", line)):
+                with patch.object(INSTALLER, "run", side_effect=[SimpleNamespace(stderr=""),
+                                  SimpleNamespace(stderr=signature), SimpleNamespace(stdout=stdout, stderr=stderr)]):
+                    self.assertEqual(INSTALLER.signing_identity(app), ("ABCDEFGHIJ", requirement))
+            with patch.object(INSTALLER, "run", side_effect=[SimpleNamespace(stderr=""),
+                              SimpleNamespace(stderr=signature), SimpleNamespace(stdout=line, stderr=line)]):
+                with self.assertRaisesRegex(ValueError, "unambiguous"):
                     INSTALLER.signing_identity(app)
 
     def test_host_icon_is_generated_from_shared_client_artwork(self):

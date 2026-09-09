@@ -31,7 +31,10 @@ def signing_identity(app):
     teams = re.findall(r"^TeamIdentifier=([A-Z0-9]{10})$", signature, re.MULTILINE)
     if "Authority=Apple Development:" not in signature or len(teams) != 1:
         raise ValueError("Development installer requires an Apple Development-signed Host")
-    detail = run("codesign", "-d", "-r-", str(app)).stderr
+    result = run("codesign", "-d", "-r-", str(app))
+    # codesign writes the requirement to stdout, while diagnostics go to
+    # stderr. Accept either stream, but never two ambiguous requirements.
+    detail = result.stdout + "\n" + result.stderr
     requirements = re.findall(r"^designated => (.+)$", detail, re.MULTILINE)
     if len(requirements) != 1:
         raise ValueError("Host has no unambiguous designated signing requirement")
