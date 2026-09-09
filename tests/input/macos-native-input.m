@@ -89,19 +89,26 @@ int main(int argc, const char **argv) {
                 CHECK(result == PLANKMacInputEvent && delivered == 1);
                 CHECK(input.nextRepeatTime == 1250000000);
                 CHECK([input repeatAtTime:1250000000] == PLANKMacInputEvent && delivered == 2);
+                uint8_t pen[32];
+                plank_transport_input_encode_pen(pen, 1, 1, 0, 255, 65535, .5, .5, .75, 0, 0);
+                CHECK(plank_transport_native_input_send(client, 7, pen, sizeof(pen)) == PLANK_TRANSPORT_OK);
+                CHECK(plank_transport_native_input_receive(server, &type, payload, sizeof(payload), &size, 3000) == PLANK_TRANSPORT_OK);
+                CHECK(type == 7 && size == sizeof(pen) && !memcmp(payload, pen, size));
+                CHECK([input consumeType:type payload:[NSData dataWithBytes:payload length:size] time:1260000000] == PLANKMacInputEvent);
+                CHECK(delivered == 4); // pen proximity + tip, through real QUIC
                 if (scenario == 0) {
                     // Transport loss does not prevent safe release in the same
                     // authorized desktop. No further input may be delivered.
                     CHECK(plank_transport_native_endpoint_stop(server) == PLANK_TRANSPORT_OK);
                     CHECK([input repeatAtTime:1300000000] == PLANKMacInputDenied);
-                    CHECK([input stop] == 1 && delivered == 3);
+                    CHECK([input stop] == 3 && delivered == 7); // tip up, proximity exit, key up
                 } else {
                     if (scenario == 2) desktop.active = false;
                     if (scenario == 3) desktop.generation++;
                     if (scenario == 4) topology = NO;
                     if (scenario == 5) permission = NO;
                     CHECK([input repeatAtTime:1300000000] == PLANKMacInputDenied);
-                    CHECK([input stop] == 0 && delivered == 2);
+                    CHECK([input stop] == 0 && delivered == 4);
                     desktop.active = true; topology = YES; permission = YES;
                     CHECK([input consumeType:type payload:[NSData dataWithBytes:p length:sizeof(p)] time:1000000002] == PLANKMacInputStopped);
                 }

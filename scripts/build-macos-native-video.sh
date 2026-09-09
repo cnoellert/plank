@@ -31,7 +31,7 @@ shasum -a 256 "$transport_library" host/macos/media/native-video.{h,m} \
     host/macos/media/preview-session.{h,m} host/macos/media/screen-capture.{h,m} \
     host/macos/media/native-audio.{h,m} host/macos/media/opus-encoder.{h,m} \
     host/macos/auth/authentication-session.{h,m} tests/auth/macos-native-video.m \
-    tests/auth/macos-preview-session.m tests/protocol/macos-preview-launch-v1.json
+    tests/auth/macos-preview-session.m tests/protocol/macos-preview-launch-v2.json
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/auth -Ihost/macos/media -Iprotocol/plank-transport/include \
     host/macos/auth/authentication-session.m host/macos/media/native-video.m \
@@ -61,7 +61,7 @@ openssl x509 -in "$certificate_dir/cert.pem" -outform DER -out "$certificate_dir
 certificate_hash=$(shasum -a 256 "$certificate_dir/cert.der")
 certificate_hash=${certificate_hash%% *}
 "$video_build/preview-session" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
-    "$certificate_hash" "$source_root/tests/protocol/macos-preview-launch-v1.json"
+    "$certificate_hash" "$source_root/tests/protocol/macos-preview-launch-v2.json"
 "$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \
     "$certificate_hash" "$video_build/synthetic-first-frame.hevc"
 "$video_build/native-video" "$certificate_dir/cert.pem" "$certificate_dir/key.pem" \

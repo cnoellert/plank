@@ -30,15 +30,15 @@ int main(int argc, char** argv)
     CHECK(!MacPreviewLaunch::request(topology, 150000, 65527).isEmpty());
     CHECK(MacPreviewLaunch::request({}, 10000, 1200).isEmpty());
     const QJsonObject valid {
-        {"schema_version", 1}, {"state", "connecting"}, {"udp_port", 28989},
+        {"schema_version", 2}, {"state", "connecting"}, {"udp_port", 28989},
         {"max_udp_payload_size", 1200}, {"capture", rawTopology.value("capture")},
         {"transport_token", QString::fromLatin1(QByteArray(32, 'x').toBase64())},
-        {"services", QJsonObject {{"audio", true}, {"input", true}, {"cursor", "embedded"}}}
+        {"services", QJsonObject {{"audio", true}, {"input", true}, {"pen", "normalized"}, {"cursor", "embedded"}}}
     };
     MacPreviewLaunch::Reply parsed;
     CHECK(MacPreviewLaunch::parseReply(valid, topology, 28989, 1200, parsed));
     CHECK(parsed.configuration.serviceFlags == (PLANK_NATIVE_SERVICE_AUDIO | PLANK_NATIVE_SERVICE_INPUT));
-    CHECK(parsed.configuration.hostFeatureFlags == (LI_FF_DYNAMIC_VIDEO_BITRATE | LI_FF_ENCODER_TARGET_ACK));
+    CHECK(parsed.configuration.hostFeatureFlags == (LI_FF_DYNAMIC_VIDEO_BITRATE | LI_FF_ENCODER_TARGET_ACK | LI_FF_PEN_TOUCH_EVENTS));
     CHECK(parsed.configuration.audioPacketDurationMs == 5);
     CHECK(parsed.configuration.opusConfiguration.sampleRate == 48000);
     CHECK(parsed.configuration.opusConfiguration.channelCount == 2);
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     bad = valid; bad["certificate_sha256"] = "another-certificate"; reject(bad);
     bad = valid; bad["transport_token"] = QString(44, 'x'); reject(bad);
     bad = valid; bad["transport_token"] = QString::fromLatin1(QByteArray(31, 'x').toBase64()); reject(bad);
-    for (const char* service : {"audio", "input", "cursor"}) {
+    for (const char* service : {"audio", "input", "pen", "cursor"}) {
         auto services = valid.value("services").toObject(); services[service] = false;
         bad = valid; bad["services"] = services; reject(bad);
     }

@@ -20,6 +20,15 @@ an older probe mode against that installed audio-only executable.
 
 ## Passive desktop inventory
 
+The standalone pressure-delivery probe is built with
+`scripts/build-macos-tablet-pressure.sh SOURCE NEW_OUTPUT`. It uses the existing
+Probe signing identity and requires macOS/SDK27. `--inspect` posts nothing;
+the graphical runner's `--tablet-pressure` mode is Aqua-only and sends generated
+tablet events exclusively to its own temporary window/process. It requests no
+permissions and requires existing input consent. See `docs/macos-tablet.plan`
+for measured pressure/proximity results and limits. Do not run other probe modes
+against this single-purpose executable or replace the production Host with it.
+
 Status: compiled and tested on the dedicated development M4 Mac, macOS 27.0 /
 SDK 27.0. The reference Mac remains read-only. See
 `docs/macos-host-investigation.md` for measured results and pending gates.

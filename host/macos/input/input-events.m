@@ -107,11 +107,29 @@ typedef struct {
     uint64_t repeatDue, repeatInterval;
 } PLANKMacInputState;
 
+// Type7 uses normalized coordinates, not client pixels or raw tablet identity.
+// Values match the shared pen payload contract (see protocol/macos-pen-input.md).
+typedef struct {
+    CGPoint position;
+    BOOL near, down;
+    uint8_t tool, buttons;
+    double pressure;
+    uint64_t clickTime;
+    CGPoint clickPosition;
+    unsigned clickCount;
+} PLANKMacPenState;
+static CGEventType penButtonKind(unsigned bit, BOOL down) {
+    return bit == 1 ? (down ? kCGEventRightMouseDown : kCGEventRightMouseUp) :
+        (down ? kCGEventOtherMouseDown : kCGEventOtherMouseUp);
+}
+static unsigned penButtonNumber(unsigned bit) { return bit == 1 ? 2 : bit == 2 ? 1 : 3; }
+
 @implementation PLANKMacInputEvents {
     CGEventSourceRef _source;
     CGRect _bounds;
     CGSize _pixels;
     PLANKMacInputState _state;
+    PLANKMacPenState _pen;
     uint64_t _doubleClickNS;
 }
 - (instancetype)init { return nil; }
@@ -254,7 +272,7 @@ typedef struct {
             }
             break;
         }
-        default: return PLANKMacInputUnsupported; // Pen/raw HID/text are not this component.
+        default: return PLANKMacInputUnsupported; // Raw HID/text are not this component.
     }
     if (!event) { _state.stopped = YES; return PLANKMacInputStopped; }
     CGEventSetFlags(event, _state.flags); CGEventSetTimestamp(event, time);
@@ -264,6 +282,8 @@ typedef struct {
 - (PLANKMacInputResult)consumeType:(uint8_t)type payload:(NSData *)payload
                            time:(uint64_t)time accept:(BOOL (^)(CGEventRef))accept {
     if (!accept) return PLANKMacInputMalformed;
+    if (type == PLANK_TRANSPORT_INPUT_PEN)
+        return [self consumePen:payload time:time accept:accept];
     PLANKMacInputState previous = _state;
     CGEventRef event = NULL;
     PLANKMacInputResult result = [self createType:type payload:payload time:time event:&event];
@@ -274,6 +294,133 @@ typedef struct {
     // Roll back *all* state so cleanup cannot release an undelivered key/button.
     if (!accepted) { _state = previous; return PLANKMacInputDenied; }
     return PLANKMacInputEvent;
+}
+
+- (CGEventRef)penEvent:(PLANKMacPenState)pen kind:(CGEventType)kind {
+    BOOL proximity = kind == kCGEventTabletProximity;
+    CGMouseButton button = kind == kCGEventRightMouseDragged || kind == kCGEventRightMouseDown || kind == kCGEventRightMouseUp ?
+        kCGMouseButtonRight : kind == kCGEventOtherMouseDragged ? (pen.buttons & 2 ? kCGMouseButtonCenter : 3) : kCGMouseButtonLeft;
+    CGEventRef event = CGEventCreateMouseEvent(_source, proximity ? kCGEventMouseMoved : kind, pen.position, button);
+    if (!event) return NULL;
+    CGEventSetType(event, kind);
+    if (kind == kCGEventTabletProximity) {
+        CGEventSetIntegerValueField(event, kCGTabletProximityEventEnterProximity, pen.near);
+        // Public Quartz pointing-device values: pen=1, eraser=3. Identity is
+        // session-local synthetic, not a claimed physical Wacom model/serial.
+        CGEventSetIntegerValueField(event, kCGTabletProximityEventPointerType, pen.tool == 2 ? 3 : 1);
+        CGEventSetIntegerValueField(event, kCGTabletProximityEventDeviceID, 1);
+        CGEventSetIntegerValueField(event, kCGTabletProximityEventPointerID, 1);
+        CGEventSetIntegerValueField(event, kCGTabletProximityEventSystemTabletID, 1);
+    } else {
+        CGEventSetIntegerValueField(event, kCGMouseEventSubtype, kCGEventMouseSubtypeTabletPoint);
+        CGEventSetIntegerValueField(event, kCGMouseEventClickState, MAX(1u, pen.clickCount));
+        CGEventSetIntegerValueField(event, kCGTabletEventDeviceID, 1);
+        CGEventSetIntegerValueField(event, kCGTabletEventPointButtons, (pen.down ? 1 : 0) | (pen.buttons << 1));
+        CGEventSetIntegerValueField(event, kCGTabletEventPointX, llround(pen.position.x));
+        CGEventSetIntegerValueField(event, kCGTabletEventPointY, llround(pen.position.y));
+        CGEventSetDoubleValueField(event, kCGMouseEventPressure, pen.down ? pen.pressure : 0);
+        CGEventSetDoubleValueField(event, kCGTabletEventPointPressure, pen.down ? pen.pressure : 0);
+    }
+    CGEventSetFlags(event, _state.flags);
+    return event;
+}
+- (BOOL)deliverPen:(PLANKMacPenState)next kind:(CGEventType)kind time:(uint64_t)time
+           accept:(BOOL (^)(CGEventRef))accept {
+    CGEventRef event = [self penEvent:next kind:kind];
+    if (!event) { _state.stopped = YES; return NO; }
+    CGEventSetTimestamp(event, time);
+    unsigned changed = next.buttons ^ _pen.buttons;
+    if (changed) CGEventSetIntegerValueField(event, kCGMouseEventButtonNumber, penButtonNumber(changed));
+    BOOL delivered = accept(event);
+    CFRelease(event);
+    // Commit each accepted event. If authority disappears between proximity
+    // and tip, retain only the state actually delivered, never a phantom down.
+    if (delivered) { _pen = next; _state.position = next.position; _state.lastTime = time; }
+    return delivered;
+}
+- (PLANKMacInputResult)consumePen:(NSData *)payload time:(uint64_t)time
+                         accept:(BOOL (^)(CGEventRef))accept {
+    if (_state.stopped) return PLANKMacInputStopped;
+    if (payload.length != PLANK_TRANSPORT_INPUT_PEN_SIZE || time < _state.lastTime)
+        return PLANKMacInputMalformed;
+    const uint8_t *p = payload.bytes;
+    uint8_t action = p[0], tool = p[1];
+    if (action > 7 || p[6] || p[7] || plank_transport_input_read_u32(p + 28))
+        return PLANKMacInputMalformed;
+    BOOL leaving = action == 4 || action == 6 || action == 7;
+    double x = 0, y = 0, pressure = 0;
+    if (!leaving) {
+        if (tool < 1 || tool > 2 || (p[2] & ~7)) return PLANKMacInputMalformed;
+        if (action != 5) {
+            x = plank_transport_input_read_float(p + 8); y = plank_transport_input_read_float(p + 12);
+            pressure = plank_transport_input_read_float(p + 16);
+            double major = plank_transport_input_read_float(p + 20), minor = plank_transport_input_read_float(p + 24);
+            unsigned rotation = plank_transport_input_read_u16(p + 4);
+            if (!isfinite(x) || !isfinite(y) || !isfinite(pressure) || !isfinite(major) || !isfinite(minor) ||
+                x < 0 || x > 1 || y < 0 || y > 1 || pressure < 0 || pressure > 1 ||
+                major < 0 || major > 1 || minor < 0 || minor > 1 ||
+                (p[3] > 90 && p[3] != 255) || (rotation > 359 && rotation != 65535))
+                return PLANKMacInputMalformed;
+        }
+    }
+    BOOL delivered = NO;
+    if (leaving || (_pen.near && _pen.tool != tool)) {
+        PLANKMacPenState next = _pen;
+        for (unsigned bit = 1; bit <= 4; bit <<= 1) if (next.buttons & bit) {
+            next.buttons &= ~bit;
+            if (![self deliverPen:next kind:penButtonKind(bit, NO) time:time accept:accept])
+                return _state.stopped ? PLANKMacInputStopped : PLANKMacInputDenied;
+            delivered = YES;
+        }
+        if (next.down) {
+            next.down = NO; next.pressure = 0; next.buttons = 0;
+            if (![self deliverPen:next kind:kCGEventLeftMouseUp time:time accept:accept])
+                return _state.stopped ? PLANKMacInputStopped : PLANKMacInputDenied;
+            delivered = YES;
+        }
+        if (next.near) {
+            next.near = NO; next.buttons = 0;
+            if (![self deliverPen:next kind:kCGEventTabletProximity time:time accept:accept])
+                return _state.stopped ? PLANKMacInputStopped : PLANKMacInputDenied;
+            delivered = YES;
+        }
+        if (leaving) return delivered ? PLANKMacInputEvent : PLANKMacInputNoEvent;
+    }
+    if (action == 5 && !_pen.near) return PLANKMacInputNoEvent;
+    PLANKMacPenState next = _pen;
+    if (action != 5) {
+        next.position = CGPointMake(_bounds.origin.x + x * (_bounds.size.width - _bounds.size.width / _pixels.width),
+            _bounds.origin.y + y * (_bounds.size.height - _bounds.size.height / _pixels.height));
+    }
+    if (!next.near) {
+        if (next.tool != tool) next.clickCount = 0;
+        next.near = YES; next.tool = tool; next.down = NO; next.pressure = 0; next.buttons = 0;
+        if (![self deliverPen:next kind:kCGEventTabletProximity time:time accept:accept])
+            return _state.stopped ? PLANKMacInputStopped : PLANKMacInputDenied;
+    }
+    if (action != 5) { next.down = action == 1 || action == 3; next.pressure = next.down ? pressure : 0; }
+    if (next.down && !_pen.down) {
+        next.clickCount = next.clickCount && time - next.clickTime <= _doubleClickNS &&
+            hypot(next.position.x - next.clickPosition.x, next.position.y - next.clickPosition.y) <= 4 ?
+            MIN(next.clickCount + 1, 3u) : 1;
+        next.clickTime = time; next.clickPosition = next.position;
+    }
+    CGEventType kind = next.down != _pen.down ? (next.down ? kCGEventLeftMouseDown : kCGEventLeftMouseUp) :
+        next.down ? kCGEventLeftMouseDragged : kCGEventMouseMoved;
+    if (action != 5) {
+        if (kind == kCGEventMouseMoved && next.buttons)
+            kind = next.buttons & 1 ? kCGEventRightMouseDragged : kCGEventOtherMouseDragged;
+        if (![self deliverPen:next kind:kind time:time accept:accept])
+            return _state.stopped ? PLANKMacInputStopped : PLANKMacInputDenied;
+        delivered = YES;
+    }
+    for (unsigned bit = 1; bit <= 4; bit <<= 1) if ((next.buttons ^ p[2]) & bit) {
+        next.buttons ^= bit;
+        if (![self deliverPen:next kind:penButtonKind(bit, (next.buttons & bit) != 0) time:time accept:accept])
+            return _state.stopped ? PLANKMacInputStopped : PLANKMacInputDenied;
+        delivered = YES;
+    }
+    return delivered ? PLANKMacInputEvent : PLANKMacInputNoEvent;
 }
 - (uint64_t)nextRepeatTime { return _state.stopped ? 0 : _state.repeatDue; }
 - (PLANKMacInputResult)repeatAtTime:(uint64_t)time accept:(BOOL (^)(CGEventRef))accept {
@@ -299,6 +446,24 @@ typedef struct {
     // best-effort release attempt. Clearing state makes repeated stop idempotent.
     _state.stopped = YES;
     _state.repeatDue = 0;
+    for (unsigned bit = 1; bit <= 4; bit <<= 1) if (_pen.buttons & bit) {
+        _pen.buttons &= ~bit;
+        CGEventRef event = [self penEvent:_pen kind:penButtonKind(bit, NO)];
+        if (event) {
+            CGEventSetIntegerValueField(event, kCGMouseEventButtonNumber, penButtonNumber(bit));
+            [events addObject:CFBridgingRelease(event)];
+        }
+    }
+    if (_pen.down) {
+        _pen.down = NO; _pen.pressure = 0; _pen.buttons = 0;
+        CGEventRef event = [self penEvent:_pen kind:kCGEventLeftMouseUp];
+        if (event) [events addObject:CFBridgingRelease(event)];
+    }
+    if (_pen.near) {
+        _pen.near = NO; _pen.buttons = 0;
+        CGEventRef event = [self penEvent:_pen kind:kCGEventTabletProximity];
+        if (event) [events addObject:CFBridgingRelease(event)];
+    }
     for (unsigned k = 0; k < 256; ++k) if (_state.keys[k]) {
         _state.keys[k] = NO;
         CGEventFlags bit = modifier(k);

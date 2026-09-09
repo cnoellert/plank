@@ -123,7 +123,7 @@ def authenticate(tls, port, username, password):
 
 def preview(tls, port, token, topology, receiver, media, seconds=3):
     capture = topology["capture"]
-    body = {"schema_version": 1, "capture_generation": topology["generation"], "capture_id": capture["id"],
+    body = {"schema_version": 2, "capture_generation": topology["generation"], "capture_id": capture["id"],
             "width": capture["width"], "height": capture["height"], "encoding_mode": "hevc-10-420-videotoolbox",
             "frame_rate": 60, "bitrate_kbps": 50000, "max_udp_payload_size": 1200}
 
@@ -157,10 +157,10 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
     assert launch(dict(body, encoding_mode="hevc-10-444-nvenc"), token)[0] == 400
     assert launch(dict(body, capture_generation=str(uuid.uuid4())), token)[0] == 400
     status, reply = launch(body, token)
-    assert status == 200 and reply["schema_version"] == 1 and reply["state"] == "connecting"
+    assert status == 200 and reply["schema_version"] == 2 and reply["state"] == "connecting"
     assert reply["udp_port"] == port and reply["max_udp_payload_size"] == 1200
     assert reply["capture"] == capture and reply["transport_token"] != token
-    assert reply["services"] == {"audio": True, "input": True, "cursor": "embedded"}
+    assert reply["services"] == {"audio": True, "input": True, "pen": "normalized", "cursor": "embedded"}
     assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
     assert launch({"schema_version": 2, "width": 1920, "height": 1080, "encoding_mode": "hevc-10-420-videotoolbox"}, token, "/plank/display")[0] == 401
     fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()

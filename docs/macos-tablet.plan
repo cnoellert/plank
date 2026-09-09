@@ -1,0 +1,69 @@
+# macOS tablet input and embedded cursor
+
+Branch: `macos-tablet` (Client `plank/macos-tablet`), based on main80acb10.
+Keep Linux raw-HID/normalized-pen behavior unchanged. Candidate1.0.79 is now
+installed on the dedicated Mac after the user disconnected; Client install is manual.
+
+Implementation checkpoint: native mapper and schema2 launch negotiation are now
+implemented for candidate1.0.79-macos-tablet. Shared type7 payload/common-c and
+transport archive are unchanged. Mac mapper tests pass775 checks, keyboard/mouse
+suite2567 checks, real QUIC/auth-input suite200 checks/eight scenarios. Side
+buttons and tip multi-click are retained, with per-event revocation rollback.
+Clean package builds passed from rootcf40262/Clientde18b22d. Both artifacts are
+in `artifacts/packages/`. User reports working pressure in Pixelmator and accepts
+the candidate, explicitly authorizing commit, push and merge. The browser tester
+still reports 0/50% (browser unspecified); browser pressure is not qualified.
+A separate Linux live regression run and detailed button/cursor matrix were not
+performed; do not infer those results from the overall user acceptance.
+
+1. Fix embedded-session cursor visibility. SDL3.4.2's Wayland ShowCursor
+   implementation uses `mouse->cur_cursor` for tablet tools even when passed
+   NULL to hide. Use one transparent SDL cursor for hidden embedded-session
+   local pointers, restoring the default image for local UI and teardown.
+   Do not create another Wayland connection or change the local-cursor contract.
+2. Qualify public Quartz pressure/proximity events before advertising Mac pen
+   support. The standalone probe first inspects native/AppKit conversion without
+   posting; live mode uses only its owned window in the same consented desktop.
+   A synthetic pass is not arbitrary-app acceptance.
+3. Add normalized pen handling to the existing authenticated Mac input owner,
+   mapping normalized coordinates through current point/pixel geometry. Correct
+   hover/down/drag/up/proximity/cancel and tool identity; finite bounded pressure.
+   Reuse the current type7 packet, never forward raw USB or claim Wacom hardware.
+   Reject malformed data; release only owned state on stop, never into a new user.
+4. Negotiate pen support only after actual Mac delivery passes. Verify the Client
+   selects one source, with no duplicate mouse synthesis. Preserve local toolbar,
+   letterbox and timeout pointer behavior; test layout changes and reconnects.
+5. Build on the designated Mac/linux-client-builder; user installs End-User Client.
+   Record real pressure-sensitive application acceptance and Linux regression
+   coverage separately. User authorized merging after Pixelmator acceptance;
+   Linux live checks remain unperformed. No Tablet Margins/ExpressKeys/ring
+   support in this scope.
+
+No fixed30s audio startup delay was found in the earlier read-only inspection;
+the user deferred further alert-startup investigation. Do not modify that path.
+
+## Qualification checkpoint — 2026-09-09
+
+- Client transparent-cursor unit passes on linux-client-builder with SDL3.4.2 headers:
+  100 hide/show cycles, one allocation, failure handling, teardown restoration,
+  unused helper makes no SDL calls. Full Client compilation and package gates pass;
+  user native-app acceptance is recorded above, without a separate cursor matrix.
+- SDK27 warnings-as-errors pressure probe passes six construction inspections.
+  Signed own-process Aqua delivery passes all six events (mask63): proximity
+  enter/exit, down(.25), drag(.75), drag(.50), up(0). No permission changes,
+  global event tap, keyboard input, other-app clicks or Host replacement.
+- An immediate burst delivered mask59, omitting the first intermediate drag.
+  Disabling AppKit mouse coalescing did not change that. The final bounded test
+  spaces samples250ms apart and targets only its own PID; all values arrive.
+  This establishes public event delivery, not real Wacom/application acceptance
+  or high-rate sampling behavior. The production injector uses the session event
+  path, which still needs qualification; this test does not prove equivalence.
+- Build with `scripts/build-macos-tablet-pressure.sh`, using the retained signing
+  identity. `--inspect` posts nothing. Install the signed Probe only on the
+  dedicated Mac and run `run-graphical-probe.sh gui/UID ... --tablet-pressure`.
+  Normal launch has no test mode. Runner refuses LoginWindow and cleans its job.
+- The temporary Probe application was moved out of Applications after testing;
+  no previous Probe was installed. Host stayed1.0.78 during those probes. The
+  subsequent native mapper/negotiation implementation is now candidate1.0.79.
+  User subsequently accepted native pressure in Pixelmator. Browser pressure
+  remains an optional follow-up, not a reason to modify the accepted path.

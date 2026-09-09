@@ -17,7 +17,7 @@ static BOOL integerInRange(id value, uint32_t minimum, uint32_t maximum) {
 BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *topology) {
     if (![request isKindOfClass:NSDictionary.class] || request.count != 9 ||
         ![topology isKindOfClass:NSDictionary.class] ||
-        !integerInRange(request[@"schema_version"], 1, 1) ||
+        !integerInRange(request[@"schema_version"], 2, 2) ||
         !PLANKMacEncodingProfile(request[@"encoding_mode"]) ||
         !integerInRange(request[@"frame_rate"], 60, 60) ||
         !integerInRange(request[@"bitrate_kbps"], 10000, 150000) ||
