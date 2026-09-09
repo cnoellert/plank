@@ -11,6 +11,11 @@ fi
 source_root=$1; output=$2; archive=$3
 mkdir "$output"
 cd "$source_root"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/input -Iprotocol/plank-transport/include \
+    host/macos/input/input-events.m tests/input/macos-pen-events.m \
+    -framework Foundation -framework CoreGraphics -framework Carbon -o "$output/pen-events-test"
+"$output/pen-events-test"
 xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/session tests/auth/macos-permission-status.c -o "$output/permission-status-test"
 "$output/permission-status-test"

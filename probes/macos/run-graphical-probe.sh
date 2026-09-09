@@ -11,6 +11,7 @@ case $probe_mode in
     --pattern-hevc-2160-mixed|--pattern-hevc-2160-mixed-speed) probe_deadline=210 ;;
 esac
 case $probe_mode in
+    --tablet-pressure) ;;
     --pattern-hevc444-4k|--pattern-hevc444-5k) ;;
     --encode-hevc-full-range|--encode-hevc-full-range-444|--pattern-hevc-full-range) ;;
     --cursor|--login-pointer|--cadence-60|--cadence-native|--cadence-pattern-60|--cadence-pattern-native) ;;
@@ -30,7 +31,7 @@ probe_domain=$1
 if [[ $probe_mode == --login-pointer && $probe_domain != loginwindow ]]; then
     echo "The login pointer test requires the actual LoginWindow session." >&2; exit 2
 fi
-if [[ $probe_mode == --cursor && $probe_domain == loginwindow ]]; then
+if [[ ( $probe_mode == --cursor || $probe_mode == --tablet-pressure ) && $probe_domain == loginwindow ]]; then
     echo "The owned-window cursor test requires an unlocked Aqua desktop." >&2; exit 2
 fi
 if [[ $probe_mode == --cadence-* && $probe_domain == loginwindow ]]; then

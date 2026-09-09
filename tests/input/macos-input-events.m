@@ -68,7 +68,7 @@ int main(void) {
             send(mapper, type, [NSMutableData dataWithLength:length], PLANKMacInputMalformed);
         }
         for (unsigned type = 6; type <= 255; ++type)
-            send(mapper, type, packet((uint8_t[]){1}, 1), PLANKMacInputUnsupported);
+            send(mapper, type, packet((uint8_t[]){1}, 1), type == 7 ? PLANKMacInputMalformed : PLANKMacInputUnsupported);
         send(mapper, 5, key(0x141, YES, 0, 0), PLANKMacInputMalformed);
         send(mapper, 5, key(0x8041, YES, 16, 0), PLANKMacInputMalformed);
         send(mapper, 5, key(0x8041, YES, 0, 2), PLANKMacInputMalformed);

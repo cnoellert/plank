@@ -26,6 +26,12 @@ xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Wer
     -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit -framework ApplicationServices \
     -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null -o "$output/input-events"
 "$output/input-events"
+xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/input -Iprotocol/plank-transport/include \
+    host/macos/input/input-events.m tests/input/macos-pen-events.m \
+    -framework Foundation -framework CoreGraphics -framework Carbon \
+    -o "$output/pen-events"
+"$output/pen-events"
 shasum -a 256 "$output/input-events"
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/input -Ihost/macos/auth -Iprotocol/plank-transport/include \

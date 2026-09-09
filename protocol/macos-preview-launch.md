@@ -1,4 +1,4 @@
-# Authenticated macOS preview launch (schema 1)
+# Authenticated macOS preview launch (schema 2)
 
 Experimental, on `macos-host` only. The actual Host advertises HEVC Main10 and
 fixed capture; component-only fixtures still advertise zero capabilities.
@@ -13,11 +13,11 @@ No credentials or tokens are accepted in URLs. A missing launch handler leaves
 the route absent (404); authentication itself does not enable capture.
 
 The body has exactly the nine fields in
-`tests/protocol/macos-preview-launch-v1.json`:
+`tests/protocol/macos-preview-launch-v2.json`:
 
 | Field | Required value |
 | --- | --- |
-| `schema_version` | Integer 1 |
+| `schema_version` | Integer 2 |
 | `capture_generation` | Current authenticated topology generation |
 | `capture_id` | Current fixed-capture identifier |
 | `width`, `height` | Exact advertised even pixel dimensions, 2–8192 |
@@ -32,12 +32,12 @@ existing route policy; accepting a numeric value does not prove that path MTU.
 Unknown fields, booleans as integers, wrong profiles and stale geometry fail.
 There is no resize, profile substitution, implicit takeover or fallback port.
 
-A successful response has schema 1, `state: "connecting"`, an independent
+A successful response has schema 2, `state: "connecting"`, an independent
 one-use `transport_token`, `udp_port`, the exact `max_udp_payload_size`, the
 selected `capture` descriptor and:
 
 ```json
-"services": {"audio": true, "input": true, "cursor": "embedded"}
+"services": {"audio": true, "input": true, "pen": "normalized", "cursor": "embedded"}
 ```
 
 The UDP port is the same number as the approved HTTPS control port. QUIC uses
@@ -57,13 +57,15 @@ reference-range invalidation (implemented by forcing a keyframe), and bitrate
 updates. Bitrate acknowledgement contains requested/applied/peak values in that
 order. Malformed/unsupported controls fail the session. System audio is Opus,
 stereo 48 kHz, 5 ms packets (one stream, one coupled stream, mapping 0/1).
-Keyboard, absolute mouse, buttons, and scrolling use native input. No separate
-cursor, raw-HID, tablet or generic-touchscreen capability is claimed.
+Keyboard, absolute mouse, buttons, scrolling and normalized pen use native input.
+No separate cursor, raw-HID or generic-touchscreen capability is claimed.
+See `macos-pen-input.md` for pressure, validation and cleanup. Schema1 is rejected;
+this requires matching Host/Client candidates, without a legacy fallback.
 The native library itself retains its shared Linux endpoint implementation.
 
 The Client now has a typed manifest parser and explicit native service flags.
-Audio/input are required for this manifest, while schema-1's bitrate
-controls set `LI_FF_DYNAMIC_VIDEO_BITRATE | LI_FF_ENCODER_TARGET_ACK`. The embedded cursor needs no local
+Audio/input/normalized pen are required for this manifest. It sets
+`LI_FF_DYNAMIC_VIDEO_BITRATE | LI_FF_ENCODER_TARGET_ACK | LI_FF_PEN_TOUCH_EVENTS`. The embedded cursor needs no local
 cursor channel. Common-c skips absent service workers;
 the Client does not start an audio receiver without negotiated audio. Linux
 PLS1 setup explicitly retains all three services and its existing checks.

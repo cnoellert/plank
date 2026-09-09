@@ -1633,6 +1633,11 @@ cleanup_packed_test() {
 }
 trap cleanup_packed_test EXIT
 c++ -std=c++17 -O2 -Wall -Wextra -Werror \
+  "$source_dir/tests/embeddedcursor/main.cpp" -I"$source_dir/app" \
+  $(pkg-config --cflags sdl3) -o "$packed_test_build/embedded-cursor"
+"$packed_test_build/embedded-cursor"
+echo "client_embedded_cursor_lifecycle_gate=pass"
+c++ -std=c++17 -O2 -Wall -Wextra -Werror \
   "$repo_dir/tests/video/packed-bt709-policy.cpp" \
   -I"$source_dir/app" -I"$client_common_dir" \
   $(pkg-config --cflags --libs Qt6Gui sdl3) -o "$packed_test_build/policy"
