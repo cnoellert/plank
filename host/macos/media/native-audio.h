@@ -15,6 +15,7 @@
                         validity:(BOOL (^)(void))validity;
 // PTS is the decoded packet's first sample on the source timeline, not the
 // callback arrival time. Converts to milliseconds, matching the Linux sender.
-// Discontinuities require explicit owner teardown/reset, not padded old audio.
-- (int32_t)sendOpusPacket:(NSData *)packet presentationTime:(CMTime)pts;
+// Only the encoder may mark the first packet after a source-clock re-anchor.
+// Ordinary packets remain strictly contiguous; authorization applies to both.
+- (int32_t)sendOpusPacket:(NSData *)packet presentationTime:(CMTime)pts discontinuity:(BOOL)discontinuity;
 @end

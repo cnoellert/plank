@@ -12,8 +12,8 @@ int PLANKSessionAudioTapProbe(BOOL cancelImmediately) {
         setbuf(stdout, NULL);
         __block BOOL done = NO, stopping = NO, failed = NO, ready = NO;
         __block uint64_t packets = 0, bytes = 0;
-        PLANKMacOpusEncoder *encoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts) {
-            (void)pts; packets++; bytes += packet.length; return YES;
+        PLANKMacOpusEncoder *encoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts, BOOL discontinuity) {
+            (void)pts; (void)discontinuity; packets++; bytes += packet.length; return YES;
         }];
         __block PLANKMacAudioTap *tap;
         void (^stop)(void) = ^{

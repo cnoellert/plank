@@ -127,8 +127,8 @@ int main(int argc, const char* argv[]) {
         atomic_init(&measurements.overflow, 0);
         __block uint64_t opusPackets = 0, opusBytes = 0, encodeFailures = 0;
         __block CMTime lastOpusPTS = kCMTimeInvalid;
-        PLANKMacOpusEncoder* encoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData* packet, CMTime pts) {
-            if (CMTIME_IS_VALID(lastOpusPTS) && CMTimeCompare(pts, lastOpusPTS) <= 0) return NO;
+        PLANKMacOpusEncoder* encoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData* packet, CMTime pts, BOOL discontinuity) {
+            if (!discontinuity && CMTIME_IS_VALID(lastOpusPTS) && CMTimeCompare(pts, lastOpusPTS) <= 0) return NO;
             lastOpusPTS = pts; opusPackets++; opusBytes += packet.length;
             return YES;
         }];

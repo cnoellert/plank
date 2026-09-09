@@ -120,10 +120,10 @@
     _queue = queue; _video = video; _audio = audio; _failed = [failed copy];
     _timing = calloc(1, sizeof(*_timing)); // allocation failure must not affect capture
     __weak typeof(self) weakSelf = self;
-    _audioEncoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts) {
+    _audioEncoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts, BOOL discontinuity) {
         typeof(self) capture = weakSelf;
         if (!capture || capture->_stopping) return NO;
-        int32_t sent = [capture->_audio sendOpusPacket:packet presentationTime:pts];
+        int32_t sent = [capture->_audio sendOpusPacket:packet presentationTime:pts discontinuity:discontinuity];
         return sent == PLANK_TRANSPORT_OK || sent == PLANK_TRANSPORT_DROPPED;
     }];
     if (_desktopAudioTap) {

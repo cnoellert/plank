@@ -14,6 +14,10 @@ cd "$source_root"
 xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/session tests/auth/macos-permission-status.c -o "$output/permission-status-test"
 "$output/permission-status-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/session tests/auth/macos-desktop-provisioning.m host/macos/session/desktop-provisioning.m \
+    -framework Foundation -framework Security -o "$output/desktop-provisioning-test"
+"$output/desktop-provisioning-test"
 xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/media tests/audio/macos-audio-tap-buffer.c -o "$output/audio-tap-buffer-test"
 "$output/audio-tap-buffer-test"
@@ -21,6 +25,10 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/media tests/audio/macos-audio-tap-lifecycle.m host/macos/media/audio-tap.m \
     -framework Foundation -framework CoreMedia -framework CoreAudio -framework Security -o "$output/audio-tap-lifecycle-test"
 "$output/audio-tap-lifecycle-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/media tests/audio/macos-opus-encoder.m host/macos/media/opus-encoder.m \
+    -framework Foundation -framework CoreMedia -framework AudioToolbox -o "$output/opus-encoder-test"
+"$output/opus-encoder-test" "$output/opus-fixture.pao"
 xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/media tests/video/macos-frame-timing.c -o "$output/frame-timing-test"
 "$output/frame-timing-test"
@@ -43,6 +51,7 @@ sources=(host/macos/auth/authentication-session.m host/macos/auth/graphical-auth
     host/macos/media/native-audio.m host/macos/media/opus-encoder.m host/macos/media/audio-tap.m
     host/macos/input/input-events.m host/macos/input/native-input.m host/macos/input/quartz-input.m
     host/macos/session/agent-registry.m host/macos/session/agent-connection.m
+    host/macos/session/desktop-provisioning.m
     host/macos/session/host-runtime.m host/macos/session/host-main.m)
 xcrun clang "${common[@]}" "-DPLANK_MACOS_HOST_VERSION=\"$PLANK_MACOS_HOST_VERSION\"" \
     "${sources[@]}" "$archive" -lpthread -lm -o "$output/plank-host"
@@ -63,6 +72,7 @@ if [[ -n ${PLANK_MACOS_SIGNING_IDENTITY:-} ]]; then
     test -s "$app/Contents/Resources/plank.icns"
     install -m 0755 "$output/plank-host" "$app/Contents/MacOS/plank-host"
     install -m 0644 packaging/macos/host-info.plist "$app/Contents/Info.plist"
+    install -m 0644 scripts/install-macos-host-development.py scripts/uninstall-macos-host-development.py "$app/Contents/Resources/"
     /usr/libexec/PlistBuddy -c "Add :PLANKVersion string $PLANK_MACOS_HOST_VERSION" "$app/Contents/Info.plist"
     codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY" --timestamp=none \
         --identifier la.instinctual.PLANK.Host "$app"

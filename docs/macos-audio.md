@@ -85,9 +85,11 @@ of synchronized playback.
 
 The adapter requires an activated lease, ready endpoint and valid topology.
 Enqueue is ordered with revocation using the same narrow boundary as video.
-Malformed input, duplicate/backward timestamps and non-contiguous packet times
-are rejected. A source discontinuity requires explicit owner reset/teardown,
-not silent padding. Native DROPPED means the current packet was accepted while
+Malformed input and unmarked duplicate/backward/non-contiguous packet times
+are rejected. The encoder explicitly marks the first packet after a valid
+source-clock discontinuity; only that packet may re-anchor continuity. This
+local encoder/adapter flag is not a new wire field. Lease, topology and endpoint
+checks remain identical for marked packets. Native DROPPED means the current packet was accepted while
 an older queued packet was evicted; no extra retry buffer is added.
 
 The standalone real-QUIC loopback passed **3239 checks**: all 402 generated
@@ -114,15 +116,24 @@ from the original source time and total samples, not rounded chunk increments.
 Allow only hardware-clock representation error at the two endpoints, calculated
 using `mach_timebase_info` plus nanosecond CMTime rounding. The constructor
 rejects a clock whose tolerance would reach half an audio sample. A missing or
-overlapping sample, source-format change or sink failure stops the encoder and
-latches failure. Do not silently synthesize timestamps to hide real gaps.
+overlapping source timestamp now re-anchors the source epoch and shifts the
+next packet PTS by the same signed delta. Keep Opus state and its already bounded
+partial input; no fresh priming, catch-up queue, silence insertion, or sample
+replay. Subsequent PTS increments remain exact. Invalid/non-numeric source time,
+source-format changes, malformed PCM and sink failures still latch stop.
 
-The production-encoder test passes **3646 checks**. Interleaved, planar and
+The original production-encoder test passed **3646 checks**. Interleaved, planar and
 uneven-chunk encodes are byte-identical; 96000 source frames produce 400 packets
-before stop, with no EOF flush. Source gaps/overlaps, format changes, non-finite
-input, oversized chunks and sink failure all latch stop. The uneven-chunk case
+before stop, with no EOF flush. The September9 recovery extension replaces the
+fatal valid-gap/overlap policy with explicit source-clock re-anchoring. It tests
+repeated signed96ms, ten-second and one-sample jumps, including multiple jumps
+before any packet exists; packet bytes and counts must equal the continuous
+reference. The real QUIC test must deliver both forward and backward PTS epochs,
+and refuse unmarked gaps, malformed timestamps and revoked/topology-invalid
+submissions even when marked. Format changes, non-finite input, oversized chunks
+and sink failure still latch stop. The uneven-chunk case
 also reproduces a 41-nanosecond source timestamp offset, without changing output
-timestamps or accepting the separately tested full-sample gap. A fresh encoder
+timestamps or treating that sub-sample rounding as a discontinuity. A fresh encoder
 is required for a new session. Ubuntu's unchanged Opus decoder accepts all 400
 packets. A 100-ms synthetic-waveform comparison estimates **311 frames** of
 delay, within one sample of Apple's reported **312**; this supports the priming

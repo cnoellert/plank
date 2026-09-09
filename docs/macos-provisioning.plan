@@ -1,6 +1,6 @@
 # macOS one-time provisioning and durable access
 
-Date: 2026-09-08. Branch: `macos-provisioning`.
+Date: 2026-09-08. Current branch: `macos-system-provisioning`.
 
 ## Objective and boundaries
 
@@ -84,6 +84,42 @@ Qualify different users, inactive/fast-switched sessions, locked accounts,
 ownership handoff, denied cross-account access, user-controlled path/symlink
 failures and shared configuration tampering before enabling all-user startup.
 Changing the LaunchAgent does not grant macOS privacy consent.
+
+Implementation checkpoint: system-wide startup now reads root-owned public
+settings and prepares independent keys in the actual user's private directory.
+Only first use invokes the OS crypto tool with fixed arguments, no shell,
+bounded child lifetime and private staging; directory publication is exclusive
+and atomic. Existing keys are preserved. The native filesystem/identity test
+passes on development-mac, including independent keys, preservation, signed identity
+construction, unsafe modes, invalid configuration and symlink rejection.
+The initial fixture failed because Foundation kept `/var` aliased in its temp
+path; C realpath corrected the fixture, not the production no-symlink guard.
+
+The user also requested uninstall functionality. Provide a bounded, verified
+stop followed by removal of product launch entries and recoverable app removal.
+Preserve settings, identities and logs by default; never modify TCC, delete
+accounts, or recursively purge homes. Qualify uninstall and reinstall before
+declaring this complete. Actual all-user login/logout and reboot remain live
+gates; no automatic login/logout/reboot is authorized by these implementation
+steps.
+
+1.0.77-macos-system-provisioning clean signed build and component qualification
+passed on the dedicated Mac. Its17 Python checks include launchd timeout/error
+handling, signature preservation, key-only reinstall, uninstaller target
+validation and GUI-domain selection. Native first-run tests use the production
+filesystem/crypto module. macOS reports125 for unavailable GUI domains and
+refuses inspection of inactive LoginWindow; the installer recognizes only that
+specific GUI condition and independently waits for root graphical process exit.
+Generic permission errors fail closed. After the user's explicit disconnect,
+installation and actual uninstall/reinstall passed on development-mac. The app and three
+launch entries/listener disappeared during uninstall, then the identical signed
+candidate returned. Config, role/user identity-file metadata and log inodes were
+preserved. Actual signed Aqua preflights passed after both installs. The subsequent
+1.0.78 audio timestamp recovery candidate passed component/QUIC tests and was
+installed; the user reported "looks good" and authorized merging this work.
+The system-wide logout/login account-switch check remains a separate live gate;
+no automatic login/logout/reboot or permission change occurred. Playback acceptance
+does not establish OS-update consent durability or a long-duration A/V sync result.
 
 ## Phase 3 — durable deployment
 

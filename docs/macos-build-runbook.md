@@ -30,6 +30,13 @@ guard or switch to ad-hoc signing. Run
 
 ### Assembly and install
 
+The Host build runs the production Opus synthetic fixture, including signed
+source-clock jumps and byte-identical PCM encoding. For audio adapter changes,
+also run `build-macos-native-audio.sh` with the retained synthetic402-packet
+fixture and current ABI archive; it verifies real QUIC delivery across marked
+PTS epochs plus revocation. Neither test captures or plays audio. Live audible
+playback and synchronization remain separate acceptance checks.
+
 The Host build runs `macos-audio-tap-lifecycle.m` against the production tap
 class with HAL prepare/activate/destroy overridden only in the test executable.
 It requests no consent and opens no audio devices. Require pending cancellation,
@@ -49,12 +56,37 @@ and the fixture removes its temporary Aqua job. Never run this on the read-only
 reference Mac. The actual Host's audible delivery and physical speaker muting
 still require separate live acceptance.
 
-If development install reports launchctl bootstrap exit5 after replacing the
-app, inspect that exact graphical job: old `bootout` retirement is asynchronous.
-Verify its disappearance, unchanged console UID, installed candidate hash and
-running machine service before retrying bootstrap of the existing desktop
-plist. Do not rerun the whole installer or rebuild a successfully signed app.
-The installer still needs a bounded stop/start completion gate for this race.
+The development installer now waits for both job deregistration and observed
+process exit after `bootout`, before replacing code or restarting the machine
+coordinator. It stops graphical jobs in existing OS-account GUI domains first.
+Inspection errors are not absence. A 20-second drain timeout stops installation;
+never force-kill a Host or retry bootstrap while its old process still drains.
+
+System-wide candidates use one root-owned Aqua agent in `/Library/LaunchAgents`.
+Install with `sudo python3 scripts/install-macos-host-development.py --app APP`.
+For the two explicitly provisioned development accounts, add
+`--retire-user-agent operator --retire-user-agent permission-test-user` on the first
+upgrade only. These old user jobs are renamed to `.plist.retired` with permanently
+dropped user privileges; no home enumeration or private-key deletion occurs.
+The shared public configuration is `/Library/Application Support/PLANK/host.plist`
+(root/0644, parent0755); LoginWindow keys remain in `SignIn` (root/0700/0600).
+Desktop keys and logs are created by the signed app as the actual user, never
+by root launchd following a user-writable log path. This does not grant consent.
+
+The signed app includes the development uninstall command:
+`sudo python3 "/Applications/PLANK Host.app/Contents/Resources/uninstall-macos-host-development.py"`.
+It drains the same jobs, removes only verified PLANK system launch entries,
+and moves the app to a printed root-only recovery directory in `/Library/Caches`.
+Configuration, identities and logs remain for reinstall; no TCC reset or user
+account removal. This is Python3-based development tooling, not a notarized
+production installer/uninstaller. The1.0.77 dedicated-Mac install/uninstall/
+reinstall test passed. Repeat after lifecycle changes using
+`tests/auth/macos-install-uninstall.py --source CLEAN_SOURCE --app SIGNED_APP
+--sha256 EXECUTABLE_SHA256`; add explicit `--retire-user-agent USER` only when
+upgrading a prior per-user development job. The operator must disconnect first.
+The fixture records no private-key contents; it checks identity metadata,
+configuration, logs, signatures, actual Aqua preflights and listener removal/
+restoration. It deliberately does not log out, reboot or qualify live media.
 
 For LoginWindow candidates, run
 `python3 tests/auth/test-macos-development-install.py` and the Client's
