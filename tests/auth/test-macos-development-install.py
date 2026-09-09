@@ -17,6 +17,56 @@ PUBLIC = {"Address": "0.0.0.0", "Port": 28989, "Name": "PLANK test",
 
 
 class RoleIdentityTests(unittest.TestCase):
+    def test_key_only_identity_preserved(self):
+        with tempfile.TemporaryDirectory(prefix="plank-keys-") as temporary:
+            directory = Path(temporary) / "identity"
+            INSTALLER.prepare_sign_in_identity(directory, None)
+            self.assertEqual({p.name for p in directory.iterdir()}, {"cert.pem", "key.pem", "cert.der", "key.der"})
+            before = (directory / "key.der").read_bytes()
+            INSTALLER.prepare_sign_in_identity(directory, None)
+            self.assertEqual(before, (directory / "key.der").read_bytes())
+
+    def test_system_agent_and_uninstall_scope(self):
+        script = (ROOT / "scripts/install-macos-host-development.py").read_text()
+        self.assertIn('[executable, "--desktop", machine_label]', script)
+        self.assertIn('Path("/Library/LaunchAgents") / (graphical_label + ".plist")', script)
+        self.assertNotIn('parser.add_argument("--desktop-user"', script)
+        self.assertIn('os.setuid(account.pw_uid)', script)
+        uninstall = (ROOT / "scripts/uninstall-macos-host-development.py").read_text()
+        self.assertLess(uninstall.index('INSTALLER.stop_roles()'), uninstall.index('path.unlink()'))
+        self.assertNotIn('rmtree', uninstall)
+        self.assertNotIn('tccutil', uninstall)
+        self.assertIn('sys.dont_write_bytecode = True', uninstall)
+
+    def test_stop_waits_for_job_and_process(self):
+        with patch.object(INSTALLER, "job_state", side_effect=[(True, 42), (False, None), (False, None)]), \
+             patch.object(INSTALLER, "process_exists", side_effect=[True, False]), \
+             patch.object(INSTALLER, "run") as run, patch.object(INSTALLER.time, "sleep") as sleep:
+            INSTALLER.stop_job("gui/503/test")
+            run.assert_called_once_with("launchctl", "bootout", "gui/503/test", check=False)
+            sleep.assert_called_once_with(0.1)
+
+    def test_stop_absent_and_timeout(self):
+        with patch.object(INSTALLER, "job_state", return_value=(False, None)), \
+             patch.object(INSTALLER, "run") as run:
+            INSTALLER.stop_job("gui/503/test")
+            run.assert_not_called()
+        with patch.object(INSTALLER, "job_state", return_value=(True, 42)), \
+             patch.object(INSTALLER, "process_exists", return_value=True), \
+             patch.object(INSTALLER, "run") as run:
+            with self.assertRaisesRegex(RuntimeError, "replacement/startup cancelled"):
+                INSTALLER.stop_job("gui/503/test", timeout=0)
+            self.assertEqual(run.call_count, 1)
+
+    def test_inspection_errors_are_not_absence(self):
+        from types import SimpleNamespace
+        with patch.object(INSTALLER, "run", return_value=SimpleNamespace(returncode=1, stderr="Operation not permitted")):
+            with self.assertRaisesRegex(RuntimeError, "Cannot inspect"):
+                INSTALLER.job_state("gui/503/test")
+        with patch.object(INSTALLER, "run", return_value=SimpleNamespace(returncode=113,
+                          stderr='Bad request.\nCould not find service "test" in domain for user gui: 503')):
+            self.assertEqual(INSTALLER.job_state("gui/503/test"), (False, None))
+
     def test_permission_fixture_waits_for_actual_exit(self):
         spec = importlib.util.spec_from_file_location("permission_check", ROOT / "tests/auth/macos-permission-check.py")
         checker = importlib.util.module_from_spec(spec)
@@ -41,7 +91,7 @@ class RoleIdentityTests(unittest.TestCase):
                         INSTALLER.verify_upgrade_identity(source, installed)
             script = (ROOT / "scripts/install-macos-host-development.py").read_text()
             self.assertLess(script.index("verify_upgrade_identity(source, installed)", script.index("def main")),
-                            script.index("os.setegid(account.pw_gid)"))
+                            script.index('machine_state.mkdir(', script.index("def main")))
 
     def test_first_install_still_checks_candidate(self):
         with tempfile.TemporaryDirectory(prefix="plank-signature-") as temporary:

@@ -8,6 +8,7 @@
 #import "desktop-display.h"
 #import "screen-capture.h"
 #include "permission-status.h"
+#import "desktop-provisioning.h"
 #import <AppKit/AppKit.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -141,7 +142,7 @@ static int machine(const char *service) {
     [[NSRunLoop mainRunLoop] run]; return 0;
 }
 
-static int graphical(const char *service, NSString *role, NSString *directory) {
+static int graphical(const char *service, NSString *role, NSString *directory, BOOL systemProvisioning) {
     NSApplication *application = NSApplication.sharedApplication;
     [application setActivationPolicy:NSApplicationActivationPolicyProhibited];
     PLANKMacGraphicalPhase phase = [role isEqual:@"desktop"] ? PLANKMacScopeDesktop :
@@ -149,6 +150,16 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
     PLANKMacGraphicalAuthority *authority = [[PLANKMacGraphicalAuthority alloc] initWithPhase:phase];
     PLANKMacGraphicalIdentity initial = [authority snapshot];
     if (!plank_macos_graphical_identity_valid(initial)) return startupFailure("graphical-scope");
+    NSDictionary *publicConfiguration = nil;
+    if (systemProvisioning) {
+        if (phase == PLANKMacScopeDesktop) {
+            if (!PLANKMacPrepareDesktop(&directory, &publicConfiguration)) return startupFailure("desktop-provisioning");
+        } else {
+            publicConfiguration = PLANKMacReadPublicConfiguration(@"/Library/Application Support/PLANK", 0);
+            if (!publicConfiguration) return startupFailure("machine-configuration");
+        }
+        if (!plank_macos_same_graphical_scope(initial, [authority snapshot])) return startupFailure("provisioning-scope-changed");
+    }
     if (!directory.isAbsolutePath) return startupFailure("configuration-path");
     int fd = open(directory.fileSystemRepresentation, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     struct stat st;
@@ -156,12 +167,12 @@ static int graphical(const char *service, NSString *role, NSString *directory) {
     if (fstat(fd, &st) || st.st_uid != geteuid() || (st.st_mode & 0777) != 0700) {
         close(fd); return startupFailure("configuration-permissions");
     }
-    NSMutableData *configBytes = readPrivate(fd, "host.plist");
+    NSMutableData *configBytes = publicConfiguration ? nil : readPrivate(fd, "host.plist");
     NSMutableData *certificateBytes = readPrivate(fd, "cert.der"), *keyBytes = readPrivate(fd, "key.der");
     NSMutableData *certificatePEM = readPrivate(fd, "cert.pem"), *keyPEM = readPrivate(fd, "key.pem");
     close(fd);
-    NSDictionary *config = configBytes ? [NSPropertyListSerialization propertyListWithData:configBytes
-        options:NSPropertyListImmutable format:NULL error:NULL] : nil;
+    NSDictionary *config = publicConfiguration ?: (configBytes ? [NSPropertyListSerialization propertyListWithData:configBytes
+        options:NSPropertyListImmutable format:NULL error:NULL] : nil);
     if (![config isKindOfClass:NSDictionary.class] || config.count != 4 ||
         ![config[@"Address"] isKindOfClass:NSString.class] || ![config[@"Name"] isKindOfClass:NSString.class] ||
         ![config[@"UUID"] isKindOfClass:NSString.class] || ![config[@"Port"] isKindOfClass:NSNumber.class] ||
@@ -327,8 +338,11 @@ int main(int argc, const char **argv) {
             [app run]; return 0;
         }
         if (argc == 3 && !strcmp(argv[1], "--machine")) return machine(argv[2]);
+        if (argc == 3 && !strcmp(argv[1], "--desktop")) return graphical(argv[2], @"desktop", nil, YES);
+        if (argc == 3 && !strcmp(argv[1], "--sign-in"))
+            return graphical(argv[2], @"sign-in", @"/Library/Application Support/PLANK/SignIn", YES);
         if (argc == 5 && !strcmp(argv[1], "--graphical"))
-            return graphical(argv[2], [NSString stringWithUTF8String:argv[3]], [NSString stringWithUTF8String:argv[4]]);
+            return graphical(argv[2], [NSString stringWithUTF8String:argv[3]], [NSString stringWithUTF8String:argv[4]], NO);
         fprintf(stderr, "Usage: plank-host --check-permissions | --request-permissions | --machine MACH_SERVICE | --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY\n");
         return 2;
     }

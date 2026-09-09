@@ -1,6 +1,6 @@
 # macOS one-time provisioning and durable access
 
-Date: 2026-09-08. Branch: `macos-provisioning`.
+Date: 2026-09-08. Current branch: `macos-system-provisioning`.
 
 ## Objective and boundaries
 
@@ -84,6 +84,24 @@ Qualify different users, inactive/fast-switched sessions, locked accounts,
 ownership handoff, denied cross-account access, user-controlled path/symlink
 failures and shared configuration tampering before enabling all-user startup.
 Changing the LaunchAgent does not grant macOS privacy consent.
+
+Implementation checkpoint: system-wide startup now reads root-owned public
+settings and prepares independent keys in the actual user's private directory.
+Only first use invokes the OS crypto tool with fixed arguments, no shell,
+bounded child lifetime and private staging; directory publication is exclusive
+and atomic. Existing keys are preserved. The native filesystem/identity test
+passes on development-mac, including independent keys, preservation, signed identity
+construction, unsafe modes, invalid configuration and symlink rejection.
+The initial fixture failed because Foundation kept `/var` aliased in its temp
+path; C realpath corrected the fixture, not the production no-symlink guard.
+
+The user also requested uninstall functionality. Provide a bounded, verified
+stop followed by removal of product launch entries and recoverable app removal.
+Preserve settings, identities and logs by default; never modify TCC, delete
+accounts, or recursively purge homes. Qualify uninstall and reinstall before
+declaring this complete. Actual all-user login/logout and reboot remain live
+gates; no automatic login/logout/reboot is authorized by these implementation
+steps.
 
 ## Phase 3 — durable deployment
 
