@@ -150,6 +150,11 @@ capture and confirmed responsive desktop plus application audio. Missing system
 alerts were traced to the shared Apple system-sound daemon. For the clarified
 single active-user Mac deployment,1.0.74 adds this exact code-verified process
 to the existing tap under console ownership; other privileged/user processes
-remain excluded. Await audible alerts/application-audio regression acceptance.
+remain excluded. The operator confirmed system alert audio works on 1.0.74 and
+authorized committing, pushing and merging these checkpoints into main.
+Responsive desktop/input and application audio were already accepted on 1.0.73.
+Physical-speaker alert muting was not separately confirmed. Existing packages
+retain their feature version; the source merge does not create a new release.
 System-wide worker provisioning and durable OS-update permission qualification
-are still separate remaining tasks.
+are still separate remaining tasks. Also resolve the development installer's
+observed asynchronous bootout/bootstrap race with bounded lifecycle handling.
