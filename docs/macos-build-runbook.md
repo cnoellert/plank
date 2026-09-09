@@ -30,6 +30,14 @@ guard or switch to ad-hoc signing. Run
 
 ### Assembly and install
 
+The Host build runs `macos-audio-tap-lifecycle.m` against the production tap
+class with HAL prepare/activate/destroy overridden only in the test executable.
+It requests no consent and opens no audio devices. Require pending cancellation,
+late-consent suppression, one-tap reconnect bound, denied startup, active drain
+and100 race checks. A pass is not live permission-dialog/input acceptance.
+The signed product must still be tested from the fresh user's actual Aqua
+session; do not substitute a plain SSH permission check or reset TCC.
+
 For LoginWindow candidates, run
 `python3 tests/auth/test-macos-development-install.py` and the Client's
 `tests/desktopstage` suite. The development installer now registers a

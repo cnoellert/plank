@@ -137,3 +137,10 @@ usable and local playback untouched, not silently count as audio success.
 Preserve scoped audio ownership and safe asynchronous teardown, including
 disconnect/logout while the OS consent request is outstanding. No automatic
 consent clicks, privacy-database changes or blanket bypass are justified.
+
+That decoupling is implemented in root0a00973 and installed as
+1.0.73-macos-provisioning. The production audio lifecycle passes synthetic HAL
+tests for pending/denied consent, late approval after cancellation, active drain,
+bounded reconnect and100 cancellation races. Signed fresh-account screen/input
+preflights remain positive. Real permission-dialog interaction and audio
+allow/deny behavior are the next operator gate, before extending provisioning.
