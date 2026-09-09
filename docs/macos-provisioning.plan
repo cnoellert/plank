@@ -144,3 +144,12 @@ tests for pending/denied consent, late approval after cancellation, active drain
 bounded reconnect and100 cancellation races. Signed fresh-account screen/input
 preflights remain positive. Real permission-dialog interaction and audio
 allow/deny behavior are the next operator gate, before extending provisioning.
+
+Operator subsequently allowed both system audio and direct ScreenCaptureKit
+capture and confirmed responsive desktop plus application audio. Missing system
+alerts were traced to the shared Apple system-sound daemon. For the clarified
+single active-user Mac deployment,1.0.74 adds this exact code-verified process
+to the existing tap under console ownership; other privileged/user processes
+remain excluded. Await audible alerts/application-audio regression acceptance.
+System-wide worker provisioning and durable OS-update permission qualification
+are still separate remaining tasks.

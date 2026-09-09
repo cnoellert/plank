@@ -38,6 +38,24 @@ and100 race checks. A pass is not live permission-dialog/input acceptance.
 The signed product must still be tested from the fresh user's actual Aqua
 session; do not substitute a plain SSH permission check or reset TCC.
 
+For system-alert source qualification, compile
+`probes/macos/alert-audio-processes.c` with SDK/target27, warnings-as-errors,
+`-Ihost/macos/media` and CoreAudio/AudioToolbox/CoreFoundation/Security frameworks.
+Run `sudo python3 tests/audio/macos-alert-audio-processes.py ABSOLUTE_BINARY`:
+the default is silent, non-capturing actual-console identity qualification.
+`--play-alerts` explicitly emits three preferred alert sounds over12seconds
+while reporting HAL output transitions. The probe has a20second hard limit,
+and the fixture removes its temporary Aqua job. Never run this on the read-only
+reference Mac. The actual Host's audible delivery and physical speaker muting
+still require separate live acceptance.
+
+If development install reports launchctl bootstrap exit5 after replacing the
+app, inspect that exact graphical job: old `bootout` retirement is asynchronous.
+Verify its disappearance, unchanged console UID, installed candidate hash and
+running machine service before retrying bootstrap of the existing desktop
+plist. Do not rerun the whole installer or rebuild a successfully signed app.
+The installer still needs a bounded stop/start completion gate for this race.
+
 For LoginWindow candidates, run
 `python3 tests/auth/test-macos-development-install.py` and the Client's
 `tests/desktopstage` suite. The development installer now registers a
