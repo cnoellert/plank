@@ -46,8 +46,11 @@ The reference Mac was read-only; extraction was on the dedicated development Mac
 Current checkpoint: the user explicitly retained signing/notarization and
 approved replacing the first native-helper implementation with simple scripts.
 Both Developer ID identities and Keychain profile `plank-notary` are provisioned.
-Installer and uninstaller package build/qualification are in progress for
-1.0.80-macos-installer. No installed Host, permissions or streaming code changed.
+Installer and uninstaller1.0.80-macos-installer have been built, signed,
+notarized (Accepted), stapled and Gatekeeper-verified. Shell tests pass19 on Mac
+and29 with the isolated root filesystem fixture. Installed-app read-only
+preflight, package payload/scripts/version and Installer metadata pass.
+Exact artifacts/source/hashes are in HANDOFF. No installed Host, permissions or streaming code changed.
 Live install/upgrade/uninstall, fresh-machine and permission continuity gates
 remain open. Uninstall removes app, launchd entries and the Host receipt while
 preserving configuration, keys, logs and privacy approvals.

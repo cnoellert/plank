@@ -60,6 +60,9 @@ For command-line signature requirements, `codesign -R` needs a leading `=` for
 inline requirement text; otherwise it treats the expression as a filename.
 After this validation-command error, recheck the already signed binary and
 continue packaging; do not rebuild the Host or change its signing identity.
+For non-installing GUI metadata validation, use
+`installer -showChoicesXML -pkg ABSOLUTE_PACKAGE -target /`.
+Omitting `-target /` returns failure even when the package is valid.
 
 ## Native Host executable and application
 
