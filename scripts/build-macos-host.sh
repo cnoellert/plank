@@ -25,6 +25,10 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/media tests/audio/macos-audio-tap-lifecycle.m host/macos/media/audio-tap.m \
     -framework Foundation -framework CoreMedia -framework CoreAudio -framework Security -o "$output/audio-tap-lifecycle-test"
 "$output/audio-tap-lifecycle-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/media tests/audio/macos-opus-encoder.m host/macos/media/opus-encoder.m \
+    -framework Foundation -framework CoreMedia -framework AudioToolbox -o "$output/opus-encoder-test"
+"$output/opus-encoder-test" "$output/opus-fixture.pao"
 xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/media tests/video/macos-frame-timing.c -o "$output/frame-timing-test"
 "$output/frame-timing-test"

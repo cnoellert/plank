@@ -27,15 +27,16 @@ static OSStatus provide(AudioConverterRef converter, UInt32 *frames, AudioBuffer
 @implementation PLANKMacOpusEncoder {
     AudioConverterRef _converter;
     AudioStreamBasicDescription _format;
-    BOOL (^_output)(NSData *, CMTime);
-    BOOL _stopped;
+    BOOL (^_output)(NSData *, CMTime, BOOL);
+    BOOL _stopped, _discontinuity;
+    uint64_t _discontinuities;
     CMTime _origin, _packetPTS;
     uint64_t _inputFrames;
     uint32_t _primingFrames, _maximumPacketBytes;
     double _sourceToleranceSeconds;
 }
 - (instancetype)init { return nil; }
-- (instancetype)initWithOutput:(BOOL (^)(NSData *, CMTime))output {
+- (instancetype)initWithOutput:(BOOL (^)(NSData *, CMTime, BOOL))output {
     if (!output) return nil;
     self = [super init];
     if (self) {
@@ -101,12 +102,24 @@ static OSStatus provide(AudioConverterRef converter, UInt32 *frames, AudioBuffer
         if (format->mFormatFlags != _format.mFormatFlags || format->mBytesPerFrame != _format.mBytesPerFrame ||
             _inputFrames > INT64_MAX - MaxChunkFrames) return NO;
         CMTime expected = CMTimeAdd(_origin, CMTimeMake((int64_t)_inputFrames, Rate));
-        // Allow only source-clock representation rounding, never a missing
-        // sample. Derive from the origin, not rounded increments.
-        double gap = fabs(CMTimeGetSeconds(CMTimeSubtract(pts, expected)));
-        if (!isfinite(gap) || gap > _sourceToleranceSeconds) {
-            fprintf(stderr, "macos_opus_failure stage=timestamp gap_ns=%.3f\n", gap * 1e9);
-            return NO;
+        CMTime delta = CMTimeSubtract(pts, expected);
+        double gap = CMTimeGetSeconds(delta);
+        if (!isfinite(gap)) return NO;
+        if (fabs(gap) > _sourceToleranceSeconds) {
+            // A HAL/SCK clock discontinuity is not malformed PCM. Preserve
+            // codec history and the bounded partial packet, but move its clock
+            // by the same signed offset. Never pad a gap, replay old samples,
+            // restart priming or permanently offset subsequent source time.
+            CMTime rebased = CMTimeAdd(_packetPTS, delta);
+            if (!CMTIME_IS_NUMERIC(rebased) || rebased.value < 0) return NO;
+            _packetPTS = rebased; _origin = pts; _inputFrames = 0;
+            _discontinuity = YES;
+            ++_discontinuities;
+            // Log first occurrence and powers of two, not every callback of
+            // a broken source clock. Signed gap distinguishes jump direction.
+            if ((_discontinuities & (_discontinuities - 1)) == 0)
+                fprintf(stderr, "macos_opus_reanchor count=%llu gap_ns=%.3f\n",
+                    (unsigned long long)_discontinuities, gap * 1e9);
         }
     } else if (![self prepare:format pts:pts]) return NO;
     struct { UInt32 count; AudioBuffer buffers[2]; } storage = {0};
@@ -149,7 +162,8 @@ static OSStatus provide(AudioConverterRef converter, UInt32 *frames, AudioBuffer
                 description.mDataByteSize > _maximumPacketBytes ||
                 (description.mVariableFramesInPacket && description.mVariableFramesInPacket != PacketFrames)) return NO;
             NSData *packet = [NSData dataWithBytes:bytes length:description.mDataByteSize];
-            if (!_output(packet, _packetPTS) || _stopped) return NO;
+            if (!_output(packet, _packetPTS, _discontinuity) || _stopped) return NO;
+            _discontinuity = NO;
             _packetPTS = CMTimeAdd(_packetPTS, CMTimeMake(PacketFrames, Rate));
             if (!CMTIME_IS_NUMERIC(_packetPTS)) return NO;
         }

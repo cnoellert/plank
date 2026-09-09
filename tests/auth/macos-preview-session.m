@@ -52,7 +52,7 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
 }
 - (void)stopWithCompletion:(void (^)(void))completion {
     self.revokedBeforeStop = [self.video sendSample:NULL processingLatency:0] == PLANK_TRANSPORT_ERROR_INVALID_STATE;
-    self.revokedBeforeStop &= [self.audio sendOpusPacket:nil presentationTime:kCMTimeZero] == PLANK_TRANSPORT_ERROR_INVALID_STATE;
+    self.revokedBeforeStop &= [self.audio sendOpusPacket:nil presentationTime:kCMTimeZero discontinuity:YES] == PLANK_TRANSPORT_ERROR_INVALID_STATE;
     self.stops++; self.video = nil;
     self.audio = nil;
     if (self.deferStop) self.pendingStop = completion;

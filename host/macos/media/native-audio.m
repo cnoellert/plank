@@ -22,7 +22,7 @@
     }
     return self;
 }
-- (int32_t)sendOpusPacket:(NSData *)packet presentationTime:(CMTime)pts {
+- (int32_t)sendOpusPacket:(NSData *)packet presentationTime:(CMTime)pts discontinuity:(BOOL)discontinuity {
     if (plank_transport_native_endpoint_state(_endpoint) != PLANK_TRANSPORT_STATE_READY)
         return PLANK_TRANSPORT_ERROR_INVALID_STATE;
     __block int32_t result = PLANK_TRANSPORT_ERROR_INVALID_STATE;
@@ -33,7 +33,8 @@
         if (!self->_validity()) return;
         result = PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT;
         if (!packet.length || packet.length > 65536 || !CMTIME_IS_NUMERIC(pts) ||
-            pts.epoch != 0 || pts.value < 0 || (self->_hasPTS && CMTimeCompare(pts, self->_nextPTS)))
+            pts.epoch != 0 || pts.value < 0 ||
+            (self->_hasPTS && !discontinuity && CMTimeCompare(pts, self->_nextPTS)))
             return;
         CMTime next = CMTimeAdd(pts, CMTimeMake(240, 48000));
         CMTime milliseconds = CMTimeConvertScale(pts, 1000, kCMTimeRoundingMethod_RoundTowardZero);

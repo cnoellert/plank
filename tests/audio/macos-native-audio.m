@@ -63,10 +63,11 @@ int main(int argc, const char **argv) {
         PLANKMacNativeAudio *audio = [[PLANKMacNativeAudio alloc] initWithEndpoint:server
             sessions:sessions lease:lease validity:^BOOL { ++topologyChecks; return validTopology; }];
         CHECK(audio != nil);
-        CHECK([audio sendOpusPacket:nil presentationTime:kCMTimeZero] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
+        CHECK([audio sendOpusPacket:nil presentationTime:kCMTimeZero discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
         CHECK([sessions activateStreamLease:lease]);
-        CHECK([audio sendOpusPacket:nil presentationTime:kCMTimeZero] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+        CHECK([audio sendOpusPacket:nil presentationTime:kCMTimeZero discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
         unsigned count = 0;
+        int64_t clockOffset = 0;
         NSData *lastPacket = nil;
         for (size_t offset = 16; offset < fixture.length;) {
             CHECK(fixture.length - offset >= 4);
@@ -75,40 +76,53 @@ int main(int argc, const char **argv) {
             NSData *packet = [NSData dataWithBytes:bytes + offset length:size]; offset += size;
             // Source time starts at 10.0005 s, proving both conversion and
             // fractional-millisecond rounding independently of callback time.
-            CMTime pts = CMTimeMake(480024 + (int64_t)count * 240, 48000);
+            BOOL discontinuity = count == 5 || count == 10 || count == 20 || count == 30;
+            if (count == 5) clockOffset += 4608;
+            if (count == 10) clockOffset -= 4608;
+            if (count == 20) clockOffset += 480000;
+            if (count == 30) clockOffset -= 480000;
+            CMTime pts = CMTimeMake(480024 + (int64_t)count * 240 + clockOffset, 48000);
             if (!count) {
-                CHECK([audio sendOpusPacket:packet presentationTime:kCMTimeInvalid] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
-                CHECK([audio sendOpusPacket:packet presentationTime:CMTimeMake(-1, 48000)] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
-                CHECK([audio sendOpusPacket:packet presentationTime:CMTimeMakeWithEpoch(1, 48000, 1)] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+                CHECK([audio sendOpusPacket:packet presentationTime:kCMTimeInvalid discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+                CHECK([audio sendOpusPacket:packet presentationTime:CMTimeMake(-1, 48000) discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+                CHECK([audio sendOpusPacket:packet presentationTime:CMTimeMakeWithEpoch(1, 48000, 1) discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
                 validTopology = NO;
-                CHECK([audio sendOpusPacket:packet presentationTime:pts] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
+                CHECK([audio sendOpusPacket:packet presentationTime:pts discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
                 validTopology = YES;
             }
+            if (discontinuity) {
+                CHECK([audio sendOpusPacket:packet presentationTime:pts discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+                validTopology = NO;
+                CHECK([audio sendOpusPacket:packet presentationTime:pts discontinuity:YES] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
+                validTopology = YES;
+                CHECK([audio sendOpusPacket:packet presentationTime:kCMTimeInvalid discontinuity:YES] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+            }
             unsigned beforeSnapshots = snapshots, beforeTopology = topologyChecks;
-            CHECK([audio sendOpusPacket:packet presentationTime:pts] == PLANK_TRANSPORT_OK);
+            CHECK([audio sendOpusPacket:packet presentationTime:pts discontinuity:discontinuity] == PLANK_TRANSPORT_OK);
             CHECK(snapshots == beforeSnapshots + 1 && topologyChecks == beforeTopology + 1);
-            CHECK([audio sendOpusPacket:packet presentationTime:pts] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
-            CHECK([audio sendOpusPacket:packet presentationTime:CMTimeAdd(pts, CMTimeMake(1, 1))] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+            CHECK([audio sendOpusPacket:packet presentationTime:pts discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
+            CHECK([audio sendOpusPacket:packet presentationTime:CMTimeAdd(pts, CMTimeMake(1, 1)) discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT);
             uint8_t output[65536]; size_t receivedSize = 0;
             PlankTransportNativeAudioPacketInfo info = {0}; info.struct_size = sizeof(info);
             CHECK(plank_transport_native_audio_receive(client, &info, output, sizeof(output), &receivedSize, 3000) == PLANK_TRANSPORT_OK);
             CHECK(receivedSize == size && !memcmp(output, packet.bytes, size));
-            CHECK(info.frame_samples == 240 && info.missing_samples == 0 && info.pts == 10000 + (uint64_t)count * 5);
+            CHECK(info.frame_samples == 240 && info.missing_samples == 0 && info.pts == 10000 + (uint64_t)count * 5 + (uint64_t)(clockOffset / 48));
             lastPacket = packet; ++count;
         }
         CHECK(count == 402);
         desktop.active = false;
-        CHECK([audio sendOpusPacket:lastPacket presentationTime:CMTimeMake(480024 + count * 240, 48000)] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
+        CHECK([audio sendOpusPacket:lastPacket presentationTime:CMTimeMake(480024 + count * 240, 48000) discontinuity:NO] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
+        CHECK([audio sendOpusPacket:lastPacket presentationTime:CMTimeMake(30, 1) discontinuity:YES] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
         CHECK(lease.transportToken == nil);
         desktop.active = true; // must not resurrect the old lease
-        CHECK([audio sendOpusPacket:lastPacket presentationTime:CMTimeMake(480024 + count * 240, 48000)] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
+        CHECK([audio sendOpusPacket:lastPacket presentationTime:CMTimeMake(480024 + count * 240, 48000) discontinuity:YES] == PLANK_TRANSPORT_ERROR_INVALID_STATE);
         uint8_t absent[65536]; size_t absentSize = 0;
         PlankTransportNativeAudioPacketInfo absentInfo = {0}; absentInfo.struct_size = sizeof(absentInfo);
         CHECK(plank_transport_native_audio_receive(client, &absentInfo, absent, sizeof(absent), &absentSize, 50) == PLANK_TRANSPORT_TIMEOUT);
         [sessions revokeAll]; audio = nil;
         plank_transport_native_endpoint_destroy(client);
         plank_transport_native_endpoint_destroy(server);
-        printf("macos_native_audio=pass checks=%u packets=%u exact_quic_payload=1 pts_milliseconds=1 revoked_audio_absent=1 synthetic_only=1\n", checks, count);
+        printf("macos_native_audio=pass checks=%u packets=%u exact_quic_payload=1 pts_milliseconds=1 signed_jumps_delivered=1 revoked_audio_absent=1 synthetic_only=1\n", checks, count);
     }
     return 0;
 }

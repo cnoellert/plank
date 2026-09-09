@@ -30,6 +30,13 @@ guard or switch to ad-hoc signing. Run
 
 ### Assembly and install
 
+The Host build runs the production Opus synthetic fixture, including signed
+source-clock jumps and byte-identical PCM encoding. For audio adapter changes,
+also run `build-macos-native-audio.sh` with the retained synthetic402-packet
+fixture and current ABI archive; it verifies real QUIC delivery across marked
+PTS epochs plus revocation. Neither test captures or plays audio. Live audible
+playback and synchronization remain separate acceptance checks.
+
 The Host build runs `macos-audio-tap-lifecycle.m` against the production tap
 class with HAL prepare/activate/destroy overridden only in the test executable.
 It requests no consent and opens no audio devices. Require pending cancellation,
