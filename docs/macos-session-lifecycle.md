@@ -11,6 +11,34 @@ Qualification launchd jobs are temporary fixtures, not package inputs.
 
 ## Runnable Host assembly
 
+Desktop audio is optional during session startup. ScreenCaptureKit readiness
+enables the video/input session immediately; a Core Audio tap awaiting consent
+or failing to start must not gate that callback or stop video/input. There is
+no automatic consent grant and no switch to a different user's audio. Runtime
+tap failure disables and cleans up audio for this session, preserving desktop
+access. Pending/active/unavailable/cleanup status goes to the product log.
+
+Pending tap cancellation is distinct from active IO drain: an atomic activation
+gate prevents a consent request completed after disconnect from ever starting
+IO. The session can finish teardown while that unstarted request returns from
+HAL and destroys any partial resources. Active IO must still stop and destroy
+before teardown completion. The worker allows at most one tap, including
+deferred cleanup; a reconnect while old consent is outstanding remains usable
+without audio (retry audio on a later connection). No root audio fallback or
+TCC database access. The lifecycle test replaces only HAL setup/start/cleanup
+and exercises the real asynchronous class; live consent/input still needs
+operator qualification.
+
+The Mac deployment is a single active-user workstation. Its desktop audio tap
+also includes system alerts from the running `com.apple.systemsoundserverd`
+process, validated with Apple's code-signing anchor and exact identifier.
+This exception requires current console ownership; all other audio processes
+still require matching effective/real user IDs. Standard users cannot inspect
+that root service with proc_pidinfo on the qualified OS, so dynamic SecCode
+validation is the authority, not a guessed PID, process name or HAL bundle ID.
+The same tap mixes and mutes the selected application's and system-alert
+streams, with no second audio path or additional Host privilege.
+
 `plank-host --machine MACH_SERVICE` runs the root ownership coordinator.
 `plank-host --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY` runs
 the explicitly selected graphical role, on that actual launchd graphical domain.
@@ -89,8 +117,15 @@ The existing desktop can be preserved while installing the next-login job;
 installation itself does not prove the cold-boot gate.
 
 Opening the signed PLANK Host application requests its own Screen Recording
-and Accessibility consent. Probe consent does not transfer across bundle IDs.
+and input consent. Probe consent does not transfer across bundle IDs.
 The permission window does not start a listener or a remote session.
+`--check-permissions` instead performs non-prompting screen/input preflights in
+the calling graphical context and emits JSON. It explicitly does not qualify
+desktop audio-tap consent. Run the installed signed app in the actual user's
+Aqua domain, not through plain SSH as a substitute. The development installer
+now rejects changes to the installed Team ID/designated signing requirement
+before changing state or stopping services. The multi-user provisioning and
+OS-update qualification sequence is in `macos-provisioning.plan`.
 
 ## Trust boundary
 

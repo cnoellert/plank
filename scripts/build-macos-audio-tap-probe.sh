@@ -23,7 +23,7 @@ xcrun --sdk macosx clang -fobjc-arc -Wall -Wextra -Werror -mmacosx-version-min=2
     -I"$1/host/macos/media" "$1/probes/macos/audio-tap.m" \
     "$1/probes/macos/session-audio-tap.m" "$1/host/macos/media/audio-tap.m" \
     "$1/host/macos/media/opus-encoder.m" -framework AppKit -framework CoreAudio \
-    -framework CoreMedia -framework AudioToolbox \
+    -framework CoreMedia -framework AudioToolbox -framework Security \
     -o "$app/Contents/MacOS/plank-host-probe"
 codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY" --timestamp=none "$app"
 codesign --verify --strict "$app"

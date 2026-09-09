@@ -7,6 +7,7 @@
 #import "fixed-capture.h"
 #import "desktop-display.h"
 #import "screen-capture.h"
+#include "permission-status.h"
 #import <AppKit/AppKit.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -22,6 +23,31 @@
 static int startupFailure(const char *stage) {
     fprintf(stderr, "PLANK Host startup rejected: %s\n", stage);
     return 2;
+}
+
+// Run the installed signed app in the target graphical session. SSH/root
+// Background results are not evidence of another user's graphical consent.
+// No requests, capture, audio tap, input, listener or persistent state here.
+static int checkPermissions(void) {
+    [NSApplication.sharedApplication setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    PLANKMacGraphicalAuthority *authority = [[PLANKMacGraphicalAuthority alloc]
+        initWithPhase:geteuid() == 0 ? PLANKMacScopeSignIn : PLANKMacScopeDesktop];
+    BOOL graphical = plank_macos_graphical_identity_valid([authority snapshot]);
+    BOOL screen = CGPreflightScreenCaptureAccess();
+    BOOL post = CGPreflightPostEventAccess();
+    BOOL accessibility = AXIsProcessTrusted();
+    // Check the context again after preflights; a transition invalidates this
+    // sample. The running stream still performs its own authorization checks.
+    graphical = graphical && plank_macos_graphical_identity_valid([authority snapshot]);
+    BOOL ready = plank_macos_screen_input_ready(graphical, screen, post, accessibility);
+    NSDictionary *report = @{@"schema_version": @1, @"version": @PLANK_MACOS_HOST_VERSION,
+        @"uid": @(geteuid()), @"graphical_context_valid": @(graphical),
+        @"screen_capture": @(screen), @"post_event": @(post), @"accessibility": @(accessibility),
+        @"screen_input_ready": @(ready), @"audio_tap_permission": @"not-checked"};
+    NSData *json = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingSortedKeys error:NULL];
+    [authority revoke];
+    if (!json || fwrite(json.bytes, 1, json.length, stdout) != json.length || putchar('\n') == EOF) return 2;
+    return ready ? 0 : 3;
 }
 
 // Read only a bounded regular file inside the already-open role-private
@@ -256,14 +282,16 @@ int main(int argc, const char **argv) {
         if (argc == 2 && !strcmp(argv[1], "--version")) {
             puts("PLANK Host " PLANK_MACOS_HOST_VERSION); return 0;
         }
+        if (argc == 2 && !strcmp(argv[1], "--check-permissions")) return checkPermissions();
         if (argc == 1 || (argc == 2 && !strcmp(argv[1], "--request-permissions"))) {
             NSApplication *app = NSApplication.sharedApplication;
             [app setActivationPolicy:NSApplicationActivationPolicyRegular];
             dispatch_async(dispatch_get_main_queue(), ^{
                 BOOL screen = CGPreflightScreenCaptureAccess();
                 BOOL input = AXIsProcessTrusted();
-                if (screen && input) {
-                    puts("PLANK Host permissions ready");
+                BOOL post = CGPreflightPostEventAccess();
+                if (screen && input && post) {
+                    puts("PLANK Host screen/input permissions ready; audio-tap consent requires a separate live check");
                     [app terminate:nil];
                     return;
                 }
@@ -272,23 +300,27 @@ int main(int argc, const char **argv) {
                     NSDictionary *options = @{(__bridge id)kAXTrustedCheckOptionPrompt: @YES};
                     input = AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)options);
                 }
+                if (!post) post = CGRequestPostEventAccess();
                 // A permission request may complete before returning. Do not
                 // show stale setup instructions after permission was granted.
                 screen = CGPreflightScreenCaptureAccess();
                 input = AXIsProcessTrusted();
-                if (screen && input) {
-                    puts("PLANK Host permissions ready");
+                post = CGPreflightPostEventAccess();
+                if (screen && input && post) {
+                    puts("PLANK Host screen/input permissions ready; audio-tap consent requires a separate live check");
                     [app terminate:nil];
                     return;
                 }
                 NSAlert *alert = [NSAlert new];
                 alert.messageText = @"PLANK Host permission required";
                 alert.informativeText = [NSString stringWithFormat:
-                    @"Version %s\n\nScreen & System Audio Recording: %@\nAccessibility: %@\n\n"
+                    @"Version %s\n\nScreen & System Audio Recording: %@\nAccessibility: %@\nKeyboard/Mouse Event Posting: %@\n\n"
                      "Enable PLANK Host in System Settings → Privacy & Security. These permissions belong to "
                      "PLANK Host, separately from PLANK Host Probe. Reopen this app after enabling them. "
+                     "Desktop audio-tap consent is checked separately when audio capture starts. "
                      "This permission window does not start a remote session.",
-                    PLANK_MACOS_HOST_VERSION, screen ? @"Allowed" : @"Required", input ? @"Allowed" : @"Required"];
+                    PLANK_MACOS_HOST_VERSION, screen ? @"Allowed" : @"Required", input ? @"Allowed" : @"Required",
+                    post ? @"Allowed" : @"Required"];
                 [alert addButtonWithTitle:@"Close"];
                 [app activate]; [alert runModal]; [app terminate:nil];
             });
@@ -297,7 +329,7 @@ int main(int argc, const char **argv) {
         if (argc == 3 && !strcmp(argv[1], "--machine")) return machine(argv[2]);
         if (argc == 5 && !strcmp(argv[1], "--graphical"))
             return graphical(argv[2], [NSString stringWithUTF8String:argv[3]], [NSString stringWithUTF8String:argv[4]]);
-        fprintf(stderr, "Usage: plank-host --machine MACH_SERVICE | --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY\n");
+        fprintf(stderr, "Usage: plank-host --check-permissions | --request-permissions | --machine MACH_SERVICE | --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY\n");
         return 2;
     }
 }

@@ -12,8 +12,15 @@ source_root=$1; output=$2; archive=$3
 mkdir "$output"
 cd "$source_root"
 xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
+    -Ihost/macos/session tests/auth/macos-permission-status.c -o "$output/permission-status-test"
+"$output/permission-status-test"
+xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/media tests/audio/macos-audio-tap-buffer.c -o "$output/audio-tap-buffer-test"
 "$output/audio-tap-buffer-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/media tests/audio/macos-audio-tap-lifecycle.m host/macos/media/audio-tap.m \
+    -framework Foundation -framework CoreMedia -framework CoreAudio -framework Security -o "$output/audio-tap-lifecycle-test"
+"$output/audio-tap-lifecycle-test"
 xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/media tests/video/macos-frame-timing.c -o "$output/frame-timing-test"
 "$output/frame-timing-test"

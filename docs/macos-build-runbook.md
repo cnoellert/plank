@@ -7,6 +7,55 @@ Probe signing/installation remains documented in `probes/macos/README.md`.
 
 ## Native Host executable and application
 
+### Non-prompting permission qualification
+
+Follow `macos-provisioning.plan`. The installed signed Host supports
+`--check-permissions`; use `sudo python3 tests/auth/macos-permission-check.py
+--uid ACTUAL_CONSOLE_UID` after the operator logs into the account under test.
+The runner launches one temporary Aqua job, waits for a **numeric** launchd
+exit code (the initial `(never exited)` value is not completion), prints the
+JSON and removes the job. It cannot log a user in, capture, post input, request
+consent or provision a missing desktop worker. Exit0 is screen/input preflight
+readiness,3 is a negative result,2 is an app diagnostic error. Audio-tap consent
+remains explicitly unverified. Plain SSH may report denial even when the same
+UID's Aqua check passes; do not reset permissions on that evidence.
+
+The development installer verifies the candidate and installed signatures and
+requires matching Team IDs and designated requirements before any state write
+or service stop. `codesign -d -r-` emits the requirement on stdout and diagnostics
+on stderr; the parser accepts either stream but rejects ambiguity. A signer
+transition is a provisioning decision, not a build repair. Do not bypass this
+guard or switch to ad-hoc signing. Run
+`python3 tests/auth/test-macos-development-install.py` for its failure cases.
+
+### Assembly and install
+
+The Host build runs `macos-audio-tap-lifecycle.m` against the production tap
+class with HAL prepare/activate/destroy overridden only in the test executable.
+It requests no consent and opens no audio devices. Require pending cancellation,
+late-consent suppression, one-tap reconnect bound, denied startup, active drain
+and100 race checks. A pass is not live permission-dialog/input acceptance.
+The signed product must still be tested from the fresh user's actual Aqua
+session; do not substitute a plain SSH permission check or reset TCC.
+
+For system-alert source qualification, compile
+`probes/macos/alert-audio-processes.c` with SDK/target27, warnings-as-errors,
+`-Ihost/macos/media` and CoreAudio/AudioToolbox/CoreFoundation/Security frameworks.
+Run `sudo python3 tests/audio/macos-alert-audio-processes.py ABSOLUTE_BINARY`:
+the default is silent, non-capturing actual-console identity qualification.
+`--play-alerts` explicitly emits three preferred alert sounds over12seconds
+while reporting HAL output transitions. The probe has a20second hard limit,
+and the fixture removes its temporary Aqua job. Never run this on the read-only
+reference Mac. The actual Host's audible delivery and physical speaker muting
+still require separate live acceptance.
+
+If development install reports launchctl bootstrap exit5 after replacing the
+app, inspect that exact graphical job: old `bootout` retirement is asynchronous.
+Verify its disappearance, unchanged console UID, installed candidate hash and
+running machine service before retrying bootstrap of the existing desktop
+plist. Do not rerun the whole installer or rebuild a successfully signed app.
+The installer still needs a bounded stop/start completion gate for this race.
+
 For LoginWindow candidates, run
 `python3 tests/auth/test-macos-development-install.py` and the Client's
 `tests/desktopstage` suite. The development installer now registers a
