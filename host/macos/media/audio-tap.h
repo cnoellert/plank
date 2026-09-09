@@ -6,7 +6,9 @@
 // One-shot desktop audio capture. Public methods and delivered callbacks use
 // the supplied serial owner queue. HAL lifecycle work is off that queue.
 // Audio is limited to this non-root user's processes, excluding the Host.
-// stop drops buffered audio and completes only after HAL objects are destroyed.
+// stop drops buffered audio. Active IO is destroyed before completion. A pending
+// consent request is cancelled logically: IO can never start, session references
+// are detached immediately, and unstarted HAL objects are cleaned up on return.
 @interface PLANKMacAudioTap : NSObject
 - (instancetype)initWithQueue:(dispatch_queue_t)queue
                         sample:(BOOL (^)(CMSampleBufferRef sample))sample

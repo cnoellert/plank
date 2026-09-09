@@ -11,6 +11,24 @@ Qualification launchd jobs are temporary fixtures, not package inputs.
 
 ## Runnable Host assembly
 
+Desktop audio is optional during session startup. ScreenCaptureKit readiness
+enables the video/input session immediately; a Core Audio tap awaiting consent
+or failing to start must not gate that callback or stop video/input. There is
+no automatic consent grant and no switch to a different user's audio. Runtime
+tap failure disables and cleans up audio for this session, preserving desktop
+access. Pending/active/unavailable/cleanup status goes to the product log.
+
+Pending tap cancellation is distinct from active IO drain: an atomic activation
+gate prevents a consent request completed after disconnect from ever starting
+IO. The session can finish teardown while that unstarted request returns from
+HAL and destroys any partial resources. Active IO must still stop and destroy
+before teardown completion. The worker allows at most one tap, including
+deferred cleanup; a reconnect while old consent is outstanding remains usable
+without audio (retry audio on a later connection). No root audio fallback or
+TCC database access. The lifecycle test replaces only HAL setup/start/cleanup
+and exercises the real asynchronous class; live consent/input still needs
+operator qualification.
+
 `plank-host --machine MACH_SERVICE` runs the root ownership coordinator.
 `plank-host --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY` runs
 the explicitly selected graphical role, on that actual launchd graphical domain.

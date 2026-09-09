@@ -132,10 +132,10 @@
             return capture && !capture->_stopping && [capture->_audioEncoder encodeSample:sample];
         } failed:^{
             typeof(self) capture = weakSelf;
-            if (capture && !capture->_stopping) capture->_failed();
+            if (capture && !capture->_stopping) [capture disableDesktopAudio];
         }];
-        if (!_audioTap) { failed(); return; }
-        _audioStopped = NO;
+        _audioStopped = _audioTap == nil;
+        if (!_audioTap) NSLog(@"PLANK desktop audio unavailable; video and input remain enabled");
     }
     _lastPTS = kCMTimeInvalid;
     _width = [topology[@"capture"][@"width"] unsignedIntegerValue];
@@ -186,17 +186,36 @@
                 dispatch_async(self->_queue, ^{
                     self->_starting = NO;
                     if (self->_stopping) { [self stopCapture]; return; }
-                    if (startError) self->_failed();
-                    else if (self->_audioTap) {
+                    if (startError) { self->_failed(); return; }
+                    // Screen/input readiness is independent of optional audio
+                    // consent. In particular, remote input must already work
+                    // while macOS presents an audio permission dialog.
+                    started(peak);
+                    if (!self->_stopping && self->_audioTap) {
+                        NSLog(@"PLANK desktop audio starting; video and input are ready");
                         [self->_audioTap startWithCompletion:^(BOOL ready) {
-                            if (self->_stopping) return;
-                            if (ready) started(peak);
-                            else self->_failed();
+                            typeof(self) capture = weakSelf;
+                            if (capture && !capture->_stopping && !ready) [capture disableDesktopAudio];
                         }];
-                    } else started(peak);
+                    }
                 });
             }];
         });
+    }];
+}
+- (void)disableDesktopAudio {
+    if (!_audioTap) return;
+    NSLog(@"PLANK desktop audio unavailable; video and input continue without audio");
+    [_audioEncoder stop]; _audioEncoder = nil;
+    [self stopDesktopAudio];
+}
+- (void)stopDesktopAudio {
+    PLANKMacAudioTap *tap = _audioTap;
+    if (!tap) return;
+    _audioTap = nil; // one stop per tap, including failure followed by disconnect
+    [tap stopWithCompletion:^{
+        self->_audioStopped = YES;
+        [self finishStop];
     }];
 }
 - (void)stream:(SCStream *)stream didOutputSampleBuffer:(CMSampleBufferRef)sample ofType:(SCStreamOutputType)type {
@@ -304,10 +323,7 @@
     _stopping = YES; _failed = nil; _drained = [completion copy];
     _replacementCompletion = nil;
     [_audioEncoder stop]; _audioEncoder = nil;
-    if (_audioTap) [_audioTap stopWithCompletion:^{
-        self->_audioStopped = YES; self->_audioTap = nil;
-        [self finishStop];
-    }];
+    [self stopDesktopAudio];
     if (!_starting) [self stopCapture];
 }
 - (void)stopCapture {

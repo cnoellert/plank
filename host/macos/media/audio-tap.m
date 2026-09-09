@@ -11,6 +11,10 @@
 static AudioObjectPropertyAddress property(AudioObjectPropertySelector selector) {
     return (AudioObjectPropertyAddress){selector, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
 }
+// A consent request can remain inside HAL until the user responds. Bound the
+// worker to one tap (including its deferred cleanup), even across reconnects.
+static atomic_bool tapInUse = false;
+enum { TapPreparing, TapActivating, TapCancelled };
 typedef struct {
     PLANKTapBuffer buffer;
     __unsafe_unretained dispatch_source_t ready;
@@ -44,6 +48,8 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     BOOL (^_sample)(CMSampleBufferRef);
     void (^_failed)(void);
     BOOL _started, _stopped;
+    BOOL _ownsSlot;
+    atomic_int _activation;
     AudioObjectID _tap, _device;
     AudioDeviceIOProcID _io;
     BOOL _running, _listening, _formatListening;
@@ -62,6 +68,7 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     _input = calloc(1, sizeof(*_input));
     if (!_input) return nil;
     PLANKTapBufferInit(&_input->buffer);
+    atomic_init(&_activation, TapPreparing);
     _ready = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, _owner);
     _input->ready = _ready;
     __weak typeof(self) weakSelf = self;
@@ -112,6 +119,7 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     _description.processRestoreEnabled = NO; // no bundle-ID cross-user matching
     _description.muteBehavior = CATapMutedWhenTapped;
     if (AudioHardwareCreateProcessTap(_description, &_tap)) return NO;
+    if (atomic_load(&_input->buffer.stopped)) return NO;
     NSDictionary *specification = @{
         @kAudioAggregateDeviceNameKey: @"PLANK Private Session Audio",
         @kAudioAggregateDeviceUIDKey: NSUUID.UUID.UUIDString,
@@ -168,18 +176,33 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     _formatListening = YES;
     if (![self updateProcesses]) return NO; // close enumeration/listener setup race
     if (atomic_load(&_input->buffer.stopped)) return NO;
-    if (AudioDeviceCreateIOProcID(_device, receive, _input, &_io) || AudioDeviceStart(_device, _io)) return NO;
+    return AudioDeviceCreateIOProcID(_device, receive, _input, &_io) == noErr;
+}
+- (BOOL)activate {
+    // startWithCompletion won the activation/cancellation race. From here stop
+    // must await HAL cleanup before reporting that local playback is released.
+    if (AudioDeviceStart(_device, _io)) return NO;
     _running = YES;
     return YES;
 }
 - (void)startWithCompletion:(void (^)(BOOL))completion {
     if (_started || _stopped || !completion) { if (completion) completion(NO); return; }
     _started = YES;
+    if (atomic_exchange(&tapInUse, true)) {
+        NSLog(@"PLANK desktop audio unavailable: previous tap cleanup is pending");
+        completion(NO); return;
+    }
+    _ownsSlot = YES;
     dispatch_async(_control, ^{
-        BOOL ready = [self prepare];
+        BOOL ready = !atomic_load(&self->_input->buffer.stopped) && [self prepare];
+        int expected = TapPreparing;
+        ready = ready && atomic_compare_exchange_strong(&self->_activation, &expected, TapActivating);
+        if (ready) ready = [self activate];
         dispatch_async(self->_owner, ^{
-            NSLog(@"PLANK desktop audio tap: ready=%d local-playback=muted-while-captured", ready);
-            completion(ready && !self->_stopped);
+            if (self->_stopped) return;
+            NSLog(@"PLANK desktop audio tap: %@", ready ? @"active; local playback muted while captured" :
+                @"unavailable; releasing any partial audio resources");
+            completion(ready);
         });
     });
 }
@@ -207,30 +230,44 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     if (_stopped) return; // one-shot owner calls exactly once
     _stopped = YES; _sample = nil; _failed = nil;
     atomic_store_explicit(&_input->buffer.stopped, true, memory_order_release);
+    int expected = TapPreparing;
+    BOOL cancelledBeforeActivation = atomic_compare_exchange_strong(&_activation, &expected, TapCancelled);
+    // HAL has no public cancellation API for the consent wait. If activation
+    // has not begun, permanently prevent it and detach the session now. The
+    // retained control block cleans up any unstarted objects once HAL returns;
+    // it cannot deliver samples, start IO or mute playback after completion.
     dispatch_async(_control, ^{
-        BOOL clean = YES;
-        if (self->_listening) {
-            AudioObjectPropertyAddress address = property(kAudioHardwarePropertyProcessObjectList);
-            clean &= AudioObjectRemovePropertyListenerBlock(kAudioObjectSystemObject, &address, self->_control, self->_processesChanged) == noErr;
-        }
-        if (self->_formatListening) {
-            AudioObjectPropertyAddress address = {kAudioDevicePropertyStreamFormat, kAudioObjectPropertyScopeInput, kAudioObjectPropertyElementMain};
-            clean &= AudioObjectRemovePropertyListenerBlock(self->_device, &address, self->_control, self->_formatChanged) == noErr;
-        }
-        if (self->_running) clean &= AudioDeviceStop(self->_device, self->_io) == noErr;
-        if (self->_io) clean &= AudioDeviceDestroyIOProcID(self->_device, self->_io) == noErr;
-        if (self->_device) clean &= AudioHardwareDestroyAggregateDevice(self->_device) == noErr;
-        if (self->_tap) clean &= AudioHardwareDestroyProcessTap(self->_tap) == noErr;
-        // Do not reuse a worker after uncertain HAL teardown: process exit is
-        // the final cleanup boundary and the machine service replaces its agent.
-        if (!clean) { NSLog(@"PLANK audio tap teardown failed; retiring worker"); _exit(70); }
-        self->_processesChanged = nil; self->_formatChanged = nil; self->_description = nil;
+        [self destroy];
+        if (self->_ownsSlot) { atomic_store(&tapInUse, false); self->_ownsSlot = NO; }
         dispatch_async(self->_owner, ^{
             dispatch_source_cancel(self->_ready);
             NSLog(@"PLANK desktop audio tap stopped; local playback released");
-            if (completion) completion();
+            if (!cancelledBeforeActivation && completion) completion();
         });
     });
+    if (cancelledBeforeActivation) {
+        NSLog(@"PLANK desktop audio cancelled before activation; session teardown will not wait for consent");
+        if (completion) completion();
+    }
+}
+- (void)destroy {
+    BOOL clean = YES;
+    if (_listening) {
+        AudioObjectPropertyAddress address = property(kAudioHardwarePropertyProcessObjectList);
+        clean &= AudioObjectRemovePropertyListenerBlock(kAudioObjectSystemObject, &address, _control, _processesChanged) == noErr;
+    }
+    if (_formatListening) {
+        AudioObjectPropertyAddress address = {kAudioDevicePropertyStreamFormat, kAudioObjectPropertyScopeInput, kAudioObjectPropertyElementMain};
+        clean &= AudioObjectRemovePropertyListenerBlock(_device, &address, _control, _formatChanged) == noErr;
+    }
+    if (_running) clean &= AudioDeviceStop(_device, _io) == noErr;
+    if (_io) clean &= AudioDeviceDestroyIOProcID(_device, _io) == noErr;
+    if (_device) clean &= AudioHardwareDestroyAggregateDevice(_device) == noErr;
+    if (_tap) clean &= AudioHardwareDestroyProcessTap(_tap) == noErr;
+    // Do not reuse a worker after uncertain HAL teardown: process exit is
+    // the final cleanup boundary and the machine service replaces its agent.
+    if (!clean) { NSLog(@"PLANK audio tap teardown failed; retiring worker"); _exit(70); }
+    _processesChanged = nil; _formatChanged = nil; _description = nil;
 }
 - (void)dealloc {
     if (_format) CFRelease(_format);
