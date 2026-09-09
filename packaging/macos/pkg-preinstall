@@ -1,6 +1,8 @@
-#!/bin/sh
-set -eu
-[ "${3:-}" = / ] || { echo 'PLANK Host supports only the running system volume.' >&2; exit 1; }
-script_dir=$(/usr/bin/dirname "$0")
-"$script_dir/plank-host-installer" recover /
-"$script_dir/plank-host-installer" prepare /
+#!/bin/bash
+set -euo pipefail
+source "$(/usr/bin/dirname "$0")/pkg-common.sh"
+preflight "${3:-}"
+[[ $(/usr/bin/fdesetup status) = 'FileVault is Off.' ]] || fail 'Disable FileVault for access after reboot'
+owner=$(console_uid)
+stop_roles
+[[ $(console_uid) = "$owner" ]] || fail 'Console changed during shutdown; retry installation'

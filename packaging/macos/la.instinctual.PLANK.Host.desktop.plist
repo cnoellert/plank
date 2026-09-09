@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>la.instinctual.PLANK.Host.desktop</string>
+<key>ProgramArguments</key><array><string>/Applications/PLANK Host.app/Contents/MacOS/plank-host</string><string>--desktop</string><string>la.instinctual.PLANK.Host.machine</string></array>
+<key>RunAtLoad</key><true/>
+<key>KeepAlive</key><true/>
+<key>ThrottleInterval</key><integer>2</integer>
+<key>LimitLoadToSessionType</key><string>Aqua</string>
+<key>ProcessType</key><string>Interactive</string>
+<key>StandardOutPath</key><string>/dev/null</string>
+<key>StandardErrorPath</key><string>/dev/null</string>
+<key>Umask</key><integer>63</integer>
+</dict></plist>

@@ -1,18 +1,19 @@
 # macOS development build notes
 
-Status: experimental macOS Host; native PKG qualification is in progress. Build only
+Status: experimental macOS Host; standard PKG qualification is in progress. Build only
 on the authorized dedicated development Mac. Linux builder roles are unchanged.
 Require Apple Silicon, macOS 27, SDK 27 and explicit deployment target 27.0.
 Probe signing/installation remains documented in `probes/macos/README.md`.
 
-## Native click-through installer
+## Click-through installer
 
 Use `scripts/build-macos-host-pkg.sh CLEAN_SOURCE NEW_OUTPUT TRANSPORT_ARCHIVE`
 on the dedicated Mac. Read `docs/macos-installer.plan` for uncompleted live gates.
 The destination Mac needs neither Python nor developer tools. The package owns
-the app payload at `/Applications/PLANK Host.app`; native pre/post-install code
-creates the administrator configuration, private identity, logs and launchd
-entries. Service/private state is not an app payload and survives uninstall.
+the app payload at `/Applications/PLANK Host.app` and three system launchd
+entries. Bash pre/post-install scripts create administrator configuration,
+private identity and logs. Private state is not a payload and survives uninstall.
+There is no compiled installer helper or persistent installation service.
 
 Export `PLANK_BUILD_BRANCH`, `PLANK_MACOS_SIGNING_IDENTITY` (Developer ID
 Application SHA-1), `PLANK_MACOS_INSTALLER_IDENTITY` (Developer ID Installer
@@ -27,33 +28,34 @@ to notarization, not end-user authentication or App Store publication.
 Keep keychain unlock, signing and notarization in the same SSH TTY session.
 The PKG runner calls the full Host build with `PLANK_MACOS_DISTRIBUTION=1`:
 Developer ID, hardened runtime and secure timestamp, without Python development
-scripts in the application. Compile/test the native helper; build a receipt-backed
+scripts in the application. Test the shell hooks; build a receipt-backed
 Host package and a separate clearly named uninstall package; sign, notarize,
-staple and assess both. `macos_native_pkg_gate=pass` does not prove install,
+staple and assess both. `macos_pkg_gate=pass` does not prove install,
 permission continuity, reboot or streaming acceptance. No `installer -pkg`
 invocation is part of the build. Do not publish a rejected/pending artifact.
 
 The normal graphical workflow is to open the Host PKG, approve Installer, then
 open PLANK Host in Applications for privacy setup. The uninstall PKG stops
 services and removes the app/startup entries while retaining settings, identities,
-logs and a recovery copy. It does not reset permissions or reboot.
+and logs. It forgets the Host receipt and does not reset permissions or reboot.
+Reinstall the signed Host package to recover or restore the product.
 
-The helper only accepts `/` as the target volume, macOS27/arm64, and FileVault
-off. It verifies existing app product/team/type and owned startup entries before
+The scripts only accept `/` as the target volume and macOS27/arm64. Installation
+requires FileVault off; uninstall remains available if it was later enabled.
+They verify existing app product/team/type and owned startup entries before
 stopping services. It admits the explicitly planned same-team Apple Development
 to Developer ID transition; that is not proof that TCC grants survive. Test the
 transition with the user available for permissions. Do not widen the signed
 worker-to-worker XPC requirement to compensate for a packaging/signing change.
 
-Previous apps and interrupted-install transactions live under the root-only
-`/Library/Application Support/PLANK/Installer`. Post-install failure attempts
-recovery; a subsequent installation first handles a retained transaction. If
-recovery cannot verify its backup/state, it stops rather than erase anything.
-Native policy tests require no privileges; `installer-policy-test --filesystem`
-additionally requires root and creates/removes one UUID-named fixture under
-`/Library/Application Support`, without changing any product services or files.
-The native helper's `preflight /` mode only reads current system/app state.
-These are qualification commands, not operator installation instructions.
+There is no custom rollback database or growing set of old application copies.
+On installation failure, inspect Installer Log and rerun the signed installer;
+existing configuration and keys are not overwritten. Do not claim macOS Installer
+provides automatic service rollback. `bash tests/packaging/macos-pkg-scripts.sh`
+tests mocked launchd lifecycle without privileges; `--filesystem` additionally
+requires root and creates/removes an isolated fixture under
+`/Library/Application Support`, without touching product services or files.
+These are developer qualification commands, not operator instructions.
 For command-line signature requirements, `codesign -R` needs a leading `=` for
 inline requirement text; otherwise it treats the expression as a filename.
 After this validation-command error, recheck the already signed binary and

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Native, receipt-backed macOS distribution. Run only on the dedicated Mac.
+# Standard receipt-backed macOS distribution. Run only on the dedicated Mac.
 set -euo pipefail
 if [[ $# != 3 || $1 != /* || $2 != /* || $3 != /* || $(uname -s) != Darwin ]]; then
   echo 'Usage: build-macos-host-pkg.sh CLEAN_SOURCE NEW_OUTPUT RETAINED_TRANSPORT_ARCHIVE' >&2; exit 2
@@ -22,15 +22,7 @@ mkdir "$output"
 printf '%s\n' "source=$(git -C "$source_root" rev-parse HEAD)" "version=$PLANK_PACKAGE_VERSION"
 shasum -a 256 "$archive"
 bash "$source_root/scripts/build-macos-host.sh" "$source_root" "$output/host" "$archive"
-flags=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
-  "-DPLANK_INSTALLER_TEAM=\"$PLANK_MACOS_TEAM_ID\"" "-DPLANK_INSTALLER_VERSION=\"$PLANK_PACKAGE_VERSION\""
-  -framework Foundation -framework Security)
-xcrun clang "${flags[@]}" -Wno-unused-function "$source_root/tests/packaging/macos-native-installer.m" -o "$output/installer-policy-test"
-"$output/installer-policy-test"
-xcrun clang "${flags[@]}" "$source_root/packaging/macos/native-installer.m" -o "$output/plank-host-installer"
-codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY" --options runtime --timestamp \
-  --identifier la.instinctual.PLANK.Host.Installer "$output/plank-host-installer"
-codesign --verify --strict "$output/plank-host-installer"
+bash "$source_root/tests/packaging/macos-pkg-scripts.sh"
 
 mkdir -p "$output/payload/Applications" "$output/install-scripts" "$output/uninstall-scripts" "$output/resources"
 app="$output/payload/Applications/PLANK Host.app"
@@ -41,8 +33,18 @@ test -z "$(find "$output/payload" -name '*.py' -print)"
 codesign -d --verbose=4 "$app" 2>&1 | grep 'flags=.*runtime'
 codesign -d --verbose=4 "$app" 2>&1 | grep '^Timestamp='
 otool -L "$app/Contents/MacOS/plank-host"
-install -m 0755 "$output/plank-host-installer" "$output/install-scripts/plank-host-installer"
-install -m 0755 "$output/plank-host-installer" "$output/uninstall-scripts/plank-host-installer"
+for scripts in "$output/install-scripts" "$output/uninstall-scripts"; do
+  sed -e "s/@TEAM@/$PLANK_MACOS_TEAM_ID/g" -e "s/@VERSION@/$PLANK_PACKAGE_VERSION/g" \
+    "$source_root/packaging/macos/pkg-common.sh" > "$scripts/pkg-common.sh"
+  chmod 0644 "$scripts/pkg-common.sh"
+done
+mkdir -p "$output/payload/Library/LaunchDaemons" "$output/payload/Library/LaunchAgents"
+for role in machine desktop sign-in; do
+  if [[ $role = machine ]]; then directory=LaunchDaemons; else directory=LaunchAgents; fi
+  plist="la.instinctual.PLANK.Host.$role.plist"
+  plutil -lint "$source_root/packaging/macos/$plist"
+  install -m 0644 "$source_root/packaging/macos/$plist" "$output/payload/Library/$directory/$plist"
+done
 install -m 0755 "$source_root/packaging/macos/pkg-preinstall" "$output/install-scripts/preinstall"
 install -m 0755 "$source_root/packaging/macos/pkg-postinstall" "$output/install-scripts/postinstall"
 install -m 0755 "$source_root/packaging/macos/pkg-uninstall" "$output/uninstall-scripts/postinstall"
@@ -75,4 +77,4 @@ for kind in host uninstall; do
   spctl --assess --type install --verbose=2 "$output/$name"
   shasum -a 256 "$output/$name"
 done
-echo 'macos_native_pkg_gate=pass install=not-performed'
+echo 'macos_pkg_gate=pass install=not-performed'

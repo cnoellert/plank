@@ -1,0 +1,219 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Sourced only by Installer's root scripts. No installed helper or TCC writes.
+set -euo pipefail
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C
+umask 077
+ulimit -c 0
+
+app='/Applications/PLANK Host.app'
+executable="$app/Contents/MacOS/plank-host"
+state='/Library/Application Support/PLANK'
+logs='/Library/Logs/PLANK'
+machine=la.instinctual.PLANK.Host.machine
+desktop=la.instinctual.PLANK.Host.desktop
+signin=la.instinctual.PLANK.Host.sign-in
+team='@TEAM@'
+version='@VERSION@'
+
+fail() { echo "PLANK: $*" >&2; exit 1; }
+present() { [[ -e $1 || -L $1 ]]; }
+
+# All writable product paths have root-only writers. Check parents too, not
+# just the leaf; /Applications is Apple's root:admin writable exception.
+safe_directory() {
+    local path=$1 mode owner group
+    [[ $path = /* && $path != / ]] || fail "Invalid product directory: $path"
+    if [[ ${path%/*} != '' ]]; then safe_directory "${path%/*}"; fi
+    [[ -d $path && ! -L $path ]] || fail "Unsafe directory: $path"
+    read -r owner group mode < <(/usr/bin/stat -f '%u %g %Lp' "$path")
+    [[ $owner = 0 ]] || fail "Directory is not root-owned: $path"
+    (( (8#$mode & 0002) == 0 )) || fail "World-writable directory: $path"
+    if (( (8#$mode & 0020) != 0 )); then
+        [[ $path = /Applications && $group = 80 ]] || fail "Group-writable directory: $path"
+    fi
+}
+
+safe_file() {
+    local path=$1 expected=$2 owner mode links
+    safe_directory "${path%/*}"
+    [[ -f $path && ! -L $path ]] || fail "Unsafe file: $path"
+    read -r owner mode links < <(/usr/bin/stat -f '%u %Lp %l' "$path")
+    [[ $owner = 0 && $mode = "$expected" && $links = 1 ]] || fail "Unsafe file metadata: $path"
+}
+
+ensure_directory() {
+    local path=$1 mode=$2
+    safe_directory "${path%/*}"
+    if ! present "$path"; then /bin/mkdir -m "$mode" "$path"; fi
+    safe_directory "$path"
+    [[ $(/usr/bin/stat -f '%Lp' "$path") = "$mode" ]] || fail "Unexpected directory mode: $path"
+}
+
+verify_app() {
+    local allow_development=${1:-no} requirement
+    safe_directory "$app"
+    requirement="identifier \"la.instinctual.PLANK.Host\" and anchor apple generic and certificate leaf[subject.OU] = \"$team\" and (certificate leaf[field.1.2.840.113635.100.6.1.13] exists"
+    if [[ $allow_development = yes ]]; then
+        requirement+=' or certificate leaf[field.1.2.840.113635.100.6.1.12] exists'
+    fi
+    /usr/bin/codesign --verify --strict --all-architectures -R "=$requirement)" "$app"
+}
+
+job_path() {
+    if [[ $1 = "$machine" ]]; then echo "/Library/LaunchDaemons/$1.plist";
+    else echo "/Library/LaunchAgents/$1.plist"; fi
+}
+
+verify_jobs() {
+    local label path role
+    for label in "$machine" "$desktop" "$signin"; do
+        path=$(job_path "$label")
+        if ! present "$path"; then continue; fi
+        safe_file "$path" 644
+        case $label in "$machine") role=--machine;; "$desktop") role=--desktop;; *) role=--sign-in;; esac
+        [[ $(/usr/libexec/PlistBuddy -c 'Print :Label' "$path") = "$label" &&
+           $(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:0' "$path") = "$executable" &&
+           $(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:1' "$path") = "$role" &&
+           $(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:2' "$path") = "$machine" ]] || fail "Unrelated launchd entry: $path"
+        if /usr/libexec/PlistBuddy -c 'Print :ProgramArguments:3' "$path" >/dev/null 2>&1; then
+            fail "Unexpected launchd arguments: $path"
+        fi
+    done
+}
+
+# Inspection errors are not absence. These wrappers also allow non-mutating
+# tests to substitute launchd/process state without production test switches.
+launchctl_cmd() { /bin/launchctl "$@"; }
+process_alive() { /bin/kill -0 "$1" 2>/dev/null; }
+pause_drain() { /bin/sleep 0.1; }
+missing_job() {
+    [[ $2 = *"Could not find service \"${1##*/}\""* || $2 = *'Could not find domain for'* ]]
+}
+job_state() {
+    local job=$1
+    if job_output=$(launchctl_cmd print "$job" 2>&1); then return 0; fi
+    missing_job "$job" "$job_output" || fail "Cannot inspect $job: $job_output"
+    return 1
+}
+stop_job() {
+    local job=$1 pid attempt pending pids='' registered
+    if ! job_state "$job"; then return; fi
+    pids=$(echo "$job_output" | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[1-9][0-9]*$/ {print $3}')
+    launchctl_cmd bootout "$job" >/dev/null 2>&1 || true
+    for ((attempt=0; attempt<200; attempt++)); do
+        registered=0
+        if job_state "$job"; then
+            registered=1
+            pid=$(echo "$job_output" | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[1-9][0-9]*$/ {print $3}')
+            pids="$pids $pid"
+        fi
+        pending=''
+        for pid in $pids; do if process_alive "$pid"; then pending="$pending $pid"; fi; done
+        pids=$pending
+        [[ $registered = 0 && -z $pids ]] && return 0
+        pause_drain
+    done
+    fail "Timed out draining $job; no forced termination or app replacement. Disconnect and retry."
+}
+
+gui_domains() {
+    local uid output accounts
+    accounts=$(/usr/bin/dscl /Search -list /Users UniqueID) || fail 'Cannot enumerate OS users'
+    for uid in $(echo "$accounts" | /usr/bin/awk '$NF ~ /^[1-9][0-9]*$/ {print $NF}' | /usr/bin/sort -un); do
+        if output=$(launchctl_cmd print "gui/$uid" 2>&1); then echo "gui/$uid";
+        elif [[ $output != *'Could not find domain for'* && $output != *'125: Domain does not support specified action'* ]]; then
+            fail "Cannot inspect gui/$uid: $output"
+        fi
+    done
+}
+console_uid() { /usr/bin/stat -f %u /dev/console; }
+stop_roles() {
+    local domains domain pids pid attempt pending
+    domains=$(gui_domains) || fail 'Cannot enumerate graphical domains'
+    if [[ $(console_uid) = 0 ]]; then stop_job "loginwindow/$signin"; fi
+    for domain in $domains; do stop_job "$domain/$desktop"; done
+    # A retiring root graphical worker may outlive its LoginWindow domain.
+    pids=$(/bin/ps -ax -o pid= -o uid= -o command= | /usr/bin/awk -v exe="$executable" \
+        '$2 == 0 {pid=$1; sub(/^[[:space:]]*[0-9]+[[:space:]]+[0-9]+[[:space:]]+/, "");
+        if (index($0, exe " --sign-in ") == 1 || index($0, exe " --graphical ") == 1) print pid}')
+    for ((attempt=0; attempt<200; attempt++)); do
+        pending=''
+        for pid in $pids; do if process_alive "$pid"; then pending="$pending $pid"; fi; done
+        pids=$pending
+        [[ -z $pids ]] && break
+        pause_drain
+    done
+    [[ -z $pids ]] || fail 'Root graphical worker still retiring; retry later'
+    stop_job "system/$machine"
+}
+start_roles() {
+    local domains domain
+    domains=$(gui_domains) || fail 'Cannot enumerate graphical domains'
+    launchctl_cmd bootstrap system "$(job_path "$machine")"
+    for domain in $domains; do launchctl_cmd bootstrap "$domain" "$(job_path "$desktop")"; done
+    if [[ $(console_uid) = 0 ]]; then launchctl_cmd bootstrap loginwindow "$(job_path "$signin")"; fi
+}
+
+check_configuration() {
+    local port uuid
+    if present "$state/host.plist"; then
+        safe_file "$state/host.plist" 644
+        /usr/bin/plutil -lint "$state/host.plist" >/dev/null
+        [[ $(/usr/bin/plutil -extract Address raw -expect string "$state/host.plist") = 0.0.0.0 ]] || fail 'Host must listen on all interfaces'
+        port=$(/usr/bin/plutil -extract Port raw -expect integer "$state/host.plist")
+        [[ $port =~ ^[1-9][0-9]{0,4}$ ]] && ((port <= 65535)) || fail 'Invalid Host port'
+        [[ -n $(/usr/bin/plutil -extract Name raw -expect string "$state/host.plist") ]] || fail 'Invalid Host name'
+        uuid=$(/usr/bin/plutil -extract UUID raw -expect string "$state/host.plist")
+        [[ $uuid =~ ^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$ ]] || fail 'Invalid Host identity'
+    fi
+    if present "$state/SignIn"; then
+        safe_directory "$state/SignIn"
+        [[ $(/usr/bin/stat -f %Lp "$state/SignIn") = 700 ]] || fail 'Identity directory must be private'
+        local name
+        for name in cert.pem key.pem cert.der key.der; do safe_file "$state/SignIn/$name" 600; done
+    fi
+}
+preflight() {
+    [[ $(/usr/bin/id -u) = 0 && ${1:-} = / ]] || fail 'Run through Installer on the running system volume'
+    [[ $(/usr/bin/uname -m) = arm64 && $(/usr/bin/sw_vers -productVersion | /usr/bin/cut -d. -f1) -ge 27 ]] || fail 'Requires Apple Silicon and macOS 27 or newer'
+    safe_directory /Applications
+    safe_directory /Library/LaunchDaemons
+    safe_directory /Library/LaunchAgents
+    verify_jobs
+    if present "$app"; then verify_app yes; fi
+    if present "$state"; then safe_directory "$state"; check_configuration; fi
+}
+
+initialize_state() {
+    local stage name
+    ensure_directory "$state" 755
+    if ! present "$state/host.plist"; then
+        stage=$(/usr/bin/mktemp "$state/.config.XXXXXX")
+        /usr/bin/plutil -create xml1 "$stage"
+        /usr/bin/plutil -insert Address -string 0.0.0.0 "$stage"
+        /usr/bin/plutil -insert Port -integer 28989 "$stage"
+        /usr/bin/plutil -insert Name -string 'PLANK Mac Host' "$stage"
+        /usr/bin/plutil -insert UUID -string "$(/usr/bin/uuidgen)" "$stage"
+        /bin/chmod 644 "$stage"
+        /bin/mv "$stage" "$state/host.plist"
+    fi
+    if ! present "$state/SignIn"; then
+        stage=$(/usr/bin/mktemp -d "$state/.identity.XXXXXX")
+        /usr/bin/openssl req -x509 -newkey rsa:3072 -nodes -sha256 -days 365 \
+            -subj '/CN=PLANK Host' -addext subjectAltName=DNS:plank-host \
+            -keyout "$stage/initial.pem" -out "$stage/cert.pem"
+        /usr/bin/openssl rsa -in "$stage/initial.pem" -out "$stage/key.pem"
+        /usr/bin/openssl rsa -in "$stage/key.pem" -outform DER -out "$stage/key.der"
+        /usr/bin/openssl x509 -in "$stage/cert.pem" -outform DER -out "$stage/cert.der"
+        /bin/rm "$stage/initial.pem"
+        for name in cert.pem key.pem cert.der key.der; do /bin/chmod 600 "$stage/$name"; done
+        /bin/mv "$stage" "$state/SignIn"
+    fi
+    check_configuration
+    ensure_directory "$logs" 700
+    for name in host-machine.log host-sign-in.log; do
+        if ! present "$logs/$name"; then (set -C; : > "$logs/$name"); fi
+        safe_file "$logs/$name" 600
+    done
+}

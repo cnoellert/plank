@@ -1,9 +1,9 @@
-#!/bin/sh
-set -eu
-[ "${3:-}" = / ] || exit 1
-script_dir=$(/usr/bin/dirname "$0")
-if ! "$script_dir/plank-host-installer" finish /; then
-    "$script_dir/plank-host-installer" recover / || true
-    echo 'PLANK installation failed. See Installer Log; the previous app is retained for recovery.' >&2
-    exit 1
-fi
+#!/bin/bash
+set -euo pipefail
+source "$(/usr/bin/dirname "$0")/pkg-common.sh"
+preflight "${3:-}"
+verify_app
+[[ $(/usr/libexec/PlistBuddy -c 'Print :PLANKVersion' "$app/Contents/Info.plist") = "$version" ]] || fail 'Payload version mismatch'
+initialize_state
+start_roles
+echo 'PLANK Host installed. Open PLANK Host in Applications for privacy setup. Configuration and keys preserved.'

@@ -1,4 +1,4 @@
-# Native macOS Host installer
+# Standard macOS Host installer
 
 Branch: `macos-installer`, starting at main e7121a2.
 
@@ -10,21 +10,22 @@ explicit and cannot be granted by this installer.
 1. Verify Developer ID Application and Developer ID Installer private-key
    identities on the dedicated development Mac. Never use the Mac App Store
    installer identity for this package. Keep notarization credentials in Keychain.
-2. Implement a narrow native installation helper, executed only by Installer's
-   root pre/post-install scripts. Retain configuration, private identities,
-   protected log creation, bounded graphical-worker/coordinator drain, and
-   system-wide LoginWindow/Aqua startup. Use system tools by absolute paths;
-   no downloadable runtime or Python dependency on the target.
+2. Use Bash preinstall/postinstall scripts and a shared script, executed only
+   by Installer as root. No custom installer executable, transaction framework,
+   downloadable runtime, Python, AppleScript or persistent installer helper.
+   Retain configuration, private identities, protected log creation, bounded
+   graphical-worker/coordinator drain, and system-wide LoginWindow/Aqua startup.
 3. Use ordinary payload/receipt-based PKG installation to /Applications. Reject
    alternate volumes, unsupported OS/architecture, unsafe filesystem objects,
    unrelated existing apps/jobs and signer mismatch before stopping services.
-   Retain the previous app for recovery. The deliberate Apple Development to
+   Recovery is reinstalling the signed package; do not accumulate old app copies.
+   The deliberate Apple Development to
    same-team Developer ID transition needs explicit permission continuity tests;
    do not silently claim existing TCC grants survive it.
 4. Sign the app with hardened runtime and a secure timestamp, sign the installer
    with Developer ID Installer, notarize and staple the final PKG. Keep the
    production download unavailable until signature/notarization gates pass.
-5. Test helper failure paths without changing services, inspect package payload,
+5. Test script failure paths without changing services, inspect package payload,
    scripts, version and signatures, then obtain authorization to exercise real
    install/upgrade on development-mac. Never interrupt its session or reboot automatically.
    Test fresh-machine absence of Python/developer tools and permission workflow.
@@ -32,13 +33,21 @@ explicit and cannot be granted by this installer.
    preserved settings/certificates/logs. Do not present the existing Python
    development uninstaller as the production operator workflow.
 
-Current checkpoint: both Developer ID identities are valid and use the existing
-Team ID. The operator created Keychain profile `plank-notary`; authenticated
-notarization history query succeeds. Native helper, payload scripts, graphical
-installer/uninstaller descriptions and signed/notarized build runner implemented
-for 1.0.80-macos-installer. Initial 44 policy checks and 62 checks with the root
-filesystem fixture pass; bounded-drain simulations are being added. Existing
-development installer still passes all 17 tests. Read-only preflight passes
-against development-mac, including the same-team development signature. No installed Host,
-permissions, services or streaming code changed. Live install/upgrade/uninstall,
-fresh-machine and permission continuity gates remain open.
+Reference inspection: Anyware Graphics Agent26.05.3 is a Developer ID-signed,
+notarized PKG with Bash pre/postinstall scripts, payload launchd entries and a
+compiled uninstaller. It delegates privacy prompts to its user agent; its
+scripts do not automatically grant TCC consent. Adopt the standard packaging
+structure, not its proprietary code, legacy cleanup, account creation,
+firewall changes, CoreAudio restart or timed permission-prompt loops.
+Reference PKG SHA-256:
+`7250bf5a3117fc2370ec9fda9d1529e64cd6499202b35c59b7b1ee7346b660cd`.
+The reference Mac was read-only; extraction was on the dedicated development Mac.
+
+Current checkpoint: the user explicitly retained signing/notarization and
+approved replacing the first native-helper implementation with simple scripts.
+Both Developer ID identities and Keychain profile `plank-notary` are provisioned.
+Installer and uninstaller package build/qualification are in progress for
+1.0.80-macos-installer. No installed Host, permissions or streaming code changed.
+Live install/upgrade/uninstall, fresh-machine and permission continuity gates
+remain open. Uninstall removes app, launchd entries and the Host receipt while
+preserving configuration, keys, logs and privacy approvals.
