@@ -113,8 +113,11 @@ path until unattended new-user/update tests pass.
 Host1.0.72-macos-provisioning is installed on the dedicated Mac. The original
 approved desktop passes all measured screen/input checks after a same-identity
 upgrade, without a consent prompt. Plain SSH under that same UID correctly does
-not qualify graphical readiness. The operator-authorized temporary standard
-account is prepared but has not logged in. Next: operator switches to that
-account, then run the installed app's one-shot Aqua check before granting any
-permissions. No system-wide worker/configuration change yet; audio, actual
-new-user media/input and OS-update durability remain open.
+not qualify graphical readiness. The operator subsequently logged into the
+temporary standard account; its actual Aqua check also passes all measured
+screen/input preflights without invoking prompt APIs. The frozen last LoginWindow
+frame was caused by that account lacking a desktop worker, not denied preflights.
+A narrowly scoped qualification fixture now provisions that account's own
+worker/private keys, and native video delivery has started. Operator acceptance
+of actual video/input/audio and OS-update durability remain open. System-wide
+startup/public configuration is still the next permanent implementation step.
