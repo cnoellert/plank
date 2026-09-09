@@ -121,3 +121,19 @@ A narrowly scoped qualification fixture now provisions that account's own
 worker/private keys, and native video delivery has started. Operator acceptance
 of actual video/input/audio and OS-update durability remain open. System-wide
 startup/public configuration is still the next permanent implementation step.
+
+Live qualification then exposed a blocking startup dependency: fresh-account
+desktop audio requests its own consent. ScreenCapture's `started` callback
+waits for the tap, the preview owner waits for `started` before enabling input,
+and its five-second deadline stops the session while consent is unanswered.
+Foreground system-audio prompt and Client Workstation Unreachable were observed
+on the Client screenshot; TCC logs independently identify AudioCapture for the
+new UID. Other stacked dialogs remain unidentified. Screen/input Boolean
+preflight success must not be described as fully inherited usable permission.
+
+Before proceeding to all-user startup, decouple desktop audio availability
+from video/input readiness. Pending/denied audio must leave remote interaction
+usable and local playback untouched, not silently count as audio success.
+Preserve scoped audio ownership and safe asynchronous teardown, including
+disconnect/logout while the OS consent request is outstanding. No automatic
+consent clicks, privacy-database changes or blanket bypass are justified.
