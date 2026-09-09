@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+  <title>@TITLE@</title>
+  <welcome file="@WELCOME@" mime-type="text/html"/>
+  <conclusion file="@CONCLUSION@" mime-type="text/html"/>
+  <options customize="never" require-scripts="false" hostArchitectures="arm64"/>
+  <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
+  <allowed-os-versions><os-version min="27.0"/></allowed-os-versions>
+  <choices-outline><line choice="default"/></choices-outline>
+  <choice id="default" visible="false"><pkg-ref id="@IDENTIFIER@"/></choice>
+  <pkg-ref id="@IDENTIFIER@" version="@VERSION@" auth="Root">@COMPONENT@</pkg-ref>
+</installer-gui-script>

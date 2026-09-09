@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+[ "${3:-}" = / ] || { echo 'PLANK Host supports only the running system volume.' >&2; exit 1; }
+script_dir=$(/usr/bin/dirname "$0")
+"$script_dir/plank-host-installer" recover /
+"$script_dir/plank-host-installer" prepare /

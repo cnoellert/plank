@@ -77,9 +77,16 @@ if [[ -n ${PLANK_MACOS_SIGNING_IDENTITY:-} ]]; then
     test -s "$app/Contents/Resources/plank.icns"
     install -m 0755 "$output/plank-host" "$app/Contents/MacOS/plank-host"
     install -m 0644 packaging/macos/host-info.plist "$app/Contents/Info.plist"
-    install -m 0644 scripts/install-macos-host-development.py scripts/uninstall-macos-host-development.py "$app/Contents/Resources/"
+    signing_flags=(--timestamp=none)
+    case ${PLANK_MACOS_DISTRIBUTION:-0} in
+      0) install -m 0644 scripts/install-macos-host-development.py scripts/uninstall-macos-host-development.py "$app/Contents/Resources/" ;;
+      1) signing_flags=(--options runtime --timestamp) ;;
+      *) echo 'PLANK_MACOS_DISTRIBUTION must be 0 or 1' >&2; exit 2 ;;
+    esac
     /usr/libexec/PlistBuddy -c "Add :PLANKVersion string $PLANK_MACOS_HOST_VERSION" "$app/Contents/Info.plist"
-    codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY" --timestamp=none \
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${PLANK_MACOS_HOST_VERSION%%-*}" "$app/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${PLANK_MACOS_HOST_VERSION%%-*}" "$app/Contents/Info.plist"
+    codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY" "${signing_flags[@]}" \
         --identifier la.instinctual.PLANK.Host "$app"
     codesign --verify --strict "$app"
     shasum -a 256 "$app/Contents/MacOS/plank-host"

@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+[ "${3:-}" = / ] || exit 1
+script_dir=$(/usr/bin/dirname "$0")
+"$script_dir/plank-host-installer" uninstall /

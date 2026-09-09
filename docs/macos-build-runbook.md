@@ -1,9 +1,59 @@
 # macOS development build notes
 
-Status: experimental macOS Host; no installable product package yet. Build only
+Status: experimental macOS Host; native PKG qualification is in progress. Build only
 on the authorized dedicated development Mac. Linux builder roles are unchanged.
 Require Apple Silicon, macOS 27, SDK 27 and explicit deployment target 27.0.
 Probe signing/installation remains documented in `probes/macos/README.md`.
+
+## Native click-through installer
+
+Use `scripts/build-macos-host-pkg.sh CLEAN_SOURCE NEW_OUTPUT TRANSPORT_ARCHIVE`
+on the dedicated Mac. Read `docs/macos-installer.plan` for uncompleted live gates.
+The destination Mac needs neither Python nor developer tools. The package owns
+the app payload at `/Applications/PLANK Host.app`; native pre/post-install code
+creates the administrator configuration, private identity, logs and launchd
+entries. Service/private state is not an app payload and survives uninstall.
+
+Export `PLANK_BUILD_BRANCH`, `PLANK_MACOS_SIGNING_IDENTITY` (Developer ID
+Application SHA-1), `PLANK_MACOS_INSTALLER_IDENTITY` (Developer ID Installer
+SHA-1), `PLANK_MACOS_TEAM_ID`, and `PLANK_NOTARY_PROFILE` (Keychain profile name).
+Never supply a password in a command argument, environment or repository file.
+The Mac App Store installer certificate is not the Developer ID Installer.
+Use `notarytool store-credentials` interactively once; it requires an Apple
+app-specific password generated through the Apple Account website, not the
+ordinary Apple Account login password. Its purpose is builder authentication
+to notarization, not end-user authentication or App Store publication.
+
+Keep keychain unlock, signing and notarization in the same SSH TTY session.
+The PKG runner calls the full Host build with `PLANK_MACOS_DISTRIBUTION=1`:
+Developer ID, hardened runtime and secure timestamp, without Python development
+scripts in the application. Compile/test the native helper; build a receipt-backed
+Host package and a separate clearly named uninstall package; sign, notarize,
+staple and assess both. `macos_native_pkg_gate=pass` does not prove install,
+permission continuity, reboot or streaming acceptance. No `installer -pkg`
+invocation is part of the build. Do not publish a rejected/pending artifact.
+
+The normal graphical workflow is to open the Host PKG, approve Installer, then
+open PLANK Host in Applications for privacy setup. The uninstall PKG stops
+services and removes the app/startup entries while retaining settings, identities,
+logs and a recovery copy. It does not reset permissions or reboot.
+
+The helper only accepts `/` as the target volume, macOS27/arm64, and FileVault
+off. It verifies existing app product/team/type and owned startup entries before
+stopping services. It admits the explicitly planned same-team Apple Development
+to Developer ID transition; that is not proof that TCC grants survive. Test the
+transition with the user available for permissions. Do not widen the signed
+worker-to-worker XPC requirement to compensate for a packaging/signing change.
+
+Previous apps and interrupted-install transactions live under the root-only
+`/Library/Application Support/PLANK/Installer`. Post-install failure attempts
+recovery; a subsequent installation first handles a retained transaction. If
+recovery cannot verify its backup/state, it stops rather than erase anything.
+Native policy tests require no privileges; `installer-policy-test --filesystem`
+additionally requires root and creates/removes one UUID-named fixture under
+`/Library/Application Support`, without changing any product services or files.
+The native helper's `preflight /` mode only reads current system/app state.
+These are qualification commands, not operator installation instructions.
 
 ## Native Host executable and application
 
