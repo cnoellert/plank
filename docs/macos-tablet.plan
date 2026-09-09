@@ -1,6 +1,9 @@
 # macOS tablet input and embedded cursor
 
 Branch: `macos-tablet` (Client `plank/macos-tablet`), based on main80acb10.
+Merged and pushed September 9, 2026: root main `c6015b3`, Client main `de18b22d`.
+Existing candidate artifacts retain their original branch-qualified version;
+this merge did not rebuild or redeploy them.
 Keep Linux raw-HID/normalized-pen behavior unchanged. Candidate1.0.79 is now
 installed on the dedicated Mac after the user disconnected; Client install is manual.
 
