@@ -35,7 +35,7 @@ codesign --verify --strict "$output/plank-host-installer"
 mkdir -p "$output/payload/Applications" "$output/install-scripts" "$output/uninstall-scripts" "$output/resources"
 app="$output/payload/Applications/PLANK Host.app"
 ditto "$output/host/PLANK Host.app" "$app"
-codesign --verify --strict -R "identifier \"la.instinctual.PLANK.Host\" and anchor apple generic and certificate leaf[subject.OU] = \"$PLANK_MACOS_TEAM_ID\" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists" "$app"
+codesign --verify --strict -R "=identifier \"la.instinctual.PLANK.Host\" and anchor apple generic and certificate leaf[subject.OU] = \"$PLANK_MACOS_TEAM_ID\" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists" "$app"
 test "$(/usr/libexec/PlistBuddy -c 'Print :PLANKVersion' "$app/Contents/Info.plist")" = "$PLANK_PACKAGE_VERSION"
 test -z "$(find "$output/payload" -name '*.py' -print)"
 codesign -d --verbose=4 "$app" 2>&1 | grep 'flags=.*runtime'

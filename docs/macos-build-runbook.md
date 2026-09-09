@@ -54,6 +54,10 @@ additionally requires root and creates/removes one UUID-named fixture under
 `/Library/Application Support`, without changing any product services or files.
 The native helper's `preflight /` mode only reads current system/app state.
 These are qualification commands, not operator installation instructions.
+For command-line signature requirements, `codesign -R` needs a leading `=` for
+inline requirement text; otherwise it treats the expression as a filename.
+After this validation-command error, recheck the already signed binary and
+continue packaging; do not rebuild the Host or change its signing identity.
 
 ## Native Host executable and application
 
