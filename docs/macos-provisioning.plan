@@ -114,9 +114,12 @@ Generic permission errors fail closed. After the user's explicit disconnect,
 installation and actual uninstall/reinstall passed on development-mac. The app and three
 launch entries/listener disappeared during uninstall, then the identical signed
 candidate returned. Config, role/user identity-file metadata and log inodes were
-preserved. Actual signed Aqua preflights passed after both installs. User's live
-desktop/audio and logout/login account-switch test remain next; no automatic
-login/logout/reboot or permission change occurred.
+preserved. Actual signed Aqua preflights passed after both installs. The subsequent
+1.0.78 audio timestamp recovery candidate passed component/QUIC tests and was
+installed; the user reported "looks good" and authorized merging this work.
+The system-wide logout/login account-switch check remains a separate live gate;
+no automatic login/logout/reboot or permission change occurred. Playback acceptance
+does not establish OS-update consent durability or a long-duration A/V sync result.
 
 ## Phase 3 — durable deployment
 
