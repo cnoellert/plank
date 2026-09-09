@@ -29,6 +29,16 @@ TCC database access. The lifecycle test replaces only HAL setup/start/cleanup
 and exercises the real asynchronous class; live consent/input still needs
 operator qualification.
 
+The Mac deployment is a single active-user workstation. Its desktop audio tap
+also includes system alerts from the running `com.apple.systemsoundserverd`
+process, validated with Apple's code-signing anchor and exact identifier.
+This exception requires current console ownership; all other audio processes
+still require matching effective/real user IDs. Standard users cannot inspect
+that root service with proc_pidinfo on the qualified OS, so dynamic SecCode
+validation is the authority, not a guessed PID, process name or HAL bundle ID.
+The same tap mixes and mutes the selected application's and system-alert
+streams, with no second audio path or additional Host privilege.
+
 `plank-host --machine MACH_SERVICE` runs the root ownership coordinator.
 `plank-host --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY` runs
 the explicitly selected graphical role, on that actual launchd graphical domain.

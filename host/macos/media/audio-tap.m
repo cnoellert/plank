@@ -2,6 +2,7 @@
 #import "audio-tap.h"
 #import "audio-tap-buffer.h"
 #import "audio-tap-policy.h"
+#import "audio-tap-system-alerts.h"
 #import <CoreAudio/CoreAudio.h>
 #import <CoreAudio/AudioHardwareTapping.h>
 #import <CoreAudio/CATapDescription.h>
@@ -49,6 +50,7 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     void (^_failed)(void);
     BOOL _started, _stopped;
     BOOL _ownsSlot;
+    BOOL _systemAlertsIncluded;
     atomic_int _activation;
     AudioObjectID _tap, _device;
     AudioDeviceIOProcID _io;
@@ -85,6 +87,7 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     NSMutableData *storage = [NSMutableData dataWithLength:bytes];
     if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, 0, NULL, &bytes, storage.mutableBytes)) return nil;
     NSMutableArray *owned = [NSMutableArray array];
+    BOOL systemAlerts = NO;
     const AudioObjectID *objects = storage.bytes;
     for (UInt32 i = 0; i < bytes / sizeof(AudioObjectID); i++) {
         pid_t pid = 0; UInt32 size = sizeof(pid);
@@ -92,13 +95,20 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
         if (AudioObjectGetPropertyData(objects[i], &pidProperty, 0, NULL, &size, &pid) ||
             pid <= 0 || pid == getpid()) continue;
         struct proc_bsdinfo info = {0};
-        if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) != sizeof(info) ||
-            !PLANKTapProcessOwned(getuid(), getpid(), pid, info.pbi_uid, info.pbi_ruid)) continue;
+        BOOL userOwned = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) == sizeof(info) &&
+            PLANKTapProcessOwned(getuid(), getpid(), pid, info.pbi_uid, info.pbi_ruid);
+        BOOL systemAlert = !userOwned && PLANKTapSystemAlertProcess(getuid(), pid);
+        if (!userOwned && !systemAlert) continue;
         // Re-read the HAL object's PID after the kernel ownership check.
         pid_t confirmed = 0; size = sizeof(confirmed);
-        if (!AudioObjectGetPropertyData(objects[i], &pidProperty, 0, NULL, &size, &confirmed) && confirmed == pid)
+        if (!AudioObjectGetPropertyData(objects[i], &pidProperty, 0, NULL, &size, &confirmed) && confirmed == pid) {
             [owned addObject:@(objects[i])];
+            systemAlerts |= systemAlert;
+        }
     }
+    if (systemAlerts != _systemAlertsIncluded)
+        NSLog(@"PLANK desktop audio system alerts: %@", systemAlerts ? @"verified Apple service included" : @"not included");
+    _systemAlertsIncluded = systemAlerts;
     return owned;
 }
 - (BOOL)updateProcesses {

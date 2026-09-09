@@ -2,6 +2,7 @@
 // Exercise the real tap's owner/control queues and cancellation, with only HAL
 // preparation/activation/destruction replaced. No permission requests or IO.
 #import "audio-tap.h"
+#import "audio-tap-system-alerts.h"
 #include <stdatomic.h>
 #include <assert.h>
 #include <stdio.h>
@@ -53,6 +54,12 @@ static TestTap *makeTap(dispatch_queue_t owner) {
 // check, so the active/denied paths wait for that actual completion below.
 int main(void) {
     @autoreleasepool {
+        assert(!PLANKTapSystemAlertProcess(0, getpid()));
+        assert(!PLANKTapSystemAlertProcess(getuid(), -1));
+        assert(!PLANKTapSystemAlertProcess(getuid(), 0));
+        assert(!PLANKTapSystemAlertProcess(getuid(), getpid()));
+        assert(!PLANKTapSystemAlertProcess(getuid(), 1)); // launchd is Apple-signed but not the alert service
+        assert(!PLANKTapSystemAlertProcess(getuid() + 1, 1));
         dispatch_queue_t owner = dispatch_queue_create("plank.test.tap-owner", DISPATCH_QUEUE_SERIAL);
         TestTap *pending = makeTap(owner);
         dispatch_sync(owner, ^{

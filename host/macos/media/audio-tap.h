@@ -5,7 +5,8 @@
 
 // One-shot desktop audio capture. Public methods and delivered callbacks use
 // the supplied serial owner queue. HAL lifecycle work is off that queue.
-// Audio is limited to this non-root user's processes, excluding the Host.
+// Audio includes this non-root user's processes (excluding the Host), plus
+// Apple's verified system-alert service only while this user owns the console.
 // stop drops buffered audio. Active IO is destroyed before completion. A pending
 // consent request is cancelled logically: IO can never start, session references
 // are detached immediately, and unstarted HAL objects are cleaned up on return.
