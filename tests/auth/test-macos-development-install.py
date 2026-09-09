@@ -17,6 +17,15 @@ PUBLIC = {"Address": "0.0.0.0", "Port": 28989, "Name": "PLANK test",
 
 
 class RoleIdentityTests(unittest.TestCase):
+    def test_permission_fixture_waits_for_actual_exit(self):
+        spec = importlib.util.spec_from_file_location("permission_check", ROOT / "tests/auth/macos-permission-check.py")
+        checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checker)
+        self.assertIsNone(checker.exit_code("state = xpcproxy\n\tlast exit code = (never exited)\n"))
+        self.assertIsNone(checker.exit_code("state = running\n"))
+        for code in (0, 3, 30, -9):
+            self.assertEqual(checker.exit_code(f"\tlast exit code = {code}\n"), code)
+
     def test_upgrade_keeps_requirement_and_team_before_any_mutation(self):
         with tempfile.TemporaryDirectory(prefix="plank-signature-") as temporary:
             source, installed = Path(temporary) / "source", Path(temporary) / "installed"

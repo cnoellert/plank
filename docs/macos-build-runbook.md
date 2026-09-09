@@ -7,6 +7,29 @@ Probe signing/installation remains documented in `probes/macos/README.md`.
 
 ## Native Host executable and application
 
+### Non-prompting permission qualification
+
+Follow `macos-provisioning.plan`. The installed signed Host supports
+`--check-permissions`; use `sudo python3 tests/auth/macos-permission-check.py
+--uid ACTUAL_CONSOLE_UID` after the operator logs into the account under test.
+The runner launches one temporary Aqua job, waits for a **numeric** launchd
+exit code (the initial `(never exited)` value is not completion), prints the
+JSON and removes the job. It cannot log a user in, capture, post input, request
+consent or provision a missing desktop worker. Exit0 is screen/input preflight
+readiness,3 is a negative result,2 is an app diagnostic error. Audio-tap consent
+remains explicitly unverified. Plain SSH may report denial even when the same
+UID's Aqua check passes; do not reset permissions on that evidence.
+
+The development installer verifies the candidate and installed signatures and
+requires matching Team IDs and designated requirements before any state write
+or service stop. `codesign -d -r-` emits the requirement on stdout and diagnostics
+on stderr; the parser accepts either stream but rejects ambiguity. A signer
+transition is a provisioning decision, not a build repair. Do not bypass this
+guard or switch to ad-hoc signing. Run
+`python3 tests/auth/test-macos-development-install.py` for its failure cases.
+
+### Assembly and install
+
 For LoginWindow candidates, run
 `python3 tests/auth/test-macos-development-install.py` and the Client's
 `tests/desktopstage` suite. The development installer now registers a

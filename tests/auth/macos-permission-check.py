@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import plistlib
 import pwd
+import re
 import subprocess
 import tempfile
 import time
@@ -19,6 +20,11 @@ import uuid
 
 def run(*args, check=True):
     return subprocess.run(args, check=check, capture_output=True, text=True, timeout=15)
+
+
+def exit_code(status):
+    match = re.search(r"^\s*last exit code = (-?\d+)\s*$", status, re.MULTILINE)
+    return int(match[1]) if match else None
 
 
 def main():
@@ -54,11 +60,17 @@ def main():
             status = ""
             while time.monotonic() < deadline:
                 status = run("launchctl", "print", job).stdout
-                if "last exit code =" in status:
+                if exit_code(status) is not None:
                     break
                 time.sleep(0.1)
             assert os.stat("/dev/console").st_uid == args.uid, "Console changed; discard report"
-            assert "last exit code = 0" in status or "last exit code = 3" in status, "Permission diagnostic failed/timed out"
+            if exit_code(status) not in (0, 3):
+                for line in status.splitlines():
+                    if "state =" in line or "last exit code" in line or "last terminating signal" in line:
+                        print(line.strip())
+                # This fixed diagnostic cannot receive credentials or media.
+                print(err.read_text()[:4096])
+                raise RuntimeError("Permission diagnostic failed/timed out")
             assert out.stat().st_size <= 4096
             report = json.loads(out.read_text())
             assert report["uid"] == args.uid and report["version"] == info["PLANKVersion"]
