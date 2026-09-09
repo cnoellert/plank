@@ -102,10 +102,9 @@ int main(int argc, const char **argv) {
             CHECK([encoder encodeSample:first] && packets == 0); CFRelease(first);
             unsigned frames = failure == 4 ? 8193 : 960;
             CMTime time = CMTimeMake(480017 + 4608, 48000);
-            if (failure == 0) time = kCMTimeInvalid;
-            if (failure == 1) time = CMTimeMakeWithEpoch(480017, 48000, 1);
             CMSampleBufferRef bad = sample(17, frames, failure != 2, time, failure == 3);
-            CHECK(![encoder encodeSample:bad]); CFRelease(bad);
+            if (failure == 1) CMSampleBufferInvalidate(bad);
+            CHECK(![encoder encodeSample:failure == 0 ? NULL : bad]); CFRelease(bad);
             unsigned before = packets;
             CMSampleBufferRef good = sample(17, 960, YES, CMTimeMake(480017, 48000), NO);
             CHECK(![encoder encodeSample:good] && packets == before); CFRelease(good);
