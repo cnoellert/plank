@@ -161,12 +161,24 @@ DESKTOP_LABEL = "la.instinctual.PLANK.Host.desktop"
 SIGN_IN_LABEL = "la.instinctual.PLANK.Host.sign-in"
 
 
+def gui_domains():
+    domains = []
+    for uid in sorted({entry.pw_uid for entry in pwd.getpwall() if entry.pw_uid > 0}):
+        domain = f"gui/{uid}"
+        result = run("launchctl", "print", domain, check=False)
+        if result.returncode == 0:
+            domains.append(domain)
+        elif "Could not find domain for" not in result.stderr:
+            raise RuntimeError("Cannot inspect graphical domain: " + domain)
+    return domains
+
+
 def stop_roles():
     stop_job("loginwindow/" + SIGN_IN_LABEL)
     # Enumerate OS accounts, not home directories. Stop existing Aqua jobs,
     # including fast-switched users, before retiring the exclusive coordinator.
-    for uid in sorted({entry.pw_uid for entry in pwd.getpwall() if entry.pw_uid > 0}):
-        stop_job(f"gui/{uid}/" + DESKTOP_LABEL)
+    for domain in gui_domains():
+        stop_job(domain + "/" + DESKTOP_LABEL)
     stop_job("system/" + MACHINE_LABEL)
 
 
@@ -298,10 +310,13 @@ def main():
         os.chmod(path, 0o644)
         os.chown(path, 0, 0)
     run("launchctl", "bootstrap", "system", str(machine_path))
-    if os.stat("/dev/console").st_uid == console_uid:
-        run("launchctl", "bootstrap", active_domain, str(sign_in_path if console_uid == 0 else agent_path))
-    else:
-        print("Console changed during installation; graphical startup deferred to its next session.")
+    # Restore registration in every existing Aqua domain, not only the console:
+    # otherwise a fast-switched user's booted-out job stays absent on return.
+    # Inactive workers still fail native scope checks before provisioning/media.
+    for domain in gui_domains():
+        run("launchctl", "bootstrap", domain, str(agent_path))
+    if os.stat("/dev/console").st_uid == 0:
+        run("launchctl", "bootstrap", "loginwindow", str(sign_in_path))
     print("Installed", info["PLANKVersion"], "for LoginWindow and all Aqua users")
     print("Graphical jobs are registered for LoginWindow/Aqua; no logout or reboot performed.")
     print("Desktop logs: each user's Library/Logs/PLANK; machine/sign-in logs:", machine_logs)

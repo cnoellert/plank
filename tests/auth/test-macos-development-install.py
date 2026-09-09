@@ -17,6 +17,40 @@ PUBLIC = {"Address": "0.0.0.0", "Port": 28989, "Name": "PLANK test",
 
 
 class RoleIdentityTests(unittest.TestCase):
+    def test_existing_gui_domains_are_unique_and_errors_fail_closed(self):
+        from types import SimpleNamespace
+        with patch.object(INSTALLER.pwd, "getpwall", return_value=[SimpleNamespace(pw_uid=uid) for uid in (0,501,501,502)]), \
+             patch.object(INSTALLER, "run", side_effect=[SimpleNamespace(returncode=0),
+                 SimpleNamespace(returncode=113, stderr="Could not find domain for user gui: 502")]):
+            self.assertEqual(INSTALLER.gui_domains(), ["gui/501"])
+        with patch.object(INSTALLER.pwd, "getpwall", return_value=[SimpleNamespace(pw_uid=501)]), \
+             patch.object(INSTALLER, "run", return_value=SimpleNamespace(returncode=1, stderr="Permission denied")):
+            with self.assertRaises(RuntimeError):
+                INSTALLER.gui_domains()
+
+    def test_uninstaller_rejects_foreign_or_symlink_jobs(self):
+        from unittest.mock import MagicMock
+        spec = importlib.util.spec_from_file_location("uninstaller", ROOT / "scripts/uninstall-macos-host-development.py")
+        uninstaller = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(uninstaller)
+        path = MagicMock()
+        path.exists.return_value = True
+        path.is_symlink.return_value = False
+        path.is_file.return_value = True
+        path.stat.return_value.st_uid = 0
+        path.read_bytes.return_value = plistlib.dumps({"Label":"test", "ProgramArguments":[
+            "/Applications/PLANK Host.app/Contents/MacOS/plank-host", "--desktop"]})
+        self.assertTrue(uninstaller.owned_job(path, "test"))
+        with self.assertRaises(ValueError):
+            uninstaller.owned_job(path, "other")
+        path.is_symlink.return_value = True
+        with self.assertRaises(ValueError):
+            uninstaller.owned_job(path, "test")
+        path.is_symlink.return_value = False
+        path.stat.return_value.st_uid = 501
+        with self.assertRaises(ValueError):
+            uninstaller.owned_job(path, "test")
+
     def test_key_only_identity_preserved(self):
         with tempfile.TemporaryDirectory(prefix="plank-keys-") as temporary:
             directory = Path(temporary) / "identity"

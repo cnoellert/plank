@@ -40,8 +40,12 @@ The same tap mixes and mutes the selected application's and system-alert
 streams, with no second audio path or additional Host privilege.
 
 `plank-host --machine MACH_SERVICE` runs the root ownership coordinator.
-`plank-host --graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY` runs
-the explicitly selected graphical role, on that actual launchd graphical domain.
+`plank-host --desktop MACH_SERVICE` runs the current user's Aqua worker;
+`plank-host --sign-in MACH_SERVICE` runs the root LoginWindow worker.
+The explicit `--graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY`
+entry remains for isolated role-private qualification fixtures, not installed
+startup. Both installed roles read the root-owned public configuration; neither
+consults an old user `host.plist` or copies another role's private key.
 Same-product signing and root machine-peer checks remain mandatory. The agent
 opens HTTPS only after admission; each authentication/media/input authorization
 uses the independent local scope bound to the machine's current generation.
@@ -85,8 +89,8 @@ pinning is not provided by that existing policy and remains a security gate.
 ## Development installation and reboot recovery
 
 `install-macos-host-development.py` installs the machine coordinator as a
-root LaunchDaemon, the designated user's Aqua agent in that user's LaunchAgents
-directory, and a root-owned LoginWindow-only agent in `/Library/LaunchAgents`.
+root LaunchDaemon and two root-owned agents in `/Library/LaunchAgents`: one
+Aqua-only, one LoginWindow-only. Each Aqua process runs as its actual user.
 It does not log out, reboot, disable FileVault or alter TCC. Launchd restarts
 exited graphical jobs with a two-second throttle; each new graphical process must prove
 its scope and acquire a fresh generation before listening. Restart policy
@@ -109,12 +113,22 @@ PLANK authentication reports `desktop_stage=greeter`; the Client requests its
 saved bookmark resolution in both sign-in and desktop. Scope changes revoke the old stream; the
 Client must authenticate again. The desktop agent still runs as its OS user.
 
-This development installer provisions one explicitly designated desktop user,
-not every possible Mac account. Multi-user provisioning and broader crash and
-account-isolation qualification remain open despite the accepted single-user
-LoginWindow input, logout/login and cold-boot test.
+The system-wide Aqua worker prepares missing TLS files as its non-root user,
+publishing a private directory atomically without replacing existing keys.
+Configuration is `/Library/Application Support/PLANK/host.plist`, root-owned
+0644 in a root-owned0755 directory. The separate SignIn directory remains0700.
+Desktop logs are opened inside the signed app with the user's authority.
+New-user and account-isolation qualification remain open despite the accepted
+single-user LoginWindow input, logout/login and cold-boot test.
 The existing desktop can be preserved while installing the next-login job;
 installation itself does not prove the cold-boot gate.
+
+Both install and uninstall wait for graphical process exit as well as launchd
+deregistration before stopping the machine coordinator. A timeout fails closed,
+not a forced process kill or a new coordinator over a still-draining worker.
+Uninstall removes only verified product launch entries and moves the app into
+a printed root-only recovery directory. User and system settings, keys, logs,
+accounts and macOS consent are preserved; reinstall can reuse the same identity.
 
 Opening the signed PLANK Host application requests its own Screen Recording
 and input consent. Probe consent does not transfer across bundle IDs.
