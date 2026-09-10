@@ -34,6 +34,7 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
 @property(copy) void (^pendingStop)(void);
 @end
 @implementation PLANKFakeCapture
+- (BOOL)available { return YES; }
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
                    audio:(PLANKMacNativeAudio *)audio
                    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {

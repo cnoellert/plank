@@ -65,12 +65,15 @@ double PLANKMacScrollLinesForPreference(CFTypeRef value) {
 @implementation PLANKMacQuartzInput
 - (BOOL)available { return CGPreflightPostEventAccess() && AXIsProcessTrusted(); }
 - (PLANKMacInputEvents *)eventsForTopology:(NSDictionary *)topology {
-    if (![self available]) return nil;
+    if (![self available]) {
+        NSLog(@"PLANK input startup failed: Accessibility/event-posting permission required"); return nil;
+    }
     NSDictionary *capture = topology[@"capture"], *bounds = capture[@"logical_bounds"];
     // The session owner has already validated the exact trusted topology.
     CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStatePrivate);
     CGEventRef current = CGEventCreate(NULL);
     if (!source || !current) {
+        NSLog(@"PLANK input startup failed: graphical event source unavailable");
         if (source) CFRelease(source);
         if (current) CFRelease(current);
         return nil;

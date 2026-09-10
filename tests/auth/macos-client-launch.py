@@ -21,7 +21,7 @@ def main():
     parser.add_argument("--certificate-config", required=True)
     args = parser.parse_args()
     topology = json.loads(Path(args.topology).read_text())
-    modes = ("success", "wrong-pin", "certificate-swap", "redirect", "denied",
+    modes = ("success", "wrong-pin", "certificate-swap", "redirect", "denied", "permissions",
              "oversized", "malformed", "wrong-port", "audio", "timeout")
     with tempfile.TemporaryDirectory(prefix="plank-client-launch-") as directory:
         root = Path(directory)
@@ -86,6 +86,9 @@ def main():
                         return
                     if mode == "denied":
                         self.respond(403, b'{"message":"do-not-log-this-response"}')
+                        return
+                    if mode == "permissions":
+                        self.respond(403, b'{"state":"denied","error":"host_permissions_required"}')
                         return
                     if mode == "timeout":
                         time.sleep(6)

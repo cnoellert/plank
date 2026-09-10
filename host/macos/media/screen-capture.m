@@ -113,6 +113,7 @@
         });
     });
 }
+- (BOOL)available { return CGPreflightScreenCaptureAccess(); }
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
                    audio:(PLANKMacNativeAudio *)audio
                    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
@@ -142,10 +143,16 @@
     _height = [topology[@"capture"][@"height"] unsignedIntegerValue];
     NSString *identifier = topology[@"capture"][@"id"];
     NSDictionary *profile = topology[@"capture"][@"encoding_profile"];
-    if (![profile isEqual:PLANKMacEncodingProfile(profile[@"encoding_mode"])]) { failed(); return; }
+    if (![profile isEqual:PLANKMacEncodingProfile(profile[@"encoding_mode"])]) {
+        NSLog(@"PLANK capture startup failed: invalid encoding profile"); failed(); return;
+    }
     _fullChroma = [profile[@"chroma"] isEqual:@"4:4:4"];
-    if (!CGPreflightScreenCaptureAccess() || !_width || !_height || _width > 8192 || _height > 8192 ||
-        (_width & 1) || (_height & 1)) { failed(); return; }
+    if (![self available]) {
+        NSLog(@"PLANK capture startup failed: Screen Recording permission required"); failed(); return;
+    }
+    if (!_width || !_height || _width > 8192 || _height > 8192 || (_width & 1) || (_height & 1)) {
+        NSLog(@"PLANK capture startup failed: invalid dimensions"); failed(); return;
+    }
     _starting = YES;
     [SCShareableContent getShareableContentExcludingDesktopWindows:NO onScreenWindowsOnly:YES
         completionHandler:^(SCShareableContent *content, NSError *error) {
@@ -155,14 +162,23 @@
             SCDisplay *selected = nil;
             for (SCDisplay *display in content.displays)
                 if ([[NSString stringWithFormat:@"cgdisplay:%u", display.displayID] isEqual:identifier]) selected = display;
-            if (error || !selected) { self->_failed(); return; }
+            if (error || !selected) {
+                NSLog(@"PLANK capture startup failed: display discovery error=%ld display-found=%d", (long)error.code, selected != nil);
+                self->_failed(); return;
+            }
             SCContentFilter *filter = [[SCContentFilter alloc] initWithDisplay:selected excludingWindows:@[]];
             double w = filter.contentRect.size.width * filter.pointPixelScale;
             double h = filter.contentRect.size.height * filter.pointPixelScale;
-            if (!isfinite(w) || !isfinite(h) || w != self->_width || h != self->_height) { self->_failed(); return; }
+            if (!isfinite(w) || !isfinite(h) || w != self->_width || h != self->_height) {
+                NSLog(@"PLANK capture startup failed: geometry mismatch requested=%lux%lu actual=%.0fx%.0f",
+                    (unsigned long)self->_width, (unsigned long)self->_height, w, h);
+                self->_failed(); return;
+            }
             uint32_t peak = bitrate * 2;
             self->_encoder = [PLANKMacScreenCapture createEncoder:bitrate width:self->_width height:self->_height fullChroma:self->_fullChroma];
-            if (!self->_encoder) { self->_failed(); return; }
+            if (!self->_encoder) {
+                NSLog(@"PLANK capture startup failed: VideoToolbox encoder initialization"); self->_failed(); return;
+            }
             SCStreamConfiguration *config = [SCStreamConfiguration new];
             config.width = self->_width; config.height = self->_height;
             // Native cadence on the qualified 60 Hz displays. An explicit 1/60
@@ -186,7 +202,10 @@
                 dispatch_async(self->_queue, ^{
                     self->_starting = NO;
                     if (self->_stopping) { [self stopCapture]; return; }
-                    if (startError) { self->_failed(); return; }
+                    if (startError) {
+                        NSLog(@"PLANK capture startup failed: ScreenCaptureKit error=%ld", (long)startError.code);
+                        self->_failed(); return;
+                    }
                     // Screen/input readiness is independent of optional audio
                     // consent. In particular, remote input must already work
                     // while macOS presents an audio permission dialog.

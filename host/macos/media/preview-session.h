@@ -9,6 +9,9 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 // All methods/callbacks run on the supplied serial session queue. stop must
 // complete only after capture and encoder callbacks have drained. No UI waits.
 @protocol PLANKMacPreviewCapture <NSObject>
+// Non-prompting permission check in the current graphical worker. Actual
+// capture still checks access at startup; this is not an authorization token.
+- (BOOL)available;
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate
                    video:(PLANKMacNativeVideo *)video audio:(PLANKMacNativeAudio *)audio
                    queue:(dispatch_queue_t)queue

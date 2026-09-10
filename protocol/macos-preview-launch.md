@@ -12,6 +12,16 @@ schema-13 fixed-capture descriptor. The preview then accepts an authenticated
 No credentials or tokens are accepted in URLs. A missing launch handler leaves
 the route absent (404); authentication itself does not enable capture.
 
+After authentication, both display preparation and launch check the graphical
+worker's current, non-prompting screen/input permissions before changing modes
+or creating a transport lease. Missing permission returns HTTP 403 with exactly
+`{"state":"denied","error":"host_permissions_required"}`. This is an error
+extension, not a change to the schema-2 success manifest or transport ABI.
+Unauthenticated callers still receive 401 without permission details. The Client
+maps only this fixed code to local instructions; arbitrary Host text is not
+displayed. Denial does not consume the HTTP token or alter display topology.
+Capture/input still recheck access at startup to cover revocation races.
+
 The body has exactly the nine fields in
 `tests/protocol/macos-preview-launch-v2.json`:
 

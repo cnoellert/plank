@@ -128,6 +128,19 @@ gui_domains() {
     done
 }
 console_uid() { /usr/bin/stat -f %u /dev/console; }
+open_permission_setup() {
+    local uid
+    uid=$(console_uid)
+    if [[ $uid =~ ^[1-9][0-9]*$ ]]; then
+        # Open the signed app as the existing console user, never as root.
+        # The app uses normal macOS consent prompts; no TCC writes or reset.
+        if ! launchctl_cmd asuser "$uid" /usr/bin/sudo -n -u "#$uid" /usr/bin/open "$app"; then
+            echo 'PLANK Host installed; open PLANK Host in Applications to complete privacy setup.'
+        fi
+    else
+        echo 'PLANK Host installed at LoginWindow. Log into the Mac and open PLANK Host once for privacy setup.'
+    fi
+}
 stop_roles() {
     local domains domain pids pid attempt pending
     domains=$(gui_domains) || fail 'Cannot enumerate graphical domains'

@@ -78,6 +78,8 @@
                 [self->_sessions authorizeToken:token peer:peer identity:&account];
         };
         if (!valid()) { *status = 401; return nil; }
+        NSDictionary *permissionError = [self permissionError:status];
+        if (permissionError) return permissionError;
         if (!self.prepareDisplay(width, height, request[@"encoding_mode"], valid) || !valid()) {
             NSLog(@"PLANK desktop preparation failed: %ux%u", width, height);
             *status = 503; return nil;
@@ -98,6 +100,15 @@
         return [_server startOnAddress:_address port:port ready:ready failed:failed];
     }
 }
+// Called only after HTTPS authentication, before changing display geometry or
+// consuming a stream lease. Discovery/auth remain available for remediation.
+- (NSDictionary *)permissionError:(unsigned *)status {
+    BOOL screen = [_capture() available], input = [_input() available];
+    if (screen && input) return nil;
+    NSLog(@"PLANK stream admission denied: screen-capture=%d input=%d; approve PLANK Host in System Settings > Privacy & Security", screen, input);
+    *status = 403;
+    return @{@"state": @"denied", @"error": @"host_permissions_required"};
+}
 - (NSDictionary *)launch:(NSDictionary *)request token:(NSString *)token peer:(NSData *)peer
                     port:(uint16_t)port status:(unsigned *)status {
     // Serialize endpoint construction with shutdown's stream snapshot, NOT
@@ -109,6 +120,8 @@
         NSDictionary *selected = _topology();
         if (!PLANKMacPreviewRequestMatchesTopology(request, selected)) { *status = 400; return nil; }
         if (_stream && _stream.state != PLANKMacPreviewStopped) { *status = 409; return nil; }
+        NSDictionary *permissionError = [self permissionError:status];
+        if (permissionError) return permissionError;
         NSString *bind = [NSString stringWithFormat:@"%@:%u", _address, port];
         PlankTransportConfig config = {0};
         config.struct_size = sizeof(config); config.abi_version = PLANK_TRANSPORT_ABI_VERSION;

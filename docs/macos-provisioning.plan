@@ -4,6 +4,24 @@ Date: 2026-09-08. Current branch: `macos-system-provisioning`.
 
 ## Objective and boundaries
 
+September 9 installer follow-up: the Developer ID distribution build's signed
+LoginWindow diagnostic reports a valid graphical context but denied ScreenCapture,
+PostEvent and Accessibility, despite the operator remembering enabled Settings
+entries. This is not proof of consent for the new identity. Apple Development
+and Developer ID have different default designated requirements; this transition
+must be explicitly qualified, including desktop and LoginWindow checks.
+Do not reset TCC or edit its database to repair it.
+
+The PCoIP26.05.3 package's postinstall asks its user agent to prompt for screen
+and Accessibility permissions after installation. It does not silently grant
+them; its comments also document loss of remote input during an identity-changing
+upgrade and alternate remote access being needed to approve permissions.
+PLANK's installer now opens the signed permission UI as the existing console
+user after successful installation. At LoginWindow it defers to administrator
+login/setup; no root background consent requests or persistent extra jobs.
+Authenticated display/launch admission returns a fixed permission error before
+geometry mutation or transport creation. Real stream acceptance is still pending.
+
 An administrator installs and approves PLANK once, then ordinary authorized
 desktop users and OS updates do not unexpectedly strand the headless Mac.
 This is a goal to qualify, not a claim that macOS grants all consent machine-wide.

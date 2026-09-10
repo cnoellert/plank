@@ -12,9 +12,11 @@
 
 #if defined(PLANK_MAC_PREVIEW_TEST) && defined(PLANK_SYNTHETIC_AUTH_TEST)
 #import "macos-fake-input.h"
+static BOOL testScreenAllowed = YES, testInputAllowed = YES;
 @interface PLANKNoPixelCapture : NSObject <PLANKMacPreviewCapture>
 @end
 @implementation PLANKNoPixelCapture
+- (BOOL)available { return testScreenAllowed; }
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
                    audio:(PLANKMacNativeAudio *)audio
     queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
@@ -54,6 +56,13 @@ int main(int argc, const char *argv[]) {
             printf("macos_desktop_authority active=%d revocation_pass=%d\n", before.active, !after.active);
             return after.active ? 1 : 0;
         }
+#if defined(PLANK_MAC_PREVIEW_TEST) && defined(PLANK_SYNTHETIC_AUTH_TEST)
+        if (argc == 3) {
+            testScreenAllowed = strcmp(argv[2], "screen-denied") != 0;
+            testInputAllowed = strcmp(argv[2], "input-denied") != 0;
+            if (testScreenAllowed && testInputAllowed) return 2;
+        } else
+#endif
         if (argc != 2) return 2;
         // Create an in-memory identity directly with Apple's supported API.
         // No PKCS#12 importer, keychain insertion or trust-store modification.
@@ -107,7 +116,9 @@ int main(int argc, const char *argv[]) {
 #endif
             } input:^id<PLANKMacInputDevice> {
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
-                return [PLANKFakeInput new];
+                PLANKFakeInput *input = [PLANKFakeInput new];
+                input.availableFlag = testInputAllowed;
+                return input;
 #else
                 return [PLANKMacQuartzInput new];
 #endif

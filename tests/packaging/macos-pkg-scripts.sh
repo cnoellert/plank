@@ -77,6 +77,27 @@ ok
 )
 ok
 
+(
+    console_uid() { echo 502; }
+    calls=''
+    launchctl_cmd() { calls="$*"; }
+    open_permission_setup
+    [[ $calls = "asuser 502 /usr/bin/sudo -n -u #502 /usr/bin/open $app" ]]
+)
+ok
+(
+    console_uid() { echo 0; }
+    launchctl_cmd() { fail 'Must not open permission UI as root at LoginWindow'; }
+    [[ $(open_permission_setup) = *'Log into the Mac'* ]]
+)
+ok
+(
+    console_uid() { echo 502; }
+    launchctl_cmd() { return 1; }
+    [[ $(open_permission_setup) = *'open PLANK Host in Applications'* ]]
+)
+ok
+
 if [[ $(uname -s) = Darwin ]]; then
     for role in machine desktop sign-in; do
         plist="$root/packaging/macos/la.instinctual.PLANK.Host.$role.plist"
