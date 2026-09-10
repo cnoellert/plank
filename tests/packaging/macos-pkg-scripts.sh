@@ -12,8 +12,10 @@ done
 # Exercise the exact uninstall entry point with destructive commands replaced
 # only in this fixture. Never execute the product uninstaller in these tests.
 (
-    source <(/usr/bin/sed -e '$d' -e 's|/bin/rm|remove_cmd|g' \
-        -e 's|/usr/sbin/pkgutil|receipt_cmd|g' "$root/packaging/macos/uninstall.sh")
+    # Bash 3.2 on macOS can return early when sourcing a process-substitution
+    # pipe. Read the complete trusted fixture before defining its function.
+    eval "$(/usr/bin/sed -e '$d' -e 's|/bin/rm|remove_cmd|g' \
+        -e 's|/usr/sbin/pkgutil|receipt_cmd|g' "$root/packaging/macos/uninstall.sh")"
     calls=''
     preflight() { [[ $1 = / ]]; calls="$calls|preflight"; }
     stop_roles() { calls="$calls|stop"; }
