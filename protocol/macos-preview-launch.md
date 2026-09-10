@@ -19,8 +19,18 @@ or creating a transport lease. Missing permission returns HTTP 403 with exactly
 extension, not a change to the schema-2 success manifest or transport ABI.
 Unauthenticated callers still receive 401 without permission details. The Client
 maps only this fixed code to local instructions; arbitrary Host text is not
-displayed. Denial does not consume the HTTP token or alter display topology.
+displayed. Permission denial does not alter display topology. Any failed
+authenticated display/launch attempt revokes that attempt's HTTP token (and
+any claimed lease); retry requires fresh authentication. Unauthenticated or
+wrong-peer requests cannot revoke another attempt. Successful display
+preparation retains its token for launch. The Client stops automatic reconnect
+on HTTP403, since operator consent cannot be recovered by repeated logins.
 Capture/input still recheck access at startup to cover revocation races.
+
+Authentication capacity/verification contention returns `{"state":"busy"}`,
+distinct from `{"state":"denied"}` for rejected authentication. The Client
+reports busy as HTTP503 locally, not an incorrect-password message. The existing
+16-record limits remain unchanged. No account details or secrets enter errors.
 
 The body has exactly the nine fields in
 `tests/protocol/macos-preview-launch-v2.json`:

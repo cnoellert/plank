@@ -139,7 +139,10 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
         for invalid in [dict(mode, width=True), dict(mode, width=1920.5),
                         dict(mode, width=-1), dict(mode, extra=0), dict(mode, schema_version=1), dict(mode, encoding_mode="invalid")]:
             assert launch(invalid, token, "/plank/display")[0] == 400
+            assert launch(mode, token, "/plank/display")[0] == 401
+            token, _ = authenticate(tls, port, "synthetic", "test")
         assert launch(dict(mode, width=1922), token, "/plank/display")[0] == 503
+        token, _ = authenticate(tls, port, "synthetic", "test")
         status, resized = launch(mode, token, "/plank/display")
         assert status == 200 and resized["capture"]["width"] == 1920
         status, restored = launch(dict(mode, width=3840, height=2160), token, "/plank/display")
@@ -149,13 +152,17 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
         assert status == 200 and full["capture"]["encoding_profile"]["profile"] == "rext"
         assert full["capture"]["encoding_profile"]["chroma"] == "4:4:4"
         assert launch(body, token)[0] == 400  # no silent switch back to Main10
+        token, _ = authenticate(tls, port, "synthetic", "test")
         status, restored = launch(dict(mode, width=3840, height=2160), token, "/plank/display")
         assert status == 200 and restored == topology
 
     assert launch(body, "x" * 44)[0] == 401
-    assert launch(dict(body, width=1), token)[0] == 400
-    assert launch(dict(body, encoding_mode="hevc-10-444-nvenc"), token)[0] == 400
-    assert launch(dict(body, capture_generation=str(uuid.uuid4())), token)[0] == 400
+    if not media:
+        for invalid in (dict(body, width=1), dict(body, encoding_mode="hevc-10-444-nvenc"),
+                        dict(body, capture_generation=str(uuid.uuid4()))):
+            assert launch(invalid, token)[0] == 400
+            assert launch(body, token)[0] == 401
+            token, _ = authenticate(tls, port, "synthetic", "test")
     status, reply = launch(body, token)
     assert status == 200 and reply["schema_version"] == 2 and reply["state"] == "connecting"
     assert reply["udp_port"] == port and reply["max_udp_payload_size"] == 1200

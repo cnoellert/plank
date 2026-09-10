@@ -22,7 +22,7 @@ def main():
     args = parser.parse_args()
     topology = json.loads(Path(args.topology).read_text())
     modes = ("success", "wrong-pin", "certificate-swap", "redirect", "denied", "permissions",
-             "oversized", "malformed", "wrong-port", "audio", "timeout")
+             "oversized", "malformed", "wrong-port", "audio", "timeout", "auth-busy")
     with tempfile.TemporaryDirectory(prefix="plank-client-launch-") as directory:
         root = Path(directory)
         for number in (1, 2):
@@ -71,6 +71,13 @@ def main():
                     self.respond(200, json.dumps(topology).encode())
 
                 def do_POST(self):
+                    if mode == "auth-busy":
+                        requests.append("auth")
+                        if self.path != "/plank/auth/start" or self.headers.get("Authorization"):
+                            faults.append("unexpected authentication request")
+                        self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                        self.respond(200, b'{"state":"busy"}')
+                        return
                     requests.append("launch")
                     if self.path != "/plank/launch" or self.headers.get("Authorization") != "Bearer " + token:
                         faults.append("unexpected launch target or authorization")
@@ -118,7 +125,7 @@ def main():
                     raise RuntimeError(f"{mode}: sensitive response reached diagnostics")
                 if result.returncode:
                     raise RuntimeError(f"{mode}: Client qualification failed ({result.returncode}): {result.stderr}")
-                expected_requests = ["topology"] if mode in ("wrong-pin", "certificate-swap") else ["topology", "launch"]
+                expected_requests = ["auth"] if mode == "auth-busy" else ["topology"] if mode in ("wrong-pin", "certificate-swap") else ["topology", "launch"]
                 if requests != expected_requests or faults:
                     raise RuntimeError(f"{mode}: incorrect HTTP request sequence")
                 print(f"{mode}: pass", flush=True)

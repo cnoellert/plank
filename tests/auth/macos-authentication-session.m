@@ -100,7 +100,20 @@ int main(void) {
         desktop.active = true;
         for (int i = 0; i < 16; ++i)
             CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"challenge"]);
-        CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"denied"]);
+        CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"busy"]);
+        [sessions revokeAll];
+
+        // Capacity is not a credential failure; revoking one abandoned setup
+        // immediately restores admission without changing the bounded limit.
+        for (int i = 0; i < 16; ++i) {
+            start = [sessions startForPeer:peer username:@"test"];
+            token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+            CHECK(token != nil);
+        }
+        CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"busy"]);
+        [sessions revokeToken:token];
+        start = [sessions startForPeer:peer username:@"test"];
+        CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"authenticated"]);
         [sessions revokeAll];
 
         start = [sessions startForPeer:peer username:@"test"];

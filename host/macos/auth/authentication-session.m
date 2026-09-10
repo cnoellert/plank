@@ -51,6 +51,7 @@ static BOOL validPeer(NSData *peer) {
 }
 
 static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
+static NSDictionary *busy(void) { return @{@"state": @"busy"}; }
 
 - (instancetype)init { return nil; }
 
@@ -88,7 +89,7 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
         if (!nameBytes.length || nameBytes.length > 255 || memchr(nameBytes.bytes, 0, nameBytes.length))
             return denied();
         [self prune];
-        if (_pending.count >= 16 || _tokens.count >= 16) return denied();
+        if (_pending.count >= 16 || _tokens.count >= 16) return busy();
         PLANKMacGraphicalIdentity scope = _snapshot();
         if (!plank_macos_graphical_identity_valid(scope)) return denied();
         NSString *conversation = randomToken();
@@ -117,7 +118,7 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
             if (!record || ![record.peer isEqual:peer]) return denied();
             // Consume BEFORE any verification. A response can never be replayed.
             [_pending removeObjectForKey:conversation];
-            if (_verifying || _tokens.count >= 16) return denied();
+            if (_verifying || _tokens.count >= 16) return busy();
             _verifying = YES;
             generation = _revocationGeneration;
         }
@@ -127,9 +128,10 @@ static NSDictionary *denied(void) { return @{@"state": @"denied"}; }
             PLANKMacAccountIdentity account = {0};
             PLANKMacAuthenticationResult result = PLANKMacVerifyAccountIsolated(record.username, password, &account);
             @synchronized(self) {
-                if (generation != _revocationGeneration || _tokens.count >= 16 ||
+                if (generation != _revocationGeneration ||
                         result != PLANKMacAuthenticationVerified ||
                         !plank_macos_account_may_attach(account, record.scope, _snapshot())) return denied();
+                if (_tokens.count >= 16) return busy();
                 NSString *token = randomToken();
                 if (!token || _tokens[token]) return denied();
                 record.account = account;

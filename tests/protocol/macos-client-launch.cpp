@@ -17,8 +17,10 @@ int main(int argc, char** argv)
     if (!input.open(stdin, QIODevice::ReadOnly)) return 2;
     const auto values = QJsonDocument::fromJson(input.readAll()).object();
     NvHTTP http(NvAddress(QStringLiteral("127.0.0.1"), static_cast<quint16>(port)));
-    http.setPlankSessionToken(values.value("token").toString());
+    const bool busy = mode == QLatin1String("auth-busy");
+    if (!busy) http.setPlankSessionToken(values.value("token").toString());
     try {
+        if (busy) { http.authenticate(QStringLiteral("synthetic"), QStringLiteral("test")); return 1; }
         QString pin;
         const auto topology = http.getOutputTopology(&pin);
         if (pin.size() != 64) return 1;
@@ -38,7 +40,7 @@ int main(int argc, char** argv)
         try { http.startMacPreview(topology, pin, 50000, 1200); return 1; }
         catch (const GfeHttpResponseException& error) { if (error.getStatusCode() != 400) return 1; }
     } catch (const GfeHttpResponseException& error) {
-        const int expected = mode == QLatin1String("wrong-pin") || mode == QLatin1String("certificate-swap") ? 401 :
+        const int expected = busy ? 503 : mode == QLatin1String("wrong-pin") || mode == QLatin1String("certificate-swap") ? 401 :
                 (mode == QLatin1String("denied") || mode == QLatin1String("permissions")) ? 403 :
                 mode == QLatin1String("redirect") ? 307 : 400;
         if (mode == QLatin1String("success") || error.getStatusCode() != expected) {
@@ -47,6 +49,7 @@ int main(int argc, char** argv)
         }
         if (mode == QLatin1String("permissions") &&
                 !error.toQString().contains(QStringLiteral("PLANK Host requires macOS permissions"))) return 1;
+        if (busy && !error.toQString().contains(QStringLiteral("Host authentication is busy"))) return 1;
         if (error.toQString().contains(QStringLiteral("do-not-log-this-response"))) return 1;
         try { http.getOutputTopology(); return 1; }
         catch (const GfeHttpResponseException& consumed) { if (consumed.getStatusCode() != 400) return 1; }

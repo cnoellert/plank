@@ -37,19 +37,22 @@ def main():
                             "encoding_mode": "hevc-10-420-videotoolbox", "frame_rate": 60,
                             "bitrate_kbps": 50000, "max_udp_payload_size": 1200}}
                     for path, body in requests.items():
-                        for bearer, expected in (("x" * 44, 401), (token, 403), (token, 403)):
-                            encoded = json.dumps(body).encode()
-                            raw = (f"POST {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
-                                   f"Authorization: Bearer {bearer}\r\nContent-Length: {len(encoded)}\r\n\r\n").encode() + encoded
-                            status, reply = fixture.request(cert, port, {}, raw=raw)
-                            assert status == expected, (denial, path, status)
-                            if expected == 403:
-                                assert reply == {"state": "denied", "error": "host_permissions_required"}
-                            else:
-                                assert "error" not in reply
-                    raw = f"GET /plank/topology HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer {token}\r\n\r\n".encode()
-                    assert fixture.request(cert, port, {}, raw=raw) == (200, topology)
-                    print(f"{denial}: authenticated denial, no lease consumed or display mutation; pass")
+                        # Exceed the 16-token limit twice without waiting for
+                        # expiry. Each failed setup must release only its token.
+                        for _ in range(32):
+                            token, current = fixture.authenticate(cert, port, "synthetic", "test")
+                            assert current == topology  # failed preparation never mutates display
+                            for bearer, expected in (("x" * 44, 401), (token, 403), (token, 401)):
+                                encoded = json.dumps(body).encode()
+                                raw = (f"POST {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
+                                       f"Authorization: Bearer {bearer}\r\nContent-Length: {len(encoded)}\r\n\r\n").encode() + encoded
+                                status, reply = fixture.request(cert, port, {}, raw=raw)
+                                assert status == expected, (denial, path, status)
+                                if expected == 403:
+                                    assert reply == {"state": "denied", "error": "host_permissions_required"}
+                                else:
+                                    assert "error" not in reply
+                    print(f"{denial}: 64 failed setups released, replay denied, topology unchanged; pass")
                 finally:
                     server.terminate()
                     server.wait(timeout=10)

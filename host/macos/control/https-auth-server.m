@@ -125,6 +125,7 @@
                     PLANKMacAccountIdentity identity = {0};
                     status = 401;
                     if (token && [_sessions authorizeToken:token peer:request.peer identity:&identity]) {
+                        potentialClaim = token;
                         status = 503;
                         if ([path isEqual:@"/plank/display"]) {
                             reply = self.prepareDisplay(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
@@ -132,10 +133,13 @@
                                 status = 401; reply = @{@"state": @"denied"};
                             }
                         } else {
-                            potentialClaim = token;
                             reply = _launch(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
                             if (status == 200) claimedToken = token;
                         }
+                        // A failed setup attempt is finished. Do not retain its
+                        // login token until expiry while the Client signs in again.
+                        // Only revoke after peer-bound authorization succeeded.
+                        if (status != 200) [_sessions revokeToken:token];
                     }
                 }
             }
