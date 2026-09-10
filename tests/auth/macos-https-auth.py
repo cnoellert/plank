@@ -61,8 +61,8 @@ def request(tls, port, body, path="/plank/auth/start", raw=None, xml=False):
 
 
 def discovery(tls, port):
-    # Exact current Client request shape, including its optional cache busters.
-    target = "/serverinfo?uniqueid=0123456789ABCDEF&uuid=" + uuid.uuid4().hex
+    # Exact current Client request shape: no legacy identifiers or cache busters.
+    target = "/serverinfo"
     raw = f"GET {target} HTTP/1.1\r\nHost: localhost\r\n\r\n".encode()
     status, root = request(tls, port, {}, raw=raw, xml=True)
     assert status == 200 and root.tag == "root" and root.attrib == {"status_code": "200"}
@@ -76,7 +76,8 @@ def discovery(tls, port):
     # Discovery is public, but must neither expose session state nor create an
     # alternative GET authentication path. Reject bearer tokens in query strings.
     for path in ["/plank/auth/start", "/plank/auth/respond", "/serverinfo?session_token=abc",
-                 "/serverinfo?uuid=abc&uuid=def", "/serverinfo?uuid=%61"]:
+                 "/serverinfo?uuid=abc&uuid=def", "/serverinfo?uuid=%61",
+                 "/serverinfo?uniqueid=0123456789ABCDEF", "/serverinfo?uuid=abc"]:
         raw = f"GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n".encode()
         assert request(tls, port, {}, raw=raw)[0] == 404
     assert request(tls, port, {}, "/serverinfo")[0] == 404
@@ -104,7 +105,7 @@ def authenticate(tls, port, username, password, encoding_mode="hevc-10-420-video
     # No token or credential is printed or written to a file.
     status, replay = request(tls, port, response, "/plank/auth/respond")
     assert status == 200 and replay["state"] == "denied"
-    raw = ("GET /plank/topology?uniqueid=0123456789ABCDEF&uuid=abc HTTP/1.1\r\nHost: localhost\r\n"
+    raw = ("GET /plank/topology HTTP/1.1\r\nHost: localhost\r\n"
            "Authorization: Bearer " + token + "\r\n\r\n").encode()
     status, topology = request(tls, port, {}, raw=raw)
     assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 3670129

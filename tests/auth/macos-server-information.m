@@ -42,11 +42,15 @@ int main(int argc, const char *argv[]) {
             assert(![[PLANKMacServerInformation alloc] initWithName:bad workstationUUID:uuid version:@"test"]);
             assert(![[PLANKMacServerInformation alloc] initWithName:@"test" workstationUUID:uuid version:bad]);
         }
-        for (NSString *target in @[@"/serverinfo", @"/serverinfo?uuid=abc",
-                @"/serverinfo?uniqueid=0123456789ABCDEF&uuid=abcdef-0123"]) {
+        for (NSString *target in @[@"/serverinfo"]) {
             assert(PLANKMacIsServerInformationTarget(target));
         }
+        assert(PLANKMacIsTopologyTarget(@"/plank/topology"));
+        assert(PLANKMacIsDesktopTarget(@"/applist"));
+        assert(!PLANKMacIsTopologyTarget(@"/plank/topology?uniqueid=0123456789ABCDEF"));
+        assert(!PLANKMacIsDesktopTarget(@"/applist?uuid=abc"));
         for (NSString *target in @[@"/serverinfo?", @"/serverinfo/", @"/serverinfo#x",
+                @"/serverinfo?uuid=abc", @"/serverinfo?uniqueid=0123456789ABCDEF&uuid=abcdef-0123",
                 @"/serverinfo?uuid=abc&uuid=def", @"/serverinfo?uuid=", @"/serverinfo?uuid=a&",
                 @"/serverinfo?password=abc", @"/serverinfo?session_token=abc", @"/serverinfo?uuid=a=b",
                 @"/serverinfo?uuid=%61", @"/serverinfo?uuid=abc#def", @"/serverinfo?UUID=abc",

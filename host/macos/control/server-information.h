@@ -16,8 +16,8 @@
 - (NSData *)XMLForControlPort:(uint16_t)port authorized:(BOOL)authorized;
 @end
 
-// Accept current Client cache-busting identifiers, not credentials or arbitrary
-// query parameters. These optional values are ignored, never authorization.
+// These GET endpoints accept exact paths, without legacy client metadata or
+// query parameters. Authentication is carried only in the Authorization header.
 BOOL PLANKMacIsServerInformationTarget(NSString *target);
 BOOL PLANKMacIsTopologyTarget(NSString *target);
 BOOL PLANKMacIsDesktopTarget(NSString *target);

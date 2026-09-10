@@ -57,28 +57,6 @@ static BOOL publicText(NSString *value, NSUInteger maximum) {
 }
 @end
 
-static BOOL targetMatches(NSString *target, NSString *path) {
-    if ([target isEqual:path]) return YES;
-    NSString *prefix = [path stringByAppendingString:@"?"];
-    if (![target hasPrefix:prefix] || target.length > 1024) return NO;
-    NSString *query = [target substringFromIndex:prefix.length];
-    NSMutableSet *seen = [NSMutableSet set];
-    for (NSString *part in [query componentsSeparatedByString:@"&"]) {
-        NSArray *pair = [part componentsSeparatedByString:@"="];
-        if (pair.count != 2) return NO;
-        NSString *key = pair[0], *value = pair[1];
-        if ((! [key isEqual:@"uniqueid"] && ![key isEqual:@"uuid"]) || [seen containsObject:key] ||
-            !value.length || value.length > 64) return NO;
-        for (NSUInteger index = 0; index < value.length; ++index) {
-            unichar c = [value characterAtIndex:index];
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
-                  (c >= 'A' && c <= 'F') || c == '-')) return NO;
-        }
-        [seen addObject:key];
-    }
-    return YES;
-}
-
-BOOL PLANKMacIsServerInformationTarget(NSString *target) { return targetMatches(target, @"/serverinfo"); }
-BOOL PLANKMacIsTopologyTarget(NSString *target) { return targetMatches(target, @"/plank/topology"); }
-BOOL PLANKMacIsDesktopTarget(NSString *target) { return targetMatches(target, @"/applist"); }
+BOOL PLANKMacIsServerInformationTarget(NSString *target) { return [target isEqual:@"/serverinfo"]; }
+BOOL PLANKMacIsTopologyTarget(NSString *target) { return [target isEqual:@"/plank/topology"]; }
+BOOL PLANKMacIsDesktopTarget(NSString *target) { return [target isEqual:@"/applist"]; }

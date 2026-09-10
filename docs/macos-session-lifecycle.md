@@ -73,6 +73,14 @@ independent certificates. An unchanged workstation UUID is not proof that a
 new peer is the trusted replacement. Normal reconnect still requires fresh
 authentication and exact current graphical ownership.
 
+Control GET requests no longer append the inherited dummy `uniqueid` and
+random `uuid` query fields. The shared Client applies this to Linux and macOS;
+real operation parameters and the bearer header are preserved. Mac discovery,
+topology and app-list endpoints accept their exact paths only. The Host's
+persistent `uniqueid` in the discovery response is still required and is not
+the removed request field. On Linux, retained input uses an internal fixed
+desktop key within the existing single graphical worker, never a query value.
+
 The graphical agent owns its virtual display in-process, with no detached
 display child. The machine coordinator waits for the exact graphical process's
 kernel exit event before releasing its exclusive slot; an IPC retirement

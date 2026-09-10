@@ -389,6 +389,14 @@ if rg -n \
 fi
 echo "host_wake_on_lan_absence_gate=pass"
 
+if rg -n 'get_arg\(args, "(uniqueid|uuid)"|launch_session[.>-]+unique_id' \
+  "$source_dir/src/nvhttp.cpp" "$source_dir/src/stream.cpp"; then
+  echo "legacy request metadata controls PLANK Host launch/input state" >&2
+  exit 1
+fi
+rg -Fq 'session->input_session_id = "plank-desktop";' "$source_dir/src/stream.cpp"
+echo "host_legacy_request_metadata_absence_gate=pass"
+
 # PLANK relies on administrator-managed routing and firewall policy.
 # Keep inherited Sunshine UPnP discovery, automatic gateway port mappings,
 # IPv6 pinholes, configuration/CLI toggles, and miniupnpc build inputs out of

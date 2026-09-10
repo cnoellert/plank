@@ -11,7 +11,6 @@ import subprocess
 import tempfile
 import threading
 import time
-from urllib.parse import urlsplit
 
 
 def main():
@@ -60,7 +59,7 @@ def main():
                     self.close_connection = True
 
                 def do_GET(self):
-                    if (urlsplit(self.path).path != "/plank/topology" or
+                    if (self.path != "/plank/topology" or
                             self.headers.get("Authorization") != "Bearer " + token):
                         faults.append("unexpected topology request")
                         self.respond(403, b"{}")

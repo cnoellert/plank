@@ -16,6 +16,13 @@ def between(text, start, end):
 
 
 class ReconnectPresentation(unittest.TestCase):
+    def test_control_queries_have_only_operation_parameters(self):
+        request = between(http, "NvHTTP::openConnection(QUrl", "QNetworkRequest request(url);")
+        self.assertIn("url.setQuery(arguments);", request)
+        self.assertNotIn("uniqueid", request)
+        self.assertNotIn("uuid", request)
+        self.assertIn('request.setRawHeader("Authorization", "Bearer " + m_SessionToken.toUtf8());', http)
+
     def test_probe_is_credential_free_and_pinned(self):
         probe = between(http, "bool NvHTTP::probeWorkerReplacement", "QString NvHTTP::authenticate")
         self.assertIn("if (!m_SessionToken.isEmpty()) return false", probe)
