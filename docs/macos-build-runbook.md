@@ -18,7 +18,7 @@ Prepare/validate persistent state and logs in preinstall, before worker shutdown
 The .82 real install found root-owned logs changed to directory0744/files0644;
 the postinstall-only strict mode check stopped after replacing the app. The
 installer now narrows safe existing log permissions to0700/0600, preserving
-contents, and rejects foreign owners, links and non-root-writable objects before
+contents, and rejects foreign owners, links and objects writable by non-root before
 shutdown. Do not use recursive chmod/chown or weaken private-key checks.
 The isolated filesystem test reproduces this exact permission drift.
 All three launchd definitions must carry `AssociatedBundleIdentifiers` pointing
