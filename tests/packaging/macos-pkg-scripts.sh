@@ -82,7 +82,7 @@ ok
     calls=''
     launchctl_cmd() { calls="$*"; }
     open_permission_setup
-    [[ $calls = "asuser 502 /usr/bin/sudo -n -u #502 /usr/bin/open $app" ]]
+    [[ $calls = "asuser 502 /usr/bin/sudo -n -u #502 /usr/bin/open -n $app" ]]
 )
 ok
 (

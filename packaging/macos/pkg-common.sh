@@ -134,7 +134,9 @@ open_permission_setup() {
     if [[ $uid =~ ^[1-9][0-9]*$ ]]; then
         # Open the signed app as the existing console user, never as root.
         # The app uses normal macOS consent prompts; no TCC writes or reset.
-        if ! launchctl_cmd asuser "$uid" /usr/bin/sudo -n -u "#$uid" /usr/bin/open "$app"; then
+        # The graphical worker shares this bundle ID. Without -n LaunchServices
+        # may reactivate that headless worker instead of running the setup UI.
+        if ! launchctl_cmd asuser "$uid" /usr/bin/sudo -n -u "#$uid" /usr/bin/open -n "$app"; then
             echo 'PLANK Host installed; open PLANK Host in Applications to complete privacy setup.'
         fi
     else

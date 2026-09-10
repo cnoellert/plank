@@ -126,7 +126,7 @@ def main():
                 server.shutdown()
                 worker.join()
                 server.server_close()
-    print("macos_client_https_launch: 10 scenarios passed")
+    print(f"macos_client_https_launch: {len(modes)} scenarios passed")
 
 
 if __name__ == "__main__":
