@@ -58,6 +58,21 @@ drains the stream (including authorized held-input release), then waits for the
 HTTP authentication/reply lanes to drain. It does not block the graphical loop
 on endpoint construction or substitute a fixed sleep for cleanup completion.
 
+Native QUIC shutdown must keep its runtime alive after requesting connection
+closure. `CommonServer.close()` queues the close packet; await the existing
+Kyber `wait_idle()` with a one-second upper bound before dropping the runtime.
+This is a shutdown-only drain, not media pacing or a new network timeout. The
+loopback gate requires the peer's control receiver to report closure within
+two seconds, including the local stop, without additional input, and preserves
+already queued control messages before the terminal error. A passing loopback
+is not a substitute for actual LoginWindow-to-Aqua timing.
+
+Do not enable Linux's certificate-pinned worker-replacement probe on a Mac
+without a corresponding identity design: the current graphical roles have
+independent certificates. An unchanged workstation UUID is not proof that a
+new peer is the trusted replacement. Normal reconnect still requires fresh
+authentication and exact current graphical ownership.
+
 The graphical agent owns its virtual display in-process, with no detached
 display child. The machine coordinator waits for the exact graphical process's
 kernel exit event before releasing its exclusive slot; an IPC retirement

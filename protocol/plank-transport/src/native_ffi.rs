@@ -918,6 +918,11 @@ async fn run_server(
     let protocols = native::accept_server(&server, session_token, native_options(options)).await?;
     let result = hold_server(shared, protocols).await;
     server.close(0, "PLANK native endpoint stopping");
+    // close() only queues CONNECTION_CLOSE. Keep the runtime alive while
+    // Quinn transmits it; dropping the runtime immediately leaves the peer
+    // waiting for idle expiry during a graphical-session handoff. Bound this
+    // drain so an unreachable peer cannot hold Host ownership indefinitely.
+    let _ = tokio::time::timeout(Duration::from_secs(1), server.wait_idle()).await;
     result
 }
 
@@ -968,6 +973,7 @@ async fn run_setup_server(
     let setup = native::accept_setup_server(&server, setup_marker, native_options(options)).await?;
     let result = hold_setup_server(shared, setup, options).await;
     server.close(0, "PLANK setup endpoint stopping");
+    let _ = tokio::time::timeout(Duration::from_secs(1), server.wait_idle()).await;
     result
 }
 

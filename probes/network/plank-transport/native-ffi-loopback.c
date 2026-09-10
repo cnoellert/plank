@@ -491,6 +491,8 @@ int main(int argc, char **argv) {
         nanosleep(&settle_pause, NULL);
     }
     if (client_stats.data_packets_received != 2) goto failure;
+    struct timespec closure_started;
+    clock_gettime(CLOCK_MONOTONIC, &closure_started);
     plank_transport_native_endpoint_stop(server);
     if (plank_transport_native_data_receive(client, data_received, sizeof(data_received),
                 &received_size, 5000) != PLANK_TRANSPORT_OK ||
@@ -500,7 +502,7 @@ int main(int argc, char **argv) {
         goto failure;
     }
     int closure_result = PLANK_TRANSPORT_TIMEOUT;
-    for (settle_attempt = 0; settle_attempt < 300; ++settle_attempt) {
+    for (settle_attempt = 0; settle_attempt < 40; ++settle_attempt) {
         closure_result = plank_transport_native_data_receive(client, data_received,
                 sizeof(data_received), &received_size, 50);
         if (closure_result != PLANK_TRANSPORT_TIMEOUT) break;
@@ -509,7 +511,16 @@ int main(int argc, char **argv) {
         fprintf(stderr, "peer closure did not reach control receiver: %d\n", closure_result);
         goto failure;
     }
-    printf("native_peer_closure_without_input=pass queued_control_before_error=pass\n");
+    struct timespec closure_finished;
+    clock_gettime(CLOCK_MONOTONIC, &closure_finished);
+    double closure_ms = (closure_finished.tv_sec - closure_started.tv_sec) * 1000.0 +
+                        (closure_finished.tv_nsec - closure_started.tv_nsec) / 1000000.0;
+    if (closure_ms >= 2000.0) {
+        fprintf(stderr, "orderly peer closure took %.3f ms (limit 2000 ms)\n", closure_ms);
+        goto failure;
+    }
+    printf("native_peer_closure_without_input=pass queued_control_before_error=pass closure_ms=%.3f\n",
+           closure_ms);
     plank_transport_native_endpoint_stop(client);
     plank_transport_native_endpoint_destroy(client);
     plank_transport_native_endpoint_destroy(server);
