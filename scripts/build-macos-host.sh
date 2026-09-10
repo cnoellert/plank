@@ -37,6 +37,10 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/session tests/auth/macos-desktop-provisioning.m host/macos/session/desktop-provisioning.m \
     -framework Foundation -framework Security -o "$output/desktop-provisioning-test"
 "$output/desktop-provisioning-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Ihost/macos/session tests/auth/macos-desktop-start.m host/macos/session/desktop-start.m \
+    -framework Foundation -framework SystemConfiguration -o "$output/desktop-start-test"
+"$output/desktop-start-test"
 xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Ihost/macos/media tests/audio/macos-audio-tap-buffer.c -o "$output/audio-tap-buffer-test"
 "$output/audio-tap-buffer-test"
@@ -70,7 +74,7 @@ sources=(host/macos/auth/authentication-session.m host/macos/auth/graphical-auth
     host/macos/media/native-audio.m host/macos/media/opus-encoder.m host/macos/media/audio-tap.m
     host/macos/input/input-events.m host/macos/input/native-input.m host/macos/input/quartz-input.m
     host/macos/session/agent-registry.m host/macos/session/agent-connection.m
-    host/macos/session/desktop-provisioning.m
+    host/macos/session/desktop-provisioning.m host/macos/session/desktop-start.m
     host/macos/session/host-runtime.m host/macos/session/host-main.m)
 xcrun clang "${common[@]}" "-DPLANK_MACOS_HOST_VERSION=\"$PLANK_MACOS_HOST_VERSION\"" \
     "${sources[@]}" "$archive" -lpthread -lm -o "$output/plank-host"

@@ -9,6 +9,7 @@
 #import "screen-capture.h"
 #include "permission-status.h"
 #import "desktop-provisioning.h"
+#import "desktop-start.h"
 #import <AppKit/AppKit.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -137,7 +138,12 @@ static int machine(const char *service) {
         if (xpc_get_type(peer) == XPC_TYPE_CONNECTION) [registry accept:peer];
     });
     xpc_connection_activate(listener);
-    signals(^{ [registry stop]; xpc_connection_cancel(listener); exit(0); });
+    PLANKMacDesktopStart *desktopStart = [PLANKMacDesktopStart new];
+    if (![desktopStart start]) {
+        [registry stop]; xpc_connection_cancel(listener);
+        return startupFailure("desktop-start-observer");
+    }
+    signals(^{ [desktopStart stop]; [registry stop]; xpc_connection_cancel(listener); exit(0); });
     NSLog(@"PLANK Host machine coordinator started");
     [[NSRunLoop mainRunLoop] run]; return 0;
 }

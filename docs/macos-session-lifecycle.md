@@ -42,6 +42,20 @@ streams, with no second audio path or additional Host privilege.
 `plank-host --machine MACH_SERVICE` runs the root ownership coordinator.
 `plank-host --desktop MACH_SERVICE` runs the current user's Aqua worker;
 `plank-host --sign-in MACH_SERVICE` runs the root LoginWindow worker.
+The machine coordinator observes the OS console-session key and requests
+`launchctl kickstart` of the existing desktop job for each new user/audit
+session, including on coordinator startup. This is necessary during first-user
+Setup Assistant: macOS can defer RunAtLoad/KeepAlive agents in an on-demand-only
+Aqua domain. An explicit demand starts the agent without skipping onboarding.
+Registration races receive at most ten attempts, spaced one second apart;
+unchanged notifications do not replenish that budget. The request is asynchronous
+and its launchctl child is terminated after five seconds if still pending.
+There is no `-k`, enable, job bootstrap, shell, new helper service or TCC change.
+The existing worker still validates graphical ownership, signed coordinator
+admission and capture/input permissions. Starting the job grants no remote
+access. Root/LoginWindow, incomplete login records and stale session retries
+do not select a desktop agent.
+
 The explicit `--graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY`
 entry remains for isolated role-private qualification fixtures, not installed
 startup. Both installed roles read the root-owned public configuration; neither
