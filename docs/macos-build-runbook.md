@@ -5,6 +5,13 @@ on the authorized dedicated development Mac. Linux builder roles are unchanged.
 Require Apple Silicon, macOS 27, SDK 27 and explicit deployment target 27.0.
 Probe signing/installation remains documented in `probes/macos/README.md`.
 
+Before updating Mac sources, inspect the canonical clone's `origin`: the
+dedicated builder was seeded from a retained bootstrap Git bundle, not a live
+GitHub remote. `fetch origin` in that clone does not retrieve newly published
+commits. Transfer and SHA-256-verify a current Git bundle, fetch its explicit
+ref with `--recurse-submodules=no`, then create the clean detached worktree at
+the verified commit. Do not infer that a successful fetch means main is current.
+
 ## Click-through installer
 
 Use `scripts/build-macos-host-pkg.sh CLEAN_SOURCE NEW_OUTPUT TRANSPORT_ARCHIVE`
