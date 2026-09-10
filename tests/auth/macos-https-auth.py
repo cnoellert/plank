@@ -87,7 +87,7 @@ def discovery(tls, port):
         assert request(tls, port, {}, raw=raw)[0] == 400
 
 
-def authenticate(tls, port, username, password):
+def authenticate(tls, port, username, password, encoding_mode="hevc-10-420-videotoolbox"):
     status, start = request(tls, port, {"username": username})
     assert status == 200 and start["state"] == "challenge"
     assert start["messages"][0]["style"] == 1
@@ -112,7 +112,7 @@ def authenticate(tls, port, username, password):
     assert 2 <= capture["width"] <= 8192 and capture["width"] % 2 == 0
     assert 2 <= capture["height"] <= 8192 and capture["height"] % 2 == 0
     assert capture["logical_bounds"]["width"] > 0 and capture["logical_bounds"]["height"] > 0
-    assert capture["encoding_profile"]["encoding_mode"] == "hevc-10-420-videotoolbox"
+    assert capture["encoding_profile"]["encoding_mode"] == encoding_mode
     assert capture["encoding_profile"]["rgb_identity"] is False
     status, repeated = request(tls, port, {}, raw=raw)
     assert status == 200 and repeated == topology
@@ -152,7 +152,7 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
         assert status == 200 and full["capture"]["encoding_profile"]["profile"] == "rext"
         assert full["capture"]["encoding_profile"]["chroma"] == "4:4:4"
         assert launch(body, token)[0] == 400  # no silent switch back to Main10
-        token, _ = authenticate(tls, port, "synthetic", "test")
+        token, _ = authenticate(tls, port, "synthetic", "test", "hevc-10-444-videotoolbox")
         status, restored = launch(dict(mode, width=3840, height=2160), token, "/plank/display")
         assert status == 200 and restored == topology
 
