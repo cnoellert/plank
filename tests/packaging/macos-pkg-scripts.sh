@@ -6,9 +6,37 @@ source "$root/packaging/macos/pkg-common.sh"
 checks=0
 ok() { checks=$((checks+1)); }
 reject() { if ( "$@" ) >/dev/null 2>&1; then fail "Expected rejection: $*"; fi; ok; }
-for script in pkg-common.sh pkg-preinstall pkg-postinstall pkg-uninstall; do
+for script in pkg-common.sh pkg-preinstall pkg-postinstall uninstall.sh; do
     /bin/bash -n "$root/packaging/macos/$script"; ok
 done
+# Exercise the exact uninstall entry point with destructive commands replaced
+# only in this fixture. Never execute the product uninstaller in these tests.
+(
+    source <(/usr/bin/sed -e '$d' -e 's|/bin/rm|remove_cmd|g' \
+        -e 's|/usr/sbin/pkgutil|receipt_cmd|g' "$root/packaging/macos/uninstall.sh")
+    calls=''
+    preflight() { [[ $1 = / ]]; calls="$calls|preflight"; }
+    stop_roles() { calls="$calls|stop"; }
+    present() { return 0; }
+    verify_app() { [[ $1 = yes ]]; calls="$calls|verify"; }
+    remove_cmd() { calls="$calls|remove:$*"; }
+    receipt_cmd() { calls="$calls|receipt:$*"; }
+    reject uninstall_host unexpected-argument
+    uninstall_host >/dev/null
+    [[ $calls = "|preflight|stop|remove:/Library/LaunchDaemons/$machine.plist|remove:/Library/LaunchAgents/$desktop.plist|remove:/Library/LaunchAgents/$signin.plist|verify|remove:-rf /Applications/PLANK Host.app|receipt:--pkg-info la.instinctual.PLANK.Host|receipt:--forget la.instinctual.PLANK.Host" ]]
+    # Never remove anything when preflight or bounded shutdown fails.
+    remove_cmd() { echo 'unexpected removal'; exit 90; }
+    preflight() { fail 'fixture unsafe metadata'; }
+    [[ $(uninstall_host 2>&1 || true) = 'PLANK: fixture unsafe metadata' ]]
+    preflight() { :; }
+    stop_roles() { fail 'fixture drain timeout'; }
+    [[ $(uninstall_host 2>&1 || true) = 'PLANK: fixture drain timeout' ]]
+)
+ok
+[[ ! -e "$root/packaging/macos/pkg-uninstall" && ! -e "$root/packaging/macos/uninstall.html" ]]
+ok
+! grep -q 'uninstall-component\|uninstall-scripts\|plank-host-uninstall_' "$root/scripts/build-macos-host-pkg.sh"
+ok
 /usr/bin/awk '/^initialize_state$/ {prepared=1} /^stop_roles$/ {if (!prepared) exit 1; found=1} END {if (!found) exit 1}' \
     "$root/packaging/macos/pkg-preinstall"
 ok

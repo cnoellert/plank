@@ -1,6 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Sourced only by Installer's root scripts. No installed helper or TCC writes.
+# Shared by Installer scripts and the signed app's standalone uninstaller.
+# No persistent helper or TCC writes.
 set -euo pipefail
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C
 umask 077
@@ -190,7 +191,7 @@ check_configuration() {
     fi
 }
 preflight() {
-    [[ $(/usr/bin/id -u) = 0 && ${1:-} = / ]] || fail 'Run through Installer on the running system volume'
+    [[ $(/usr/bin/id -u) = 0 && ${1:-} = / ]] || fail 'Administrator privileges on the running system volume are required'
     [[ $(/usr/bin/uname -m) = arm64 && $(/usr/bin/sw_vers -productVersion | /usr/bin/cut -d. -f1) -ge 27 ]] || fail 'Requires Apple Silicon and macOS 27 or newer'
     safe_directory /Applications
     safe_directory /Library/LaunchDaemons

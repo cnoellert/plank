@@ -94,7 +94,16 @@ if [[ -n ${PLANK_MACOS_SIGNING_IDENTITY:-} ]]; then
     signing_flags=(--timestamp=none)
     case ${PLANK_MACOS_DISTRIBUTION:-0} in
       0) install -m 0644 scripts/install-macos-host-development.py scripts/uninstall-macos-host-development.py "$app/Contents/Resources/" ;;
-      1) signing_flags=(--options runtime --timestamp) ;;
+      1)
+        signing_flags=(--options runtime --timestamp)
+        : "${PLANK_MACOS_TEAM_ID:?Developer Team ID required}"
+        [[ $PLANK_MACOS_TEAM_ID =~ ^[A-Z0-9]{10}$ ]]
+        sed -e "s/@TEAM@/$PLANK_MACOS_TEAM_ID/g" -e "s/@VERSION@/$PLANK_MACOS_HOST_VERSION/g" \
+            packaging/macos/pkg-common.sh > "$app/Contents/Resources/uninstall.sh"
+        cat packaging/macos/uninstall.sh >> "$app/Contents/Resources/uninstall.sh"
+        chmod 0755 "$app/Contents/Resources/uninstall.sh"
+        bash -n "$app/Contents/Resources/uninstall.sh"
+        ;;
       *) echo 'PLANK_MACOS_DISTRIBUTION must be 0 or 1' >&2; exit 2 ;;
     esac
     /usr/libexec/PlistBuddy -c "Add :PLANKVersion string $PLANK_MACOS_HOST_VERSION" "$app/Contents/Info.plist"

@@ -41,19 +41,30 @@ to notarization, not end-user authentication or App Store publication.
 Keep keychain unlock, signing and notarization in the same SSH TTY session.
 The PKG runner calls the full Host build with `PLANK_MACOS_DISTRIBUTION=1`:
 Developer ID, hardened runtime and secure timestamp, without Python development
-scripts in the application. Test the shell hooks; build a receipt-backed
-Host package and a separate clearly named uninstall package; sign, notarize,
-staple and assess both. `macos_pkg_gate=pass` does not prove install,
+scripts in the application. The shared lifecycle functions and uninstall entry
+point are assembled into `Contents/Resources/uninstall.sh` before application
+signing, so the script is covered by the app resource seal. Test the shell hooks;
+build, sign, notarize, staple and assess the single receipt-backed Host package.
+Do not generate a separate uninstall PKG. `macos_pkg_gate=pass` does not prove install,
 permission continuity, reboot or streaming acceptance. No `installer -pkg`
 invocation is part of the build. Do not publish a rejected/pending artifact.
 
 The normal graphical workflow is to open the Host PKG, approve Installer, then
-open PLANK Host in Applications for privacy setup. The uninstall PKG stops
-services and removes the app/startup entries while retaining settings, identities,
-and logs. It forgets the Host receipt and does not reset permissions or reboot.
+open PLANK Host in Applications for privacy setup. Uninstall with the installed
+script (administrator authorization is required):
+
+```bash
+sudo "/Applications/PLANK Host.app/Contents/Resources/uninstall.sh"
+```
+
+It stops services and removes the app/startup entries while retaining settings,
+identities and logs. It forgets the Host receipt and does not reset permissions
+or reboot. The script is self-contained and parsed before it removes its own
+app bundle; it does not source code from mutable configuration or user paths.
 Reinstall the signed Host package to recover or restore the product.
 
-The scripts only accept `/` as the target volume and macOS27/arm64. Installation
+Installer scripts only accept `/` as the target volume; uninstall accepts no
+arguments and uses the running system. Both require macOS27/arm64. Installation
 requires FileVault off; uninstall remains available if it was later enabled.
 They verify existing app product/team/type and owned startup entries before
 stopping services. It admits the explicitly planned same-team Apple Development

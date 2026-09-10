@@ -24,7 +24,7 @@ shasum -a 256 "$archive"
 bash "$source_root/scripts/build-macos-host.sh" "$source_root" "$output/host" "$archive"
 bash "$source_root/tests/packaging/macos-pkg-scripts.sh"
 
-mkdir -p "$output/payload/Applications" "$output/install-scripts" "$output/uninstall-scripts" "$output/resources"
+mkdir -p "$output/payload/Applications" "$output/install-scripts" "$output/resources"
 app="$output/payload/Applications/PLANK Host.app"
 ditto "$output/host/PLANK Host.app" "$app"
 codesign --verify --strict -R "=identifier \"la.instinctual.PLANK.Host\" and anchor apple generic and certificate leaf[subject.OU] = \"$PLANK_MACOS_TEAM_ID\" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists" "$app"
@@ -33,11 +33,9 @@ test -z "$(find "$output/payload" -name '*.py' -print)"
 codesign -d --verbose=4 "$app" 2>&1 | grep 'flags=.*runtime'
 codesign -d --verbose=4 "$app" 2>&1 | grep '^Timestamp='
 otool -L "$app/Contents/MacOS/plank-host"
-for scripts in "$output/install-scripts" "$output/uninstall-scripts"; do
-  sed -e "s/@TEAM@/$PLANK_MACOS_TEAM_ID/g" -e "s/@VERSION@/$PLANK_PACKAGE_VERSION/g" \
-    "$source_root/packaging/macos/pkg-common.sh" > "$scripts/pkg-common.sh"
-  chmod 0644 "$scripts/pkg-common.sh"
-done
+sed -e "s/@TEAM@/$PLANK_MACOS_TEAM_ID/g" -e "s/@VERSION@/$PLANK_PACKAGE_VERSION/g" \
+  "$source_root/packaging/macos/pkg-common.sh" > "$output/install-scripts/pkg-common.sh"
+chmod 0644 "$output/install-scripts/pkg-common.sh"
 mkdir -p "$output/payload/Library/LaunchDaemons" "$output/payload/Library/LaunchAgents"
 for role in machine desktop sign-in; do
   if [[ $role = machine ]]; then directory=LaunchDaemons; else directory=LaunchAgents; fi
@@ -47,34 +45,25 @@ for role in machine desktop sign-in; do
 done
 install -m 0755 "$source_root/packaging/macos/pkg-preinstall" "$output/install-scripts/preinstall"
 install -m 0755 "$source_root/packaging/macos/pkg-postinstall" "$output/install-scripts/postinstall"
-install -m 0755 "$source_root/packaging/macos/pkg-uninstall" "$output/uninstall-scripts/postinstall"
-install -m 0644 "$source_root/packaging/macos/welcome.html" "$source_root/packaging/macos/conclusion.html" "$source_root/packaging/macos/uninstall.html" "$output/resources/"
+test -x "$app/Contents/Resources/uninstall.sh"
+bash -n "$app/Contents/Resources/uninstall.sh"
+install -m 0644 "$source_root/packaging/macos/welcome.html" "$source_root/packaging/macos/conclusion.html" "$output/resources/"
 pkgbuild --root "$output/payload" --component-plist "$source_root/packaging/macos/component.plist" \
   --identifier la.instinctual.PLANK.Host --version "$PLANK_BASE_VERSION" --install-location / \
   --ownership recommended --scripts "$output/install-scripts" "$output/host-component.pkg"
-pkgbuild --nopayload --identifier la.instinctual.PLANK.Host.Uninstall --version "$PLANK_BASE_VERSION" \
-  --scripts "$output/uninstall-scripts" "$output/uninstall-component.pkg"
-for kind in host uninstall; do
-  if [[ $kind = host ]]; then
-    title="PLANK Host $PLANK_PACKAGE_VERSION"; welcome=welcome.html; conclusion=conclusion.html
-    identifier=la.instinctual.PLANK.Host; component=host-component.pkg
-    name="plank-host_${PLANK_PACKAGE_VERSION}_arm64.pkg"
-  else
-    title="Uninstall PLANK Host $PLANK_PACKAGE_VERSION"; welcome=uninstall.html; conclusion=uninstall.html
-    identifier=la.instinctual.PLANK.Host.Uninstall; component=uninstall-component.pkg
-    name="plank-host-uninstall_${PLANK_PACKAGE_VERSION}_arm64.pkg"
-  fi
-  sed -e "s/@TITLE@/$title/g" -e "s/@WELCOME@/$welcome/g" -e "s/@CONCLUSION@/$conclusion/g" \
-    -e "s/@IDENTIFIER@/$identifier/g" -e "s/@VERSION@/$PLANK_BASE_VERSION/g" -e "s/@COMPONENT@/$component/g" \
-    "$source_root/packaging/macos/distribution.xml.in" > "$output/$kind-distribution.xml"
-  productbuild --distribution "$output/$kind-distribution.xml" --resources "$output/resources" \
-    --package-path "$output" --sign "$PLANK_MACOS_INSTALLER_IDENTITY" --timestamp "$output/$name"
-  pkgutil --check-signature "$output/$name"
-  xcrun notarytool submit "$output/$name" --keychain-profile "$PLANK_NOTARY_PROFILE" --wait --timeout 10m --output-format json > "$output/$kind-notary.json"
-  /usr/bin/plutil -extract status raw "$output/$kind-notary.json" | grep -x Accepted
-  xcrun stapler staple "$output/$name"
-  xcrun stapler validate "$output/$name"
-  spctl --assess --type install --verbose=2 "$output/$name"
-  shasum -a 256 "$output/$name"
-done
+name="plank-host_${PLANK_PACKAGE_VERSION}_arm64.pkg"
+sed -e "s/@TITLE@/PLANK Host $PLANK_PACKAGE_VERSION/g" \
+  -e 's/@WELCOME@/welcome.html/g' -e 's/@CONCLUSION@/conclusion.html/g' \
+  -e 's/@IDENTIFIER@/la.instinctual.PLANK.Host/g' -e "s/@VERSION@/$PLANK_BASE_VERSION/g" \
+  -e 's/@COMPONENT@/host-component.pkg/g' \
+  "$source_root/packaging/macos/distribution.xml.in" > "$output/host-distribution.xml"
+productbuild --distribution "$output/host-distribution.xml" --resources "$output/resources" \
+  --package-path "$output" --sign "$PLANK_MACOS_INSTALLER_IDENTITY" --timestamp "$output/$name"
+pkgutil --check-signature "$output/$name"
+xcrun notarytool submit "$output/$name" --keychain-profile "$PLANK_NOTARY_PROFILE" --wait --timeout 10m --output-format json > "$output/host-notary.json"
+/usr/bin/plutil -extract status raw "$output/host-notary.json" | grep -x Accepted
+xcrun stapler staple "$output/$name"
+xcrun stapler validate "$output/$name"
+spctl --assess --type install --verbose=2 "$output/$name"
+shasum -a 256 "$output/$name"
 echo 'macos_pkg_gate=pass install=not-performed'

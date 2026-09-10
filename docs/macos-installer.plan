@@ -29,9 +29,10 @@ explicit and cannot be granted by this installer.
    scripts, version and signatures, then obtain authorization to exercise real
    install/upgrade on development-mac. Never interrupt its session or reboot automatically.
    Test fresh-machine absence of Python/developer tools and permission workflow.
-6. Provide a graphical uninstall path with the same bounded shutdown and
-   preserved settings/certificates/logs. Do not present the existing Python
-   development uninstaller as the production operator workflow.
+6. Install a self-contained `Contents/Resources/uninstall.sh` in the signed
+   Host app, invoked with sudo, retaining bounded shutdown and preserved
+   settings/certificates/logs. Do not generate a separate uninstall PKG or
+   present the Python development uninstaller as the production workflow.
 
 Reference inspection: Anyware Graphics Agent26.05.3 is a Developer ID-signed,
 notarized PKG with Bash pre/postinstall scripts, payload launchd entries and a
@@ -46,7 +47,7 @@ The reference Mac was read-only; extraction was on the dedicated development Mac
 Current checkpoint: the user explicitly retained signing/notarization and
 approved replacing the first native-helper implementation with simple scripts.
 Both Developer ID identities and Keychain profile `plank-notary` are provisioned.
-Installer and uninstaller1.0.80-macos-installer have been built, signed,
+Historical checkpoint: installer and uninstaller1.0.80-macos-installer were built, signed,
 notarized (Accepted), stapled and Gatekeeper-verified. Shell tests pass19 on Mac
 and29 with the isolated root filesystem fixture. Installed-app read-only
 preflight, package payload/scripts/version and Installer metadata pass.
