@@ -185,6 +185,31 @@ preflight() {
     if present "$state"; then safe_directory "$state"; check_configuration; fi
 }
 
+# Validate every existing log before changing anything. Repair read/search
+# permission drift only on root-owned, non-writable-by-others product objects;
+# never follow links, chmod recursively, or take ownership of someone else's file.
+prepare_logs() {
+    local name mode
+    safe_directory "${logs%/*}"
+    if present "$logs"; then
+        safe_directory "$logs"
+        for name in host-machine.log host-sign-in.log; do
+            if present "$logs/$name"; then
+                mode=$(/usr/bin/stat -f %Lp "$logs/$name")
+                safe_file "$logs/$name" "$mode"
+                (( (8#$mode & 07022) == 0 )) || fail "Unsafe log permissions: $logs/$name"
+            fi
+        done
+        /bin/chmod 700 "$logs"
+    fi
+    ensure_directory "$logs" 700
+    for name in host-machine.log host-sign-in.log; do
+        if ! present "$logs/$name"; then (set -C; : > "$logs/$name"); fi
+        /bin/chmod 600 "$logs/$name"
+        safe_file "$logs/$name" 600
+    done
+}
+
 initialize_state() {
     local stage name
     ensure_directory "$state" 755
@@ -211,9 +236,5 @@ initialize_state() {
         /bin/mv "$stage" "$state/SignIn"
     fi
     check_configuration
-    ensure_directory "$logs" 700
-    for name in host-machine.log host-sign-in.log; do
-        if ! present "$logs/$name"; then (set -C; : > "$logs/$name"); fi
-        safe_file "$logs/$name" 600
-    done
+    prepare_logs
 }

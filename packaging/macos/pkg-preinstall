@@ -3,6 +3,9 @@ set -euo pipefail
 source "$(/usr/bin/dirname "$0")/pkg-common.sh"
 preflight "${3:-}"
 [[ $(/usr/bin/fdesetup status) = 'FileVault is Off.' ]] || fail 'Disable FileVault for access after reboot'
+# Discover unsafe state/log paths before stopping a working Host or replacing
+# its app. Repeating this in postinstall is intentional and idempotent.
+initialize_state
 owner=$(console_uid)
 stop_roles
 [[ $(console_uid) = "$owner" ]] || fail 'Console changed during shutdown; retry installation'

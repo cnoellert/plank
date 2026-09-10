@@ -14,6 +14,13 @@ the app payload at `/Applications/PLANK Host.app` and three system launchd
 entries. Bash pre/post-install scripts create administrator configuration,
 private identity and logs. Private state is not a payload and survives uninstall.
 There is no compiled installer helper or persistent installation service.
+Prepare/validate persistent state and logs in preinstall, before worker shutdown.
+The .82 real install found root-owned logs changed to directory0744/files0644;
+the postinstall-only strict mode check stopped after replacing the app. The
+installer now narrows safe existing log permissions to0700/0600, preserving
+contents, and rejects foreign owners, links and non-root-writable objects before
+shutdown. Do not use recursive chmod/chown or weaken private-key checks.
+The isolated filesystem test reproduces this exact permission drift.
 All three launchd definitions must carry `AssociatedBundleIdentifiers` pointing
 to `la.instinctual.PLANK.Host`. Otherwise Background App Activity falls back to
 the signing certificate's publisher name rather than PLANK Host. Keep the

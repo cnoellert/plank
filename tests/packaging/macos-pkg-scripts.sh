@@ -9,6 +9,9 @@ reject() { if ( "$@" ) >/dev/null 2>&1; then fail "Expected rejection: $*"; fi; 
 for script in pkg-common.sh pkg-preinstall pkg-postinstall pkg-uninstall; do
     /bin/bash -n "$root/packaging/macos/$script"; ok
 done
+/usr/bin/awk '/^initialize_state$/ {prepared=1} /^stop_roles$/ {if (!prepared) exit 1; found=1} END {if (!found) exit 1}' \
+    "$root/packaging/macos/pkg-preinstall"
+ok
 missing_job system/example 'Could not find service "example" in domain for system'; ok
 missing_job gui/501/example 'Could not find domain for'; ok
 reject missing_job system/example 'Could not find service "unrelated"'
@@ -103,6 +106,23 @@ if [[ ${1:-} = --filesystem ]]; then
     initialize_state
     after=$(/usr/bin/shasum -a 256 "$state/host.plist" "$state/SignIn/"* "$logs/"*)
     [[ $before = "$after" ]]; ok
+    # Reproduce the real .82 failure without changing product paths/services.
+    /bin/chmod 744 "$logs"
+    /bin/chmod 644 "$logs/host-machine.log" "$logs/host-sign-in.log"
+    initialize_state
+    [[ $(/usr/bin/stat -f %Lp "$logs") = 700 ]]; ok
+    safe_file "$logs/host-machine.log" 600; ok
+    safe_file "$logs/host-sign-in.log" 600; ok
+    [[ $before = "$(/usr/bin/shasum -a 256 "$state/host.plist" "$state/SignIn/"* "$logs/"*)" ]]; ok
+    /bin/ln "$logs/host-machine.log" "$fixture/log-hardlink"
+    reject prepare_logs
+    /bin/rm "$fixture/log-hardlink"
+    /bin/chmod 666 "$logs/host-machine.log"
+    reject prepare_logs
+    /bin/chmod 600 "$logs/host-machine.log"
+    /usr/sbin/chown nobody "$logs/host-machine.log"
+    reject prepare_logs
+    /usr/sbin/chown root "$logs/host-machine.log"
     /bin/ln -s "$state/host.plist" "$fixture/symlink"
     reject safe_file "$fixture/symlink" 644
     /bin/ln "$state/host.plist" "$fixture/hardlink"
