@@ -1492,6 +1492,7 @@ rg -U -q 'id: settingsColumn2(.|\n)*id: networkSettingsGroupBox' \
   exit 1
 }
 echo "client_network_mtu_gate=pass"
+python3 "$repo_dir/tests/packaging/test-client-interface-mtu.py" "$source_dir"
 
 # mDNS discovery is opt-in. Only the root-owned client policy may take
 # precedence over the user preference and lock the corresponding UI control.
