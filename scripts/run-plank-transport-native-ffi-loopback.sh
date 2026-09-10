@@ -13,6 +13,7 @@ trap 'rm -rf -- "$probe_tmp"' EXIT
 
 cargo build --locked --offline --release --manifest-path "$crate_dir/Cargo.toml"
 cc -std=c11 -Wall -Wextra -Wpedantic -Werror \
+  -DPLANK_LOOPBACK_CLIENT_MTU="${PLANK_LOOPBACK_CLIENT_MTU:-0}" \
   -I"$crate_dir/include" \
   "$probe_source" \
   "$target_dir/release/libplank_transport.a" \

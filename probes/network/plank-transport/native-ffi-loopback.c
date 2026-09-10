@@ -14,6 +14,11 @@
 #define PLANK_LOOPBACK_VIDEO_BYTES (192 * 1024)
 #endif
 
+/* Exercise peer negotiation without changing the Host's default MTU policy. */
+#ifndef PLANK_LOOPBACK_CLIENT_MTU
+#define PLANK_LOOPBACK_CLIENT_MTU 0
+#endif
+
 static PlankTransportConfig base_config(uint32_t mode, const char *token) {
     PlankTransportConfig config;
     memset(&config, 0, sizeof(config));
@@ -57,6 +62,7 @@ int main(int argc, char **argv) {
     client_config.remote_address = argv[2];
     client_config.server_name = argv[3];
     client_config.certificate_sha256 = profile_validation ? NULL : argv[6];
+    client_config.max_udp_payload_size = PLANK_LOOPBACK_CLIENT_MTU;
     server_config.session_mode = profile_validation ? PLANK_TRANSPORT_SESSION_SETUP :
                                                       PLANK_TRANSPORT_SESSION_ACTIVE;
     client_config.session_mode = server_config.session_mode;
