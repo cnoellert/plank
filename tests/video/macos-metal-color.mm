@@ -16,15 +16,16 @@ int main(int argc, char** argv) {
         if (!library) { NSLog(@"%@", error); return 3; }
         auto descriptor = [MTLRenderPipelineDescriptor new];
         descriptor.vertexFunction = [library newFunctionWithName:@"vs_draw"];
-        descriptor.fragmentFunction = [library newFunctionWithName:@"ps_draw_biplanar"];
         descriptor.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA32Float;
-        auto pipeline = [device newRenderPipelineStateWithDescriptor:descriptor error:&error];
-        if (!pipeline) { NSLog(@"%@", error); return 4; }
         auto queue = [device newCommandQueue];
         Vertex vertices[] = { {{-1,-1,0,1},{0,0}}, {{-1,1,0,1},{0,1}},
                               {{1,-1,0,1},{1,0}}, {{1,1,0,1},{1,1}} };
         unsigned checks = 0;
         float worst = 0;
+        for (bool planar : {false,true}) {
+        descriptor.fragmentFunction = [library newFunctionWithName:planar ? @"ps_draw_triplanar" : @"ps_draw_biplanar"];
+        auto pipeline = [device newRenderPipelineStateWithDescriptor:descriptor error:&error];
+        if (!pipeline) { NSLog(@"%@", error); return 4; }
         for (int depth : {8,10}) for (bool high : {false,true})
         for (bool full : {false,true}) for (auto matrix : {PlankVTMatrix::IdentityGbr, PlankVTMatrix::Bt601, PlankVTMatrix::Bt709, PlankVTMatrix::Bt2020}) {
             if (depth == 8 && high) continue;
@@ -43,13 +44,14 @@ int main(int argc, char** argv) {
                     codes[0] = full ? std::lround(level * maximum) : 16 * (1 << (depth-8)) + std::lround(level * 219 * (1 << (depth-8)));
                     codes[1] = codes[2] = 128 * (1 << (depth-8));
                 }
-                auto makeTexture = [&](bool chroma) -> id<MTLTexture> {
+                auto makeTexture = [&](int plane) -> id<MTLTexture> {
+                    const bool chroma = !planar && plane == 1;
                     const auto format = depth == 8 ? (chroma ? MTLPixelFormatRG8Unorm : MTLPixelFormatR8Unorm) :
                                                      (chroma ? MTLPixelFormatRG16Unorm : MTLPixelFormatR16Unorm);
                     auto desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:1 height:1 mipmapped:NO];
                     desc.storageMode = MTLStorageModeShared;
                     auto texture = [device newTextureWithDescriptor:desc];
-                    uint16_t words[2] = {uint16_t(codes[chroma ? 1 : 0] << (depth == 10 && high ? 6 : 0)), uint16_t(codes[2] << (depth == 10 && high ? 6 : 0))};
+                    uint16_t words[2] = {uint16_t(codes[plane] << (depth == 10 && high ? 6 : 0)), uint16_t(codes[2] << (depth == 10 && high ? 6 : 0))};
                     uint8_t bytes[2] = {uint8_t(words[0]),uint8_t(words[1])};
                     [texture replaceRegion:MTLRegionMake2D(0,0,1,1) mipmapLevel:0 withBytes:depth == 8 ? (void*)bytes : (void*)words bytesPerRow:(chroma ? 2 : 1)*(depth == 8 ? 1 : 2)];
                     return texture;
@@ -67,8 +69,9 @@ int main(int argc, char** argv) {
                 [encoder setRenderPipelineState:pipeline];
                 [encoder setVertexBytes:vertices length:sizeof(vertices) atIndex:0];
                 [encoder setFragmentBytes:&params length:sizeof(params) atIndex:0];
-                [encoder setFragmentTexture:makeTexture(false) atIndex:0];
-                [encoder setFragmentTexture:makeTexture(true) atIndex:1];
+                [encoder setFragmentTexture:makeTexture(0) atIndex:0];
+                [encoder setFragmentTexture:makeTexture(1) atIndex:1];
+                if (planar) [encoder setFragmentTexture:makeTexture(2) atIndex:2];
                 [encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
                 [encoder endEncoding]; [command commit]; [command waitUntilCompleted];
                 if (command.status != MTLCommandBufferStatusCompleted) return 5;
@@ -86,6 +89,7 @@ int main(int argc, char** argv) {
                 }
             }
         }
-        printf("metal_color_checks=%u worst_normalized_error=%.7f PASS\n", checks, worst);
+        }
+        printf("metal_color_checks=%u layouts=biplanar,triplanar worst_normalized_error=%.7f PASS\n", checks, worst);
     }
 }

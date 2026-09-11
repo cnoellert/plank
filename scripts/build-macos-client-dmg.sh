@@ -21,6 +21,9 @@ app="$output/image/PLANK Client.app"
 ditto "$build/app/plank-client.app" "$app"
 "$PLANK_QT_ROOT/bin/macdeployqt" "$app" \
     "-qmldir=$source_root/client/moonlight-qt-fork/app/gui" -always-overwrite -no-strip
+# macdeployqt selects Cocoa only; retain the small offscreen plugin so the
+# shipped executable can also run our headless version/diagnostic checks.
+cp "$PLANK_QT_ROOT/plugins/platforms/libqoffscreen.dylib" "$app/Contents/PlugIns/platforms/"
 # Qt deploys server database plugins that PLANK never loads. Keep only SQLite
 # for Qt's optional local-storage implementation; no ODBC/Mimer/PostgreSQL/etc.
 # dependencies should enter the app. The independent closure gate still checks
@@ -65,7 +68,13 @@ while IFS= read -r -d '' framework; do
 done < <(find "$app" -depth -type d -name '*.framework' -print0)
 codesign --force --options runtime --timestamp --sign "$PLANK_MACOS_SIGNING_IDENTITY" "$app"
 codesign --verify --deep --strict "$app"
-test "$(QT_QPA_PLATFORM=offscreen "$app/Contents/MacOS/plank-client" --version)" = "PLANK $PLANK_PACKAGE_VERSION"
+if ! app_version=$(QT_QPA_PLATFORM=offscreen "$app/Contents/MacOS/plank-client" --version); then
+    echo 'Packaged Client failed offscreen launch; inspect ~/Library/Logs/PLANK/Client' >&2
+    exit 1
+fi
+[[ $app_version == "PLANK $PLANK_PACKAGE_VERSION" ]] || {
+    echo "Packaged Client version mismatch: $app_version" >&2; exit 1;
+}
 test "$(/usr/libexec/PlistBuddy -c 'Print :PLANKVersion' "$app/Contents/Info.plist")" = "$PLANK_PACKAGE_VERSION"
 ln -s /Applications "$output/image/Applications"
 dmg="$output/plank-client_${PLANK_PACKAGE_VERSION}_arm64.dmg"
