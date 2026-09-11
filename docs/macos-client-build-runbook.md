@@ -102,6 +102,13 @@ the app to Trash. Host installation/permissions are separate and unchanged.
   expansion in `build-macos-transport.sh`; default Client features are valid.
 - Headless version/help checks use `QT_QPA_PLATFORM=offscreen`. A real GUI
   session is needed for functional presentation/input acceptance.
+- `macdeployqt` normally ships only Cocoa. Explicitly retain the offscreen
+  plugin for the packaged headless gate; do not skip a failed launch check.
+- A retained build requires **recursive** `qmake -r` regeneration. Without it,
+  subproject Makefiles can retain the previous source path and compiled
+  version despite a correct new Info.plist. The independent executable-version
+  gate caught this during .94 packaging. Never relabel that older binary;
+  regenerate all subprojects and rebuild before signing.
 
 Current probes are `tests/video/macos-videotoolbox-decode.mm`,
 `macos-hevc444-fixture.m`, and `macos-metal-color.mm`. The last loads the actual

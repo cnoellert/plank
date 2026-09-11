@@ -33,7 +33,9 @@ patch --batch --reverse --dry-run -d "$PLANK_MAC_CLIENT_DEPS/src/ffmpeg-9.0.1" -
 pkg-config --modversion sdl3 sdl3-ttf openssl opus libavcodec libavutil
 mkdir -p "$build"
 cd "$build"
-qmake "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
+# Recursive generation is mandatory when retaining a build: otherwise existing
+# subproject Makefiles may silently retain the previous source/version/flags.
+qmake -r "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     CONFIG+=plank-transport CONFIG+=disable-libplacebo CONFIG+=disable-wayland \
     CONFIG+=disable-x11 CONFIG+=disable-libva CONFIG+=disable-libdrm \
     QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
