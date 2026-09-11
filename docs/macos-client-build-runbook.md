@@ -51,3 +51,59 @@ signed and closure-checked before any package is offered to a user.
 
 Implementation/qualification is in progress; there is no accepted macOS Client
 package yet. Do not use the old upstream setup-deps/prebuilts workflow.
+
+## Build and package
+
+Initialize Client, common-c, qmdnsengine and Kymux at their exact gitlinks from
+verified local Git bundles/mirrors. Do not initialize the Linux Host to build
+this Client. Import Client bundles before root bundles and always fetch with
+`--recurse-submodules=no`. The Mac canonical origin may still be an old
+bootstrap bundle, so fetching that origin is not a source update.
+
+```bash
+bash "$PLANK_SOURCE_ROOT/scripts/build-macos-client.sh" \
+  "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/client-build"
+```
+
+For a self-contained drag-to-Applications DMG, in the signing SSH session:
+
+```bash
+export PLANK_MACOS_SIGNING_IDENTITY=DEVELOPER_ID_APPLICATION_SHA1
+export PLANK_NOTARY_PROFILE=plank-notary
+bash "$PLANK_SOURCE_ROOT/scripts/build-macos-client-dmg.sh" \
+  "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/client-package"
+```
+
+Output must be a new directory. An optional absolute `PLANK_MAC_CLIENT_BUILD`
+may point to a retained build; qmake/make still run, and staging/closure/signing
+are fresh. Unlock the signing keychain interactively in that SSH session, not
+by putting a password in arguments, environment, scripts or notes. Preserve
+the session through signing. DMG must pass notarization, staple and Gatekeeper;
+transfer the exact file to `artifacts/packages` and compare SHA256 on both ends.
+No installer service/autostart is created; uninstall by quitting and moving
+the app to Trash. Host installation/permissions are separate and unchanged.
+
+## Known failure signatures
+
+- Rust1.89 proc macros fail under SDK27 stripping: retain `RUSTFLAGS=-C
+  strip=none`, as for the Host. Missing macros here need not mean missing Cargo
+  inputs; do not redownload them blindly.
+- Private pkgconf filters its own prefix as system flags: require
+  `PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1` and `PKG_CONFIG_ALLOW_SYSTEM_LIBS=1`.
+- Qt6.10.2/SDK27 Clang21 `__yield` declaration: the Mac arm64 build includes
+  `arm_acle.h` explicitly. Do not change Linux compiler flags.
+- FreeType's optional zlib pkgconfig dependency is not available from the SDK:
+  bootstrap disables that optional compression backend; SDL_ttf fonts work
+  through retained FreeType. Do not introduce a moving Homebrew dependency.
+- macdeployqt includes unrelated server-database plugins referencing
+  `/opt/homebrew` or `/usr/local`: package only SQLite in the SQL plugin
+  directory. Every retained Mach-O still passes the external dependency gate.
+- Bash3.2 plus nounset rejects an empty feature array: use the guarded array
+  expansion in `build-macos-transport.sh`; default Client features are valid.
+- Headless version/help checks use `QT_QPA_PLATFORM=offscreen`. A real GUI
+  session is needed for functional presentation/input acceptance.
+
+Current probes are `tests/video/macos-videotoolbox-decode.mm`,
+`macos-hevc444-fixture.m`, and `macos-metal-color.mm`. The last loads the actual
+Client Metal shader and shared color uniforms, not a duplicate implementation.
+Hardware metadata/GPU math probes do not replace live presentation acceptance.
