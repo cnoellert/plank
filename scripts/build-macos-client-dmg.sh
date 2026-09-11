@@ -21,12 +21,14 @@ app="$output/image/PLANK Client.app"
 ditto "$build/app/plank-client.app" "$app"
 "$PLANK_QT_ROOT/bin/macdeployqt" "$app" \
     "-qmldir=$source_root/client/moonlight-qt-fork/app/gui" -always-overwrite -no-strip
-# Qt deploys optional SQL drivers even though PLANK has no ODBC functionality.
-# Its prebuilt ODBC plugin references a Homebrew-only library. Do not introduce
-# that unrelated runtime dependency or ship a plugin with a dangling link.
-if [[ -f "$app/Contents/PlugIns/sqldrivers/libqsqlodbc.dylib" ]]; then
-    rm "$app/Contents/PlugIns/sqldrivers/libqsqlodbc.dylib"
-fi
+# Qt deploys server database plugins that PLANK never loads. Keep only SQLite
+# for Qt's optional local-storage implementation; no ODBC/Mimer/PostgreSQL/etc.
+# dependencies should enter the app. The independent closure gate still checks
+# every retained binary, so this is not an exception to dependency validation.
+for plugin in "$app/Contents/PlugIns/sqldrivers/"*.dylib; do
+    [[ -f "$plugin" ]] || continue
+    [[ ${plugin##*/} == libqsqlite.dylib ]] || rm "$plugin"
+done
 mkdir "$output/plank.iconset"
 clang -fobjc-arc -mmacosx-version-min=27.0 "$source_root/scripts/macos-app-icon.m" \
     -framework Foundation -framework CoreGraphics -framework ImageIO -o "$output/macos-app-icon"
