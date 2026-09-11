@@ -54,7 +54,7 @@ cmake_build opus-1.5.2 -DOPUS_BUILD_TESTING=OFF -DOPUS_BUILD_PROGRAMS=OFF
 fetch https://libsdl.org/release/SDL3-3.4.2.tar.gz ef39a2e3f9a8a78296c40da701967dd1b0d0d6e267e483863ce70f8a03b4050c
 cmake_build SDL3-3.4.2 -DSDL_TESTS=OFF -DSDL_TEST_LIBRARY=OFF -DSDL_SHARED=ON -DSDL_STATIC=OFF
 fetch https://download.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.xz 32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc
-cmake_build freetype-2.14.1 -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BZIP2=ON -DFT_DISABLE_PNG=ON -DFT_DISABLE_BROTLI=ON
+cmake_build freetype-2.14.1 -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BZIP2=ON -DFT_DISABLE_PNG=ON -DFT_DISABLE_BROTLI=ON -DFT_DISABLE_ZLIB=ON
 fetch https://github.com/libsdl-org/SDL_ttf/releases/download/release-3.2.2/SDL3_ttf-3.2.2.tar.gz 63547d58d0185c833213885b635a2c0548201cc8f301e6587c0be1a67e1e045d
 cmake_build SDL3_ttf-3.2.2 -DSDLTTF_VENDORED=OFF -DSDLTTF_HARFBUZZ=OFF -DSDLTTF_SAMPLES=OFF
 elif [[ $1 != ffmpeg ]]; then

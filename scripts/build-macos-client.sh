@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Build the real Client; dependencies are separately bootstrapped and retained.
+set -euo pipefail
+[[ $# == 2 && $1 == /* && $2 == /* ]] || { echo 'usage: build-macos-client.sh SOURCE BUILD' >&2; exit 2; }
+source_root=$1
+build=$2
+: "${PLANK_MAC_CLIENT_DEPS:?}"
+: "${PLANK_QT_ROOT:?}"
+: "${PLANK_RUSTUP_ROOT:?}"
+: "${PLANK_CARGO_ROOT:?}"
+: "${PLANK_BUILD_BRANCH:?Detached builds require an explicit branch}"
+[[ $(uname -s) == Darwin && $(uname -m) == arm64 ]] || exit 2
+export MACOSX_DEPLOYMENT_TARGET=27.0
+export SDKROOT
+SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+[[ $(xcrun --sdk macosx --show-sdk-version) == 27* ]] || exit 2
+export CARGO_HOME="$PLANK_CARGO_ROOT" RUSTUP_HOME="$PLANK_RUSTUP_ROOT"
+export RUSTFLAGS='-C strip=none' # Same SDK27 proc-macro guard as Host bootstrap.
+export PATH="$PLANK_QT_ROOT/bin:$PLANK_MAC_CLIENT_DEPS/install/bin:$CARGO_HOME/bin:$PATH"
+export PKG_CONFIG_PATH="$PLANK_MAC_CLIENT_DEPS/install/lib/pkgconfig"
+# pkgconf itself lives in this prefix; its compiled-in "system" directories
+# are private inputs, not compiler defaults, so they must not be filtered out.
+export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1 PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+version=$(<"$source_root/packaging/VERSION")
+if [[ $PLANK_BUILD_BRANCH != main ]]; then
+    [[ $PLANK_BUILD_BRANCH =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || exit 2
+    version="$version-$PLANK_BUILD_BRANCH"
+fi
+client="$source_root/client/moonlight-qt-fork"
+test "$(qmake -query QT_VERSION)" = 6.10.2
+test "$(rustc --version | awk '{print $2}')" = 1.89.0
+patch_file="$client/app/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch"
+printf '%s  %s\n' 059cc9c0d585d71e292cd7421a43f239b1e7ce94e8598d0a7427dfe48e55847e "$patch_file" | shasum -a 256 -c -
+patch --batch --reverse --dry-run -d "$PLANK_MAC_CLIENT_DEPS/src/ffmpeg-9.0.1" -p1 < "$patch_file"
+pkg-config --modversion sdl3 sdl3-ttf openssl opus libavcodec libavutil
+mkdir -p "$build"
+cd "$build"
+qmake "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
+    CONFIG+=plank-transport CONFIG+=disable-libplacebo CONFIG+=disable-wayland \
+    CONFIG+=disable-x11 CONFIG+=disable-libva CONFIG+=disable-libdrm \
+    QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
+    PLANK_VERSION="$version"
+make -j"${PLANK_BUILD_JOBS:-8}" release
