@@ -1,5 +1,36 @@
 # macOS tablet input and embedded cursor
 
+## Photoshop compatibility candidate — 2026-09-10
+
+Branch `macos-pen-capabilities`, based on main after the interface-MTU merge.
+User reports pressure in Pixelmator Pro but none in Photoshop. This is not
+proof of a transport failure or of Photoshop compatibility in earlier tests.
+
+The first candidate (1.0.91) corrects two proximity metadata fields only:
+- SDK27 IOLLEvent.h defines mask0x447: deviceID, absoluteX/Y, buttons, pressure.
+  Advertise precisely these supplied fields, never tilt/rotation/vendor fields.
+- pointerID is the tool index, not the point/proximity matching deviceID.
+  Use index0 for our single tool; retain matching deviceID1 throughout.
+
+Keep pressure values, geometry, pen/eraser sequencing, event posting, teardown,
+authorization, Linux input and Client/transport code unchanged. Do not spoof
+a Wacom vendor/model/serial. Do not inject repeated proximity events or add
+app-specific detection speculatively. First test Photoshop with a pressure brush,
+then Pixelmator, application switching while hovering, tip/side buttons, eraser,
+reconnect, and 1:1/scaled coordinates. If only application switching fails,
+capture delivery evidence before adding a narrowly scoped proximity refresh.
+
+Automated tests inspect both CGEvent fields and converted AppKit NSEvents,
+including 21 pressure levels at three geometries, tool transitions and denied
+delivery cleanup. These are construction tests, not Photoshop acceptance.
+
+References (contracts, not copied implementations):
+- https://developer.apple.com/documentation/appkit/nsevent/capabilitymask
+- https://developer-docs.wacom.com/docs/icbt/macos/ns-events/ns-events-basics/
+- https://www.wacomeng.com/mac/Developers%20Guide.htm (pointerID/deviceID and capabilities)
+
+## Previous accepted baseline
+
 Branch: `macos-tablet` (Client `plank/macos-tablet`), based on main80acb10.
 Merged and pushed September 9, 2026: root main `c6015b3`, Client main `de18b22d`.
 Existing candidate artifacts retain their original branch-qualified version;

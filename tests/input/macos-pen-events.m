@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Construction/authorization-boundary tests. Never posts OS input.
 #import "input-events.h"
+#import <AppKit/AppKit.h>
 #include "plank_transport_input.h"
 #include <math.h>
 #include <unistd.h>
@@ -18,6 +19,20 @@ static NSArray *send(PLANKMacInputEvents *mapper, NSData *payload, PLANKMacInput
     return events;
 }
 static CGEventRef event(NSArray *events, unsigned index) { CHECK(index < events.count); return (__bridge CGEventRef)events[index]; }
+static void checkProximity(CGEventRef e, BOOL entering, NSUInteger tool) {
+    CHECK(CGEventGetType(e) == kCGEventTabletProximity);
+    CHECK(CGEventGetIntegerValueField(e, kCGTabletProximityEventCapabilityMask) == 0x447);
+    CHECK(CGEventGetIntegerValueField(e, kCGTabletProximityEventDeviceID) == 1);
+    CHECK(CGEventGetIntegerValueField(e, kCGTabletProximityEventPointerID) == 0);
+    CHECK(CGEventGetIntegerValueField(e, kCGTabletProximityEventEnterProximity) == entering);
+    // Verify what an AppKit consumer actually sees, not just CG field storage.
+    NSEvent *native = [NSEvent eventWithCGEvent:e]; CHECK(native);
+    CHECK(native.type == NSEventTypeTabletProximity);
+    CHECK(native.capabilityMask == 0x447); // identity, X/Y, buttons, pressure ONLY
+    CHECK(native.deviceID == 1 && native.pointingDeviceID == 0);
+    CHECK(native.pointingDeviceType == tool && native.isEnteringProximity == entering);
+    CHECK(native.vendorID == 0 && native.uniqueID == 0); // no claimed Wacom identity
+}
 static PLANKMacInputEvents *make(CGEventSourceRef source, CGRect bounds, CGSize pixels) {
     return [[PLANKMacInputEvents alloc] initWithSource:source bounds:bounds pixels:pixels
         initialPosition:bounds.origin doubleClickInterval:.5];
@@ -33,6 +48,7 @@ int main(void) {
             NSArray *events = send(mapper, pen(0,1,0,0,1), PLANKMacInputEvent);
             CHECK(events.count == 2 && CGEventGetType(event(events,0)) == kCGEventTabletProximity);
             CHECK(CGEventGetIntegerValueField(event(events,0), kCGTabletProximityEventEnterProximity) == 1);
+            checkProximity(event(events,0), YES, NSPenPointingDevice);
             CHECK(CGEventGetType(event(events,1)) == kCGEventMouseMoved);
             CHECK(CGEventGetDoubleValueField(event(events,1), kCGTabletEventPointPressure) == 0);
             for (unsigned i = 0; i <= 20; ++i) {
@@ -43,6 +59,9 @@ int main(void) {
                 CHECK(CGEventGetType(e) == (i ? kCGEventLeftMouseDragged : kCGEventLeftMouseDown));
                 CHECK(fabs(CGEventGetDoubleValueField(e,kCGTabletEventPointPressure) - p) < .0001);
                 CHECK(CGEventGetIntegerValueField(e,kCGMouseEventSubtype) == kCGEventMouseSubtypeTabletPoint);
+                NSEvent *native = [NSEvent eventWithCGEvent:e]; CHECK(native);
+                CHECK(native.subtype == NSEventSubtypeTabletPoint && native.deviceID == 1);
+                CHECK(fabs(native.pressure - p) < .0001);
                 CGPoint pos = CGEventGetLocation(e);
                 CHECK(fabs(pos.x - (bounds[g].origin.x + p * (bounds[g].size.width - bounds[g].size.width / pixels[g].width))) < .001);
                 CHECK(fabs(pos.y - (bounds[g].origin.y + p * (bounds[g].size.height - bounds[g].size.height / pixels[g].height))) < .001);
@@ -51,12 +70,15 @@ int main(void) {
             CHECK(CGEventGetType(event(events,0)) == kCGEventLeftMouseUp);
             events = send(mapper, pen(0,2,.5,.5,0), PLANKMacInputEvent);
             CHECK(events.count == 3); // old tool leaves before eraser enters
+            checkProximity(event(events,0), NO, NSPenPointingDevice);
+            checkProximity(event(events,1), YES, NSEraserPointingDevice);
             CHECK(CGEventGetIntegerValueField(event(events,1), kCGTabletProximityEventPointerType) == 3);
             events = send(mapper, pen(1,2,.5,.5,.5), PLANKMacInputEvent);
             CHECK(CGEventGetType(event(events,0)) == kCGEventLeftMouseDown);
             events = send(mapper, pen(7,0,0,0,0), PLANKMacInputEvent);
             CHECK(events.count == 2 && CGEventGetType(event(events,0)) == kCGEventLeftMouseUp);
             CHECK(CGEventGetIntegerValueField(event(events,1), kCGTabletProximityEventEnterProximity) == 0);
+            checkProximity(event(events,1), NO, NSEraserPointingDevice);
             CHECK(send(mapper,pen(7,0,0,0,0),PLANKMacInputNoEvent).count == 0);
             CHECK([mapper stopAndCopyReleaseEvents].count == 0);
         }
@@ -69,7 +91,7 @@ int main(void) {
             CHECK(calls == denied + 1);
             NSArray *cleanup = [mapper stopAndCopyReleaseEvents];
             CHECK(cleanup.count == denied); // only accepted proximity, never rejected tip
-            if (denied) CHECK(CGEventGetType(event(cleanup,0)) == kCGEventTabletProximity);
+            if (denied) checkProximity(event(cleanup,0), NO, NSPenPointingDevice);
             CHECK([mapper stopAndCopyReleaseEvents].count == 0);
         }
         PLANKMacInputEvents *mapper = make(source,bounds[0],pixels[0]);
@@ -106,6 +128,7 @@ int main(void) {
         NSArray *cleanup = [mapper stopAndCopyReleaseEvents];
         CHECK(cleanup.count == 2 && CGEventGetType(event(cleanup,0)) == kCGEventLeftMouseUp);
         CHECK(CGEventGetDoubleValueField(event(cleanup,0),kCGTabletEventPointPressure) == 0);
+        checkProximity(event(cleanup,1), NO, NSPenPointingDevice);
         CHECK([mapper stopAndCopyReleaseEvents].count == 0);
         CHECK(send(mapper,pen(0,1,0,0,0),PLANKMacInputStopped).count == 0);
         CFRelease(source);

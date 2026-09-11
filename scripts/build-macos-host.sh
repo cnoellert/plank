@@ -14,7 +14,7 @@ cd "$source_root"
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Ihost/macos/input -Iprotocol/plank-transport/include \
     host/macos/input/input-events.m tests/input/macos-pen-events.m \
-    -framework Foundation -framework CoreGraphics -framework Carbon -o "$output/pen-events-test"
+    -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit -o "$output/pen-events-test"
 # CGEventSourceCreate needs access to WindowServer even though this fixture
 # never posts events. SSH from a different account cannot obtain that source.
 # Only this non-posting fixture uses the console bootstrap; the build/signing

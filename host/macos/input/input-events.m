@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "input-events.h"
 #import <Carbon/Carbon.h>
+#import <IOKit/hidsystem/IOLLEvent.h>
 #include "plank_transport_input.h"
 #include <math.h>
 
@@ -309,8 +310,17 @@ static unsigned penButtonNumber(unsigned bit) { return bit == 1 ? 2 : bit == 2 ?
         // session-local synthetic, not a claimed physical Wacom model/serial.
         CGEventSetIntegerValueField(event, kCGTabletProximityEventPointerType, pen.tool == 2 ? 3 : 1);
         CGEventSetIntegerValueField(event, kCGTabletProximityEventDeviceID, 1);
-        CGEventSetIntegerValueField(event, kCGTabletProximityEventPointerID, 1);
+        // pointerID is the tool index on the tablet, not the deviceID used to
+        // match point events. We expose one tool, never a second concurrent pen.
+        CGEventSetIntegerValueField(event, kCGTabletProximityEventPointerID, 0);
         CGEventSetIntegerValueField(event, kCGTabletProximityEventSystemTabletID, 1);
+        // Applications discover support through proximity, not merely through
+        // nonzero pressure on later point events. Advertise only fields that
+        // this normalized mapper supplies; no tilt, rotation or vendor data.
+        CGEventSetIntegerValueField(event, kCGTabletProximityEventCapabilityMask,
+            NX_TABLET_CAPABILITY_DEVICEIDMASK | NX_TABLET_CAPABILITY_ABSXMASK |
+            NX_TABLET_CAPABILITY_ABSYMASK | NX_TABLET_CAPABILITY_BUTTONSMASK |
+            NX_TABLET_CAPABILITY_PRESSUREMASK);
     } else {
         CGEventSetIntegerValueField(event, kCGMouseEventSubtype, kCGEventMouseSubtypeTabletPoint);
         CGEventSetIntegerValueField(event, kCGMouseEventClickState, MAX(1u, pen.clickCount));
