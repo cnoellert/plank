@@ -1,0 +1,45 @@
+# macOS Client implementation plan
+
+Status: active, branch `macos-client`, starting from main `bbbd307` / Client
+`76979b90069916b593800277a24a31a03e0b778d`. Linux stays unchanged.
+
+## Scope
+
+Extend the existing Qt/SDL3 Client. Initial target is Apple Silicon, macOS 27
+and SDK 27, built on the authorized dedicated development Mac. Reuse current
+bookmarks, authentication, native Kyber transport, telemetry and session
+lifecycle. No replacement protocol or temporary streaming client.
+
+## Ordered gates
+
+1. Reconstruct pinned private Qt 6.10.2, SDL3, OpenSSL, Opus and FFmpeg 9.0.1
+   inputs. Document paths, versions, hashes and commands. Do not restore the
+   inherited binary-prebuilts submodule. Preserve required dependency patches.
+2. Qualify real profile-specific frames through VideoToolbox with hardware
+   required. Record actual hardware status and decoded pixel format/range/
+   matrix at 4K and 5120x2160. Include H.264/HEVC 8/10-bit 4:4:4 and Linux RGB
+   identity. An API reporting codec support alone is not acceptance.
+3. Compile the real Client with native transport. Repair macOS-only stale
+   renderer/build APIs without restoring removed gamepad, pacer or networking
+   subsystems. Use Metal/CoreVideo surfaces without CPU readback where exact
+   format supports it; retain exact FFmpeg software fallback otherwise.
+4. Make a real connection with video, CoreAudio output, keyboard, mouse,
+   disconnect and responsive recovery. Qualify custom cursors and full-range
+   presentation. Never substitute an easier chroma/depth/profile silently.
+5. Validate toolbar interactions, fullscreen/window transitions, Retina pixel
+   coordinates, display matching and multi-monitor behavior. Then qualify
+   Wacom position/buttons/pressure; do not imply Linux raw-HID parity.
+6. Produce a branded, signed/notarized self-contained Client app/package, no
+   autostart. Retain exact source/dependency provenance and independent package
+   checks. User acceptance precedes merge.
+
+## Risk boundaries
+
+- Existing VideoToolbox/Metal sources are unqualified starting points, not
+  evidence of working 4:4:4 or RGB identity support.
+- Hardware availability must be runtime-tested, not inferred from model names.
+- Preserve the working macOS Host and its permissions; no TCC database edits.
+- Do not use the read-only PCoIP reference Mac or clean deployment Mac.
+- Do not install candidates on End-User machines without explicit permission.
+- Stop for genuinely missing authorization/credentials or a human-only test,
+  not for intermediate implementation steps.
