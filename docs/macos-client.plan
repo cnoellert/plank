@@ -1,7 +1,9 @@
 # macOS Client implementation plan
 
-Status: active, branch `macos-client`, starting from main `bbbd307` / Client
-`76979b90069916b593800277a24a31a03e0b778d`. Preserve Linux behavior.
+Status: source integration into main authorized September11; developed on
+`macos-client`, starting from main `bbbd307` / Client
+`76979b90069916b593800277a24a31a03e0b778d`. Preserve Linux behavior. The remaining
+interactive qualification gates below are not implied complete by this merge.
 
 ## Scope
 
