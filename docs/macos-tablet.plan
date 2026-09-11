@@ -28,8 +28,9 @@ Candidate built from1067f24; standalone test runner corrected atd1fe960.
 Pen1130, general input2567, authenticated-input200 checks/8 scenarios pass;
 previous .89 source fails the new capability-mask test as expected. Package
 signed/notarized/stapled, retained in artifacts/packages with SHA256 sidecar.
-No install or application-level acceptance yet; user must test Photoshop and
-recheck Pixelmator. No Client update or Linux change needed.
+User subsequently reported "that works" and approved commit/push/merge/rebuild.
+Photoshop pressure is accepted; do not infer an unreported full button/eraser/
+application-switch matrix. No Client update or Linux change needed.
 
 References (contracts, not copied implementations):
 - https://developer.apple.com/documentation/appkit/nsevent/capabilitymask
