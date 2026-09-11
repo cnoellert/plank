@@ -109,6 +109,15 @@ the app to Trash. Host installation/permissions are separate and unchanged.
   version despite a correct new Info.plist. The independent executable-version
   gate caught this during .94 packaging. Never relabel that older binary;
   regenerate all subprojects and rebuild before signing.
+- Qt's SecureTransport backend rejects TLS1.3 with `Failed to set protocol
+  version`/network error99. Mac startup must select the bundled OpenSSL backend
+  and require TLS1.3 support before opening network requests. A file-closure
+  check and a version string alone do not prove authentication works: retain
+  the packaged live-connection gate. The unauthenticated
+  `tests/video/macos-client-tls.cpp` probe distinguishes backend availability
+  from Host reachability without sending credentials. It must run from an app
+  bundle when testing bundled OpenSSL lookup (a bare CLI has no Frameworks
+  directory for Qt to discover). See the pinned [Qt6.10.2 loader source](https://github.com/qt/qtbase/blob/v6.10.2/src/plugins/tls/openssl/qsslsocket_openssl_symbols.cpp).
 
 Current probes are `tests/video/macos-videotoolbox-decode.mm`,
 `macos-hevc444-fixture.m`, and `macos-metal-color.mm`. The last loads the actual
