@@ -21,11 +21,9 @@ export PKG_CONFIG_PATH="$PLANK_MAC_CLIENT_DEPS/install/lib/pkgconfig"
 # pkgconf itself lives in this prefix; its compiled-in "system" directories
 # are private inputs, not compiler defaults, so they must not be filtered out.
 export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1 PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
-version=$(<"$source_root/packaging/VERSION")
-if [[ $PLANK_BUILD_BRANCH != main ]]; then
-    [[ $PLANK_BUILD_BRANCH =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || exit 2
-    version="$version-$PLANK_BUILD_BRANCH"
-fi
+source "$source_root/scripts/package-version.sh"
+plank_load_package_version "$source_root"
+version=$PLANK_PACKAGE_VERSION
 client="$source_root/client/moonlight-qt-fork"
 test "$(qmake -query QT_VERSION)" = 6.10.2
 test "$(rustc --version | awk '{print $2}')" = 1.89.0
@@ -41,3 +39,11 @@ qmake "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
     PLANK_VERSION="$version"
 make -j"${PLANK_BUILD_JOBS:-8}" release
+plist="$build/app/plank-client.app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PLANK_BASE_VERSION" "$plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $PLANK_BASE_VERSION" "$plist"
+if /usr/libexec/PlistBuddy -c 'Print :PLANKVersion' "$plist" >/dev/null 2>&1; then
+    /usr/libexec/PlistBuddy -c "Set :PLANKVersion $version" "$plist"
+else
+    /usr/libexec/PlistBuddy -c "Add :PLANKVersion string $version" "$plist"
+fi
