@@ -1,7 +1,7 @@
 # macOS Client implementation plan
 
 Status: active, branch `macos-client`, starting from main `bbbd307` / Client
-`76979b90069916b593800277a24a31a03e0b778d`. Linux stays unchanged.
+`76979b90069916b593800277a24a31a03e0b778d`. Preserve Linux behavior.
 
 ## Scope
 
@@ -43,3 +43,33 @@ lifecycle. No replacement protocol or temporary streaming client.
 - Do not install candidates on End-User machines without explicit permission.
 - Stop for genuinely missing authorization/credentials or a human-only test,
   not for intermediate implementation steps.
+
+## Qualification checkpoint — September 10
+
+Pinned private build inputs and the real Client compile successfully. The
+first self-contained signed/notarized DMG passed dependency closure, executable
+version, signature, staple and Gatekeeper checks. A later package version gate
+caught retained qmake subprojects using older source; recursive regeneration
+is now mandatory. HANDOFF records the exact current candidate, not this plan.
+
+Hardware-required decode passes HEVC10 4:4:4 full-range at4K and5120x2160,
+and smaller Linux identity fixtures. H.2648/10 4:4:4 correctly takes exact
+software GBR fallback on the tested Apple Silicon. Production Metal math
+passes630 GPU checks covering biplanar/triplanar, identity and neutral YCbCr
+ramps. These are not exhaustive color-management or display-panel tests.
+
+First real Client-to-Linux-Host session:3840x1620 HEVC10 4:4:4 identity,
+hardware P410 decode/Metal, CoreAudio initialized,4224 video frames, no receive
+or FEC loss, approximately60FPS and clean termination. This was a mostly
+static login screen, no input events sent, and not an audio listening test.
+It exposed the Wayland-only tablet-cursor helper being invoked on Cocoa;
+the driver gate now prevents this. Existing video-master audio correction is
+also enabled for macOS rather than silently excluded by a Linux-only guard.
+The shared audio-controller suite passes11 checks on the Mac.
+
+Still required: packaged live reconnection, Mac Host session when available,
+human video/audio and pointer/keyboard/toolbar interaction, Retina and multiple
+displays, prolonged moving-content A/V sync. macOS normalized SDL3 pen input
+has not been wired/qualified yet; do not claim Wacom pressure or raw-HID parity.
+Do not implement speculative pen work before the ordinary interactive Client
+is accepted. Existing development-mac Host session must not be interrupted for testing.
