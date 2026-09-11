@@ -61,7 +61,9 @@ int main(void) {
                 CHECK(CGEventGetIntegerValueField(e,kCGMouseEventSubtype) == kCGEventMouseSubtypeTabletPoint);
                 NSEvent *native = [NSEvent eventWithCGEvent:e]; CHECK(native);
                 CHECK(native.subtype == NSEventSubtypeTabletPoint && native.deviceID == 1);
-                CHECK(fabs(native.pressure - p) < .0001);
+                // AppKit may expose the mouse-compatible pressure field with
+                // 8-bit quantization; the exact CG tablet value is checked above.
+                CHECK(fabs(native.pressure - p) <= 1.0 / 255.0);
                 CGPoint pos = CGEventGetLocation(e);
                 CHECK(fabs(pos.x - (bounds[g].origin.x + p * (bounds[g].size.width - bounds[g].size.width / pixels[g].width))) < .001);
                 CHECK(fabs(pos.y - (bounds[g].origin.y + p * (bounds[g].size.height - bounds[g].size.height / pixels[g].height))) < .001);
