@@ -12,12 +12,21 @@ test -z "$(git -C "$source_root/client/moonlight-qt-fork" status --porcelain)"
 source "$source_root/scripts/package-version.sh"
 plank_load_package_version "$source_root"
 mkdir "$output"
-bash "$source_root/scripts/build-macos-client.sh" "$source_root" "$output/build"
+build=${PLANK_MAC_CLIENT_BUILD:-"$output/build"}
+[[ $build == /* ]] || exit 2
+# An explicitly retained build is reconfigured/rebuilt, never trusted blindly.
+bash "$source_root/scripts/build-macos-client.sh" "$source_root" "$build"
 mkdir "$output/image"
 app="$output/image/PLANK Client.app"
-ditto "$output/build/app/plank-client.app" "$app"
+ditto "$build/app/plank-client.app" "$app"
 "$PLANK_QT_ROOT/bin/macdeployqt" "$app" \
     "-qmldir=$source_root/client/moonlight-qt-fork/app/gui" -always-overwrite -no-strip
+# Qt deploys optional SQL drivers even though PLANK has no ODBC functionality.
+# Its prebuilt ODBC plugin references a Homebrew-only library. Do not introduce
+# that unrelated runtime dependency or ship a plugin with a dangling link.
+if [[ -f "$app/Contents/PlugIns/sqldrivers/libqsqlodbc.dylib" ]]; then
+    rm "$app/Contents/PlugIns/sqldrivers/libqsqlodbc.dylib"
+fi
 mkdir "$output/plank.iconset"
 clang -fobjc-arc -mmacosx-version-min=27.0 "$source_root/scripts/macos-app-icon.m" \
     -framework Foundation -framework CoreGraphics -framework ImageIO -o "$output/macos-app-icon"

@@ -51,8 +51,9 @@ if [[ ${PLANK_MACOS_SOURCE_FIRST:-0} == 1 ]]; then
 elif [[ ${PLANK_MACOS_SOURCE_FIRST:-0} != 0 ]]; then
     echo 'PLANK_MACOS_SOURCE_FIRST must be 0 or 1' >&2; exit 2
 fi
-cargo +1.89.0 build --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
-cargo +1.89.0 test --locked --release "${features[@]}" --manifest-path protocol/plank-transport/Cargo.toml
+# macOS ships Bash3.2, where an empty array is unbound under nounset.
+cargo +1.89.0 build --locked --release ${features[@]+"${features[@]}"} --manifest-path protocol/plank-transport/Cargo.toml
+cargo +1.89.0 test --locked --release ${features[@]+"${features[@]}"} --manifest-path protocol/plank-transport/Cargo.toml
 if [[ ${PLANK_MACOS_SOURCE_FIRST:-0} == 1 ]]; then
     # Dependency unit tests are not run by the root Cargo test command.
     # Compile the production helper/tests against this exact archive's rlib.
