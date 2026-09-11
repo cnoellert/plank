@@ -67,7 +67,19 @@ the driver gate now prevents this. Existing video-master audio correction is
 also enabled for macOS rather than silently excluded by a Linux-only guard.
 The shared audio-controller suite passes11 checks on the Mac.
 
-Still required: packaged live reconnection, Mac Host session when available,
+September11: installed signed .95 now polls the Linux Host successfully after
+user Local Network authorization. Packaged CLI streaming also passes hardware
+HEVC10 4:4:4 identity/Metal with CoreAudio initialized, zero receive/FEC or
+render-queue drops in a bounded~40second GDM sample. The test was stopped during
+a newly announced desktop handoff; that handoff is not yet qualified. No
+automated input was injected and audible output has not been confirmed.
+
+Packaged desktop reconnect then passed a two-minute sample:7344frames,
+59.76renderedFPS, zero receive/FEC and frame-queue drops, clean signal shutdown.
+Automated AppleScript Quit returned cancellation, so normal human Quit remains
+an explicit gate rather than inferred from signal cleanup.
+
+Still required: Mac Host session when available,
 human video/audio and pointer/keyboard/toolbar interaction, Retina and multiple
 displays, prolonged moving-content A/V sync. macOS normalized SDL3 pen input
 has not been wired/qualified yet; do not claim Wacom pressure or raw-HID parity.

@@ -118,6 +118,15 @@ the app to Trash. Host installation/permissions are separate and unchanged.
   from Host reachability without sending credentials. It must run from an app
   bundle when testing bundled OpenSSL lookup (a bare CLI has no Frameworks
   directory for Qt to discover). See the pinned [Qt6.10.2 loader source](https://github.com/qt/qtbase/blob/v6.10.2/src/plugins/tls/openssl/qsslsocket_openssl_symbols.cpp).
+- macOS Local Network privacy can block an otherwise valid packaged Client
+  with network error99 while loopback and a separately launched curl work.
+  Inspect `/usr/bin/log show --info --debug` for Local Network blocked events
+  and the responsible process. SSH-launched GUI children can be attributed to
+  the SSH session. Test the installed app through LaunchServices/Applications
+  and have the operator approve its normal prompt; SSH authorization is not a
+  product prerequisite. Do not edit TCC, lower TLS requirements or treat this
+  as Host downtime. Screenshot capture is a separate permission and may still
+  fail after network access is authorized.
 
 Current probes are `tests/video/macos-videotoolbox-decode.mm`,
 `macos-hevc444-fixture.m`, and `macos-metal-color.mm`. The last loads the actual
