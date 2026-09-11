@@ -31,6 +31,9 @@ signed/notarized/stapled, retained in artifacts/packages with SHA256 sidecar.
 User subsequently reported "that works" and approved commit/push/merge/rebuild.
 Photoshop pressure is accepted; do not infer an unreported full button/eraser/
 application-switch matrix. No Client update or Linux change needed.
+Merged/pushed into main at51e5a3a; clean mainline macOS Host1.0.92 built from
+d77ee1b, signed/notarized/stapled and retained in artifacts/packages. Mainline
+input/pen/auth-input tests repeat successfully; package not installed by agent.
 
 References (contracts, not copied implementations):
 - https://developer.apple.com/documentation/appkit/nsevent/capabilitymask
