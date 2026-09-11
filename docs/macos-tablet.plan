@@ -24,6 +24,13 @@ Automated tests inspect both CGEvent fields and converted AppKit NSEvents,
 including 21 pressure levels at three geometries, tool transitions and denied
 delivery cleanup. These are construction tests, not Photoshop acceptance.
 
+Candidate built from1067f24; standalone test runner corrected atd1fe960.
+Pen1130, general input2567, authenticated-input200 checks/8 scenarios pass;
+previous .89 source fails the new capability-mask test as expected. Package
+signed/notarized/stapled, retained in artifacts/packages with SHA256 sidecar.
+No install or application-level acceptance yet; user must test Photoshop and
+recheck Pixelmator. No Client update or Linux change needed.
+
 References (contracts, not copied implementations):
 - https://developer.apple.com/documentation/appkit/nsevent/capabilitymask
 - https://developer-docs.wacom.com/docs/icbt/macos/ns-events/ns-events-basics/
