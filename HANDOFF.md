@@ -4,8 +4,8 @@ Read AGENTS.md and the platform build runbook before work.
 
 ## Hosted builds qualified; signing pending
 
-Branch `github-builds` adds GitHub-hosted clean-worktree builds, leaving main and
-the 1.0.103 release unchanged. See
+The approved `github-builds` work is fast-forward merged into `main`, adding
+GitHub-hosted clean-worktree builds. The 1.0.103 release is unchanged. See
 `docs/development/build/github-builds.md` and the matching plan. Public jobs
 have no signing/deployment secrets, private sources or access to internal
 machines. No candidates have been installed and no existing builder is retired.
@@ -50,8 +50,10 @@ use no dependency caches; add exact-input caches only after clean bootstrap
 qualification. Hardware/session gates remain separate from hosted build tests.
 The user was asked whether to provision protected GitHub signing secrets or
 retain local Mac signing; no answer/credential transfer is recorded yet.
-The `github-builds` branches are pushed but not merged. Next: resolve signing
-authority, qualify an exact-input dependency cache, and merge approved CI work.
+The public and both private infrastructure CI branches are merged into their
+respective `main` branches. Next: resolve signing authority and qualify an
+exact-input dependency cache. Existing candidate packages keep their original
+branch/source provenance; merging does not promote or relabel those artifacts.
 
 ## Current source
 
