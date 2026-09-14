@@ -39,13 +39,20 @@ network constants to make heuristic counts reach zero.
 
 ## Publication boundaries
 
-The four prepared root/Client/Host/transport repositories use the maintainer's
-noreply address. A final attribution check found personal author/committer email
-in the already-public common-C, build-deps, libvirtualhid and ENet dependencies.
-Their existing public histories were not rewritten. Before treating the whole
-dependency graph as noreply-only, decide whether to prepare sanitized private
-replacements or retain that already-public attribution. These are identity
-metadata findings, not password matches.
+The eight maintained preparation histories use the maintainer's noreply address.
+Independent private replacements for common-C, build-deps, libvirtualhid and
+ENet remove personal email attribution without changing the already-public
+repositories. Author names, dates, commit messages, branch relationships,
+executable source and license notices are preserved. Commit hashes change;
+cryptographic signatures on rewritten commits cannot remain valid.
+
+Maintained dependency URLs, historical gitlinks and executable baseline pins
+follow the replacement histories. Historical references to external upstream
+repositories retain their original URLs and hashes together. The replacement
+build-deps and libvirtualhid repositories expose the existing Host branch hint
+as an alias of the retained product branch, without adding a source commit.
+Copied legacy Actions workflows are disabled on the four new private remotes.
+Public upstream contributor attribution is not anonymized.
 
 Preparation remotes remain private. Their GitHub releases, issues, commit
 comments, uploaded Actions artifacts and caches were empty at review time;

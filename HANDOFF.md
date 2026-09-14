@@ -46,16 +46,26 @@ commit counts and topology. Eleven focused authentication cases and four
 portable repository checks pass. See docs/security/publication-review.md for
 scope, intentional scanner findings and remaining publication boundaries.
 
-Audited source before this notes commit: b2672c60e98c0dc6b5af71e02b39bc56a7a671b7.
-Client: b16b12cf1166a1279ed7e0fefe4f9822c202c3f9.
-Linux Host: 94d49f87c7460809f0fe33096d3919a4f1ee88eb.
+Audited source before the dependency-attribution notes commit:
+3b9bf487569905d973237f47ca3cdf264d6f6360.
+Client: 8899119809369ec62fb03e6f15b313047febdedb.
+Linux Host: b6e688ff594d6e26372382633d3621565b08bc9f.
 Transport is unchanged: 912ece5c64787997f978673ca60d313898a3548c.
 No new package was built or installed during this final source audit.
 
-Remaining operator decision: the four already-public common-C, build-deps,
-libvirtualhid and ENet repositories retain personal author/committer email.
-The four preparation repositories have zero owner personal-email occurrences.
-No public dependency history was rewritten. Decide whether to prepare sanitized
-private dependency replacements or retain already-public attribution before
-calling the entire dependency graph noreply-only. The root privacy workflow
-passed after the rewritten push; all 20 privacy cases pass.
+The operator approved private noreply replacements for common-C, build-deps,
+libvirtualhid and ENet. They are plank-common-c-public, plank-build-deps-public,
+plank-libvirtualhid-public and plank-enet-public in the project organization;
+the names describe publication preparation, not current visibility. Existing
+public repositories remain untouched. Dependencies and all historical
+maintained gitlinks now follow those copies. External upstream links remain
+unchanged. Do not import old dependency hashes or local URL overrides from
+previous preparation checkouts or builders.
+
+All seven rewritten histories preserve names, dates, messages, commit counts,
+branch relationships and executable source. Only identity metadata, dependency
+URLs/gitlinks and baseline pins change. The transport is unchanged. Four
+portable checks pass, including 20 privacy cases. No package was rebuilt or
+installed; the existing 1.0.100 manifests must retain their original provenance.
+Use final-source rebuilds for a public binary release. Hosting-object cleanup,
+distribution metadata and credential rotation remain separate publication gates.
