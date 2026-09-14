@@ -72,6 +72,17 @@ historical third-party executable or archive. Existing signed release packages
 also need their own metadata review; signing identities are inherently public.
 
 The existing 1.0.100 packages retain their original source provenance. Do not
-relabel or edit their manifests to name rewritten commits. Before a public
-binary release, rebuild from the final public source and repeat package and
-hardware/session acceptance gates.
+relabel or edit their manifests to name rewritten commits. The final-source
+1.0.101 rebuild passed all four package gates and both Mac notarization gates.
+Its extracted payloads have no supplied-password matches, but all four products
+retain private build-path strings in binaries. These assets are NOT cleared for
+public distribution. Reproducibly remove that metadata in the affected compiler
+and prepared dependency builds, increment the version, and repeat payload review
+and hardware/session acceptance before public binary release.
+
+Final destinations are newly created private repositories populated only with
+audited heads. Six unrequested update branches in preparation copies were not
+transferred. No old GitHub release assets, Actions artifacts, issues or caches
+were imported. Only the root privacy workflow is enabled; inherited companion
+Actions workflows remain disabled. Explicit approval is still required before
+changing any repository's visibility.
