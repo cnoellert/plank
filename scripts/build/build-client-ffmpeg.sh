@@ -3,23 +3,23 @@
 set -euo pipefail
 
 if (($# < 1 || $# > 2)); then
-  echo "usage: $0 MOONLIGHT_APP_DIR [WORK_DIR]" >&2
+  echo "usage: $0 RUNTIME_STAGE_DIR [WORK_DIR]" >&2
   exit 2
 fi
 
 ffmpeg_version=9.0.1
 ffmpeg_sha256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
 ffmpeg_url="https://ffmpeg.org/releases/ffmpeg-${ffmpeg_version}.tar.xz"
-moonlight_app_dir=$(realpath -m -- "$1")
+runtime_stage_dir=$(realpath -m -- "$1")
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 work_dir=$(realpath -m -- "${2:-${repo_dir}/build/client-ffmpeg-${ffmpeg_version}}")
-identity_gbr_patch="${moonlight_app_dir}/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch"
+identity_gbr_patch="${repo_dir}/apps/client/app/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch"
 identity_gbr_patch_sha256=059cc9c0d585d71e292cd7421a43f239b1e7ce94e8598d0a7427dfe48e55847e
 archive="${work_dir}/ffmpeg-${ffmpeg_version}.tar.xz"
 source_dir="${work_dir}/ffmpeg-${ffmpeg_version}"
 build_dir="${work_dir}/build"
 install_dir="${work_dir}/install"
-bundle_dir="${moonlight_app_dir}/lib"
+bundle_dir="${runtime_stage_dir}/lib"
 
 for command in curl make nasm patch pkg-config sha256sum tar; do
   if ! command -v "${command}" >/dev/null; then
@@ -93,4 +93,4 @@ cp -a "${source_dir}/COPYING.LGPLv2.1" "${source_dir}/COPYING.LGPLv3" \
 
 echo "FFmpeg ${ffmpeg_version} installed in ${install_dir}"
 echo "Runtime libraries bundled in ${bundle_dir}"
-echo "Build Moonlight with PKG_CONFIG_PATH=${install_dir}/lib/pkgconfig"
+echo "Build PLANK Client with PKG_CONFIG_PATH=${install_dir}/lib/pkgconfig"
