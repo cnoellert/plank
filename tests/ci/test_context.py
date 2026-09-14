@@ -1,6 +1,9 @@
 import importlib.util
+import os
 from pathlib import Path
 import re
+import subprocess
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,6 +31,30 @@ class ContextTests(unittest.TestCase):
         for name in ['', '/', '___']:
             with self.assertRaises(ValueError):
                 context.branch_name(name)
+
+    def test_worktree_and_explicit_path_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source = base / 'checkout'
+            source.mkdir()
+            subprocess.run(['git', 'init', '-q', str(source)], check=True)
+            subprocess.run(['git', '-C', str(source), '-c', 'user.name=CI fixture',
+                            '-c', 'user.email=ci@example.org', 'commit', '-q',
+                            '--allow-empty', '-m', 'Fixture'], check=True)
+            sha = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+            env_file = base / 'github-env'
+            env = dict(os.environ, GITHUB_WORKSPACE=str(source), RUNNER_TEMP=str(base),
+                       GITHUB_SHA=sha, BUILD_REF='feature/check', GITHUB_ENV=str(env_file))
+            subprocess.run(['python3', str(ROOT / 'scripts/ci/context.py')], env=env, check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            values = dict(line.split('=', 1) for line in env_file.read_text().splitlines())
+            worktree = base / 'plank-ci/source'
+            self.assertEqual(values['PLANK_SOURCE_ROOT'], str(worktree))
+            self.assertEqual(values['PLANK_BUILD_BRANCH'], context.branch_name('feature/check'))
+            self.assertEqual(subprocess.check_output(['git', '-C', str(worktree), 'rev-parse', 'HEAD'], text=True).strip(), sha)
+            # Reusing a scratch root must fail instead of trusting stale outputs.
+            self.assertNotEqual(subprocess.run(['python3', str(ROOT / 'scripts/ci/context.py')], env=env,
+                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode, 0)
 
     def test_untrusted_workflow_has_no_signing_or_write_authority(self):
         workflow = (ROOT / '.github/workflows/build.yml').read_text()

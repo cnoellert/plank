@@ -2,6 +2,28 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
+## Hosted build setup in progress
+
+Branch `github-builds` adds GitHub-hosted clean-worktree builds, leaving main and
+the 1.0.103 release unchanged. See
+`docs/development/build/github-builds.md` and the matching plan. Public jobs
+have no signing/deployment secrets, private sources or access to internal
+machines. No candidates have been installed and no existing builder is retired.
+
+Initial hosted macOS Host compile/portable tests passed in
+[run 34833324611](https://github.com/instinctual/plank/actions/runs/34833324611).
+That overall run is not a passing four-platform qualification: Rocky container
+ownership/setup and a transient macOS Client download failure required fixes.
+The Linux Client portion continues independently. Selected-product manual
+dispatch permits retries without canceling other platforms. Final conclusions
+and artifact provenance must be recorded before calling the migration complete.
+
+macOS distribution remains gated on operator provisioning of Developer ID and
+notarization credentials in a separate protected environment. Ordinary Mac CI
+does not upload unsigned applications as release packages. Initial clean runs
+use no dependency caches; add exact-input caches only after clean bootstrap
+qualification. Hardware/session gates remain separate from hosted build tests.
+
 ## Current source
 
 The final Host/Client repository is `instinctual/plank`. Build-path cleanup is
