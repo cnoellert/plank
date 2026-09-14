@@ -2,36 +2,36 @@
 
 These are standalone probes, not a Host package. They deliberately do not use
 the Linux-only root qualification CMake project or change its dependency gates.
-See `docs/macos-host.plan` for phase order and acceptance requirements.
+See `docs/development/plans/macos-host.plan` for phase order and acceptance requirements.
 macOS 27 and SDK 27 or newer are required; all binaries target macOS 27.0.
 
 The focused embedded-cursor app is built separately with
-`scripts/build-macos-embedded-cursor.sh` and accepts only `--cursor` in Aqua.
-See `docs/macos-build-runbook.md` for the five-phase owned-window pixel test,
+`scripts/test/build-macos-embedded-cursor.sh` and accepts only `--cursor` in Aqua.
+See `docs/development/build/macos-build-runbook.md` for the five-phase owned-window pixel test,
 signing, installed-app backup/restoration and limits. It is not a new Client or
 the authenticated A/V probe, and must not run in LoginWindow.
 
 The newer standalone system-audio probe uses
-`scripts/build-macos-audio-probe.sh`, not `build-probes.sh`. Its installed app
+`scripts/test/build-macos-audio-probe.sh`, not `build-probes.sh`. Its installed app
 accepts `--audio` only and temporarily replaces the approved Probe app entry
-point. See `docs/macos-audio.md` and the audio section of the Mac build runbook
+point. See `docs/architecture/macos-audio.md` and the audio section of the Mac build runbook
 for playback/capture scope, backup, signing, execution and cleanup. Do not run
 an older probe mode against that installed audio-only executable.
 
 ## Passive desktop inventory
 
 The standalone pressure-delivery probe is built with
-`scripts/build-macos-tablet-pressure.sh SOURCE NEW_OUTPUT`. It uses the existing
+`scripts/test/build-macos-tablet-pressure.sh SOURCE NEW_OUTPUT`. It uses the existing
 Probe signing identity and requires macOS/SDK27. `--inspect` posts nothing;
 the graphical runner's `--tablet-pressure` mode is Aqua-only and sends generated
 tablet events exclusively to its own temporary window/process. It requests no
-permissions and requires existing input consent. See `docs/macos-tablet.plan`
+permissions and requires existing input consent. See `docs/development/plans/macos-tablet.plan`
 for measured pressure/proximity results and limits. Do not run other probe modes
 against this single-purpose executable or replace the production Host with it.
 
 Status: compiled and tested on the dedicated development M4 Mac, macOS 27.0 /
 SDK 27.0. The reference Mac remains read-only. See
-`docs/macos-host-investigation.md` for measured results and pending gates.
+`docs/development/investigations/macos-host-investigation.md` for measured results and pending gates.
 
 Build on the authorized Mac with its selected Xcode SDK:
 
@@ -63,7 +63,7 @@ Later captures and input probes need separate explicit operating procedures.
 HEVC 4:4:4 branch qualification adds `--pattern-hevc444-4k` and
 `--pattern-hevc444-5k` to this multi-mode build. These are desktop-only owned
 chart tests at 3840x2160 and 5120x2160, not product encoder defaults. See
-`docs/macos-hevc-444-investigation.md` for pending gates. The matching pixel
+`docs/development/investigations/macos-hevc-444-investigation.md` for pending gates. The matching pixel
 sampling unit is `tests/video/macos-pattern-sampling.m`, linked with
 `pattern-validation.m`, AppKit, QuartzCore, VideoToolbox, CoreMedia/CoreVideo
 and the probe include directory. It requires no live capture or OS input.

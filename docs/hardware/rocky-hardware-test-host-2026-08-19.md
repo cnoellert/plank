@@ -236,14 +236,14 @@ offset-0 capture; its default selected the scopes monitor. Rerun the
 qualification report with:
 
 ```bash
-./scripts/run-host-qualification.sh
+./scripts/test/run-host-qualification.sh
 ```
 
 Run the visible, animated integrated video gate separately so routine inventory
 does not cover an artist's desktop unexpectedly:
 
 ```bash
-./scripts/run-video-pipeline-qualification.sh
+./scripts/test/run-video-pipeline-qualification.sh
 ```
 
 NvFBC 1.9 has no 10-bit output format. Streams from this backend must therefore

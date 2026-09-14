@@ -11,7 +11,7 @@ import unittest
 
 SOURCE = pathlib.Path(sys.argv.pop(1)) if len(sys.argv) > 1 else (
     pathlib.Path(__file__).resolve().parents[2]
-    / "host/sunshine-fork/src/video.cpp"
+    / "apps/host/linux/src/video.cpp"
 )
 
 

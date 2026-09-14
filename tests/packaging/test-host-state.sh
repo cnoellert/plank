@@ -3,7 +3,7 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-helper=${repo_dir}/packaging/bin/plank-host-state
+helper=${repo_dir}/packaging/host/linux/bin/plank-host-state
 test_dir=$(mktemp -d --tmpdir plank-host-state-test.XXXXXX)
 cleanup() {
   rm -rf -- "$test_dir"

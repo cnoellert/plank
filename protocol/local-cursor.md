@@ -13,7 +13,7 @@ embedded-video cursor fallback, compatibility mode, configuration switch, or
 migration path.
 
 The experimental macOS Host has a distinct, explicitly negotiated embedded
-cursor contract; see `docs/macos-input.md`. It does not advertise these local
+cursor contract; see `docs/architecture/macos-input.md`. It does not advertise these local
 cursor bits. This platform choice does not relax either Linux requirement or
 permit a missing Linux cursor capability to select an embedded fallback.
 

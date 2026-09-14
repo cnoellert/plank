@@ -72,7 +72,7 @@ conversations expire after 120 seconds, and unclaimed tokens after 300 seconds.
 ## TLS and Network Policy
 
 Generate an RSA-3072/SHA-256 certificate with a DNS-only SAN using
-`scripts/generate-plank-certificate.sh`. The client accepts only that
+`scripts/maintenance/generate-plank-certificate.sh`. The client accepts only that
 self-signed certificate profile and requires TLS 1.3, but it does not classify
 or restrict the network interface selected by the operating system. Production
 deployments must enforce their intended network boundary with interface-scoped

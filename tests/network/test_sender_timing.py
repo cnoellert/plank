@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 spec = importlib.util.spec_from_file_location(
-    "sender_timing", Path(__file__).resolve().parents[2] / "scripts/analyze-sender-timing.py")
+    "sender_timing", Path(__file__).resolve().parents[2] / "scripts/test/analyze-sender-timing.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 

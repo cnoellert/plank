@@ -13,7 +13,7 @@ import pwd
 import stat
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("installer", ROOT / "scripts/install-macos-host-development.py")
+SPEC = importlib.util.spec_from_file_location("installer", ROOT / "scripts/maintenance/install-macos-host-development.py")
 INSTALLER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(INSTALLER)
 

@@ -3,11 +3,11 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-host_http="${repo_dir}/host/sunshine-fork/src/nvhttp.cpp"
-client_computer="${repo_dir}/client/moonlight-qt-fork/app/backend/nvcomputer.cpp"
-client_model="${repo_dir}/client/moonlight-qt-fork/app/gui/computermodel.cpp"
-client_view="${repo_dir}/client/moonlight-qt-fork/app/gui/PcView.qml"
-host_builder="${repo_dir}/scripts/build-host-package-binaries.sh"
+host_http="${repo_dir}/apps/host/linux/src/nvhttp.cpp"
+client_computer="${repo_dir}/apps/client/app/backend/nvcomputer.cpp"
+client_model="${repo_dir}/apps/client/app/gui/computermodel.cpp"
+client_view="${repo_dir}/apps/client/app/gui/PcView.qml"
+host_builder="${repo_dir}/scripts/build/build-host-package-binaries.sh"
 
 rg -Fq 'tree.put("root.PlankHostVersion", PROJECT_VERSION);' \
   "$host_http"

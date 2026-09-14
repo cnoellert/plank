@@ -52,9 +52,9 @@ cargo test --locked --offline \
 cargo clippy --locked --offline \
   --manifest-path protocol/plank-transport/Cargo.toml \
   --all-targets -- -D warnings
-scripts/run-plank-transport-ffi-loopback.sh
-scripts/run-plank-transport-native-loopback.sh
-scripts/run-plank-transport-native-ffi-loopback.sh
+scripts/test/run-plank-transport-ffi-loopback.sh
+scripts/test/run-plank-transport-native-loopback.sh
+scripts/test/run-plank-transport-native-ffi-loopback.sh
 ```
 
 The native C loopback verifies exact-fingerprint and certificate-profile trust,

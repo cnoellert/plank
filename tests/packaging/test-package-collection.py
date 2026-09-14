@@ -9,7 +9,7 @@ import unittest
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location('collector', ROOT / 'scripts/collect-package.py')
+SPEC = importlib.util.spec_from_file_location('collector', ROOT / 'scripts/package/collect-package.py')
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 

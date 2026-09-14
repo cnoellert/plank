@@ -13,12 +13,12 @@ standalone probes as hardware acceptance tests:
 | Build dependencies | `v2026.724.203728-plank.4` | `4a54a631f8c217318c15c070141e3690a938d3e6` |
 
 The pinned releases are the qualified ancestors of the PLANK branches
-tracked in `host/sunshine-fork/` and `client/moonlight-qt-fork/`. Initialize and
+tracked in `apps/host/linux/` and `apps/client/`. Initialize and
 validate them with:
 
 ```bash
 git submodule update --init --recursive
-./scripts/verify-upstream-pins.sh
+./scripts/maintenance/verify-upstream-pins.sh
 ```
 
 Writable `origin` repositories live in the `instinctual` GitHub organization:

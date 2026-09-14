@@ -92,7 +92,7 @@ def main():
         preserved()
         print("installed_version=" + version + " listener_ready=1 signed_aqua_preflight=1", flush=True)
 
-    installer = [sys.executable, str(args.source / "scripts/install-macos-host-development.py"), "--app", str(args.app)]
+    installer = [sys.executable, str(args.source / "scripts/maintenance/install-macos-host-development.py"), "--app", str(args.app)]
     retirement = [part for name in args.retire_user_agent for part in ("--retire-user-agent", name)]
     run(*installer, *retirement)
     ready()

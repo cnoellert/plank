@@ -3,7 +3,7 @@
 // capture, persistent settings, or mutation of another application's display.
 #import <AppKit/AppKit.h>
 #import "virtual-display-probe.h"
-#import "../../host/macos/auth/graphical-authority.h"
+#import "../../apps/host/macos/auth/graphical-authority.h"
 
 int main(void) {
     @autoreleasepool {

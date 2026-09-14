@@ -13,36 +13,36 @@ Copy both the Ada driver-auto and SFE-disabled HEVC test streams from
 `artifacts/qualification/video/` to the NUC.
 
 ```bash
-./scripts/probe-intel-vaapi-decode.sh \
+./scripts/test/probe-intel-vaapi-decode.sh \
   artifacts/qualification/video/plank-flame-loop-150s-sfe-auto-paired.hevc \
   9000
 
-./scripts/probe-intel-vaapi-decode.sh \
+./scripts/test/probe-intel-vaapi-decode.sh \
   artifacts/qualification/video/plank-flame-loop-150s-sfe-disabled.hevc \
   9000
 
-./scripts/probe-intel-vaapi-dmabuf.sh \
+./scripts/test/probe-intel-vaapi-dmabuf.sh \
   artifacts/qualification/video/plank-flame-loop-150s-sfe-disabled.hevc \
   9000
 
-./scripts/validate-intel-identity-pixel.sh \
+./scripts/test/validate-intel-identity-pixel.sh \
   artifacts/qualification/video/plank-flame-loop-150s-sfe-disabled.hevc \
   600
 
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
-  ./scripts/probe-intel-wayland-xr30.sh 9000
+  ./scripts/test/probe-intel-wayland-xr30.sh 9000
 
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 \
-  ./scripts/probe-intel-client-pipeline.sh \
+  ./scripts/test/probe-intel-client-pipeline.sh \
   artifacts/qualification/video/plank-flame-fullscreen-loop-150s-sfe-auto.hevc \
   9000
 
 PLANK_ALLOW_DISPLAY_STOP=yes \
-  ./scripts/run-intel-client-kms-qualification.sh \
+  ./scripts/test/run-intel-client-kms-qualification.sh \
   artifacts/qualification/video/plank-flame-fullscreen-loop-150s-sfe-auto.hevc \
   300 16000 /dev/dri/card1
 
-./scripts/probe-intel-recovery-pixels.sh \
+./scripts/test/probe-intel-recovery-pixels.sh \
   plank-recovery-ref-invalidate-reference.hevc \
   plank-recovery-ref-invalidate.hevc 180 600 120
 ```
@@ -158,7 +158,7 @@ The client was built natively on the NUC against FFmpeg 9, then launched with
 private `libavcodec.so.63`, `libavutil.so.61`, `libswscale.so.10`, and
 `libswresample.so.7` libraries beside the executable. `/proc/<pid>/maps`
 confirmed that the running service loaded all four private libraries rather
-than Ubuntu's system FFmpeg. `scripts/build-client-ffmpeg.sh` pins the official
+than Ubuntu's system FFmpeg. `scripts/build/build-client-ffmpeg.sh` pins the official
 9.0.1 archive by SHA-256 and reproduces this bundle.
 
 The dedicated DMA-BUF probe requests the required `GstVideoMeta` allocation,
@@ -450,12 +450,12 @@ forced_idr_sha256=3c5adf5295c08b0bbe33b4b23f47bcf1111b3a00bf71e6b8be7afb1e8a5a40
 ```
 
 ```bash
-./scripts/probe-intel-recovery-decode.sh \
+./scripts/test/probe-intel-recovery-decode.sh \
   plank-recovery-ref-invalidate.hevc \
   plank-recovery-forced-idr.hevc \
   599 181
 
-./scripts/probe-intel-recovery-pixels.sh \
+./scripts/test/probe-intel-recovery-pixels.sh \
   plank-recovery-ref-invalidate-reference.hevc \
   plank-recovery-ref-invalidate.hevc 180 600 120
 ```
@@ -487,7 +487,7 @@ for sustained high loss. Run a random profile concurrently with the client using
 
 ```bash
 SUNSHINE_QUALIFICATION_DISABLE_UDP_GSO=1 sunshine ...
-./scripts/inject-live-video-loss.sh 192.0.2.250 10 50 enp1s0
+./scripts/test/inject-live-video-loss.sh 192.0.2.250 10 50 enp1s0
 ```
 
 The remaining packet-loss gate is synchronized decoded-pixel comparison after

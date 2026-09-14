@@ -2,12 +2,12 @@
 # Non-mutating lifecycle tests. --filesystem adds an isolated root-owned fixture.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
-source "$root/packaging/macos/pkg-common.sh"
+source "$root/packaging/host/macos/pkg-common.sh"
 checks=0
 ok() { checks=$((checks+1)); }
 reject() { if ( "$@" ) >/dev/null 2>&1; then fail "Expected rejection: $*"; fi; ok; }
 for script in pkg-common.sh pkg-preinstall pkg-postinstall uninstall.sh; do
-    /bin/bash -n "$root/packaging/macos/$script"; ok
+    /bin/bash -n "$root/packaging/host/macos/$script"; ok
 done
 # Exercise the exact uninstall entry point with destructive commands replaced
 # only in this fixture. Never execute the product uninstaller in these tests.
@@ -15,7 +15,7 @@ done
     # Bash 3.2 on macOS can return early when sourcing a process-substitution
     # pipe. Read the complete trusted fixture before defining its function.
     eval "$(/usr/bin/sed -e '$d' -e 's|/bin/rm|remove_cmd|g' \
-        -e 's|/usr/sbin/pkgutil|receipt_cmd|g' "$root/packaging/macos/uninstall.sh")"
+        -e 's|/usr/sbin/pkgutil|receipt_cmd|g' "$root/packaging/host/macos/uninstall.sh")"
     calls=''
     preflight() { [[ $1 = / ]]; calls="$calls|preflight"; }
     stop_roles() { calls="$calls|stop"; }
@@ -35,12 +35,12 @@ done
     [[ $(uninstall_host 2>&1 || true) = 'PLANK: fixture drain timeout' ]]
 )
 ok
-[[ ! -e "$root/packaging/macos/pkg-uninstall" && ! -e "$root/packaging/macos/uninstall.html" ]]
+[[ ! -e "$root/packaging/host/macos/pkg-uninstall" && ! -e "$root/packaging/host/macos/uninstall.html" ]]
 ok
-! grep -q 'uninstall-component\|uninstall-scripts\|plank-host-uninstall_' "$root/scripts/build-macos-host-pkg.sh"
+! grep -q 'uninstall-component\|uninstall-scripts\|plank-host-uninstall_' "$root/scripts/package/build-macos-host-pkg.sh"
 ok
 /usr/bin/awk '/^initialize_state$/ {prepared=1} /^stop_roles$/ {if (!prepared) exit 1; found=1} END {if (!found) exit 1}' \
-    "$root/packaging/macos/pkg-preinstall"
+    "$root/packaging/host/macos/pkg-preinstall"
 ok
 missing_job system/example 'Could not find service "example" in domain for system'; ok
 missing_job gui/501/example 'Could not find domain for'; ok
@@ -130,13 +130,13 @@ ok
 
 if [[ $(uname -s) = Darwin ]]; then
     for role in machine desktop sign-in; do
-        plist="$root/packaging/macos/la.instinctual.PLANK.Host.$role.plist"
+        plist="$root/packaging/host/macos/la.instinctual.PLANK.Host.$role.plist"
         /usr/bin/plutil -lint "$plist" >/dev/null
         [[ $(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:0' "$plist") = "$executable" ]]
         ok
         [[ $(/usr/bin/plutil -extract AssociatedBundleIdentifiers raw -expect array "$plist") = 1 ]]
         [[ $(/usr/bin/plutil -extract AssociatedBundleIdentifiers.0 raw -expect string "$plist") = \
-           "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$root/packaging/macos/host-info.plist")" ]]
+           "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$root/packaging/host/macos/host-info.plist")" ]]
         ok
     done
 fi

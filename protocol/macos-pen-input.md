@@ -31,4 +31,4 @@ mapper validation/geometry tests are in `tests/input/macos-pen-events.m`. Real
 Wacom pressure in Pixelmator has user acceptance; the browser tester's 0/50%
 result does not qualify browser pressure support. Detailed session cleanup and
 Linux live input regression checks were not rerun for this candidate. See
-`docs/macos-tablet.plan` for coverage and limitations.
+`docs/development/plans/macos-tablet.plan` for coverage and limitations.

@@ -1,0 +1,978 @@
+# PLANK macOS Host implementation plan
+
+Date: 2026-09-06
+
+## September 8 accepted baseline and remaining release gates
+
+The operator confirmed the .62 reboot/online, login-to-desktop, logout,
+resolution and mouse-positioning cycle passes. The accepted branch is merged
+into main with its tested Client/common-c/Kymux gitlinks. This supersedes earlier
+pending-interactive-test and do-not-merge notes below; those are historical.
+macOS remains experimental, not a production release. Outstanding gates:
+
+- Distribution: signed/notarized installer, guided permissions/configuration,
+  final signing/service policy, clean install, upgrade, rollback and uninstall.
+  Current installation is a development script for one designated desktop user.
+- Security/lifecycle: qualify the supported account model and cross-account
+  denial, permission revocation, certificate trust, takeover/lock/unlock, and
+  crash cleanup. The machine coordinator deliberately lacks automatic crash
+  restart until independent old-agent retirement can be proved safely.
+- Sustained performance: complete the planned two-hour A/V drift and eight-hour
+  mixed-workload tests, bounded memory/queues, loss/burst/outage recovery and
+  latency/quality validation on the final candidate. Short tests and operator
+  acceptance do not imply those longer runs passed.
+- Shared-code regressions: requalify affected Linux Client/transport behavior,
+  including exact profiles, audio, input/Wacom, toolbar and session ownership.
+  The Linux Host fork itself was not modified in this branch.
+- Platform: revalidate on final macOS 27 and document support/limitations of
+  the runtime-checked undocumented virtual-display API. Beta success is not
+  evidence for the final OS.
+
+Optional Wacom pressure is not a gate for the general-desktop macOS release.
+No additional tests, package builds or deployments are authorized merely by
+recording this list. Retain the working .62 artifacts as branch-build provenance.
+
+## September 8 active continuation
+
+Resolution update (.62): the real boot LoginWindow now passes 1920x1080,
+3840x2160 and 5120x2160 with matching pixels and logical bounds. The bounded
+AppKit diagnostic owns a separate display and uses public mode selection after
+advertising the modes. Earlier Foundation-loop/initial-mode failures are
+historical observations, not a current macOS resolution ceiling. Host sign-in
+and desktop now share mode selection; the Client no longer replaces its saved
+resolution with 1080p at sign-in. An unconnected Host still bootstraps at 1080p.
+No capture/encoder/transport tuning changes are part of this update. See HANDOFF
+for installed-stream verification and the next graphical acceptance test.
+
+Latest: Client .60 routes native endpoint receive closure into reconnect without
+waiting for input. Host .61 recognizes the positively verified initial boot
+LoginWindow audit/session state, in addition to the post-logout representation.
+Host .61 is installed at the boot login screen; real authenticated 1080p capture,
+decode/audio reception, bitrate updates and disconnect passed. Client .60 DEB is
+ready. Operator login/logout, saved desktop-resolution restoration and a fresh
+.61 reboot remain the next acceptance gates. See HANDOFF for exact provenance.
+
+The operator accepted .57's native SCK cadence (zero minimum interval, three
+surfaces), with the existing source-first FEC/unpaced Mac transport. Preserve
+that playback baseline. .58 corrects before/after-FEC telemetry in the ordinary
+Client; packet loss is not derived from frame gaps.
+
+The matching candidate .59 is built and installed on the dedicated Mac; its
+Client DEB is available for manual installation. It adds persistent LoginWindow startup, a fixed
+1080p sign-in display, independent root/user TLS keys sharing public discovery
+identity, and Client restoration of the saved desktop resolution after fresh
+authentication. No root private key is copied to a user directory. This keeps
+the existing Client certificate-profile policy; it does not introduce persistent
+machine pinning. Development setup provisions only the designated desktop user.
+Automated role, identity, media and Client tests passed before deployment.
+An installed 1080p software-decoder test passed; 4K stress exposed local test
+receiver queue drops, not FEC loss, and still needs hardware-client validation.
+The remaining interactive gate is one
+actual logout → remote login → requested desktop-resolution cycle, followed by
+operator-controlled reboot qualification. Do not claim probe success completes
+either gate. No automatic reboot or End-User package installation.
+
+Historical checkpoints follow; HANDOFF contains the current source/artifacts.
+
+Status: macos-host branch; the actual installed Host and ordinary Client launch
+are integrated for the current desktop. Matching Host/Client 1.0.42-macos-host
+is built; Host is installed and Client is packaged for manual installation.
+The real Ubuntu Client HTTPS/auth/launch implementation has connected to the
+installed Mac Host, decoded exact Main10 video and Opus audio, changed bitrate,
+and disconnected. Graphical Client acceptance remains pending because the
+Development NUC was unreachable. This headless contract test is not a GPU,
+presentation, audible synchronization, or interactive input acceptance result.
+Visible LoginWindow cursor/input remains unverified and deferred by the operator.
+See macos-host-investigation.md for measured results and remaining gates.
+
+### Current next test
+
+1.0.42 fixes live bitrate recovery using bounded encoder-only replacement,
+preserving capture/audio/transport. Synthetic high/low/high reproduction and
+installed 5120x2160 live repeated changes pass; user visual recovery remains
+to be accepted. Strict installed-Host reruns at 3840x2160 and 5120x2160 also
+passed without decoder errors or native sequence gaps. One earlier, less
+strict 3840x2160 run logged missing HEVC references; its cause remains unknown
+and needs moving-content observation, not an assumption of transport loss.
+The Client also removes the stale Apple-profile rejection
+that disabled all resolution dropdown entries. Select the desired resolution,
+save/reopen the bookmark, connect, and test lowering then raising bitrate.
+Use `artifacts/packages/plank-client_1.0.42-macos-host_amd64.deb` with the
+installed matching Host. Earlier candidate instructions below are history.
+
+September 7 follow-up: the user connected successfully with 1.0.38 and observed
+the fixed 1080p desktop and disabled bitrate control. The next matching candidate
+adds authenticated bookmark desktop resolution preparation, the missing live
+bitrate acknowledgment flag, and Full Range HEVC Main10. The virtual display is
+owned for the graphical agent's lifetime, not recreated on every disconnect;
+five same-owner mode changes (4K, 5120x2160, 1080p, 2560x1600, 4K) and removal on
+process exit passed on the dedicated Mac. Presets remain a qualification boundary, not
+an EDID storage limitation; arbitrary/client-matched dimensions and live resize
+are future coordinated display/capture/encoder work.
+
+SCK `xf20` full-range IOSurface → hardware VT Main10 passed a real animated chart
+on macOS 27 beta: 900 submitted/encoded, zero overflow/drop, source BT.601/sRGB
+within 0.5 eight-bit-equivalent code values of the reference, decoded BT.709/sRGB
+within 0.138 of the expected conversion. Synthetic full-range 4K keyframes also
+pass native QUIC. The matching Client replaces its limited-range decoder fixture
+and rejects limited-range Apple streams. No CPU pixel mapping/copy is added to
+the product. Framework-internal transfers are not measured; final OS and actual
+Intel presentation still need qualification. Linux color/cursor paths unchanged.
+
+The graphical agent now uses AppKit event processing, without windows or Dock
+activation. A Foundation-only loop could service timers but did not make the
+virtual display online with Quartz reconfiguration observation enabled. This
+was reproduced separately and resolved without removing the observer or adding
+another process. Actual installed-Host connections pass at 5120x2160 and then
+3840x2160: exact Full Range Main10 decode, Opus, bitrate ACK and disconnect.
+These static-desktop tests are not motion-performance or graphical acceptance.
+
+Install `artifacts/packages/plank-client_1.0.41-macos-host_amd64.deb` on a
+hardware Client. Create/edit a bookmark for the dedicated Mac with
+`ScreenCaptureKit — macOS (Experimental)`, the Apple HEVC Main10 profile, and
+the desired Mac desktop resolution, including 5120x2160. Check continuing video, mouse alignment/buttons/scroll,
+keyboard, embedded custom cursor, audio, toolbar, and disconnect/reconnect.
+The signed 1.0.41-macos-host app/services are installed on the Mac. Host polling
+now reports the requesting token's real authorization, and explicit Client
+sign-in never inherits a previous bearer. Authenticated/anonymous/invalid-token
+polling plus live LAN media reception pass. The development installer always
+binds product listeners to all interfaces, including ZeroTier; do not restrict
+the listener to an SSH/build access address. Client 1.0.38 also fixes the initial
+login/reconnect topology-fetch gate, which incorrectly required Linux display
+capabilities for the Mac. Use the matching 1.0.41 Host and Client for the new
+display preparation feature and Full Range stream contract.
+
+Do not ask for another isolated login/logout cycle in place of this test.
+Current development installation registers only the existing user's desktop;
+LoginWindow installation, headless ownership and login/logout continuity are
+remaining product gates, not claims made by this first test candidate.
+
+## September 7 direction change — Host first
+
+**Execution correction, September 7:** the operator rejected further isolated
+login/logout test loops. The next deliverable is a usable ordinary Ubuntu Client
+connection to the actual Host, not another component milestone. The runnable
+machine/graphical executable and combined HTTPS/A/V/input runtime now exist.
+Actual launchd startup, TLS discovery/denial, shutdown and process replacement
+pass on the same desktop, without OS login/logout. The runtime's authenticated
+QUIC launch, bitrate and disconnect pass with synthetic media. Next approve
+the real application's native permissions, qualify live capture under this
+assembly, and wire the ordinary Client to the complete audio/input manifest.
+Login-screen access, headless display ownership, stable trust across roles and
+login/logout continuity remain required before acceptance; do not misrepresent
+the first fixed-desktop connection as completing those gates.
+
+The operator explicitly rejected spending more time adapting the Client to a
+temporary, video-only Mac Host. This section supersedes the preview-first
+execution/resume instructions below. Pause the new Client launch workflow and
+its optional-service integration. Preserve checkpoints; do not merge, install,
+delete, or automatically revert them. The latest NvHTTP launch draft and its
+HTTPS test harness are unqualified work in progress, not a passed capability.
+
+Complete the Mac Host's normal services using standalone qualification tools:
+
+1. System audio: ScreenCaptureKit 48 kHz stereo, encode to the existing Opus
+   transport contract, preserve source timestamps and bounded queues, and prove
+   decode compatibility with the unchanged Ubuntu decoder. First inspect Apple's
+   native Opus encoder availability and supported packet duration; if it cannot
+   meet the contract, qualify a pinned libopus dependency rather than changing
+   the Client or substituting a different audio codec. No microphone capture.
+2. Keyboard/mouse/scroll and cursor: implement the existing normalized input
+   behind native Mac APIs. The September 7 accepted Mac cursor design is
+   ScreenCaptureKit's embedded system/application cursor, with video-path
+   latency; do not implement the Linux separate-cursor protocol on Mac. Keep
+   scope to general desktop use. Visible LoginWindow input was deferred by the user;
+   coordinate that test instead of injecting unattended login-screen events.
+3. Complete machine-service/graphical-agent ownership, authentication,
+   login/logout/lock transitions and cleanup. Login-screen access remains an
+   essential product gate; an auto-logged-in desktop is not a replacement.
+4. Then integrate the ordinary Ubuntu Client once against the complete Host
+   contract. Retain useful Apple profile/color/geometry work; decide the fate of
+   preview-only launch scaffolding from the final contract, not by layering
+   permanent special cases over a temporary Host.
+
+Reuse the existing native video/audio/input/control protocols wherever they
+fit. Linux-specific capture/display/PAM implementation stays platform-specific;
+do not fabricate Linux flags on the Mac to satisfy a Client check. Do not change
+the shared transport, FEC, audio codec or packet duration just for this probe.
+No new Client release is needed for the next Host-side qualification steps.
+
+Host-audio component gates now pass: incremental/reset Apple Opus output is
+byte-identical to the fixture decoded by the unchanged Ubuntu libopus layout;
+live SCK captures planar 48-kHz stereo in 20-ms chunks and Apple encodes four
+5-ms packets per chunk. Native packet delivery/revocation passes 3239 checks.
+No new codec dependency or Client implementation was needed. These components
+are now integrated under the authenticated Host capture owner: system audio and
+video share the SCStream, authorization and drain lifetime. The production
+encoder passes 3646 tests, including partial inputs, stop/error latching and
+hardware-clock timestamp quantization; the unchanged Ubuntu decoder measures
+311 frames of synthetic delay versus Apple's reported 312. Combined 1080p A/V
+loopback passes short runs; see HANDOFF for exact results and earlier failures.
+Next qualify longer/loss/ownership transitions and native input/cursor before
+the ordinary Client integration. See `macos-audio.md`; audible A/V synchronization
+and LoginWindow behavior are still separate acceptance gates.
+
+The clock audit also corrected the experimental video adapter from microseconds
+to the existing Client's 90-kHz PTS contract. Real 1080p/4K native-video tests
+(180 checks each) and the now 300-check A/V/input capture-owner lifecycle suite pass.
+The earlier opaque-PTS loopback had not tested the correct Client clock unit.
+
+Native input components now pass 1826 Quartz event-construction checks and 129
+authenticated native-QUIC checks (seven scenarios), with no OS input posted by
+those tests. After operator unlock, Probe 51 still failed window activation.
+Probe 52 requests activation after AppKit finishes launching, preserving the
+per-event focus guard and unchanged mapper. Two fresh Aqua runs passed all ten
+tagged input event classes (1023/1023) and absolute pointer agreement. No
+unattended LoginWindow input was attempted; it remains a separate gate. The
+installed app was initially restored to tested A/V Probe 49. Probe 53 then
+passed both sides of all four modifiers, Shift-key/click and deliberate held
+key/modifier/button cleanup, including OS private-source state verification.
+The input components are now wired into the A/V owner: one blocking native
+receiver hands off at most one packet to the serial owner; cleanup releases
+authorized held input before revocation and drains the receiver before endpoint
+destruction. The synthetic owner suite passes 300 checks/11 scenarios. Signed
+Probe 54 adds this input path; live A/V checks send no desktop input. See
+`macos-input.md` for scope, release ordering, unsupported key/text paths and the
+SDK-27 deprecated global-cursor-image API finding. The operator accepted embedded
+cursors; ordinary Client cursor presentation and full session lifecycle remain
+gates. Client work stays paused.
+
+Embedded custom-cursor capture now passes two fresh signed Probe 55 launches:
+disabled baseline, visible custom shape/hotspot, movement, changed shape, then
+disabled absence. These are owned-window BGRA pixel checks, not an encoded
+Client presentation test. Probe 54 A/V/input is restored on the development Mac.
+
+### Next gate: LoginWindow input, then authenticated agent replacement
+
+The earlier lifecycle review confirmed that the former `desktop-authority.m` positively
+requires the calling non-root Aqua account and irrevocably revokes on ownership
+loss. `account-policy.h` cannot authorize LoginWindow, and the temporary
+`run-session-handoff.py` controller is administrator-scoped qualification, not
+an authenticated product service. Do not widen the Aqua predicate to permit
+root, treat console observation as authorization, or carry a desktop stream
+lease into a new graphical session.
+
+Before installing a persistent coordinator, resume the previously deferred
+operator-visible LoginWindow input test. The passing desktop input and separate
+LoginWindow capture probes do not prove that combined requirement. No unattended
+login-screen keystrokes or password injection. Then implement the typed local
+agent boundary with verified peer identity and a fresh generation per attachment:
+
+1. Machine observation selects a candidate graphical scope; that agent must
+   independently prove its own session and permissions before readiness.
+2. An ownership/phase change revokes the old input/media lease immediately.
+   Drain capture/input, retire its display owner and verify removal before
+   granting the replacement scope. Late old-generation callbacks cannot revive it.
+3. Bind the replacement to the verified account and freshly observed desktop
+   and topology. A different logged-in account must fail closed, even if an
+   earlier LoginWindow connection authenticated successfully.
+4. Keep media outside the privileged coordinator. Do not move capture/encoding
+   into root solely to preserve a socket. Qualify the existing bounded,
+   authenticated reconnect/window-retention approach before promising seamless
+   transport continuity. Lock, fast-user-switch, crash and timeout remain tests.
+
+The operator has now logged out for this test. Signed Probe 56 passed strict
+LoginWindow motion/restoration (three numeric position matches) through the
+unchanged production mapper. Non-root and root Background invocations fail
+closed. Operator observation through Screen Sharing is inconclusive; no
+LoginWindow clicks/keys were sent. Do not repeat that observation as if it can
+close the visibility gate. Proceed with the machine/agent implementation and
+final ordinary Client integration contract; visibility and keyboard/buttons
+must be qualified through the actual product before acceptance.
+
+## Objective and baseline
+
+September 7 production integration now includes the machine/agent XPC registry
+and graphical connection under `apps/host/macos/session`. The system-service versus
+LoginWindow-agent cross-process test passes, including rejection of a signed
+Background peer. The same boundary now passes in Aqua. Explicit graphical-scope
+account policy is implemented: verified non-root accounts may access a positively
+identified sign-in scope, while desktop access still requires its owning UID/UUID.
+Every phase/generation change invalidates old tokens/stream leases; new desktop
+access requires fresh authentication. Registry-bound synthetic admission and
+revocation now pass in both Aqua and LoginWindow. A further integration uses the
+production explicit-role graphical authority and a cross-queue admission view;
+its LoginWindow checks pass, with Aqua requalification next. The real native
+A/V/input owner passes service-loss/stall and delayed-drain tests with synthetic
+capture/input; it does not synchronously wait on the IPC queue. This does not
+yet prove live media/display replacement across login/logout.
+See `macos-session-lifecycle.md`. Network-facing admission, media/display drain
+and persistent service wiring remain
+next; this is not yet an ordinary Client connection or packaged Mac Host.
+
+Add a performant macOS Host to the current PLANK repository, initially served
+by the existing Ubuntu Client. Do not make another transport rewrite, a new
+repository, or a macOS Client a prerequisite. Preserve the working Linux
+Host/Client behavior and existing upstream history and license notices.
+
+The use case is general desktop access to headless Macs in the machine room,
+replacing PCoIP. Flame is not a macOS use case or test dependency. A usable
+headless desktop and login screen are first-milestone requirements; Wacom
+pressure is a late, optional enhancement, not an initial acceptance gate.
+
+The planning baseline is the current mainline 1.0.34 package source described
+in HANDOFF.md, with the accepted 1.0.33 Host/Client runtime. This document does
+not change release status or authorize deployment. When implementation is
+approved, create a macos-host branch and matching branches in affected forks;
+record their exact starting commits before edits. Keep experiments isolated
+until the feasibility gates below pass.
+
+## Decisions from discussion
+
+- Normal macOS login-screen access is essential, not a later enhancement.
+  Support remote connection before a local user logs in, login into the user's
+  desktop, logout back to the login screen, and subsequent reconnect.
+- September 8 supersedes the earlier fixed-1080p sign-in allowance: apply the
+  requested bookmark resolution at both sign-in and desktop. Bootstrap at
+  1920x1080 only before an authenticated display request. Verify actual display
+  pixels and logical bounds; never substitute capture upscaling. If a requested
+  mode cannot be established, fail preparation explicitly rather than claim the
+  requested size. Keep window/input mapping coherent across role replacement.
+- Minimum supported macOS is 27, explicitly selected by the user. Target SDK
+  27+ and deployment target 27.0; do not add compatibility paths for older macOS.
+  The older reference Mac was solely for studying PCoIP. Revalidate beta-tested
+  paths on the final macOS 27 release before acceptance.
+- FileVault fully disabled is an acceptable hard prerequisite. Detect and
+  explain unsupported enabled or transitioning states. Never disable it
+  automatically. Automatic user login is not required.
+- Keep SIP, Secure Boot, and macOS privacy/security controls enabled. Do not
+  bypass permissions. Keep the experimental undocumented CGVirtualDisplay
+  backend isolated; its successful probe is not a public API guarantee or a
+  final production dependency decision. No private capture/input bypass.
+- Prefer ScreenCaptureKit, direct VideoToolbox hardware encoding, shared
+  CVPixelBuffer/IOSurface storage, and Metal where conversion is necessary.
+- Use ScreenCaptureKit's embedded cursor on Mac, accepting video-path cursor
+  latency. No deprecated/private global-cursor extraction, generic-arrow
+  substitution or changes to Linux's qualified local-cursor behavior.
+- macOS need not preserve the Linux 4:4:4 RGB-identity contract. Performance
+  takes priority, but negotiated precision, range, and color must be honest.
+- Start by qualifying HEVC 10-bit 4:2:0 hardware encoding; compare H.264 8-bit
+  4:2:0. These are candidate profiles, not promises of supported hardware.
+- Prove operation without a physical monitor. Determine whether the current
+  PCoIP setup uses a virtual display or dongle; do not assume capture APIs
+  themselves create a display. Retain PCoIP as the recovery path during testing.
+- Prioritize keyboard, mouse, scrolling, correct cursor behavior, resolution
+  selection, and reliable unattended session lifecycle before pen features.
+- Wacom pressure comes near the end, after general desktop acceptance.
+  Tablet Margins and full Wacom-device emulation are not required initially.
+- Preserve the current Linux raw-HID Wacom path and Tablet Margins unchanged.
+  Do not restore removed gamepad, generic-touchscreen, or legacy transport code.
+
+## Scope deferred beyond the first milestone
+
+macOS Client, FileVault preboot unlocking, HDR workflows, guaranteed 4:4:4
+identity encoding, NVIDIA/CUDA on macOS, continuous window-driven display
+resizing, full Wacom descriptor emulation, and Tablet Margins are deferred.
+Wacom pressure is a later enhancement, with tilt, eraser, and pen side buttons
+following unless straightforward. Initially qualify one headless display at
+useful selectable resolutions. Do not advertise multi-display support until
+its geometry and input paths have been tested. Headless display availability
+itself is not deferred.
+
+## Verified initial test infrastructure
+
+Read-only SSH inventory on 2026-09-06 found:
+
+- Mac mini, model Mac16,10, Apple M4, 10 CPU cores, 10 GPU cores, 16 GB RAM.
+- macOS 26.6.2, build 25G83; arm64.
+- FileVault reports Off.
+- Xcode 26.6 (17F113), selected at /Applications/Xcode.app/Contents/Developer;
+  macOS SDK 26.5. Compilation/first-launch readiness remain unverified.
+- PCoIP/Anyware machine services run under _pcoip; a user-session agent and
+  server are active. PCoIP audio integration is installed.
+- One online main display reports "Built-in Reti", 1708 x 1072 at 60 Hz.
+  Subsequent PCoIP logs confirm PCoIP creates this software virtual display.
+  Its binary imports CGVirtualDisplay classes absent from the public headers
+  checked; the supported-API headless path remains an explicit decision gate.
+
+SSH access succeeded; no remote configuration or service changes were made.
+Do not record credentials, addresses, hostnames, or hardware serials here.
+The minimum supported macOS version is now 27. Apple signing/entitlement
+arrangements remain undecided. Do not assume Intel Mac support or a universal binary.
+The user has restricted this reference Mac to read-only investigation and will
+provide a dedicated development Mac later. No uploads, builds, capture/input
+probes, service changes, or permission prompts on the reference machine.
+No Flame installation or tablet is needed to begin on the future Mac. Separate
+builder/runtime qualification roles before establishing the release workflow.
+
+## Dedicated development Mac readiness
+
+Dedicated hardware supplied on 2026-09-06: M4 Mac mini, 16 GB RAM,
+macOS 27.0 (26A5425a), Xcode 27.0 (27A5252f), SDK 27.0. FileVault is off,
+SIP remains on, and independent Screen Sharing recovery is preserved. The
+reference Mac remains read-only and is not an older-OS compatibility target.
+
+All twelve Objective-C sources compile with warnings as errors. Apple Development
+signing is established and required. After one-time reapproval on the change
+from ad-hoc signing, permissions persisted across same-certificate rebuilds
+and logout. Capture of a PLANK-owned 1080p60 virtual display, exact-ID selection,
+BGRA IOSurface delivery, stop and display removal passed in Aqua and LoginWindow.
+Hardware-required synthetic H.264 High 8-bit 4:2:0 and HEVC Main 10 10-bit 4:2:0
+passed at 1080p/2160p and were independently decoded with FFmpeg.
+
+Build 8 passed all nine tagged keyboard/mouse events into its own Aqua receiver.
+Unmarked pre-login builds stalled in HID event construction or failed to move
+with a combined-session source; operator observation confirmed the latter.
+The agent's graphical audit session was correct.
+
+Build 11 added Apple's pre-login Mach-O declaration,
+`__CGPreLoginApp,__cgpreloginapp`, without changing input APIs or permissions.
+The original HID source/HID entry-point pointer test then passed both positions
+and restoration without hanging. Build 12 repeated it and passed owned-display
+capture/removal (ten complete frames, 32 idle callbacks). The regular owned
+receiver still cannot acquire LoginWindow focus; it refuses clicks/keys.
+That receiver limitation is not evidence of failed actual login-control input.
+
+Earlier proposed next step: operator-visible pointer and harmless login-screen
+click/key verification (now explicitly deferred).
+The operator subsequently saw no movement during five build-12 pointer tests,
+despite every coordinate readback passing. First resolve the observed display
+and cursor path; do not advance to clicks/keys based on those readbacks alone.
+Observe mode did not change that visual result. The operator explicitly chose
+to defer cursor investigation and advance to the independent media probe.
+Build 14 passed live 1080p LoginWindow SCK-to-hardware-VideoToolbox handoff for
+H.264 420v and HEVC Main10 x420, with no application pixel mapping/copy,
+drops or queue overflow. HEVC capture color attachments are absent; decode,
+color fidelity and meaningful capture-age/60fps qualification remain open.
+The operator logged in. Build 18 now passes bounded 1080p animated-chart capture,
+hardware H.264/HEVC encode and decoded sample comparison, independently checked
+with pinned FFmpeg. Explicit measured input metadata resolved early grayscale
+errors; the experimental SDR output contract is BT.709 matrix/primaries with
+sRGB transfer. Do not mistake that limited pass for native 10-bit precision,
+sustained 60fps or end-to-end acceptance.
+The 4K owned-display chart test failed source verification and pre-exit removal.
+Later inspection found a logged-in but locked desktop; the operator was not
+connected to Screen Sharing. Confirm an unlocked desktop before attributing
+chart absence to 4K capture, and investigate cleanup separately. Build 21 refuses
+to save/decode a keyframe if source-chart verification fails; negative checks
+verified that behavior at 1080p and 4K while locked. Next intervention is an
+actual desktop unlock, not input injection or security-policy changes.
+
+The operator has now kept Screen Sharing connected and unlocked state was
+confirmed. Both 4K media paths passed 900-frame chart/encode/decode checks;
+HEVC samples were independently confirmed with FFmpeg. Pre-exit display removal
+still fails. An isolated probe reproduces this only after a real mode change,
+without capture/encoding/AppKit; process exit restores the recovery display.
+Session-scoped mode selection and active run-loop waiting did not fix it.
+The operator saw one chart; visual confirmation is partial. A subsequent
+standalone display-owner parent/child probe passes normal-exit and forced-child-
+termination removal after real mode changes, with the parent staying alive.
+Four full invocations in Aqua and four after explicit operator logout in
+LoginWindow passed all sixteen cases. No capture or input was part of these
+owner-boundary tests; continuous login/logout handoff is not yet qualified.
+Parent-side capture/encode and ordered resolution replacement now have bounded
+LoginWindow passes in build 27. Mode-object queries became unavailable for new
+IDs; live CG pixel geometry and SCK content/scale verification replace them.
+Three same-parent replacement runs verified geometry/removal; two passed all
+media gates, one had a single HEVC queue-overflow frame. Keep that failure
+visible rather than increasing buffers. Forced owner loss also stops media and
+removes the output. The operator's read-only PCoIP resize comparison is now
+complete: it destroys/recreates displays with desired initial modes and a stable
+maximum descriptor capacity, while the existing media-server process survives.
+An isolated stable-capacity/initial-mode probe now reproduces the small sizes
+on the development Mac at LoginWindow, with in-process removal, but 4K becomes
+real 1080p. Fresh same-session observers confirmed it is not Retina scaling or
+only a cached getter. All outputs removed cleanly; the overall matrix fails.
+Coordinate operator login and repeat the exact probe in Aqua before deciding
+whether to simplify our owner boundary. The reference macOS 26 behavior is not
+qualification for macOS 27. Desktop chart/color qualification follows separately.
+
+The operator subsequently enabled temporary automatic login and rebooted the
+dedicated Mac, leaving Screen Sharing disconnected. The rebuilt identical
+standalone matrix still reproduced the 4K→1080p initial-mode mismatch. An active
+viewer is not required; persisted display settings were not reset. Keep the
+child-owner/mode-selection approach rather than adopting the failed shortcut.
+Both build-27 4K desktop chart paths passed without a viewer: 856 frames each,
+no drops/overflow, correct source/decode samples and clean ordered teardown.
+Independent pinned FFmpeg decode exactly matched the 40 sample triples for
+both current artifacts. Sustained throughput, end-to-end latency and session
+handoff remain open. Automatic login is development infrastructure only, not
+a product requirement; restore normal login with operator coordination before
+testing unattended login/logout behavior.
+Do not introduce global configuration resets or conflate media and teardown gates.
+The later read-only reference check confirmed native 4096x2160@60 in a new
+PCoIP session, with initial-mode activation in 288 ms. It does not prove a 4K
+same-process resize/removal. Eight further standalone development cases varied
+physical size, exact 4096x2160 request, deferred initial settings and HiDPI.
+None fixed initial selection: actual width remained 1920 pixels, independently
+verified; all cleanup passed. Retain the working child-owner boundary. OS-version,
+persisted-policy and unobserved reference setup differences remain unresolved;
+do not change production behavior based on these failed alternatives.
+Do not weaken focus guards, TCC, SIP or login security. Actual LoginWindow
+keyboard/buttons, continuous handoff, cold-boot consent, sustained moving
+footage and audio remain unqualified. The pre-login executable marker
+and private display API need final-OS revalidation; neither alone proves
+production support. Exact build hashes and evidence are in HANDOFF and the
+investigation report.
+
+## Incremental multi-platform organization
+
+Keep current Host/Client fork locations and working Linux build paths initially.
+Separate Linux and macOS capture, encoding, authentication, input, and session
+implementations behind narrowly scoped interfaces only where both need them.
+Keep protocol, transport, and portable session policy shared. Group packaging,
+tests, and build instructions by platform as those components are introduced.
+Do not perform a broad folder move or invent a general abstraction framework
+before proving the macOS pipeline. Preserve fork history and re-run Linux
+build/dependency gates whenever shared interfaces or paths change.
+
+## Proposed architecture
+
+    Ubuntu PLANK Client
+        | existing authenticated control + native QUIC/RaptorQ
+    macOS machine service
+        | authenticated private IPC, session-scoped authorization
+    active LoginWindow or Aqua graphical agent
+        | ScreenCaptureKit -> shared pixel surfaces -> VideoToolbox
+        | system audio capture -> existing audio transport
+        | native keyboard / mouse input and cursor handling
+        | optional normalized tablet input in a later phase
+
+The diagram shows intended boundaries, not a proven process configuration.
+Resolve exact process identities and transport ownership during the probes.
+
+### Machine service and graphical agents
+
+The bounded controller is now implemented as a standalone Python qualification
+runner with native machine-state observation and signed graphical workers.
+Build 31 passes a steady Aqua start/retire cycle; a build-30 injected worker
+crash stops the controller and reclaims the display. Wrong UID/hash are refused.
+The first real logout retired Aqua correctly but exposed early LoginWindow
+identity readiness; build 32 adds a bounded initial wait without relaxing the
+predicates. Independent inventory now runs in the active graphical domain,
+because background root cannot reliably enumerate LoginWindow displays.
+Build 32 passes a 180-second sign-in run with 1,706/1,706 encoded and no
+overflow/drops, plus independently verified cleanup. A subsequent live
+sign-in→4K-desktop run passed both lifecycle and strict media gates (538/538
+and 266/266, no overflow/drops). A fresh reverse desktop→sign-in run also passed
+lifecycle cleanup/replacement, including a 244 ms initial identity wait. It
+failed the strict media gate with 22 desktop queue overflows; the sign-in
+segment had none. Investigate intermittent 4K queue pressure before declaring
+media qualification. Failure details are retained separately in the report.
+Build 33 now has bounded, post-capture one-second timing summaries; its 1080p
+sign-in baseline passes and the counters reconcile. It still needs operator
+login for an idle 4K baseline before attributing the earlier overflows to
+startup, normal capture or logout. No queue limit or handoff policy was changed.
+Two subsequent idle desktop runs reproduced overflow at seconds 15 and 18,
+without logout and outside the startup bucket. Encoder callbacks reached
+~94 ms while submission/dispatch delays were much smaller. Controlled synthetic
+color conversion and sparse submission comparisons remained ~14–16 ms and did
+not reproduce the live delay. Next isolate SCK surface/timestamp interaction;
+do not declare a root cause or change live color/queue policy from these tests.
+Subsequent opt-in live comparisons found no improvement from retaining the
+entire CMSampleBuffer or rebasing timestamps. Synthetic 1/60 PTS improved timing
+but is not a valid streaming fix. Native speed-over-quality improved mean/p95
+callback from ~30/47 ms to ~21/31 ms while preserving real timestamps; it remains
+diagnostic-only. A low-latency encoder-specification request failed current HEVC
+setup without fallback. Build 40 adds a bounded owned-chart compositor-readiness
+check; baseline and speed moving-chart/decoded-color gates now both pass with
+864/864 frames, no drops/overflow and nearly identical ~19 ms mean callbacks.
+Independent bitstream inspection confirms exact 4K Main10/video-range metadata.
+Before adopting speed priority, run longer mixed idle/moving tests and a
+coordinated transition round trip. Default behavior remains intact; the small
+marker chart does not qualify full-motion quality or sustained 4K60.
+This is temporary launchd orchestration, not the eventual authenticated product
+supervisor. Both transition directions now have lifecycle evidence, but no
+zero-drop round trip or transport/input continuity qualification. Retain independent process/display cleanup checks,
+first-encoded-frame readiness, exact geometry and separate lifecycle/media
+results. The root operator designates the only test desktop UID; no remote
+authentication or transport continuity is inferred from that scope.
+
+Preparation now includes a bounded passive session observer and opt-in signed
+session-guarded media probes (build 29). Validate the caller's Security session
+graphical-access attribute, not only CG's reported console UID: an SSH process
+can see the latter. Console/session-user notifications revoke the prior scope;
+identity polling is a bounded backup, not authority to resume it. Synthetic
+revocation and steady Aqua capture have cleanup passes; one revocation run had
+a startup media overflow and remains a failed strict media result. Real
+LoginWindow identification, cross-login agent replacement, notification timing,
+lock/unlock and fast-user-switching safety remain unqualified. Next operator
+step is logout to validate the strict LoginWindow predicates. Do not introduce
+a persistent coordinator or claim continuous handoff from these preliminary
+tests alone.
+
+After operator logout, the unchanged build-29 strict predicates positively
+identified LoginWindow. Its guarded 1080p HEVC test passed 168/168 frames,
+zero drops/overflow and complete cleanup. Synthetic revocation passed 2/2
+and normal removal. Thus both scopes have independent endpoint passes; next
+verify the fresh desktop after operator login and implement/test coordinated
+cross-session replacement. The fresh-desktop check is now complete with Screen
+Sharing connected: actual 4K hardware HEVC, 45/45 encoded, no drops/overflow and
+complete cleanup. Security-session ID remained the same across sign-in→Aqua;
+UID/login phase must participate in identity checks. No media worker ran across
+that transition, so continuous controller/agent replacement remains the next
+implementation step. Do not equate separate probe launches with continuity.
+
+Use launchd for persistent machine availability and session-specific agents
+for GUI operations. The machine service coordinates authentication, exclusive
+session ownership, and authorized attachment. Keep media processing outside
+the privileged boundary wherever supported. Do not carry Linux's root media
+worker design into macOS by default.
+
+The current beta retains a mode-changed CGVirtualDisplay until its creator
+process exits. A bounded standalone parent/child test verifies display removal
+on normal exit and forced termination while the parent stays running. Therefore
+qualify a small display-owner child under the graphical agent before product
+integration. The isolated owner boundary now passes repeated tests in both Aqua
+and LoginWindow. It would not be another persistent launchd service. Keep capture,
+transport and authentication lifecycle separate: stop capture before retiring
+the display owner, and verify removal before accepting a replacement layout.
+The parent must independently validate geometry and child ownership; no public
+unauthenticated display-control socket. Cross-session transitions remain untested.
+
+Evaluate a graphical agent configured for LoginWindow and Aqua sessions using
+the correct launchd session-type keys. A LaunchDaemon alone is not a graphical
+session. Qualify capture and input separately in both contexts.
+
+Use narrow, typed private IPC, preferably XPC, with peer identity/code-signing
+verification and per-session authorization. A new agent cannot inherit access
+to another account's desktop merely by connecting. Bound messages, queues,
+timeouts, and descriptor/surface ownership. No shell-command proxy.
+
+Prefer retaining the Client window and connection through agent replacement.
+If transport continuity is not safely achievable initially, retain the window
+and use bounded authenticated reconnect with accurate transition messages.
+Revoke the old input path before enabling the replacement. Do not reuse a
+stale display transform, pen contact, or account authorization.
+
+### Authentication and permissions
+
+Keep the PLANK authentication/session ownership contract, but implement account
+verification through supported macOS facilities rather than copying Linux
+PAM/SSSD assumptions. Define and review the exact API before integration.
+Authenticating to PLANK does not automatically constitute logging into macOS;
+qualify the normal LoginWindow workflow explicitly.
+
+The first native backend now uses Open Directory `verifyPassword`, including
+its documented policy evaluation, and matches UID/UUID to macOS membership
+resolution. Twelve pure ownership cases and seven negative-input/root-denial
+cases pass; real non-root development-account verification passes. This is a
+short-lived local harness, not a desktop grant. Supervised private IPC now
+passes 16 synthetic cases and real non-root account verification, with mutual
+running-code checks, private inherited socket, four-second deadline and exact
+child cleanup. Client-shaped conversation/token state passes 51 assertions for
+ownership, peer binding, expiry, replay, revocation and bounded admission
+(now 53 assertions with individual-token revocation). The native Network.framework
+TLS 1.3 authentication adapter and live Aqua authority now pass loopback tests,
+including the real account through the isolated helper. SSH is denied authority;
+replay, malformed framing, old TLS, plaintext, untrusted certificate, stalled
+requests and admission overflow fail closed. No existing-Client authentication
+or stream is qualified yet. Public server information now passes native TLS and
+the actual existing Client metadata parser on linux-client-builder (Qt 6.10.2), using a
+shared XML fixture. It advertises authentication but explicitly no media or
+topology capability yet; account/session/display data remain private. No Client
+runtime changes were needed for this gate. Next implement authenticated topology
+and explicit Apple capabilities, then claim authorization into native QUIC lifetime.
+The Client now parses an explicit fixed-capture feature extension without
+requiring the Mac to advertise Linux-specific layout/input/takeover features.
+The original Linux feature mask, fixture and checks remain unchanged. Native
+authenticated topology, the shared Apple profile descriptor and real Aqua
+geometry tests pass. Bookmark creation/editing now includes the explicit Apple
+profile, with append-only IDs and separately remembered bitrate; actual
+serialization/reload tests pass without changing Linux profile values. A real
+VideoToolbox-produced synthetic Main10 4:2:0 frame passes pinned Client FFmpeg
+decode and strict limited-range BT.709/sRGB validation. Hardware decode and
+renderer output are not yet qualified. Stream launch remains explicitly gated
+off pending native authorization lifetime and optional audio/input/cursor
+service negotiation; do not fake Linux capabilities. Public discovery retains zero media
+readiness. The new bit must not enter the Linux launch feature mask. Also retain
+the color distinction already measured: the probe's x420 input uses a BT.601
+sample-matrix declaration, while VideoToolbox output is requested/qualified as
+BT.709 primaries/matrix, sRGB transfer and video range. Input attachments are not
+an output-bitstream contract; revalidate the integrated output and decoder.
+See `docs/architecture/macos-control-plane.md` for the exact scope and lifecycle limits.
+Reserved setup operation IDs are
+not evidence that the current Client uses them for account authentication.
+See `docs/architecture/macos-authentication.md` for limits and required policy tests.
+
+Before exposing login-screen capture/input, require authenticated PLANK access.
+After login, require active-desktop ownership. Retain explicit same-account
+takeover and rejection of cross-account access. Test denied/disabled accounts,
+wrong credentials, stale session credentials, and agent restart during login.
+
+Identify Screen Recording, Accessibility/input, and any relevant entitlement
+requirements on the exact target OS. Check whether persistent-content-capture
+approval is applicable and available; do not assume signing or root bypasses
+TCC. Document guided administrator provisioning and MDM options where supported.
+If supported permission provisioning cannot meet unattended login-screen
+access, stop and discuss instead of weakening the requirement silently.
+
+### Capture, encoding, color, and audio
+
+First establish a supported, capturable headless display in both LoginWindow
+and Aqua. Inspect the current PCoIP display setup read-only and compare display
+inventory with actual session geometry. Coordinate any PCoIP disconnect or
+service-stop experiment with the user; do not remove the recovery path.
+PLANK acceptance must ultimately prove operation without relying on a display
+created or kept alive by PCoIP. If independent software display provisioning
+requires unsupported APIs or a dongle, present the tradeoff before proceeding;
+do not silently replace the headless requirement with a connected monitor.
+
+Qualify useful resolution selection, logical-point/backing-pixel mapping,
+mode persistence across reconnect/login/logout, and safe recovery after a
+display agent exits. Continuous resizing can follow this stable baseline.
+
+Feed ScreenCaptureKit frames into VideoToolbox using compatible shared pixel
+surfaces. Prefer no CPU readback; measure actual copies and synchronization
+rather than describing shared-buffer APIs as proof of zero-copy operation.
+Use Metal for necessary scaling or RGB-to-YCbCr conversion, not an automatic
+extra stage. Release surfaces promptly and bound in-flight frames.
+
+Probe exact encoder capabilities, then encode and decode real test frames.
+Request real-time hardware operation, disable frame reordering where supported,
+and qualify live bitrate changes and keyframe requests. Hardware-labelled
+profiles must fail clearly if hardware is unavailable, not silently use software.
+
+Define explicit macOS profile tuples including capture precision, codec,
+encoded bit depth/chroma, range, matrix, primaries, and transfer function.
+Choose and validate a consistent SDR color contract; do not equate a 10-bit
+surface with proven 10-bit capture or label YCbCr as RGB identity. Test range
+endpoints, clipping, near-black values, ramps, saturated colors, and real footage.
+ScreenCaptureKit tone mapping/color management must be understood and recorded.
+
+Capture the authenticated desktop's system audio through ScreenCaptureKit if
+qualified. Preserve current audio transport and Client OS-selected output.
+Map audio/video timestamps to a common monotonic timeline, handle discontinuity
+at session changes, and prevent audio from another user leaking across sessions.
+
+### Client and protocol integration
+
+Retain current PlankTransport/Kymux, KyProto/QUIC, RaptorQ, fixed-MTU negotiation,
+congestion policy, input ordering, statistics, and per-bookmark bitrate behavior.
+This is a platform port, not a network experiment or legacy protocol revival.
+
+Add explicit per-bookmark Apple capture/VideoToolbox profiles only after probe
+success. Advertise actual Host capabilities and reject unsupported tuples.
+Do not reuse a Linux NVENC profile ID for an Apple encoder. Update shared
+schemas, feature negotiation, vectors, and both Host/Client tests together.
+
+The Ubuntu Client must validate exact-format hardware decoding first, then
+exact-format software fallback where viable. Add/qualify correct 4:2:0 YCbCr
+presentation; do not accidentally route these frames through the identity-GBR
+presentation path. Existing Linux profiles and defaults remain unchanged.
+Stats must identify actual capture, encoder, stream format, and presentation.
+
+### Keyboard, mouse, and cursor first
+
+Qualify absolute pointer position, buttons, drag, scrolling, modifiers, system
+shortcuts, and custom cursor shapes/hotspots in ordinary desktop applications.
+Preserve the Client's local toolbar and prevent duplicate captured/local
+cursors. Test Retina scaling, unequal Host/Client resolution, and letterboxing.
+Release held keys and buttons on failure, takeover, and session replacement.
+
+### Later optional pen phase
+
+First probe supported native tablet-event injection with correct event type,
+proximity, position, tip-down/up, and pressure semantics. Event fields or a
+successful API call alone do not prove an application consumes pressure.
+Acceptance requires real pressure-varying strokes in an agreed macOS drawing
+application, not Flame or a diagnostic pressure counter alone. Select that
+application when this later phase begins.
+
+Use the existing normalized pen protocol for macOS if suitable. Explicitly
+negotiate it so the Client selects normalized events instead of a raw-HID-only
+path; do not assume both streams are already sent. No tablet-model whitelist
+or resolution-specific coordinate constants.
+
+Retain Client mouse/local-toolbar behavior and support visible pen hover and
+drawing with correct custom Host cursor shape/hotspot. Investigate native
+cursor extraction independently: mouse rendering must not be taken as proof
+that tablet cursor rendering works. Prevent a baked-in and local duplicate.
+
+If native tablet injection cannot deliver reliable application pressure,
+evaluate a narrowly scoped virtual HID alternative and its signing/entitlement
+requirements. Pause for a decision before expanding into full device emulation.
+Release pen contact, buttons, and keys on disconnect, takeover, agent failure,
+and topology replacement. Test physical Host tablets coexisting with remote pen.
+
+## Execution sequence and acceptance gates
+
+Historical preview-first sequence (superseded by **Host first** above): finish the bounded mixed-cadence comparison, then move to the
+first authenticated end-to-end preview instead of further isolated encoder
+tuning. Qualify the unchanged native transport on the dedicated Mac using
+`docs/development/build/macos-build-runbook.md`, then implement account/session authorization,
+explicit Apple profile negotiation, complete-frame submission and basic input.
+An already-logged-in desktop is an intermediate preview only; normal login-screen
+access remains essential for the usable Host. Audio, Wacom and release packaging
+do not block that preview. Several development days is a planning allowance,
+not a delivery guarantee; login/session authorization and exact Client
+presentation are still unimplemented integration gates.
+
+The bounded comparison is now complete: actual idle-to-motion baseline has
+602 overflows; speed priority has zero, with ~33.6 ms maximum callback and
+passing initial color/normal cleanup. Its much higher chart bitrate use remains
+a quality/efficiency tradeoff to assess with real content. The existing transport
+also builds on macOS 27: 16 enabled unit tests and both native C ABI encrypted
+loopbacks pass without runtime transport changes. Authentication, Apple profile
+negotiation and interactive Client wiring are next. Details and build-only
+toolchain/test-fixture corrections are in `docs/development/build/macos-build-runbook.md`.
+
+1. Environment and permission feasibility.
+   - Await the dedicated development Mac, verify Xcode readiness, and arrange Apple
+     signing/provisioning. Pin the SDK/toolchain and dependencies.
+   - Determine the existing headless display mechanism and establish a safe
+     recovery procedure using retained PCoIP access. No tablet is required.
+   - Confirm FileVault disabled without changing it; inventory permissions.
+   - Deliver a documented capability/permission matrix. No product support
+     claims from dormant upstream macOS files or SDK declarations alone.
+
+2. Headless display, LoginWindow, and basic input probes.
+   - Prove independent headless display availability and useful selectable
+     resolutions; a desktop dependent on an active PCoIP display is not a pass.
+   - Minimal machine service + graphical agent: capture changing frames and
+     inject keyboard/mouse at the normal login screen and user desktop.
+   - Boot without automatic login, remotely authenticate and log in, logout,
+     reconnect, lock/unlock, and repeat. Reboots require operator coordination.
+   - Prove unauthorized clients cannot view or control either context.
+   - Test ordinary desktop navigation, scrolling, dragging, and cursor mapping.
+   - Stop if headless display or login-screen access requires unsupported APIs or
+     unresolved permissions. Preserve probe evidence; do not layer workarounds.
+
+3. Apple media pipeline qualification.
+   - ScreenCaptureKit -> shared buffers -> VideoToolbox real hardware encode.
+   - Test HEVC 10-bit 4:2:0 and H.264 8-bit 4:2:0 at 2160p60 where supported.
+   - Record capture format, actual encoder, color metadata, encode latency,
+     frame ordering, copies, queue depth, bitrate response, and resource use.
+   - Validate decoded images and prove any advertised 10-bit precision.
+
+4. End-to-end PLANK integration.
+   - Wire the proven native components to existing session/media contracts.
+   - Add synchronized bookmark capabilities, profiles, stats, and exact decode.
+   - Validate Client local toolbar, Native/Scaled-Span, mismatched resolutions,
+     Retina logical-point/backing-pixel conversion, and full/windowed toggles.
+   - Complete secure login/logout, reconnect, and explicit takeover transitions.
+
+5. Performance, resilience, and Linux regression qualification.
+   - Measure capture/encode/network/decode/render separately, including p50,
+     p95, p99 and maximum stalls. Measure glass-to-glass and input-to-photon
+     with an appropriate physical test; do not promise 8 ms from API choices.
+   - Run static and moving content, scene cuts, text, scrolling, dragging, and audio.
+     Require sustained requested frame rate with bounded queue depth/RSS.
+   - Test Client-ingress random loss at 0.5/1/2/5/10%, burst loss, high bitrate,
+     real outage, Wait/Disconnect, and recovery. Remove injected loss afterward.
+   - Follow applicable Linux acceptance timing gates: 15-minute candidate run,
+     two-hour A/V drift validation, eight-hour mixed-workload soak.
+   - Requalify affected Linux profiles, Wacom pressure/Tablet Margins, cursor,
+     toolbar, session ownership, transport, and package dependency gates.
+
+6. Packaging and release qualification.
+   - Add a dedicated macOS builder/path contract and reproducible clean-worktree
+     runbook. Keep existing linux-host-builder/linux-client-builder roles unchanged.
+   - Produce signed/notarized Host installation artifacts with launchd setup,
+     guided permissions, dependency/license inventory, and exact provenance.
+   - Choose/document native config, state, private TLS, and product-log paths;
+     use local wall-clock timestamps and bounded retention. No credentials in
+     repository, command lines, environment, or logs.
+   - Test fresh install, upgrade, logout/reboot persistence, crash recovery,
+     rollback, and clean uninstall without deleting administrator data.
+   - Keep feature branch visible in candidate package/application versions.
+     Merge/release only after user acceptance and the applicable gates pass.
+
+7. Optional Wacom pressure enhancement, after general desktop acceptance.
+   - Agree on a drawing test application and supply a Client tablet then.
+   - Probe native normalized pen input before considering virtual HID.
+   - Validate pressure, tip transitions, visible hover/drawing cursor, accurate
+     positioning, reconnect, and cleanup. Tablet Margins are not required.
+   - Do not block the general desktop release on this phase. Any shared Client
+     changes must preserve existing Linux Wacom behavior and its test gates.
+
+## Research references to revalidate against the selected SDK/OS
+
+These projects are reference points, not implementations to copy verbatim.
+
+- HiDPI mode ordering, persisted preferences, and display lifecycle reference
+  (author-reported behavior must be reproduced on the development Mac):
+  https://github.com/pasky/hidpi-mirror
+- Concrete Objective-C++ virtual-display lifecycle reference; reviewed pitfalls
+  and adaptation boundaries are recorded in macos-host-investigation.md:
+  https://github.com/enfp-dev-studio/node-mac-virtual-display/blob/main/src/virtual_display.mm
+- User-provided class-dump reference for the virtual-display API PCoIP imports
+  (undocumented API, not an Apple public SDK header):
+  https://github.com/w0lfschild/macOS_headers/blob/master/macOS/Frameworks/CoreGraphics/1336/CGVirtualDisplay.h
+- Apple DTS LoginWindow/ScreenCaptureKit architecture discussion:
+  https://developer.apple.com/forums/thread/814152
+- Persistent content capture entitlement and approval requirements:
+  https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.persistent-content-capture
+- ScreenCaptureKit color/capture configuration:
+  https://developer.apple.com/videos/play/wwdc2024/10088/
+- VideoToolbox capabilities and compression-session properties:
+  https://developer.apple.com/documentation/videotoolbox
+- Wacom native macOS tablet-event semantics:
+  https://developer-docs.wacom.com/docs/icbt/macos/ns-events/ns-events-basics/
+- Apple virtual HID alternative, only if native event tests fail:
+  https://developer.apple.com/documentation/corehid/creatingvirtualdevices
+- FileVault security implications:
+  https://support.apple.com/guide/security/volume-encryption-with-filevault-sec4c6dc1b6e/web
+
+These references guide experiments; none establishes that PLANK's macOS Host
+already works. Record exact hardware/OS and actual results alongside each gate.
+
+## Stopping point and resume checklist
+
+**Current priority: Host first, as specified at the top of this plan.** Preserve
+the Client checkpoints and stop preview-only integration. Next qualify system
+audio on development-mac using the existing audio transport/decoder contract, then native
+input/cursor and complete session lifecycle. No new Client build/deployment.
+
+Earlier September 7 preview checkpoint (historical): one-use stream claims, typed HTTPS launch, idle/topology revocation,
+capture/transport lifecycle, native bitrate/control handling and actual
+ScreenCaptureKit → hardware VideoToolbox → native QUIC now pass component and
+short authenticated live loopback tests. No desktop pixels were persisted.
+The ordinary Client remains explicitly gated. Next connect its fixed geometry,
+typed launch and explicit optional audio/cursor/input negotiation before removing
+that gate. Do not invent capabilities to satisfy Linux assumptions. Live decode,
+presentation, performance and complete LoginWindow lifecycle remain open.
+This is not a user-testable Mac Host release. See
+`macos-native-video.md`, `macos-authentication.md` and HANDOFF for exact evidence.
+
+Implementation was authorized on 2026-09-06. Root branch macos-host starts at
+e451f24e88ea67ebcd97d1984a39d10c0b4d23b2. Host and Client forks are unchanged
+on plank/main until platform implementation requires edits there.
+Read-only investigation of the reference M4 Mac is complete; findings are in
+macos-host-investigation.md. The later user instruction pauses further work
+until a dedicated development Mac is provided. No probe was uploaded, built,
+or run. The locally drafted passive probe is unvalidated, not qualification.
+Resume on the dedicated Mac with headless-display API feasibility and then
+LoginWindow/basic input. Signing arrangements and disruptive tests need
+coordination; preserve an independent recovery path.
+
+Closeout confirmed with the user on 2026-09-06: useful read-only investigation
+is complete. There is no ongoing investigation or background task to wait for.
+Do not keep investigating the reference Mac automatically on resume.
+
+The user has now provided and prepared the dedicated Mac as recorded above.
+The historical hardware wait is resolved. Current resume checklist:
+
+1. Confirm its hardware, OS/SDK, authorized access, FileVault state, signing
+   arrangements, and recovery access; do not assume the reference Mac's setup.
+2. Review the undocumented virtual-display API tradeoff before implementation.
+   The three user-supplied projects are references only, not code to copy.
+3. Passive inventory and 1080p60 virtual-display create/verify/release passed
+   in LoginWindow and Aqua. Qualify other modes and session changes later; not yet done.
+4. Build-2 desktop and post-logout LoginWindow ScreenCaptureKit passed after
+   consent, with input preflight allowed in both. The new certificate-signed
+   replacement passed after fresh consent and retained permissions through a
+   same-certificate rebuild and post-logout LoginWindow capture. Owned-display
+   capture/removal also passed in LoginWindow and Aqua. Build 8 passed actual
+   input into its Aqua test window. Builds 11/12 pass LoginWindow pointer
+   coordinate readback after adding the pre-login executable declaration, but
+   the operator saw no movement and deferred further input testing. Do not
+   resume those tests automatically. Visible input, session transitions and
+   cold-boot persistence remain future coordinated gates.
+5. Hardware VideoToolbox synthetic profile tests passed at 1080p/2160p; actual
+   ScreenCaptureKit-to-encoder handoff now passes limited live LoginWindow
+   tests. Build 18 also passes bounded 1080p animated-chart color/encode/decode
+   checks. Build 21's failed-source guard passed negative checks, but 4K chart
+   qualification subsequently passed on a confirmed unlocked desktop, including
+   independent HEVC decode. Owned-display removal still fails before process
+   exit after an actual mode change in the original in-process approach. The
+   separate owner and parent media path now passes bounded LoginWindow geometry,
+   teardown/replacement and forced-owner-loss tests. One repeated media case
+   had a queue-overflow frame; sustained performance is not qualified. Next
+   validate desktop charts with the new owner path;
+   keep the operator's Screen Sharing session connected for desktop chart tests.
+   Sustained moving content, audio and end-to-end latency remain open. Wacom
+   pressure remains a late optional phase; Flame is not a requirement.
+
+No new release artifacts, version changes, deployments, or merge accompany
+this stopping point. Existing Linux acceptance and build policy remain intact.

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-source "${repo_dir}/scripts/package-version.sh"
+source "${repo_dir}/scripts/package/package-version.sh"
 plank_load_package_version "$repo_dir"
 
 base_version=$(<"${repo_dir}/packaging/VERSION")
@@ -17,12 +17,12 @@ else
 fi
 test "$PLANK_RPM_VERSION" = "$base_version"
 rg -Fxq 'Version: @VERSION@' \
-  "${repo_dir}/plank-relay/packaging/control"
+  "${repo_dir}/packaging/relay/linux/control"
 rg -Fxq 'Version: @VERSION@' \
-  "${repo_dir}/plank-wake-agent/packaging/control"
+  "${repo_dir}/packaging/wake-agent/linux/control"
 rg -Fxq '%{!?plank_version:%{error:plank_version must be defined by the package builder}}' \
-  "${repo_dir}/packaging/rpm/plank-host.spec"
+  "${repo_dir}/packaging/host/linux/rpm/plank-host.spec"
 rg -Fxq '%{!?plank_release:%{error:plank_release must be defined by the package builder}}' \
-  "${repo_dir}/packaging/rpm/plank-host.spec"
+  "${repo_dir}/packaging/host/linux/rpm/plank-host.spec"
 
 echo "release_version_contract=pass"

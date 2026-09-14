@@ -3,12 +3,12 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-host_launcher=${repo_dir}/packaging/bin/plank-host
-host_profile=${repo_dir}/packaging/config/plank-host.conf
-client_policy=${repo_dir}/packaging/config/plank-client.conf
-client_main=${repo_dir}/client/moonlight-qt-fork/app/main.cpp
-client_path=${repo_dir}/client/moonlight-qt-fork/app/path.cpp
-client_project=${repo_dir}/client/moonlight-qt-fork/app/app.pro
+host_launcher=${repo_dir}/packaging/host/linux/bin/plank-host
+host_profile=${repo_dir}/packaging/host/linux/config/plank-host.conf
+client_policy=${repo_dir}/packaging/client/linux/config/plank-client.conf
+client_main=${repo_dir}/apps/client/app/main.cpp
+client_path=${repo_dir}/apps/client/app/path.cpp
+client_project=${repo_dir}/apps/client/app/app.pro
 
 expect_status() {
   local expected=$1
@@ -32,7 +32,7 @@ expect_status 1 env DISPLAY=:99 XAUTHORITY=/does/not/exist \
   PLANK_HOST_BINARY=/bin/true \
   PLANK_AUTH_SOCKET=/does/not/exist "${host_launcher}"
 
-if [[ -e ${repo_dir}/packaging/bin/plank-client ]]; then
+if [[ -e ${repo_dir}/packaging/client/linux/bin/plank-client ]]; then
   echo 'Client package still carries an unnecessary launcher wrapper' >&2
   exit 1
 fi

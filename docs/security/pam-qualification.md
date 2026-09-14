@@ -26,7 +26,7 @@ Account-policy checks do not require a password:
 ```bash
 qualification_build=${PLANK_BUILD_DIR:-"${PLANK_WORK_ROOT:-${XDG_CACHE_HOME:-${HOME}/.cache}/plank-build/work}/qualification"}
 sudo "$qualification_build/plank-probe-pam" --account-only operator
-./scripts/probe-pam-policy.sh
+./scripts/test/probe-pam-policy.sh
 ```
 
 Expected results are a valid configured root policy and success for an
@@ -38,7 +38,7 @@ whose external policy has a known denied identity, name it explicitly:
 
 ```bash
 PLANK_PAM_EXPECTED_DENIED_USER=denied-user \
-  ./scripts/probe-pam-policy.sh
+  ./scripts/test/probe-pam-policy.sh
 ```
 
 Without that variable, the external-policy denial line is reported as

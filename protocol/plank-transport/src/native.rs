@@ -538,7 +538,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "run through scripts/run-plank-transport-native-loopback.sh"]
+    #[ignore = "run through scripts/test/run-plank-transport-native-loopback.sh"]
     async fn native_kyproto_round_trip_preserves_all_initial_lanes() {
         crate::init_crypto_once();
         let (certificate_path, private_key_path, certificate_sha256) = test_certificate_paths();
@@ -826,7 +826,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "run through scripts/run-plank-transport-native-loopback.sh"]
+    #[ignore = "run through scripts/test/run-plank-transport-native-loopback.sh"]
     async fn native_raptorq_survives_progressive_transport_loss_at_150_mbps() {
         crate::init_crypto_once();
         let (certificate_path, private_key_path, certificate_sha256) = test_certificate_paths();

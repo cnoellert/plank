@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("installer", ROOT / "scripts/install-macos-host-development.py")
+SPEC = importlib.util.spec_from_file_location("installer", ROOT / "scripts/maintenance/install-macos-host-development.py")
 INSTALLER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(INSTALLER)
 PUBLIC = {"Address": "0.0.0.0", "Port": 28989, "Name": "PLANK test",
@@ -48,7 +48,7 @@ class RoleIdentityTests(unittest.TestCase):
 
     def test_uninstaller_rejects_foreign_or_symlink_jobs(self):
         from unittest.mock import MagicMock
-        spec = importlib.util.spec_from_file_location("uninstaller", ROOT / "scripts/uninstall-macos-host-development.py")
+        spec = importlib.util.spec_from_file_location("uninstaller", ROOT / "scripts/maintenance/uninstall-macos-host-development.py")
         uninstaller = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(uninstaller)
         path = MagicMock()
@@ -79,12 +79,12 @@ class RoleIdentityTests(unittest.TestCase):
             self.assertEqual(before, (directory / "key.der").read_bytes())
 
     def test_system_agent_and_uninstall_scope(self):
-        script = (ROOT / "scripts/install-macos-host-development.py").read_text()
+        script = (ROOT / "scripts/maintenance/install-macos-host-development.py").read_text()
         self.assertIn('[executable, "--desktop", machine_label]', script)
         self.assertIn('Path("/Library/LaunchAgents") / (graphical_label + ".plist")', script)
         self.assertNotIn('parser.add_argument("--desktop-user"', script)
         self.assertIn('os.setuid(account.pw_uid)', script)
-        uninstall = (ROOT / "scripts/uninstall-macos-host-development.py").read_text()
+        uninstall = (ROOT / "scripts/maintenance/uninstall-macos-host-development.py").read_text()
         self.assertLess(uninstall.index('INSTALLER.stop_roles()'), uninstall.index('path.unlink()'))
         self.assertNotIn('rmtree', uninstall)
         self.assertNotIn('tccutil', uninstall)
@@ -141,7 +141,7 @@ class RoleIdentityTests(unittest.TestCase):
                 with patch.object(INSTALLER, "signing_identity", side_effect=[changed, identity]):
                     with self.assertRaisesRegex(ValueError, "preserving installed app"):
                         INSTALLER.verify_upgrade_identity(source, installed)
-            script = (ROOT / "scripts/install-macos-host-development.py").read_text()
+            script = (ROOT / "scripts/maintenance/install-macos-host-development.py").read_text()
             self.assertLess(script.index("verify_upgrade_identity(source, installed)", script.index("def main")),
                             script.index('machine_state.mkdir(', script.index("def main")))
 
@@ -187,9 +187,9 @@ class RoleIdentityTests(unittest.TestCase):
                     INSTALLER.signing_identity(app)
 
     def test_host_icon_is_generated_from_shared_client_artwork(self):
-        info = plistlib.loads((ROOT / "packaging/macos/host-info.plist").read_bytes())
+        info = plistlib.loads((ROOT / "packaging/host/macos/host-info.plist").read_bytes())
         self.assertEqual(info["CFBundleIconFile"], "plank.icns")
-        build = (ROOT / "scripts/build-macos-host.sh").read_text()
+        build = (ROOT / "scripts/build/build-macos-host.sh").read_text()
         self.assertIn('branding/assets/plank-logo.png', build)
         self.assertIn('Contents/Resources/plank.icns', build)
         self.assertLess(build.index('iconutil -c icns'), build.index('codesign --force --sign "$PLANK_MACOS_SIGNING_IDENTITY"'))

@@ -26,7 +26,7 @@ for index in $(seq 0 60); do
 done
 
 stable_output=$(
-  "$repo_dir/scripts/analyze-av-sync-telemetry.py" "$stable_log" \
+  "$repo_dir/scripts/test/analyze-av-sync-telemetry.py" "$stable_log" \
     --warmup-seconds 0 \
     --min-duration-seconds 60 \
     --max-relative-drift-ms 1 \
@@ -46,7 +46,7 @@ rg -q '^av_sync_gate=pass$' <<<"$stable_output"
 
 cp -- "$stable_log" "$skipped_log"
 sed -i '0,/skipped=0/s//skipped=1/' "$skipped_log"
-if "$repo_dir/scripts/analyze-av-sync-telemetry.py" "$skipped_log" \
+if "$repo_dir/scripts/test/analyze-av-sync-telemetry.py" "$skipped_log" \
   --warmup-seconds 0 \
   --max-skipped-audio-blocks 0 \
   >"${work_dir}/skipped.out"; then
@@ -57,7 +57,7 @@ rg -q '^audio_blocks_skipped=1$' "${work_dir}/skipped.out"
 rg -q '^av_sync_gate=fail \(skipped audio blocks\)$' \
   "${work_dir}/skipped.out"
 
-if "$repo_dir/scripts/analyze-av-sync-telemetry.py" "$drifting_log" \
+if "$repo_dir/scripts/test/analyze-av-sync-telemetry.py" "$drifting_log" \
   --warmup-seconds 0 \
   --min-duration-seconds 60 \
   --max-projected-relative-drift-ms-per-hour 100 \

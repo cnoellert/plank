@@ -7,11 +7,11 @@ workstation from the repository root:
 - [Ada `hardware-test-host` qualification](rocky-hardware-test-host-2026-08-19.md)
 - [Ampere/Turing capability matrix](nvidia-host-matrix-2026-08-19.md)
 - [Intel NUC client qualification](intel-nuc-client-qualification.md)
-- [End-to-end audio qualification](../audio-qualification.md)
+- [End-to-end audio qualification](../architecture/audio-qualification.md)
 - [Current RGS session-transition reference](reference-host-rgs-session-transition-2026-08-22.md)
 
 ```bash
-./scripts/run-host-qualification.sh
+./scripts/test/run-host-qualification.sh
 ```
 
 The command builds the probes, runs a ten-second 60 fps X11-to-CUDA capture gate
@@ -53,7 +53,7 @@ With real changing content already fullscreen on the host, generate the two
 controlled-loss recovery vectors with:
 
 ```bash
-./scripts/run-video-recovery-qualification.sh
+./scripts/test/run-video-recovery-qualification.sh
 ```
 
 This omits one complete access unit, then tests reference invalidation and a
@@ -63,7 +63,7 @@ synchronized no-loss reference. Copy the streams to the NUC, run
 decoded Y410 frame with:
 
 ```bash
-./scripts/probe-intel-recovery-pixels.sh \
+./scripts/test/probe-intel-recovery-pixels.sh \
   plank-recovery-ref-invalidate-reference.hevc \
   plank-recovery-ref-invalidate.hevc 180 600 120
 ```
@@ -75,7 +75,7 @@ controls, not production capture candidates. They interrupt the graphical
 session and are unnecessary for routine qualification:
 
 ```bash
-./scripts/probe-xorg-modesetting-kms.sh --confirm-display-outage
+./scripts/test/probe-xorg-modesetting-kms.sh --confirm-display-outage
 ```
 
 This deliberately stops GDM, starts a temporary depth-30 Xorg server, probes
@@ -87,7 +87,7 @@ shadow framebuffer is not an acceptable production capture path.
 To test the NVIDIA driver's advertised `XB30` scanout directly, without Xorg:
 
 ```bash
-./scripts/probe-direct-kms-xb30.sh --confirm-display-outage
+./scripts/test/probe-direct-kms-xb30.sh --confirm-display-outage
 ```
 
 This also stops and restores GDM. It displays a short 10-bit test pattern,
@@ -105,7 +105,7 @@ qualification_build=${PLANK_BUILD_DIR:-"${PLANK_WORK_ROOT:-${XDG_CACHE_HOME:-${H
 ```
 
 Run `sudo "$qualification_build/plank-probe-uhid" --self-test-mouse` to verify
-the UHID transport itself. Then run `./scripts/probe-wacom-uhid.sh` to create an
+the UHID transport itself. Then run `./scripts/test/probe-wacom-uhid.sh` to create an
 eight-second virtual copy from the physical Wacom interface descriptor and
 check whether `hid-wacom` exposes input devices. The Wacom probe deliberately
 declines feature/output reports; bidirectional report forwarding is a later
@@ -132,7 +132,7 @@ sudo "$qualification_build/plank-probe-uhid" --product 0357 \
 ```
 
 For client-side exact raw-HID forwarding, install
-`packaging/udev/70-plank-client-wacom.rules` on the Ubuntu client and
+`packaging/client/linux/udev/70-plank-client-wacom.rules` on the Ubuntu client and
 reload udev before attaching the tablet. The rule grants only the active local
 session access to Wacom input and hidraw interfaces; it does not make those
 devices globally writable. PLANK grabs the complete tablet group while

@@ -2,7 +2,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location('flow', Path(__file__).parents[2] / 'scripts/analyze-client-frame-flow.py')
+spec = importlib.util.spec_from_file_location('flow', Path(__file__).parents[2] / 'scripts/test/analyze-client-frame-flow.py')
 flow = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(flow)
 

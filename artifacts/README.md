@@ -19,7 +19,7 @@ acceptance or a published release. Read each manifest's validation state.
 Collection records package gates separately from functional validation; it
 never upgrades a successful compile into an accepted product.
 
-The shared collector is `scripts/collect-package.py`. All package builders
+The shared collector is `scripts/package/collect-package.py`. All package builders
 call it only after their package gates pass. `PLANK_ARTIFACT_ROOT` optionally
 selects the package collection root; otherwise the retained canonical root's
 `artifacts/packages` is used (or the source root when no canonical root is set).
