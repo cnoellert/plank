@@ -1,5 +1,53 @@
 # PLANK
 
+This is a fork of Sunshine/Moonlight with deep changes relevant to secure VFX Remote Desktop workflows. 
+
+## Status:
+macOS Host is beta quality.
+macOS Client is alpha.
+
+## Hardware:
+Ideal hardware for Ubuntu client would be an Intel based NUC generation 12 or higher, or an Intel N150 or higher mini-pc.  These support hardware HEVC 10bit 4:4:4 decode.
+
+## INSTALL:
+RockyLinux 9.7 Host:
+dnf install ./plank-host-X.XXXX.1.el9.x86_64.rpm
+
+## Ubuntu 26.04 Client:
+apt-get install ./plank-client_1.0.89_amd64.deb
+
+
+## Uninstall:
+RockyLinux 9.7 Host:
+dnf remove plank-host
+
+
+## Ubuntu 26.04 Client:
+apt-get remove plank-client
+
+
+## macOS 27 Host:
+sudo "/Applications/PLANK Host.app/Contents/Resources/uninstall.sh"
+
+
+## Configuration:
+RockyLinux 9.7 Host: /etc/plank/host.conf
+[display] - If you are going to work hybrid, both in office with a physical display, and also remotely, leave startup_layout = physical.  If you are going to work purely headless, startup_layout = virtual.
+
+Ubuntu 26.04 Client: /etc/plank/client.conf
+
+When creating a bookmark to macOS Host on the Client, make sure to chose “macOS” in the Capture field. It defaults to NvFBC which is for Linux.
+
+## Connectivity:
+The current workflow expects a “direct connection”. There is no “broker”.  You are expected to provide your own VPN/LAN/WAN/Port Forward connection from the Client to Host.
+The default is both TCP/UDP port 28989.
+
+macOS Host has NOT been tested with Flame on Undies.  Photoshop and Pixelmator both successfully receive Wacom pressure with the PTH-8x0 series, without the need for Wacom driver on the macOS host, when connecting from Ubuntu Client.
+
+
+
+
+
 PLANK is a low-latency remote-workstation system with Linux and macOS Hosts
 and Clients. This repository builds independently of private infrastructure.
 
