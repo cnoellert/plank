@@ -81,6 +81,19 @@ plank_build_path_flags /source /output
         result = subprocess.run(['bash', '-c', script, 'test', str(ROOT)], capture_output=True)
         self.assertNotEqual(result.returncode, 0)
 
+    def test_qmake_flags_do_not_leak_into_cargo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            makefile = Path(tmp) / 'Makefile'
+            makefile.write_text('CFLAGS = -include c-only-header.h\nall:\n\t@test -z "$$CFLAGS"\n\t@test -n "$$HOST_CFLAGS"\n')
+            script = '''set -eu
+unset CFLAGS CXXFLAGS
+source "$1/scripts/build/build-paths.sh"
+plank_build_path_flags /source /output
+plank_native_dependency_flags
+make -s -f "$2"
+'''
+            subprocess.run(['bash', '-c', script, 'test', str(ROOT), str(makefile)], check=True)
+
     def test_all_package_entrypoints_enforce_gate(self):
         for name in ('host-rpm', 'client-deb', 'macos-host-pkg', 'macos-client-dmg'):
             self.assertIn('check-package-build-paths.py',

@@ -45,6 +45,9 @@ C/C++ file-prefix maps and Rust remap flags, including the macOS SDK27
 the required Rust flags and is rejected. Build roots must not contain whitespace,
 quotes or equals signs. These mappings affect diagnostic/debug filenames, not
 filesystem access, media configuration or protocol behavior.
+Cargo native objects use `HOST_*FLAGS`/`TARGET_*FLAGS`. Do not export plain
+`CFLAGS`/`CXXFLAGS` through qmake/Make: Make exports its replacement app flags
+to Cargo, which can inject the ARM C-only forced header into Ring assembly.
 
 Client FFmpeg bootstrap sanitizes only the generated `FFMPEG_CONFIGURATION`
 diagnostic string after configure, retaining all codec/platform options and the

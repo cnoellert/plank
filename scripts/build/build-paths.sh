@@ -32,6 +32,10 @@ plank_build_path_flags() {
 # Cargo's cc-rs native dependencies do not consume RUSTFLAGS. Apply the same
 # diagnostic mapping to their C/C++ objects; do not change optimization flags.
 plank_native_dependency_flags() {
-    export CFLAGS="${CFLAGS:+$CFLAGS }$PLANK_C_FILE_FLAGS"
-    export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }$PLANK_C_FILE_FLAGS"
+    # Never export plain CFLAGS/CXXFLAGS: Make would export qmake's replacement
+    # values into Cargo too, including C-only forced headers on assembly files.
+    export HOST_CFLAGS="${HOST_CFLAGS:+$HOST_CFLAGS }$PLANK_C_FILE_FLAGS"
+    export TARGET_CFLAGS="${TARGET_CFLAGS:+$TARGET_CFLAGS }$PLANK_C_FILE_FLAGS"
+    export HOST_CXXFLAGS="${HOST_CXXFLAGS:+$HOST_CXXFLAGS }$PLANK_C_FILE_FLAGS"
+    export TARGET_CXXFLAGS="${TARGET_CXXFLAGS:+$TARGET_CXXFLAGS }$PLANK_C_FILE_FLAGS"
 }
