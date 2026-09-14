@@ -74,6 +74,11 @@ Client DEB and Mac assembly remove debug sections before hashing/signing; the
 unstripped development binary remains available privately. This also removes
 assembly DWARF from static dependencies, which compiler file macros do not map.
 DEB BUILD-INFO records both unstripped-build and actual packaged binary hashes.
+The pinned official macOS Qt6.10.2 libraries contain three public vendor source
+paths (six occurrences). The gate allows only those exact NUL-terminated strings
+inside their specific QtQuick/QtWidgets frameworks, never a general vendor or
+home-directory exemption. They are not operator metadata; do not rebuild Qt or
+edit its runtime strings solely to remove public upstream diagnostics.
 
 ## Classify failures correctly
 

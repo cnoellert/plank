@@ -63,6 +63,22 @@ cc "${PLANK_FILE_FLAGS[@]}" "$2/source.c" -o "$2/test"
                                     text=True, capture_output=True, check=True)
             self.assertEqual(result.stdout.strip(), '/build/plank/source/source.c')
 
+    def test_vendor_exception_is_exact_and_framework_scoped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / 'app/Contents/Frameworks/QtQuick.framework/Versions/A/QtQuick'
+            path.parent.mkdir(parents=True)
+            vendor = b'/Users/qt/work/qt/qtdeclarative/src/quick/designer/qquickdesignersupport.cpp'
+            path.write_bytes(vendor + b'\0')
+            self.assertEqual(check(root), 0)
+            path.write_bytes(vendor + b'/private\0')
+            self.assertEqual(check(root), 1)
+            path.write_bytes(vendor.replace(b'/Users/qt/', b'/Users/build-operator/') + b'\0')
+            self.assertEqual(check(root), 1)
+            path.unlink()
+            (root / 'unrelated').write_bytes(vendor + b'\0')
+            self.assertEqual(check(root), 1)
+
     def test_rust_flags_preserved(self):
         script = '''set -eu
 source "$1/scripts/build/build-paths.sh"
