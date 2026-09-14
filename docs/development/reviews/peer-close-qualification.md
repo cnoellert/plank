@@ -1,7 +1,7 @@
 # Native peer-close qualification
 
 September 13, 2026. Follow-up to the [fresh bootstrap](full-bootstrap-validation.md).
-Runtime fix: `faa316a`; repeat runner: `3b8550f`. Shared package version1.0.98.
+Runtime fix: `faa316a`; repeat runner: `3b8550f`. Shared package version 1.0.98.
 
 ## Cause
 
@@ -40,8 +40,9 @@ submission, FEC, MTU and pacing remain unchanged.
   equally between fingerprint-trusted active connections and certificate-
   approved setup connections promoted to media sessions.
 - Each case checks video/audio/input/control delivery, final queued control,
-  and terminal peer closure within the unchanged2-second bound. The runner
+  and terminal peer closure within the unchanged 2-second bound. The runner
   stops at its first failure; it never retries a failed case.
+- Maximum measured closure: Linux 83.436 ms; macOS 89.270 ms.
 
 Reproduce with the exact freshly compiled archive on the appropriate builder:
 
