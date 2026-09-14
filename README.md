@@ -3,6 +3,7 @@
 This is a fork of Sunshine/Moonlight with deep changes relevant to secure VFX Remote Desktop workflows. 
 
 ## Status:
+Linux Host/Client stable.
 macOS Host is beta quality.
 macOS Client is alpha.
 
