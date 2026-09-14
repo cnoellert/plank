@@ -47,5 +47,12 @@ jobs:
           else
             base="$PUSH_BASE"
             head="$PUSH_HEAD"
+            # A history rewrite may remove the previous tip from this checkout.
+            # Scan the complete new history; never fetch discarded private refs
+            # or treat an unavailable/non-ancestor base as an empty change set.
+            if ! git cat-file -e "${base}^{commit}" 2>/dev/null ||
+               ! git merge-base --is-ancestor "$base" "$head"; then
+              base=0000000000000000000000000000000000000000
+            fi
           fi
           python3 scripts/maintenance/check-private-information.py --range "$base" "$head"
