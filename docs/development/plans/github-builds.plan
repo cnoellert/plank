@@ -1,6 +1,7 @@
 # GitHub-hosted builds
 
-Status: implementation and hosted qualification in progress.
+Status: all four ordinary hosted product builds qualified in separate clean
+runs; signing authority and dependency-cache qualification remain pending.
 
 ## Scope
 

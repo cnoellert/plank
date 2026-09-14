@@ -2,7 +2,7 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
-## Hosted build setup in progress
+## Hosted builds qualified; signing pending
 
 Branch `github-builds` adds GitHub-hosted clean-worktree builds, leaving main and
 the 1.0.103 release unchanged. See
@@ -10,7 +10,7 @@ the 1.0.103 release unchanged. See
 have no signing/deployment secrets, private sources or access to internal
 machines. No candidates have been installed and no existing builder is retired.
 
-Hosted qualification results so far:
+Hosted clean-bootstrap/build qualification results:
 
 - macOS Host compile/portable tests and Ubuntu Client DEB/package gates passed
   in [run 34833324611](https://github.com/instinctual/plank/actions/runs/34833324611).
@@ -19,15 +19,22 @@ Hosted qualification results so far:
   [run 34833858993](https://github.com/instinctual/plank/actions/runs/34833858993).
 - Node 24 privacy checks passed in
   [run 34834417907](https://github.com/instinctual/plank/actions/runs/34834417907).
-- Linux Host retry is active in
+- Linux Host RPM and package gates passed in
   [run 34836078210](https://github.com/instinctual/plank/actions/runs/34836078210),
   explicitly checked against source `882cf322128584b30f48791f2b0ce3436b0a0f55`.
-  Do not claim the Host RPM passed until that run completes.
+  The full CUDA architecture set and independent dependency-patch gates remain
+  enabled; no hardware or installation tests were performed on the runner.
 
-The Client DEB was transferred through the checked collector to
-`artifacts/packages/candidates/1.0.103-github-builds/linux/`. SHA-256:
-`831e04102110cb586ab2824630100f653479691e62a696c8f4852bedea5ccb23`.
-Its manifest retains its actual source commit, not the newer workflow-only tip.
+The Client DEB and Host RPM were transferred through the checked collector to
+`artifacts/packages/candidates/1.0.103-github-builds/linux/`. SHA-256 values:
+
+- Client: `831e04102110cb586ab2824630100f653479691e62a696c8f4852bedea5ccb23`
+- Host: `895d53b9e83bc40759445bcd3ee6cbd807c53fe32a5c0f95b5cdf1dd5d2996db`
+
+Their manifest retains each actual source commit, not the newer workflow-only
+tip. Validation was across separate product runs, not one all-green aggregate
+run at the final notes commit. Eight CI policy/context tests pass, including
+the exact-source check and isolation from inherited runner environment values.
 
 Selected-product manual dispatch permits retries without canceling other
 platforms. Use `scripts/ci/dispatch.sh`: the expected-source gate now rejects
@@ -41,6 +48,10 @@ notarization credentials in a separate protected environment. Ordinary Mac CI
 does not upload unsigned applications as release packages. Initial clean runs
 use no dependency caches; add exact-input caches only after clean bootstrap
 qualification. Hardware/session gates remain separate from hosted build tests.
+The user was asked whether to provision protected GitHub signing secrets or
+retain local Mac signing; no answer/credential transfer is recorded yet.
+The `github-builds` branches are pushed but not merged. Next: resolve signing
+authority, qualify an exact-input dependency cache, and merge approved CI work.
 
 ## Current source
 
