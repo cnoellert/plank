@@ -44,7 +44,8 @@ class ContextTests(unittest.TestCase):
             sha = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
             env_file = base / 'github-env'
             env = dict(os.environ, GITHUB_WORKSPACE=str(source), RUNNER_TEMP=str(base),
-                       GITHUB_SHA=sha, BUILD_REF='feature/check', GITHUB_ENV=str(env_file))
+                       GITHUB_SHA=sha, EXPECTED_SOURCE_SHA=sha,
+                       BUILD_REF='feature/check', GITHUB_ENV=str(env_file))
             subprocess.run(['python3', str(ROOT / 'scripts/ci/context.py')], env=env, check=True,
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             values = dict(line.split('=', 1) for line in env_file.read_text().splitlines())
