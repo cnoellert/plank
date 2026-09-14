@@ -57,6 +57,13 @@ removed miniupnpc dependency, automatic gateway port mappings, IPv6 pinholes,
 or UPnP configuration and command-line toggles. Routing and firewall policy
 remain administrator-managed.
 
+ENet and the inherited GameStream transport are not current build inputs.
+The Host common-C branch is header-only (Input.h, Limelight.h and plank.h),
+with no recursive dependencies or compiled library. Do not restore ENet,
+nanors, retired transport source or their build wiring. Historical builds are
+not supported; preserving attribution/history does not require unused code in
+the current checkout.
+
 The qualified default client video profile is H.264 High 10 4:4:4 identity.
 Decoder selection is internal, not a user preference: test exact-format
 hardware decoding first, then fall back to the FFmpeg software path for the

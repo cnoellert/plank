@@ -4,15 +4,17 @@ Read AGENTS.md and the platform build runbook before work.
 
 ## Current source
 
-The final Host/Client repository is `instinctual/plank`, on `main`, version
-**1.0.101**. It remains PRIVATE pending explicit publication approval. The
+The final Host/Client repository is `instinctual/plank`. Current work is on
+`enet-cleanup`, candidate version **1.0.102**; accepted package source remains
+the 1.0.101 mainline recorded below. It remains PRIVATE pending explicit publication approval. The
 original development repository is preserved privately; do not import its
 history, old gitlinks, deployment notes or credentials here. Private
 infrastructure products remain independent and are not build dependencies.
 
 Maintained companions now use the final `plank-client`, `plank-host-linux`,
 `plank-kymux`, `plank-common-c`, `plank-build-deps`, `plank-libvirtualhid` and
-`plank-enet` repository names. All are new private destinations populated only
+`plank-enet` repository names. ENet is now removed from the current build graph;
+its repository is not required for current builds or publication. All are new private destinations populated only
 with audited refs. External upstream references retain their original targets.
 Author names, noreply attribution, licenses and useful development history are
 preserved. Six unsolicited dependency-update branches from preparation were
@@ -22,6 +24,21 @@ default branches. Pinned runtime dependencies did not change.
 This version rebuilds from the final repository names and rewritten source
 identities. It makes no streaming behavior change relative to 1.0.100. Optional
 Client wake requests remain hidden/disabled without administrator opt-in.
+
+## ENet cleanup
+
+The Host-only common-C branch now contains three protocol headers and no
+compiled implementation or recursive submodules. ENet, nanors and the unused
+GameStream transport/library sources are removed. Input and PLANK wire headers
+are unchanged; Limelight.h only loses the unused ENet RTT query declaration.
+The Host's CMake source list follows the three retained headers. Client and
+KyProto transport sources are unchanged. Historical builds are not supported.
+Do not retain or restore current dependencies solely for old build compatibility.
+
+Seven positive/negative tests pass, including standalone C/C++ header compilation.
+The Host package preflight runs them and requires the header-only dependency.
+Clean Host candidate build is pending. Nothing has been installed or pushed for
+this cleanup yet; branch commits are local until explicitly published.
 
 ## Audit and validation
 

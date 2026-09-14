@@ -189,6 +189,9 @@ for removed_host_transport_dependency_token in \
   fi
 done
 echo "host_plank_transport_legacy_dependency_absence_gate=pass"
+python3 "$repo_dir/scripts/test/check-host-protocol-headers.py" \
+  "$source_dir/third-party/moonlight-common-c"
+python3 "$repo_dir/tests/packaging/test-host-protocol-headers.py"
 
 # KyProto encrypts native media, input, event, and runtime session negotiation
 # traffic. Reject dormant GameStream media-encryption and RTSP setup code.

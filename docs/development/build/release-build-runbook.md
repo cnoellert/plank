@@ -827,6 +827,14 @@ connectivity-test APIs are not PLANK capabilities. The gate requires
 those sources and declarations to remain absent. Do not confuse this cleanup
 with removal of the active `Limelight.h` protocol types.
 
+`host_protocol_headers_only_gate=pass` additionally requires that the Host's
+common-C dependency contain only `Input.h`, `Limelight.h` and `plank.h` under
+`src/`, with a header-only CMake target. It has no recursive dependencies,
+compiled library, ENet or nanors. Initialize this exact Host header branch,
+not the Client implementation branch or an old upstream library checkout.
+The preflight tests reject restored dependencies and compile the retained
+headers as both C and C++. Historical builds are not a maintenance requirement.
+
 The build also prints `host_auth_group_absence_gate=pass`. The branded PAM
 service is `/etc/pam.d/plank-host`; the broker defaults
 `security.allow_root_login` to false and delegates account authorization to the
