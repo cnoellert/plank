@@ -50,8 +50,8 @@ check_baseline \
   apps/client/moonlight-common-c/moonlight-common-c \
   a375aecb1dda17324ed58aee0d274d0c8e072c03
 
-check_submodule_url "$repo_root" apps/host/linux https://github.com/instinctual/plank-host-linux.git
-check_submodule_url "$repo_root" apps/client https://github.com/instinctual/plank-client.git
+check_submodule_url "$repo_root" host/sunshine-fork https://github.com/instinctual/plank-host-linux.git
+check_submodule_url "$repo_root" client/moonlight-qt-fork https://github.com/instinctual/plank-client.git
 check_submodule_url "$repo_root/apps/host/linux" third-party/moonlight-common-c https://github.com/instinctual/plank-common-c.git
 check_submodule_url "$repo_root/apps/host/linux" third-party/build-deps https://github.com/instinctual/plank-build-deps.git
 check_submodule_url "$repo_root/apps/client" moonlight-common-c/moonlight-common-c https://github.com/instinctual/plank-common-c.git
