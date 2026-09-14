@@ -9,7 +9,7 @@ fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
-output_dir=$(realpath -m -- "${2:-${repo_dir}/artifacts/packages}")
+output_dir=$(realpath -m -- "${2:-${build_dir}/packages}")
 source "${repo_dir}/scripts/package-version.sh"
 plank_load_package_version "$repo_dir"
 package_version=$PLANK_PACKAGE_VERSION
@@ -230,3 +230,4 @@ fi
 echo "host_rpm=${rpm_file}"
 echo "plank_package_version=${package_version}"
 echo "host_rpm_manifest_gate=pass"
+plank_collect_package "$repo_dir" host linux x86_64 rocky-9.7 "$rpm_file"

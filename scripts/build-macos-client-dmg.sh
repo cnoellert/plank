@@ -87,3 +87,4 @@ xcrun stapler validate "$dmg"
 spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
 shasum -a 256 "$dmg"
 echo 'macos_client_dmg_gate=pass install=not-performed'
+plank_collect_package "$source_root" client macos arm64 macos-27 "$dmg"

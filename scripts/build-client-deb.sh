@@ -10,7 +10,7 @@ fi
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 moonlight_binary=$(realpath -- "$1")
 ffmpeg_work_dir=$(realpath -- "$2")
-output_dir=$(realpath -m -- "${3:-${repo_dir}/artifacts/packages}")
+output_dir=$(realpath -m -- "${3:-${PLANK_WORK_ROOT:-${repo_dir}/build}/package-client-output}")
 moonlight_source_dir=$(realpath -- "${4:-${repo_dir}/client/moonlight-qt-fork}")
 common_source_dir="${moonlight_source_dir}/moonlight-common-c/moonlight-common-c"
 kyber_source_dir="${repo_dir}/third_party/kyber-kymux"
@@ -394,3 +394,4 @@ if dpkg-deb --field "$deb_file" Depends | rg -q 'libdecor-0-plugin-1-gtk'; then
 fi
 echo "client_deb=${deb_file}"
 echo "client_deb_manifest_gate=pass"
+plank_collect_package "$repo_dir" client linux amd64 ubuntu-26.04 "$deb_file"

@@ -67,3 +67,4 @@ xcrun stapler validate "$output/$name"
 spctl --assess --type install --verbose=2 "$output/$name"
 shasum -a 256 "$output/$name"
 echo 'macos_pkg_gate=pass install=not-performed'
+plank_collect_package "$source_root" host macos arm64 macos-27 "$output/$name"

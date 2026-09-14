@@ -45,3 +45,14 @@ plank_load_package_version() {
     PLANK_RPM_RELEASE="0.${build_branch//-/_}.1"
   fi
 }
+
+# Collection happens only after the package's existing independent gates pass.
+# An explicit artifact root allows builders to collect outside candidate trees.
+plank_collect_package() {
+  local root=$1 product=$2 platform=$3 architecture=$4 target_os=$5 package=$6
+  python3 "$root/scripts/collect-package.py" --source-root "$root" \
+    --package "$package" --product "$product" --platform "$platform" \
+    --architecture "$architecture" --target-os "$target_os" \
+    --branch "$PLANK_BUILD_BRANCH_RESOLVED" --validation passed \
+    --output-root "${PLANK_ARTIFACT_ROOT:-${PLANK_CANONICAL_ROOT:-$root}/artifacts/packages}"
+}
