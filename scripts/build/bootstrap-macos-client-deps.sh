@@ -20,7 +20,8 @@ plank_build_path_flags "$PLANK_SOURCE_ROOT" "$PLANK_MAC_CLIENT_DEPS"
 fetch() {
     local url=$1 hash=$2 name=${1##*/}
     local archive="$PLANK_MAC_CLIENT_DEPS/downloads/$name"
-    [[ -f $archive ]] || curl --fail --location --output "$archive" "$url"
+    [[ -f $archive ]] || curl --fail --location --retry 3 --connect-timeout 30 \
+        --max-time 900 --output "$archive" "$url"
     printf '%s  %s\n' "$hash" "$archive" | shasum -a 256 -c -
     tar -xf "$archive" -C "$PLANK_MAC_CLIENT_DEPS/src"
 }

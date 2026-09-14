@@ -5,7 +5,6 @@ source /etc/os-release
 case "$role:$ID:$VERSION_ID" in
   host:rocky:9.7)
     test "$(id -u)" = 0
-    dnf install -y dnf-plugins-core
     # Freeze the Rocky minor release rather than following the moving 9 mirror.
     for pair in baseos:BaseOS appstream:AppStream crb:CRB extras:extras; do
       repo=${pair%%:*}; directory=${pair#*:}
@@ -16,7 +15,7 @@ case "$role:$ID:$VERSION_ID" in
     dnf install -y epel-release
     dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
     dnf install -y --setopt=install_weak_deps=False \
-      autoconf automake clang cmake curl git libtool make nasm ninja-build patch \
+      autoconf automake clang cmake curl-minimal git libtool make nasm ninja-build patch \
       pkgconf-pkg-config ripgrep rpm-build cpio wget xz tar gzip python3 \
       gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ \
       cuda-compiler-13-0 cuda-cudart-devel-13-0 cuda-driver-devel-13-0 \
