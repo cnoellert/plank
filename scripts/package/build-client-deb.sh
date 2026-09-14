@@ -37,7 +37,7 @@ source "${repo_dir}/scripts/package/package-version.sh"
 plank_load_package_version "$repo_dir"
 package_version=$PLANK_PACKAGE_VERSION
 
-for command_name in cmp dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum tar; do
+for command_name in cmp dpkg-deb dpkg-shlibdeps du git install md5sum realpath rg sha256sum strip tar; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -119,6 +119,9 @@ mkdir -p "$stage_dir/DEBIAN" "$private_lib_dir" "$work_dir/debian"
 
 install -D -m 0755 "$moonlight_binary" \
   "$stage_dir/usr/bin/plank-client"
+# Static Cargo dependencies may carry assembly DWARF even in a release build.
+# Drop debug sections during package assembly; retain symbols and executable code.
+strip --strip-debug "$stage_dir/usr/bin/plank-client"
 install -D -m 0644 "$repo_dir/packaging/client/linux/config/plank-client.conf" \
   "$stage_dir/etc/plank/client.conf"
 printf '%s\n' '/etc/plank/client.conf' \
@@ -209,7 +212,8 @@ moonlight-common-c commit: ${common_commit}
 Kyber kymux commit: ${kyber_commit}
 FFmpeg version: ${ffmpeg_version}
 FFmpeg source SHA-256: ${ffmpeg_sha256}
-Moonlight binary SHA-256: $(sha256sum "$moonlight_binary" | awk '{print $1}')
+Unstripped build binary SHA-256: $(sha256sum "$moonlight_binary" | awk '{print $1}')
+Packaged binary SHA-256: $(sha256sum "$stage_dir/usr/bin/plank-client" | awk '{print $1}')
 EOF
 installed_size=$(du -sk "$stage_dir/usr" | awk '{print $1}')
 sed -e "s/@VERSION@/${package_version}/" \

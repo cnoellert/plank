@@ -67,6 +67,10 @@ It rejects embedded Linux/macOS home paths
 and reports counts only. Run `tests/packaging/test-build-paths.py` when changing
 this policy. This narrow reproducibility gate supplements, not replaces, the
 private denylist/history/asset audit and live runtime acceptance.
+Client DEB and Mac assembly remove debug sections before hashing/signing; the
+unstripped development binary remains available privately. This also removes
+assembly DWARF from static dependencies, which compiler file macros do not map.
+DEB BUILD-INFO records both unstripped-build and actual packaged binary hashes.
 
 ## Classify failures correctly
 

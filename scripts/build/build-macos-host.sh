@@ -80,6 +80,7 @@ sources=(apps/host/macos/auth/authentication-session.m apps/host/macos/auth/grap
     apps/host/macos/session/host-runtime.m apps/host/macos/session/host-main.m)
 xcrun clang "${common[@]}" "-DPLANK_MACOS_HOST_VERSION=\"$PLANK_MACOS_HOST_VERSION\"" \
     "${sources[@]}" "$archive" -lpthread -lm -o "$output/plank-host"
+strip -S "$output/plank-host"
 # Ad-hoc is only for uninstalled assembly checks. TCC/live capture needs the
 # protected Apple-signed application and is NOT qualified by this build.
 codesign --force --sign - --identifier la.instinctual.PLANK.Host "$output/plank-host"

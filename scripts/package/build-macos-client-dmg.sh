@@ -52,6 +52,8 @@ for name in SDL3-3.4.2 SDL3_ttf-3.2.2 opus-1.5.2 openssl-3.5.5 freetype-2.14.1 f
 done
 while IFS= read -r -d '' binary; do
     file -b "$binary" | grep -q 'Mach-O' || continue
+    # Remove debug sections before distribution signing, not runtime strings.
+    strip -S "$binary"
     # macdeployqt relocates linked libraries; remove developer-only search paths.
     while IFS= read -r rpath; do
         case "$rpath" in
