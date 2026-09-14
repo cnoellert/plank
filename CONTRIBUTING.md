@@ -4,6 +4,10 @@ Start with [AGENTS.md](AGENTS.md), the [platform matrix](docs/development/platfo
 and the [build runbooks](docs/development/build/). Current work and outstanding
 validation are recorded in [HANDOFF.md](HANDOFF.md).
 
+For a fresh fork, read [Building from source](docs/development/build/from-source.md),
+including the distinction between dependency bootstrap, development builds and
+macOS distribution signing. No maintainer signing key is needed to compile.
+
 ## Where changes belong
 
 - Product code: `apps/`. The Client is one shared cross-platform tree, not a

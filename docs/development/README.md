@@ -1,6 +1,7 @@
 # Development
 
 - [Platform matrix](platforms.md)
+- [Build a fork from source](build/from-source.md)
 - [Acceptance criteria](acceptance-criteria.md)
 - [Release build runbook](build/release-build-runbook.md)
 - [Builder bootstrap](build/builder-vm-bootstrap.md)

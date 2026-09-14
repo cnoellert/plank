@@ -15,6 +15,8 @@ if(BUILD_TESTING)
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-package-collection.py")
   add_test(NAME repository-layout
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/test/check-repository-layout.py")
+  add_test(NAME bootstrap-inputs
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-bootstrap-inputs.py")
 endif()
 
 if(PLANK_BUILD_LINUX_QUALIFICATION)

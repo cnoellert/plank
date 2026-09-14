@@ -4,6 +4,14 @@ Experimental Apple Silicon/macOS27 only. Read the canonical release runbook
 first. Linux builder/test roles remain unchanged. Use clean Git worktrees and
 verified Git bundles imported dependency-first, with recursive fetch disabled.
 
+Install Xcode/SDK27 and accept its license before bootstrap. Required tools are
+Apple clang/make/git, Python3 with `venv`/pip, curl, tar, patch and CMake. The
+bootstrap finds the official CMake app in `/Applications/CMake.app/Contents/bin`
+or `cmake` on PATH; install CMake separately, as Xcode does not supply it.
+Rust1.89.0 bootstrap is covered by the Host runbook. Signing certificates are
+not needed for these dependency/application compilation steps; see
+[building a fork](from-source.md) for the separate distribution requirements.
+
 The dedicated Mac retains its canonical clone under `~/dev/plank` and private
 inputs under `~/Library/Caches/plank-build`. Export these machine-specific
 values explicitly; never infer a path from an old candidate directory:
