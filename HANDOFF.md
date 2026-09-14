@@ -9,7 +9,11 @@ merged and all four mainline **1.0.103** packages passed build and payload revie
 from root **06bc71add24d7b7bddd19db1a9c2e914f0cb8383**. Later notes commits
 do not change those package bytes. ENet cleanup was pushed and
 merged at **5844885**; its **1.0.102** candidate provenance is retained below.
-The repository remains PRIVATE pending explicit publication approval. The
+The audited Host/Client repository and its six required maintained dependencies
+are PUBLIC following explicit approval. Release
+[v1.0.103](https://github.com/instinctual/plank/releases/tag/v1.0.103) contains
+the four verified packages, checksums and provenance manifest. Fresh live-session
+testing was explicitly skipped for this release, not reported as passed. The
 original development repository is preserved privately; do not import its
 history, old gitlinks, deployment notes or credentials here. Private
 infrastructure products remain independent and are not build dependencies.
@@ -17,8 +21,9 @@ infrastructure products remain independent and are not build dependencies.
 Maintained companions now use the final `plank-client`, `plank-host-linux`,
 `plank-kymux`, `plank-common-c`, `plank-build-deps`, `plank-libvirtualhid` and
 `plank-enet` repository names. ENet is now removed from the current build graph;
-its repository is not required for current builds or publication. All are new private destinations populated only
-with audited refs. External upstream references retain their original targets.
+its repository is not required for current builds and remains private. The seven
+published repositories were fresh destinations populated only with audited refs.
+External upstream references retain their original targets.
 Author names, noreply attribution, licenses and useful development history are
 preserved. Six unsolicited dependency-update branches from preparation were
 excluded; inherited automatic update schedules are disabled on the affected
@@ -144,9 +149,16 @@ The older **1.0.100/1.0.101** assets are not cleared for publication: their bina
 build-path metadata is not repaired retroactively by 1.0.103. Do not republish,
 patch signed binaries or relabel their manifests.
 
-No installation, deployment, GitHub Release or public visibility change is
-authorized by this preparation. Remaining gates: hardware/session acceptance,
-explicit publication approval and independent
-credential-rotation review. Older preparation hosting objects are not cleared
+Publication was authorized after the operator waived fresh hardware/session
+testing for 1.0.103. That waiver does not change package-manifest functional
+validation to passed, or waive future acceptance criteria. No packages were
+installed on test or production machines. Credential rotation remains the
+operator's separate responsibility, not a verified audit result.
+
+The release tag points to the exact package source commit above; later notes
+commits on main do not change it. All six release assets were downloaded without
+authentication and SHA-256 verified. The seven repositories are anonymously
+accessible. Private infrastructure, PLANK2, the historical backup and retired
+ENet repository remain private. Older preparation hosting objects are not cleared
 for publication. Private operational evidence stays outside Git as documented
 in `docs/security/private-information.md`.

@@ -109,3 +109,24 @@ public; filesystem access metadata observed during private extraction is not a
 credential clearance. Hardware/session acceptance and independent credential
 rotation remain separate gates. Nothing was installed, released on GitHub or
 made public. Older 1.0.100/1.0.101 assets remain uncleared and unchanged.
+
+## Publication decision
+
+On September 14, 2026, the operator explicitly authorized public visibility for
+the audited Host/Client source and required dependencies, and publication of
+1.0.103. Fresh hardware/live-session testing was explicitly skipped, not passed;
+credential rotation remains the operator's separate responsibility.
+
+Published repositories: `instinctual/plank`, `plank-client`, `plank-host-linux`,
+`plank-kymux`, `plank-common-c`, `plank-build-deps` and `plank-libvirtualhid`.
+Their hosting identities and complete branch sets were checked against the
+audited destinations immediately before publication. No unexpected tags,
+releases, issues, commit comments, Actions artifacts or caches were present.
+
+[Release v1.0.103](https://github.com/instinctual/plank/releases/tag/v1.0.103)
+points to the exact package source commit above. Its four packages, checksum
+file and provenance manifest passed anonymous-download SHA-256 verification.
+All seven repositories were also verified anonymously accessible. Existing
+private infrastructure, PLANK2, the historical backup and retired ENet repository
+remain private. No packages were deployed. Historical audit statements above
+describe the corresponding preparation phase, not the current visibility.
