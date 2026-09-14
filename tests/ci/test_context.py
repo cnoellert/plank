@@ -67,6 +67,12 @@ class ContextTests(unittest.TestCase):
             self.assertRegex(action, r'@([0-9a-f]{40})$')
         self.assertEqual(workflow.count('actions/checkout@'), workflow.count('persist-credentials: false'))
 
+    def test_all_root_workflows_use_current_node_actions(self):
+        for path in (ROOT / '.github/workflows').glob('*.yml'):
+            workflow = path.read_text()
+            for action in re.findall(r'uses: (actions/checkout@[^\s]+)', workflow):
+                self.assertEqual(action, 'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803')
+
 
 if __name__ == '__main__':
     unittest.main()
