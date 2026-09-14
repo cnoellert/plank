@@ -1,0 +1,51 @@
+# GitHub-hosted builds
+
+Status: implementation and hosted qualification in progress.
+
+## Scope
+
+Move build-only work to disposable GitHub-hosted runners, retaining the existing
+build/package scripts and all dependency-patch, version, closure and privacy
+gates. No product deployments, runtime changes, hardware-test replacement,
+automatic release publication or paid larger-runner provisioning.
+
+Build Linux Host inside pinned Rocky Linux 9.7 on a Linux runner; Linux Client
+on Ubuntu 26.04; native Host and Client on arm64 macOS27/SDK27. The current
+GitHub `xcode-27` preview runs macOS27; assert actual OS/SDK before building.
+Keep CUDA architecture coverage unchanged. Size concurrency to runner resources.
+
+The separate private infrastructure repositories own their own Ubuntu26.04
+workflows. They are not inputs to this public workflow. Never put deployment
+inventory, account information, credentials or private source into public CI.
+
+## Implementation order
+
+1. Private standalone Ubuntu package workflows: existing tests and package
+   gates, clean worktrees, explicit branch versions, private artifact retention.
+2. Public clean-worktree bootstrap and four product jobs. Pin Actions by SHA;
+   use read-only tokens and persist-credentials=false. No SSH to local machines.
+3. Verify real hosted runs; resolve toolchain/setup failures without weakening
+   product gates. Cache pinned prepared inputs, not dirty product builds.
+   Cache misses must reproduce dependencies and patches from source.
+4. Add separately protected macOS distribution signing when the operator
+   provisions Developer ID and notarization credentials. PR jobs never get
+   secrets; no pull_request_target or untrusted workflow_run execution.
+5. Independently qualify signed packages, then decide whether local build-only
+   VMs can be retired. Keep physical Linux/macOS test machines.
+
+## Validation
+
+Test branch/ref handling, clean worktrees, exact pins and secret boundaries.
+Run the actual hosted jobs and retain links, conclusions and artifact hashes.
+Unsigned Mac developer builds are not distributable packages. Missing signing
+credentials and missing private cross-repository integration credentials must
+be reported explicitly, never described as passed validation.
+
+Runner/container updates can change tools; assert required versions, record
+installed package versions and SDKs. No unbounded cache retention, guessed
+dependency fallbacks, disabled privacy gates or reduced CUDA targets.
+
+References:
+- https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+- https://github.blog/changelog/2026-09-10-xcode-27-runner-image-now-runs-on-macos-27/
+- https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/run-jobs-in-a-container

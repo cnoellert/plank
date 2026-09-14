@@ -93,6 +93,14 @@ permission to compile Linux packages on the Mac or restore inherited prebuilts.
 
 Builder and hardware-test roles are deliberately separate:
 
+The workflows in `.github/workflows/build.yml` also authorize disposable
+GitHub-hosted builders for the same target OS/toolchain contracts: Rocky 9.7
+container, Ubuntu 26.04 and Apple Silicon macOS/SDK 27. These are compile/package
+workers, never installation or hardware-test targets. Public pull requests
+must not receive signing/deployment credentials or run on internal machines.
+See `docs/development/build/github-builds.md`; local builders remain qualified
+until the hosted replacements pass their clean-build gates.
+
 - Build Host binaries and RPMs only on the Linux Host builder (Rocky Linux 9.7).
 - Build Client binaries and DEBs only on the Linux Client builder (Ubuntu
   26.04), using Qt 6.10.2 and the pinned private FFmpeg 9.0.1 tree.

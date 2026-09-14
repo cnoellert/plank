@@ -3,6 +3,8 @@
 - [User documentation](user/): bookmark behavior and product configuration.
 - [Architecture](architecture/): media, input, authentication and lifecycle.
 - [Development](development/): platform matrix, acceptance, build runbooks and plans.
+  [GitHub-hosted builds](development/build/github-builds.md) covers CI scope,
+  artifacts and signing boundaries.
 - [Security](security/): threat models and security-focused contracts.
   [Private information policy](security/private-information.md) defines the
   boundary between public development material and private operational notes.

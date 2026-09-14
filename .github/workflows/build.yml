@@ -1,0 +1,116 @@
+name: Hosted builds
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosted-builds-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_REF: ${{ github.head_ref || github.ref_name }}
+  PYTHONDONTWRITEBYTECODE: '1'
+
+jobs:
+  policy:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests/ci -v
+
+  linux-host:
+    needs: policy
+    runs-on: ubuntu-24.04
+    container: rockylinux/rockylinux:9.7@sha256:53f4c6dcb34e1403bd93207351f0af9a593610faeb7165cb8a037346765199b0
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    env:
+      PLANK_BUILD_JOBS: '4'
+    steps:
+      - name: Prepare checkout tools
+        run: dnf install -y git tar gzip python3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 scripts/ci/context.py
+      - run: bash scripts/ci/install-linux-deps.sh host
+      - run: bash scripts/ci/bootstrap.sh linux-host
+      - run: bash scripts/ci/build.sh linux-host
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-host-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PLANK_ARTIFACT_ROOT }}/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Report disk usage
+        if: always()
+        run: df -h
+
+  linux-client:
+    needs: policy
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    env:
+      PLANK_BUILD_JOBS: '4'
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 scripts/ci/context.py
+      - run: bash scripts/ci/install-linux-deps.sh client
+      - run: bash scripts/ci/bootstrap.sh linux-client
+      - run: bash scripts/ci/build.sh linux-client
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-client-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PLANK_ARTIFACT_ROOT }}/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Report disk usage
+        if: always()
+        run: df -h
+
+  macos:
+    needs: policy
+    runs-on: xcode-27
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [host, client]
+    env:
+      PLANK_BUILD_JOBS: '3'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require macOS 27 and SDK 27 on Apple Silicon
+        run: |
+          test "$(uname -m)" = arm64
+          test "$(sw_vers -productVersion | cut -d . -f 1)" -ge 27
+          test "$(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1)" -ge 27
+          command -v cmake
+          command -v ninja
+      - run: python3 scripts/ci/context.py
+      - run: bash scripts/ci/bootstrap.sh macos-${{ matrix.product }}
+      - run: bash scripts/ci/build.sh macos-${{ matrix.product }}
+      - name: Explain unsigned build scope
+        run: echo 'Unsigned compile/test only. No distributable macOS package, signing credentials, or hardware acceptance.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Report disk usage
+        if: always()
+        run: df -h
