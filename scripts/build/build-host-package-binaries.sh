@@ -28,6 +28,8 @@ esac
   exit 1
 }
 boost_source_dir=$(realpath -e -- "$PLANK_BOOST_SOURCE_DIR")
+source "$repo_dir/scripts/build/build-paths.sh"
+plank_build_path_flags "$repo_dir" "$build_dir"
 [[ $build_jobs =~ ^[1-9][0-9]*$ ]] || {
   echo "invalid host build job count: ${build_jobs}" >&2
   exit 1
@@ -1050,6 +1052,8 @@ env \
   COMMIT="$host_source_commit" \
   cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
+  "-DCMAKE_C_FLAGS=$PLANK_C_FILE_FLAGS" \
+  "-DCMAKE_CXX_FLAGS=$PLANK_C_FILE_FLAGS" \
   -DCMAKE_INSTALL_PREFIX=/usr \
   -DSUNSHINE_ASSETS_DIR=share/plank \
   -DCMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc \

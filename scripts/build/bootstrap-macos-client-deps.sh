@@ -14,6 +14,8 @@ export PATH="$prefix/bin:/Applications/CMake.app/Contents/bin:$PATH"
 export PKG_CONFIG_PATH="$prefix/lib/pkgconfig"
 jobs=${PLANK_BUILD_JOBS:-8}
 [[ $jobs =~ ^[1-9][0-9]*$ ]] || exit 2
+source "$PLANK_SOURCE_ROOT/scripts/build/build-paths.sh"
+plank_build_path_flags "$PLANK_SOURCE_ROOT" "$PLANK_MAC_CLIENT_DEPS"
 
 fetch() {
     local url=$1 hash=$2 name=${1##*/}
@@ -27,6 +29,7 @@ cmake_build() {
     shift
     cmake -S "$PLANK_MAC_CLIENT_DEPS/src/$name" -B "$PLANK_MAC_CLIENT_DEPS/build-$name" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
+        "-DCMAKE_C_FLAGS=$PLANK_C_FILE_FLAGS" "-DCMAKE_CXX_FLAGS=$PLANK_C_FILE_FLAGS" \
         -DCMAKE_PREFIX_PATH="$prefix" -DCMAKE_OSX_ARCHITECTURES=arm64 \
         -DCMAKE_OSX_DEPLOYMENT_TARGET=27.0 -DBUILD_SHARED_LIBS=ON "$@"
     cmake --build "$PLANK_MAC_CLIENT_DEPS/build-$name" --parallel "$jobs"
@@ -45,9 +48,22 @@ fetch https://distfiles.ariadne.space/pkgconf/pkgconf-2.5.1.tar.xz cd05c9589b9f8
 fetch https://github.com/openssl/openssl/releases/download/openssl-3.5.5/openssl-3.5.5.tar.gz b28c91532a8b65a1f983b4c28b7488174e4a01008e29ce8e69bd789f28bc2a89
 (
     cd "$PLANK_MAC_CLIENT_DEPS/src/openssl-3.5.5"
-    ./Configure darwin64-arm64-cc --prefix="$prefix" --openssldir="$prefix/ssl" shared no-tests
+    # Runtime defaults must never point into a builder's writable home. Stage
+    # the conventional install tree, then relocate only development link/pc
+    # metadata. Do not bundle config, engines or optional provider modules.
+    openssl_prefix=/usr/local/lib/plank-client
+    openssl_stage="$PLANK_MAC_CLIENT_DEPS/openssl-stage"
+    ./Configure darwin64-arm64-cc --prefix="$openssl_prefix" \
+        --openssldir=/etc/plank/openssl shared no-tests
     make -j"$jobs"
-    make install_sw
+    make install_sw DESTDIR="$openssl_stage"
+    cp -R "$openssl_stage$openssl_prefix/." "$prefix/"
+    python3 "$PLANK_SOURCE_ROOT/scripts/build/relocate-openssl-pc.py" "$prefix" "$openssl_prefix"
+    for library in libcrypto.3.dylib libssl.3.dylib; do
+        install_name_tool -id "$prefix/lib/$library" "$prefix/lib/$library"
+    done
+    install_name_tool -change "$openssl_prefix/lib/libcrypto.3.dylib" \
+        "$prefix/lib/libcrypto.3.dylib" "$prefix/lib/libssl.3.dylib"
 )
 fetch https://downloads.xiph.org/releases/opus/opus-1.5.2.tar.gz 65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
 cmake_build opus-1.5.2 -DOPUS_BUILD_TESTING=OFF -DOPUS_BUILD_PROGRAMS=OFF
@@ -72,7 +88,10 @@ mkdir -p "$PLANK_MAC_CLIENT_DEPS/build-ffmpeg"
     cd "$PLANK_MAC_CLIENT_DEPS/build-ffmpeg"
     "$ffmpeg_source/configure" --prefix="$prefix" --enable-shared --disable-static \
         --disable-doc --disable-debug --disable-autodetect --enable-videotoolbox \
-        --enable-audiotoolbox --enable-neon --arch=arm64 --target-os=darwin
+        --enable-audiotoolbox --enable-neon --arch=arm64 --target-os=darwin \
+        --extra-cflags="$PLANK_C_FILE_FLAGS"
+    python3 "$PLANK_SOURCE_ROOT/scripts/build/sanitize-ffmpeg-build-info.py" \
+        config.h "$PLANK_MAC_CLIENT_DEPS" "$PLANK_SOURCE_ROOT" "$HOME"
     make -j"$jobs"
     make install
 )

@@ -9,6 +9,8 @@ fi
 : "${PLANK_MACOS_HOST_VERSION:?Explicit branch-qualified version required}"
 [[ $PLANK_MACOS_HOST_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-z][a-z0-9.-]*)?$ ]]
 source_root=$1; output=$2; archive=$3
+source "$source_root/scripts/build/build-paths.sh"
+plank_build_path_flags "$source_root" "$output"
 mkdir "$output"
 cd "$source_root"
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
@@ -58,7 +60,7 @@ xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
 xcrun clang -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Iapps/host/macos/media tests/video/macos-video-recovery.c -o "$output/video-recovery-test"
 "$output/video-recovery-test"
-common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
+common=("${PLANK_FILE_FLAGS[@]}" -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -Iapps/host/macos/auth -Iapps/host/macos/control -Iapps/host/macos/media -Iapps/host/macos/input
     -Iapps/host/macos/session -Iprotocol/plank-transport/include
     -framework Foundation -framework Security -framework SystemConfiguration -framework CoreFoundation

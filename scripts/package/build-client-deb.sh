@@ -230,6 +230,7 @@ find "$stage_dir" -exec touch -h -d "@${source_epoch}" {} +
 export SOURCE_DATE_EPOCH="$source_epoch"
 mkdir -p "$output_dir"
 deb_file="${output_dir}/plank-client_${package_version}_amd64.deb"
+python3 "$repo_dir/scripts/test/check-package-build-paths.py" "$stage_dir"
 dpkg-deb --root-owner-group --uniform-compression -Zxz --build "$stage_dir" "$deb_file"
 
 dpkg-deb --info "$deb_file" >/dev/null

@@ -37,6 +37,34 @@ structure and package collection without Linux hardware dependencies, use
 `-DPLANK_BUILD_LINUX_QUALIFICATION=OFF`. This is not a product build or hardware
 qualification substitute.
 
+## Distribution build paths
+
+Product build entrypoints source `scripts/build/build-paths.sh`. Preserve its
+C/C++ file-prefix maps and Rust remap flags, including the macOS SDK27
+`strip=none` workaround. Do not set `CARGO_ENCODED_RUSTFLAGS`: it overrides
+the required Rust flags and is rejected. Build roots must not contain whitespace,
+quotes or equals signs. These mappings affect diagnostic/debug filenames, not
+filesystem access, media configuration or protocol behavior.
+
+Client FFmpeg bootstrap sanitizes only the generated `FFMPEG_CONFIGURATION`
+diagnostic string after configure, retaining all codec/platform options and the
+identity-GBR patch. Its actual install prefix and pkg-config metadata remain the
+prepared dependency directory. Rebuild old prepared Client libraries with the
+current bootstrap scripts; stripping or relabeling an old library is not enough.
+
+macOS OpenSSL is configured for a neutral product prefix and staged with
+`DESTDIR`. Only development pkg-config/link metadata is relocated into the
+prepared tree. Its runtime configuration default is `/etc/plank/openssl`,
+not a builder's home directory; no configuration, optional provider module,
+engine, or trust-policy file is newly shipped. Bundled dylibs are relocated and
+signed by the existing app packaging step. Never modify signed release bytes.
+
+All four package entrypoints run `check-package-build-paths.py` on their staged
+payload before collecting a package. It rejects embedded Linux/macOS home paths
+and reports counts only. Run `tests/packaging/test-build-paths.py` when changing
+this policy. This narrow reproducibility gate supplements, not replaces, the
+private denylist/history/asset audit and live runtime acceptance.
+
 ## Classify failures correctly
 
 A compiler, linker, package gate, or nonzero packaging-script exit is a build

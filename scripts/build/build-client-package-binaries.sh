@@ -12,6 +12,8 @@ source_dir=$(realpath -- "$1")
 ffmpeg_work_dir=$(realpath -- "$2")
 build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
+source "$repo_dir/scripts/build/build-paths.sh"
+plank_build_path_flags "$repo_dir" "$build_dir"
 frame_flow_qmake=()
 case ${PLANK_CLIENT_FRAME_FLOW_TRACE:-0} in
   0) ;;
@@ -1729,10 +1731,8 @@ mkdir -p "$build_dir"
   qmake6 "$source_dir" CONFIG+=release CONFIG+=plank-transport "${frame_flow_qmake[@]}" \
     "PLANK_TRANSPORT_DIR=${plank_transport_dir}" \
     "PLANK_VERSION=${package_version}" \
-    "QMAKE_CFLAGS+=-ffile-prefix-map=${build_dir}=." \
-    "QMAKE_CFLAGS+=-ffile-prefix-map=${source_dir}=../src" \
-    "QMAKE_CXXFLAGS+=-ffile-prefix-map=${build_dir}=." \
-    "QMAKE_CXXFLAGS+=-ffile-prefix-map=${source_dir}=../src"
+    "QMAKE_CFLAGS+=$PLANK_C_FILE_FLAGS" \
+    "QMAKE_CXXFLAGS+=$PLANK_C_FILE_FLAGS"
   make -j"$(nproc)"
 )
 

@@ -48,6 +48,7 @@ install -m 0755 "$source_root/packaging/host/macos/pkg-postinstall" "$output/ins
 test -x "$app/Contents/Resources/uninstall.sh"
 bash -n "$app/Contents/Resources/uninstall.sh"
 install -m 0644 "$source_root/packaging/host/macos/welcome.html" "$source_root/packaging/host/macos/conclusion.html" "$output/resources/"
+python3 "$source_root/scripts/test/check-package-build-paths.py" "$output/payload"
 pkgbuild --root "$output/payload" --component-plist "$source_root/packaging/host/macos/component.plist" \
   --identifier la.instinctual.PLANK.Host --version "$PLANK_BASE_VERSION" --install-location / \
   --ownership recommended --scripts "$output/install-scripts" "$output/host-component.pkg"

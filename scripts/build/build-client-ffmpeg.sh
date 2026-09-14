@@ -69,6 +69,8 @@ fi
 echo "client_ffmpeg_identity_gbr_patch_gate=pass"
 
 mkdir -p "${build_dir}" "${install_dir}"
+source "$repo_dir/scripts/build/build-paths.sh"
+plank_build_path_flags "$source_dir" "$work_dir"
 
 (
   cd -- "${build_dir}"
@@ -79,7 +81,10 @@ mkdir -p "${build_dir}" "${install_dir}"
     --disable-static \
     --enable-shared \
     --enable-vaapi \
-    --enable-libdrm
+    --enable-libdrm \
+    --extra-cflags="$PLANK_C_FILE_FLAGS"
+  python3 "$repo_dir/scripts/build/sanitize-ffmpeg-build-info.py" \
+    config.h "$work_dir" "$repo_dir" "$HOME"
   make -j"$(nproc)"
   make install
 )

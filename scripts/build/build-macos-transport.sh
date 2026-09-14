@@ -23,6 +23,8 @@ export MACOSX_DEPLOYMENT_TARGET=27.0
 # Keep compiler inputs intact; do not lower the deployment target or change Rust.
 # See https://github.com/rust-lang/rust/issues/157750.
 export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C strip=none"
+source "$source_root/scripts/build/build-paths.sh"
+plank_build_path_flags "$source_root" "$transport_build"
 export SDKROOT
 SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 export CARGO_TARGET_DIR="$transport_build"

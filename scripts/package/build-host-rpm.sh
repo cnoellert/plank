@@ -124,6 +124,7 @@ mkdir -p "$payload_dir/usr/share/plank"
 cp -aL "$build_dir/assets/." "$payload_dir/usr/share/plank/"
 
 source_epoch=$(git -C "$repo_dir" log -1 --format=%ct)
+python3 "$repo_dir/scripts/test/check-package-build-paths.py" "$payload_dir"
 tar --sort=name --mtime="@${source_epoch}" --owner=0 --group=0 \
   --numeric-owner -C "$work_dir" -czf \
   "$rpm_topdir/SOURCES/plank-host-payload.tar.gz" payload

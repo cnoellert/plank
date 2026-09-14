@@ -78,6 +78,7 @@ fi
 test "$(/usr/libexec/PlistBuddy -c 'Print :PLANKVersion' "$app/Contents/Info.plist")" = "$PLANK_PACKAGE_VERSION"
 ln -s /Applications "$output/image/Applications"
 dmg="$output/plank-client_${PLANK_PACKAGE_VERSION}_arm64.dmg"
+python3 "$source_root/scripts/test/check-package-build-paths.py" "$app"
 hdiutil create -volname "PLANK Client $PLANK_PACKAGE_VERSION" -srcfolder "$output/image" -format UDZO "$dmg"
 codesign --timestamp --sign "$PLANK_MACOS_SIGNING_IDENTITY" "$dmg"
 xcrun notarytool submit "$dmg" --keychain-profile "$PLANK_NOTARY_PROFILE" --wait --timeout 10m --output-format json > "$output/notary.json"

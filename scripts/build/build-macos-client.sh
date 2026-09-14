@@ -15,7 +15,9 @@ export SDKROOT
 SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 [[ $(xcrun --sdk macosx --show-sdk-version) == 27* ]] || exit 2
 export CARGO_HOME="$PLANK_CARGO_ROOT" RUSTUP_HOME="$PLANK_RUSTUP_ROOT"
-export RUSTFLAGS='-C strip=none' # Same SDK27 proc-macro guard as Host bootstrap.
+export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C strip=none" # SDK27 proc-macro guard.
+source "$source_root/scripts/build/build-paths.sh"
+plank_build_path_flags "$source_root" "$build"
 export PATH="$PLANK_QT_ROOT/bin:$PLANK_MAC_CLIENT_DEPS/install/bin:$CARGO_HOME/bin:$PATH"
 export PKG_CONFIG_PATH="$PLANK_MAC_CLIENT_DEPS/install/lib/pkgconfig"
 # pkgconf itself lives in this prefix; its compiled-in "system" directories
@@ -39,7 +41,8 @@ qmake -r "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     CONFIG+=plank-transport CONFIG+=disable-libplacebo CONFIG+=disable-wayland \
     CONFIG+=disable-x11 CONFIG+=disable-libva CONFIG+=disable-libdrm \
     QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
-    PLANK_VERSION="$version"
+    PLANK_VERSION="$version" \
+    "QMAKE_CFLAGS+=$PLANK_C_FILE_FLAGS" "QMAKE_CXXFLAGS+=$PLANK_C_FILE_FLAGS"
 make -j"${PLANK_BUILD_JOBS:-8}" release
 plist="$build/app/plank-client.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PLANK_BASE_VERSION" "$plist"

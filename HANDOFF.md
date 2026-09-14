@@ -5,7 +5,8 @@ Read AGENTS.md and the platform build runbook before work.
 ## Current source
 
 The final Host/Client repository is `instinctual/plank`. Current work is on
-`enet-cleanup`, candidate version **1.0.102**; previous package source remains
+`build-privacy`, preparing reproducible package-path cleanup. ENet cleanup is
+pushed and merged to main at **5844885**, candidate version **1.0.102**; previous package source remains
 the 1.0.101 mainline recorded below. It remains PRIVATE pending explicit publication approval. The
 original development repository is preserved privately; do not import its
 history, old gitlinks, deployment notes or credentials here. Private
@@ -51,8 +52,9 @@ The exact clean source requires no ENet or nanors checkout, and the Host link
 contains no ENet library. Existing Client packages require no code update for
 this cleanup. No hardware/session testing or installation was performed.
 
-Nothing has been pushed or merged for this cleanup; root, Host and Host-header
-commits are local on enet-cleanup. Publish in dependency order if approved.
+Root, Host and Host-header commits were pushed and fast-forward merged in
+dependency order. The completed enet-cleanup branches were removed locally and
+remotely; their commits remain on the corresponding main/Host-header branches.
 The current header branch replaces the Host-specific common-C branch, never the
 Client's branch. Old remote repos/history were not deleted or rewritten.
 
