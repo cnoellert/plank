@@ -119,9 +119,9 @@ All repositories must be clean. Every submodule status must begin with one
 space, not `-`, `+`, or `U`. Ordinary candidate builds seed from these local
 canonical repositories; they do not repeat this network bootstrap.
 
-The maintained PLANK repositories are private. Authenticate GitHub CLI on
-each replacement builder before the first clone, then configure Git to use
-that credential:
+The maintained Host/Client repositories are public; anonymous HTTPS is sufficient
+for a clean build. GitHub authentication is needed only for authorized pushes,
+not dependency downloads. On a trusted authoring builder, configure it separately:
 
 ```bash
 gh auth login
@@ -286,12 +286,13 @@ rg -Fxq 'project(Boost VERSION 1.89.0 LANGUAGES CXX)' \
 ```
 
 Recreate static Host FFmpeg from the exact recursive gitlinks in the PLANK
-`instinctual/build-deps` fork. Do not use the Client FFmpeg tree:
+`instinctual/plank-build-deps` fork. Do not use the Client FFmpeg tree:
 
 ```bash
 host_build_deps="$PLANK_CANONICAL_ROOT/apps/host/linux/third-party/build-deps"
-test "$(git -C "$host_build_deps" rev-parse HEAD)" = \
-  c39e8208ed23b5f14dedad8c2ecc963ac94da796
+expected_build_deps=$(git -C "$PLANK_CANONICAL_ROOT/apps/host/linux" \
+  rev-parse HEAD:third-party/build-deps)
+test "$(git -C "$host_build_deps" rev-parse HEAD)" = "$expected_build_deps"
 git -C "$host_build_deps" submodule update --init --recursive
 cmake -S "$host_build_deps" -B "$PLANK_HOST_FFMPEG_BUILD" \
   -DBUILD_ALL=OFF -DBUILD_FFMPEG=ON \

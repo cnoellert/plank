@@ -22,6 +22,10 @@ if __name__ == '__main__':
     root = Path(os.environ['GITHUB_WORKSPACE']).resolve()
     base = Path(os.environ['RUNNER_TEMP']).resolve() / 'plank-ci'
     assert not base.exists(), 'CI scratch root already exists'
+    # Docker jobs run as root against the runner-owned checkout. Trust this
+    # exact Actions-provided path only; never disable ownership checks globally.
+    if os.geteuid() == 0:
+        subprocess.run(['git', 'config', '--global', '--add', 'safe.directory', str(root)], check=True)
     sha = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
     assert sha == os.environ['GITHUB_SHA']
     base.mkdir()

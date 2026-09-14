@@ -5,12 +5,18 @@ on:
     branches: ['**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      product:
+        description: Product to rebuild (all on ordinary push/PR)
+        type: choice
+        default: all
+        options: [all, linux-host, linux-client, macos-host, macos-client]
 
 permissions:
   contents: read
 
 concurrency:
-  group: hosted-builds-${{ github.ref }}
+  group: hosted-builds-${{ github.ref }}-${{ inputs.product || 'all' }}
   cancel-in-progress: true
 
 env:
@@ -28,6 +34,7 @@ jobs:
       - run: python3 -m unittest discover -s tests/ci -v
 
   linux-host:
+    if: ${{ !inputs.product || inputs.product == 'all' || inputs.product == 'linux-host' }}
     needs: policy
     runs-on: ubuntu-24.04
     container: rockylinux/rockylinux:9.7@sha256:53f4c6dcb34e1403bd93207351f0af9a593610faeb7165cb8a037346765199b0
@@ -59,6 +66,7 @@ jobs:
         run: df -h
 
   linux-client:
+    if: ${{ !inputs.product || inputs.product == 'all' || inputs.product == 'linux-client' }}
     needs: policy
     runs-on: ubuntu-26.04
     timeout-minutes: 120
@@ -85,13 +93,14 @@ jobs:
         run: df -h
 
   macos:
+    if: ${{ !inputs.product || inputs.product == 'all' || startsWith(inputs.product, 'macos-') }}
     needs: policy
     runs-on: xcode-27
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        product: [host, client]
+        product: ${{ fromJSON(inputs.product == 'macos-host' && '["host"]' || inputs.product == 'macos-client' && '["client"]' || '["host", "client"]') }}
     env:
       PLANK_BUILD_JOBS: '3'
     steps:

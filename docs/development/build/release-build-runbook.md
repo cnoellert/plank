@@ -1,5 +1,9 @@
 # PLANK Release Build Runbook
 
+For disposable GitHub-hosted workers, see [GitHub-hosted builds](github-builds.md).
+Those workflows establish the same OS, dependency, clean-source and package
+contracts through `scripts/ci/`; they do not deploy or replace hardware gates.
+
 This is the canonical, repeatable procedure for producing PLANK host
 and client candidate packages. Read it before changing or running a release
 build. `AGENTS.md` defines machine policy; this runbook supplies the exact
