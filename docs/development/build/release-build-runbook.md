@@ -667,7 +667,7 @@ test "$(git -C "$root_worktree" rev-parse HEAD:apps/host/linux)" = \
 
 The local seeding script recursively maps each candidate dependency to the
 corresponding initialized repository under the canonical host checkout. It
-preserves a clean worktree and exact gitlinks without downloading all 41
+preserves a clean worktree and exact gitlinks without downloading all recursive
 repositories again. If it reports that a canonical dependency is unavailable,
 repair or initialize that one canonical dependency first; do not silently fall
 back to a full network clone during an ordinary candidate build.

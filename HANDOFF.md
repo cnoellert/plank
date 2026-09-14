@@ -5,7 +5,7 @@ Read AGENTS.md and the platform build runbook before work.
 ## Current source
 
 The final Host/Client repository is `instinctual/plank`. Current work is on
-`enet-cleanup`, candidate version **1.0.102**; accepted package source remains
+`enet-cleanup`, candidate version **1.0.102**; previous package source remains
 the 1.0.101 mainline recorded below. It remains PRIVATE pending explicit publication approval. The
 original development repository is preserved privately; do not import its
 history, old gitlinks, deployment notes or credentials here. Private
@@ -21,8 +21,8 @@ preserved. Six unsolicited dependency-update branches from preparation were
 excluded; inherited automatic update schedules are disabled on the affected
 default branches. Pinned runtime dependencies did not change.
 
-This version rebuilds from the final repository names and rewritten source
-identities. It makes no streaming behavior change relative to 1.0.100. Optional
+The 1.0.101 baseline rebuilt from the final repository names and rewritten source
+identities. It made no streaming behavior change relative to 1.0.100. Optional
 Client wake requests remain hidden/disabled without administrator opt-in.
 
 ## ENet cleanup
@@ -36,9 +36,25 @@ KyProto transport sources are unchanged. Historical builds are not supported.
 Do not retain or restore current dependencies solely for old build compatibility.
 
 Seven positive/negative tests pass, including standalone C/C++ header compilation.
-The Host package preflight runs them and requires the header-only dependency.
-Clean Host candidate build is pending. Nothing has been installed or pushed for
-this cleanup yet; branch commits are local until explicitly published.
+The header-only CMake configure/build and four portable root CTest entries also
+pass. Host executable source, Client gitlink and transport gitlink are unchanged.
+The Host package preflight runs the tests and requires the header-only dependency.
+
+Clean Host RPM build and all package gates pass from root
+`d178c67240555d3425ba51df4d116fbb2f83b50b`, Host
+`9329784ac41f50cbec0c9d76badfd22227ec5e5f`, Host headers
+`775943b5ac5e5100a3c2b1b89d9e21151dea4f29`. Later notes commits do not
+change those package bytes. The RPM is cataloged under
+`artifacts/packages/candidates/1.0.102-enet-cleanup/linux/`, with version/branch
+and SHA-256 provenance. It retains BUILD_TESTS=OFF and the full CUDA target set.
+The exact clean source requires no ENet or nanors checkout, and the Host link
+contains no ENet library. Existing Client packages require no code update for
+this cleanup. No hardware/session testing or installation was performed.
+
+Nothing has been pushed or merged for this cleanup; root, Host and Host-header
+commits are local on enet-cleanup. Publish in dependency order if approved.
+The current header branch replaces the Host-specific common-C branch, never the
+Client's branch. Old remote repos/history were not deleted or rewritten.
 
 ## Audit and validation
 

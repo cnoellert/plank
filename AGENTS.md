@@ -169,7 +169,7 @@ and SHA-256-verify a host Git bundle first, clone or fetch that bundle into the
 host submodule path, check out the exact host gitlink, and only then initialize
 the host's recursive dependencies. Seed those dependencies from the canonical
 host repository with `scripts/build/init-host-candidate-submodules.sh`; do not clone
-all 41 recursive repositories from GitHub for every candidate. Link the
+all recursive repositories from GitHub for every candidate. Link the
 canonical prepared host FFmpeg directory into the Git-ignored path in that
 clean worktree. The exact commands are maintained in
 `docs/development/build/release-build-runbook.md`.
