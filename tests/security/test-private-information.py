@@ -31,6 +31,14 @@ class PolicyTests(unittest.TestCase):
         data = b'198.18.' + b'77.55'
         self.assertEqual([], privacy.content_findings(data, False, []))
 
+    def test_hardware_model_and_codec_header_version_are_not_addresses(self):
+        data = b'Apple model Mac16,10; headers `e844e5b2` (13.0.19.0).'
+        self.assertEqual([], privacy.content_findings(data, True, []))
+        self.assertEqual(['non-example-ipv4'], privacy.content_findings(b'Connect to 13.0.19.0', True, []))
+        self.assertEqual(['non-example-ipv4'], privacy.content_findings(b'Connect to 13.0.19.0.', True, []))
+        machine = b'mac' + b'16'
+        self.assertEqual(['deployment-machine-name'], privacy.content_findings(machine, True, []))
+
     def test_force_adding_private_files_is_blocked(self):
         for path in ('passwords_audit.txt', 'private-notes/machines.md',
                      '.env', '.env.production', 'keys/signing.p12', 'tls/host.key'):
@@ -122,6 +130,15 @@ class GitIntegrationTests(unittest.TestCase):
         self.stage('example.md', 'Use host.example.org or 192.0.2.10.')
         self.git('commit', '-qm', 'Document a reserved example')
         self.assertEqual(0, self.check('--range', self.initial, 'HEAD').returncode)
+
+    def test_range_scans_all_messages_with_generic_scanner(self):
+        # Construct synthetic scanner-shaped content; it is not in the denylist.
+        value = 'gh' + 'p_' + 'aB3cD7eF9gH2jK4mN6pQ8rS1tU5vW0xY2zA9'
+        self.git('commit', '--allow-empty', '-qm', 'Synthetic token ' + value)
+        self.git('commit', '--allow-empty', '-qm', 'Later clean message')
+        result = self.check('--range', self.initial, 'HEAD')
+        self.assertEqual(1, result.returncode)
+        self.assertNotIn(value, result.stdout + result.stderr)
 
     def test_private_denylist_cannot_be_inside_checkout(self):
         copied = self.repo / 'list.txt'

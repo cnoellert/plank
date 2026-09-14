@@ -20,7 +20,7 @@ import tempfile
 POLICY_ROOT = Path(__file__).resolve().parents[2]
 GENERIC_VALUES = {b'password', b'administrator', b'admin', b'root', b'test', b'username'}
 DOC_SUFFIXES = {'.md', '.plan', '.rst', '.txt'}
-IPV4 = re.compile(rb'(?<![\w.])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![\w.])')
+IPV4 = re.compile(rb'(?<![\w.])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?!\w|\.[0-9])')
 DOCUMENTATION_NETS = tuple(ipaddress.ip_network(n) for n in (
     '192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24'))
 # These canonical network definitions are useful documentation, not deployment
@@ -28,7 +28,7 @@ DOCUMENTATION_NETS = tuple(ipaddress.ip_network(n) for n in (
 NETWORK_CONSTANTS = {'10.0.0.0', '172.16.0.0', '192.168.0.0', '169.254.0.0', '255.255.255.255'}
 PRIVATE_PATH = re.compile(rb'/(?:home|Users)/[A-Za-z0-9_.-]+(?:/|\b)')
 LOCAL_DOMAIN = re.compile(rb'(?i)\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:local|internal|lan)\b')
-MACHINE_NAME = re.compile(rb'(?i)(?<![\w-])(?:ws|mac|plank)\d{2,3}(?![\w-])')
+MACHINE_NAME = re.compile(rb'(?i)(?<![\w-])(?:ws|mac|plank)\d{2,3}(?![\w-]|,\d)')
 FORBIDDEN_NAMES = re.compile(r'(?i)^(?:passwords?[_-]audit(?:\..*)?|id_(?:rsa|ed25519|ecdsa)(?:\.pub)?|credentials\.json|authentication\.json)$')
 
 
@@ -85,6 +85,12 @@ def content_findings(data, documentation, denylist):
         if MACHINE_NAME.search(data):
             found.add('deployment-machine-name')
         for match in IPV4.finditer(data):
+            line_start = data.rfind(b'\n', 0, match.start()) + 1
+            preceding = data[line_start:match.start()]
+            # Four-part NVIDIA codec-header versions are not network addresses.
+            # Require the version context on the same line, not a global IP allowlist.
+            if re.search(rb'(?i)(?:nv-codec-headers|headers\s+`[0-9a-f]{7,40}`)\s*\(?$', preceding):
+                continue
             try:
                 value = match.group().decode('ascii')
                 address = ipaddress.ip_address(value)
@@ -200,13 +206,19 @@ def run():
             revision = base + '..' + head
         problems = []
         commits = git('rev-list', revision).stdout.decode().splitlines()
+        messages = []
         for commit in commits:
             lineage = git('rev-list', '--parents', '-n', '1', commit).stdout.decode().split()
             parent = lineage[1] if len(lineage) > 1 else git('hash-object', '-t', 'tree', '--stdin', data=b'').stdout.decode().strip()
             problems += check_diff([parent, commit], denylist)
             message = git('show', '-s', '--format=%B', commit).stdout
             problems += [(commit[:12] + ' message', rule) for rule in content_findings(message, True, denylist)]
-            problems += gitleaks('stdin', None, denylist, message)
+            messages.append(message)
+        # One scanner process covers every message, including commits whose
+        # sensitive content was removed later. Do not start a scanner per commit
+        # when a new remote branch requires checking its entire history.
+        if messages:
+            problems += gitleaks('stdin', None, denylist, b'\n\n'.join(messages))
         problems += gitleaks('git', revision, denylist)
     for label, rule in sorted(set(problems)):
         print('BLOCKED ' + safe_label(label, denylist) + ': ' + rule, file=sys.stderr)
