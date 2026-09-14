@@ -37,3 +37,17 @@ docs/development/acceptance-criteria.md.
 Publication review must cover the final object set, hosting metadata/caches
 and distribution assets. Original history still requires credential-rotation
 review. Keep this repository private until the operator explicitly approves.
+
+Final source audit: remaining operator examples and Host test fixtures are
+sanitized throughout history. Current Client runtime is byte-identical, and
+current Host source changes are test-only. All historical root gitlinks resolve
+after remapping. The final rewrite preserves commit messages, author identities,
+commit counts and topology. Eleven focused authentication cases and four
+portable repository checks pass. See docs/security/publication-review.md for
+scope, intentional scanner findings and remaining publication boundaries.
+
+Audited source before this notes commit: b2672c60e98c0dc6b5af71e02b39bc56a7a671b7.
+Client: b16b12cf1166a1279ed7e0fefe4f9822c202c3f9.
+Linux Host: 94d49f87c7460809f0fe33096d3919a4f1ee88eb.
+Transport is unchanged: 912ece5c64787997f978673ca60d313898a3548c.
+No new package was built or installed during this final source audit.
