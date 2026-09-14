@@ -1,0 +1,27 @@
+# Repository organization plan
+
+Approved September 13, 2026. Branch: `repo-organization`, starting from root
+`8edf324` and Client `492df8a3`. This is a layout/build-maintenance change, not
+the public-history sanitization or a protocol/runtime redesign.
+
+## Checkpoints
+
+## Boundaries
+
+- Never change installed system paths, services, protocol or media behavior as
+  part of a directory move. No deployments or reboots required for this pass.
+- Do not delete public Git history, change repository visibility, remove
+  upstream attribution or rotate credentials here.
+- Keep ignored build/cache state out of product folders and artifacts. Do not
+  delete retained dependencies when moving tracked submodules.
+- Do not publish or merge the branch until the layout validation is complete.
+- Existing macOS Client human audio/input/toolbar/Quit/Wacom and broader
+  hardware acceptance gates remain open; see the current handoff.
+
+## Result
+
+All five checkpoints completed September 13. Six branch-qualified packages
+were built from clean source `b12dc9d`; all package gates pass, including Mac
+signing/notarization/stapling. No deployment or runtime redesign. The branch
+remains separate from main for review. See
+[validation](../reviews/repository-organization-validation.md) and HANDOFF.

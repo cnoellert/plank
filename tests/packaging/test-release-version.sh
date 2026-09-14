@@ -16,10 +16,6 @@ else
   test "$PLANK_RPM_RELEASE" = "0.${PLANK_BUILD_BRANCH_RESOLVED//-/_}.1"
 fi
 test "$PLANK_RPM_VERSION" = "$base_version"
-rg -Fxq 'Version: @VERSION@' \
-  "${repo_dir}/packaging/relay/linux/control"
-rg -Fxq 'Version: @VERSION@' \
-  "${repo_dir}/packaging/wake-agent/linux/control"
 rg -Fxq '%{!?plank_version:%{error:plank_version must be defined by the package builder}}' \
   "${repo_dir}/packaging/host/linux/rpm/plank-host.spec"
 rg -Fxq '%{!?plank_release:%{error:plank_release must be defined by the package builder}}' \

@@ -11,11 +11,10 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     errors = []
     required = (
-        'apps/host/linux', 'apps/host/macos', 'apps/client', 'apps/relay',
-        'apps/wake-agent', 'scripts/build', 'scripts/package', 'scripts/test',
+        'apps/host/linux', 'apps/host/macos', 'apps/client',
+        'scripts/build', 'scripts/package', 'scripts/test',
         'scripts/maintenance', 'packaging/host/linux', 'packaging/host/macos',
-        'packaging/client/linux', 'packaging/relay/linux',
-        'packaging/wake-agent/linux', 'docs/README.md', 'CONTRIBUTING.md',
+        'packaging/client/linux', 'docs/README.md', 'CONTRIBUTING.md',
     )
     for name in required:
         if not (ROOT / name).exists():

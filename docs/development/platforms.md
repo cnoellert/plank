@@ -1,0 +1,17 @@
+# Platform boundaries
+
+| Product | Platform | Source | Package integration |
+| --- | --- | --- | --- |
+| Host | Rocky/RHEL Linux, NVIDIA | `apps/host/linux` | `packaging/host/linux` |
+| Host | macOS 27+, Apple Silicon | `apps/host/macos` | `packaging/host/macos` |
+| Client | Ubuntu Linux | `apps/client` | `packaging/client/linux` |
+| Client | macOS 27+, Apple Silicon | `apps/client` | Client DMG packaging script |
+
+macOS qualification is tracked separately from Linux; beta OS results require
+revalidation on the final release. See [acceptance criteria](acceptance-criteria.md)
+and the product plans. Windows Host/Client remain future work. Do not create
+empty platform trees or claim support before implementing and validating them.
+
+Root CMake builds qualification tools and tests, not every product. Linux-only
+hardware dependencies are optional there; product binaries retain their existing
+native build systems. Use [build runbooks](build/) for actual packages.

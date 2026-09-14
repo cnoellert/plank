@@ -1534,10 +1534,13 @@ rg -Fxq 'port = 28989' "$client_policy" || {
   echo "client administrator policy does not define the product network port" >&2
   exit 1
 }
-rg -Fxq 'relay_wake_port = 28988' "$client_policy" || {
-  echo "client administrator policy does not define the Relay wake port" >&2
+if rg -q 'relay_wake_(enabled|port)' "$client_policy"; then
+  echo "public administrator policy must not advertise optional wake settings" >&2
   exit 1
-}
+fi
+rg -Fq 'computerModel.relayWakeEnabled && model.manualBookmark' "$source_dir/app/gui/PcView.qml"
+rg -Fq 'if (!relayWakeEnabled())' "$source_dir/app/gui/computermodel.cpp"
+rg -Fq 'network/relay_wake_enabled' "$source_dir/app/settings/plankclientpolicy.cpp"
 for required_port_token in \
   'network/port' \
   'policy.networkPort()' \

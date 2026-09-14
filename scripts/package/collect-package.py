@@ -126,7 +126,7 @@ def main():
     parser.add_argument('--source-root', required=True, type=Path)
     parser.add_argument('--source-commit', default='HEAD')
     parser.add_argument('--package', required=True, type=Path)
-    parser.add_argument('--product', required=True, choices=['host', 'client', 'relay', 'wake-agent'])
+    parser.add_argument('--product', required=True, choices=['host', 'client'])
     parser.add_argument('--platform', required=True, choices=['linux', 'macos'])
     parser.add_argument('--architecture', required=True, choices=['x86_64', 'amd64', 'arm64', 'all'])
     parser.add_argument('--target-os', required=True, help='qualified OS baseline, e.g. ubuntu-26.04')
