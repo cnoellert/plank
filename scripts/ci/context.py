@@ -28,6 +28,7 @@ if __name__ == '__main__':
         subprocess.run(['git', 'config', '--global', '--add', 'safe.directory', str(root)], check=True)
     sha = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
     assert sha == os.environ['GITHUB_SHA']
+    assert sha == os.environ.get('EXPECTED_SOURCE_SHA', sha), 'Dispatch selected a different source commit'
     base.mkdir()
     branch = branch_name(os.environ['BUILD_REF'])
     values = {

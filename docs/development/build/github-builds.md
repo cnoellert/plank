@@ -52,6 +52,12 @@ Manual dispatch accepts `product=all`, `linux-host`, `linux-client`,
 concurrency group, so retrying it does not cancel other platforms. Inspect the
 failed job's first error, not the final nonzero-exit summary.
 
+Use `bash scripts/ci/dispatch.sh linux-host` (or another product) after pushing.
+It requires a clean, fully pushed branch and passes its exact expected SHA.
+The policy job rejects a stale dispatch revision before costly bootstrap.
+Always compare a run's `headSha` with the intended commit: an immediate dispatch
+after pushing can otherwise select the prior revision during ref propagation.
+
 - Rocky container ownership: checkout is runner-owned while the container runs
   as root. `context.py` trusts only the exact workspace. Never use a wildcard
   `safe.directory` exception.

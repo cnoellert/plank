@@ -11,6 +11,9 @@ on:
         type: choice
         default: all
         options: [all, linux-host, linux-client, macos-host, macos-client]
+      source_sha:
+        description: Expected commit (optional in UI; required by the dispatch helper)
+        type: string
 
 permissions:
   contents: read
@@ -22,6 +25,7 @@ concurrency:
 env:
   BUILD_REF: ${{ github.head_ref || github.ref_name }}
   PYTHONDONTWRITEBYTECODE: '1'
+  EXPECTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
 
 jobs:
   policy:
@@ -32,6 +36,8 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 -m unittest discover -s tests/ci -v
+      - name: Require the intended source revision
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
 
   linux-host:
     if: ${{ !inputs.product || inputs.product == 'all' || inputs.product == 'linux-host' }}
