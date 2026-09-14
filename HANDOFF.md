@@ -5,7 +5,9 @@ Read AGENTS.md and the platform build runbook before work.
 ## Current source
 
 The final Host/Client repository is `instinctual/plank`. Build-path cleanup is
-ready for mainline **1.0.103** package validation. ENet cleanup was pushed and
+merged and all four mainline **1.0.103** packages passed build and payload review
+from root **06bc71add24d7b7bddd19db1a9c2e914f0cb8383**. Later notes commits
+do not change those package bytes. ENet cleanup was pushed and
 merged at **5844885**; its **1.0.102** candidate provenance is retained below.
 The repository remains PRIVATE pending explicit publication approval. The
 original development repository is preserved privately; do not import its
@@ -75,13 +77,30 @@ All four package paths have a fail-closed home-path gate. Three exact public Qt
 vendor paths (six occurrences) are narrowly allowed only in the pinned official
 QtQuick/QtWidgets frameworks; there is no general home-path exemption.
 
-Nine focused build-path cases pass. Five portable CTest entries pass, including
-privacy and bootstrap contracts. Linux Host/Client candidate package gates pass;
-the Mac Host passes package/signing/notarization gates. The Mac Client signed
-application passes path review and a certificate-verified TLS1.3 loopback using
-its bundled OpenSSL3.5.5. Initial fixture/compiler-flag failures are retained in
-private evidence; none were waived. A new mainline four-package build and final
-payload denylist review are next. No installs or hardware/session tests occurred.
+Nine focused build-path cases and five portable CTest entries pass, including
+privacy and bootstrap contracts. Mainline privacy CI passes. All four packages
+passed clean builds and uninstalled package gates from the exact root above:
+
+- `artifacts/packages/releases/1.0.103/linux/plank-host-1.0.103-1.el9.x86_64.rpm`
+- `artifacts/packages/releases/1.0.103/linux/plank-client_1.0.103_amd64.deb`
+- `artifacts/packages/releases/1.0.103/macos/plank-host_1.0.103_arm64.pkg`
+- `artifacts/packages/releases/1.0.103/macos/plank-client_1.0.103_arm64.dmg`
+
+The catalog retains SHA-256 checksums and source provenance; transfers were
+hash-verified. Linux Host retains BUILD_TESTS=OFF and the full CUDA target set.
+Both Mac products passed signing, notarization, stapling and Gatekeeper. The
+actual Client on the read-only mounted final DMG passed a certificate-verified
+TLS1.3 loopback using its bundled OpenSSL3.5.5. The mount and temporary signing/
+validation job were removed after success. Initial fixture/compiler-flag failures
+remain in private evidence; none were waived.
+
+Extracted final payloads have zero supplied-secret or operator build-path
+matches. Supplemental private-identity/token and symlink review found only two
+non-text byte coincidences identical to the pinned official Qt input, not
+deployment metadata. This is bounded scanning, not proof against unknown secrets
+or every form of encoded metadata. Public Qt vendor literals above remain.
+No installs or hardware/session tests occurred. Completed build-privacy branches
+were removed locally/remotely after the fast-forward merge and push.
 
 ### Previous source/distribution audit
 
@@ -106,27 +125,28 @@ the qualified bootstrap dependency caches. This was not another dependency
 bootstrap. The temporary Mac signing job exited successfully and was unloaded.
 Four portable root CTest entries pass, including 20 privacy guard cases.
 
+## Current maintained inputs (1.0.103)
+
 | Maintained input | Package source commit |
 | --- | --- |
-| Linux Host | `4a7fd6aabc1046cc0ccc864fd90f1cf1d37fd44b` |
+| Linux Host | `9329784ac41f50cbec0c9d76badfd22227ec5e5f` |
 | Shared Client | `c032da3ae0d7e816a7a6f9bb9a51dd489d4d369c` |
 | Transport | `912ece5c64787997f978673ca60d313898a3548c` |
-| Host common-C | `1337910ce816b15d03f4878a260df7b6ca1f45ee` |
+| Host common-C | `775943b5ac5e5100a3c2b1b89d9e21151dea4f29` |
 | Client common-C | `b9650552f98d97f6e30c9f007115c6246f0809e5` |
 | Client mDNS engine | `b7a5a9f225d5e14b39f9fd1f905c4f505cf2ee99` |
 | Host build dependencies | `caf0495d5e6baff94f349853d4a59e3779a451a0` |
 | Host virtual HID | `93d57db99a5bf4b1a9fbbc7ad1371671725b7e97` |
-| Host ENet | `0492da7f03bdf97739b486afee087b8abf34845d` |
 
-The private distribution review found no supplied-password matches in the
-extracted payloads. However, binaries in all four products retain private build
-paths. **Do not publish these assets.** Remove build-path metadata through
-reproducible compiler/dependency build settings, rebuild with a new version,
-then repeat the payload review. Do not patch signed binaries or relabel them.
+## Remaining gates
+
+The older **1.0.100/1.0.101** assets are not cleared for publication: their binary
+build-path metadata is not repaired retroactively by 1.0.103. Do not republish,
+patch signed binaries or relabel their manifests.
 
 No installation, deployment, GitHub Release or public visibility change is
-authorized by this preparation. Remaining gates: distribution metadata cleanup
-and review, hardware/session acceptance and independent
+authorized by this preparation. Remaining gates: hardware/session acceptance,
+explicit publication approval and independent
 credential-rotation review. Older preparation hosting objects are not cleared
 for publication. Private operational evidence stays outside Git as documented
 in `docs/security/private-information.md`.

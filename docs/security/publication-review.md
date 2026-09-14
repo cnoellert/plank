@@ -86,3 +86,26 @@ transferred. No old GitHub release assets, Actions artifacts, issues or caches
 were imported. Only the root privacy workflow is enabled; inherited companion
 Actions workflows remain disabled. Explicit approval is still required before
 changing any repository's visibility.
+
+## Rebuilt distribution review (1.0.103)
+
+All four Linux/macOS Host/Client packages were rebuilt from main root
+`06bc71add24d7b7bddd19db1a9c2e914f0cb8383` after reproducible compiler,
+dependency and packaging path cleanup. The version/platform catalog retains
+checksums and exact source provenance. Clean package gates pass; both macOS
+products also passed signing, notarization, stapling and Gatekeeper. The final
+Mac Client passed a certificate-verified TLS1.3 loopback with bundled OpenSSL.
+
+Extracted payload scans found no supplied-secret or operator build-path matches.
+Supplemental private-identity/token and symlink review found only two non-text
+byte coincidences already present in the pinned official Qt input. Three exact
+public Qt source-path literals are permitted only in their specific official
+frameworks; no general home-directory exemption exists. Nine focused tests and
+five portable CTest entries pass. The root privacy CI also passes.
+
+These checks do not exhaustively establish the absence of unknown secrets or
+every encoded metadata format. macOS signing attribution remains intentionally
+public; filesystem access metadata observed during private extraction is not a
+credential clearance. Hardware/session acceptance and independent credential
+rotation remain separate gates. Nothing was installed, released on GitHub or
+made public. Older 1.0.100/1.0.101 assets remain uncleared and unchanged.
