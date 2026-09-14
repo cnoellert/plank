@@ -58,6 +58,8 @@ prepared tree. Its runtime configuration default is `/etc/plank/openssl`,
 not a builder's home directory; no configuration, optional provider module,
 engine, or trust-policy file is newly shipped. Bundled dylibs are relocated and
 signed by the existing app packaging step. Never modify signed release bytes.
+OpenSSL links with `-headerpad_max_install_names` so staged development install
+names can grow without exceeding Mach-O load-command space.
 
 All four package entrypoints run `check-package-build-paths.py` on their staged
 payload before collecting a package. It rejects embedded Linux/macOS home paths

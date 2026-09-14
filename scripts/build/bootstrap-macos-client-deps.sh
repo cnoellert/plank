@@ -53,6 +53,7 @@ fetch https://github.com/openssl/openssl/releases/download/openssl-3.5.5/openssl
     # metadata. Do not bundle config, engines or optional provider modules.
     openssl_prefix=/usr/local/lib/plank-client
     openssl_stage="$PLANK_MAC_CLIENT_DEPS/openssl-stage"
+    LDFLAGS="${LDFLAGS:+$LDFLAGS }-Wl,-headerpad_max_install_names" \
     ./Configure darwin64-arm64-cc --prefix="$openssl_prefix" \
         --openssldir=/etc/plank/openssl shared no-tests
     make -j"$jobs"
