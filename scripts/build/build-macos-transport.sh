@@ -25,6 +25,7 @@ export MACOSX_DEPLOYMENT_TARGET=27.0
 export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C strip=none"
 source "$source_root/scripts/build/build-paths.sh"
 plank_build_path_flags "$source_root" "$transport_build"
+plank_native_dependency_flags
 export SDKROOT
 SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 export CARGO_TARGET_DIR="$transport_build"

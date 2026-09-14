@@ -18,6 +18,7 @@ export CARGO_HOME="$PLANK_CARGO_ROOT" RUSTUP_HOME="$PLANK_RUSTUP_ROOT"
 export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C strip=none" # SDK27 proc-macro guard.
 source "$source_root/scripts/build/build-paths.sh"
 plank_build_path_flags "$source_root" "$build"
+plank_native_dependency_flags
 export PATH="$PLANK_QT_ROOT/bin:$PLANK_MAC_CLIENT_DEPS/install/bin:$CARGO_HOME/bin:$PATH"
 export PKG_CONFIG_PATH="$PLANK_MAC_CLIENT_DEPS/install/lib/pkgconfig"
 # pkgconf itself lives in this prefix; its compiled-in "system" directories

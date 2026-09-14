@@ -30,6 +30,7 @@ esac
 boost_source_dir=$(realpath -e -- "$PLANK_BOOST_SOURCE_DIR")
 source "$repo_dir/scripts/build/build-paths.sh"
 plank_build_path_flags "$repo_dir" "$build_dir"
+plank_native_dependency_flags
 [[ $build_jobs =~ ^[1-9][0-9]*$ ]] || {
   echo "invalid host build job count: ${build_jobs}" >&2
   exit 1

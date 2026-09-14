@@ -21,7 +21,7 @@ if [[ -n $(git -C "$repo_dir" status --porcelain --untracked-files=normal) ]]; t
   exit 1
 fi
 
-for command_name in cmake install python3 readelf rg rpm rpmbuild tar; do
+for command_name in cmake cpio install python3 readelf rg rpm rpm2cpio rpmbuild tar; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -124,7 +124,6 @@ mkdir -p "$payload_dir/usr/share/plank"
 cp -aL "$build_dir/assets/." "$payload_dir/usr/share/plank/"
 
 source_epoch=$(git -C "$repo_dir" log -1 --format=%ct)
-python3 "$repo_dir/scripts/test/check-package-build-paths.py" "$payload_dir"
 tar --sort=name --mtime="@${source_epoch}" --owner=0 --group=0 \
   --numeric-owner -C "$work_dir" -czf \
   "$rpm_topdir/SOURCES/plank-host-payload.tar.gz" payload
@@ -231,4 +230,12 @@ fi
 echo "host_rpm=${rpm_file}"
 echo "plank_package_version=${package_version}"
 echo "host_rpm_manifest_gate=pass"
+# RPM's normal debug stripping is part of assembly. Audit the actual finished
+# payload, not the unstripped intermediate linked from static dependencies.
+mkdir "$work_dir/final-payload"
+(
+  cd "$work_dir/final-payload"
+  rpm2cpio "$rpm_file" | cpio -idm --quiet
+)
+python3 "$repo_dir/scripts/test/check-package-build-paths.py" "$work_dir/final-payload"
 plank_collect_package "$repo_dir" host linux x86_64 rocky-9.7 "$rpm_file"

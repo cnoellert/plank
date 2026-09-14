@@ -28,3 +28,10 @@ plank_build_path_flags() {
     PLANK_C_FILE_FLAGS="${PLANK_FILE_FLAGS[*]}"
     export RUSTFLAGS
 }
+
+# Cargo's cc-rs native dependencies do not consume RUSTFLAGS. Apply the same
+# diagnostic mapping to their C/C++ objects; do not change optimization flags.
+plank_native_dependency_flags() {
+    export CFLAGS="${CFLAGS:+$CFLAGS }$PLANK_C_FILE_FLAGS"
+    export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }$PLANK_C_FILE_FLAGS"
+}

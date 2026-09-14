@@ -14,6 +14,7 @@ build_dir=$(realpath -m -- "${3:-${repo_dir}/build/package-client}")
 ffmpeg_prefix="${ffmpeg_work_dir}/install"
 source "$repo_dir/scripts/build/build-paths.sh"
 plank_build_path_flags "$repo_dir" "$build_dir"
+plank_native_dependency_flags
 frame_flow_qmake=()
 case ${PLANK_CLIENT_FRAME_FLOW_TRACE:-0} in
   0) ;;

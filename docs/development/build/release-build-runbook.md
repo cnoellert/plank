@@ -61,8 +61,9 @@ signed by the existing app packaging step. Never modify signed release bytes.
 OpenSSL links with `-headerpad_max_install_names` so staged development install
 names can grow without exceeding Mach-O load-command space.
 
-All four package entrypoints run `check-package-build-paths.py` on their staged
-payload before collecting a package. It rejects embedded Linux/macOS home paths
+All four package entrypoints run `check-package-build-paths.py` on their payload
+before collecting a package (the RPM is extracted after normal debug stripping).
+It rejects embedded Linux/macOS home paths
 and reports counts only. Run `tests/packaging/test-build-paths.py` when changing
 this policy. This narrow reproducibility gate supplements, not replaces, the
 private denylist/history/asset audit and live runtime acceptance.
