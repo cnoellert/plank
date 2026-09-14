@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -130,6 +131,25 @@ class GitIntegrationTests(unittest.TestCase):
         self.stage('example.md', 'Use host.example.org or 192.0.2.10.')
         self.git('commit', '-qm', 'Document a reserved example')
         self.assertEqual(0, self.check('--range', self.initial, 'HEAD').returncode)
+
+    def test_ci_falls_back_to_full_history_after_rewrite(self):
+        workflow = (ROOT / '.github/workflows/private-information.yml').read_text()
+        start = workflow.index('          if [[ "$EVENT_NAME"')
+        end = workflow.index('          python3 scripts/', start)
+        selector = textwrap.dedent(workflow[start:end])
+        self.git('commit', '--allow-empty', '-qm', 'Later test state')
+        head = self.git('rev-parse', 'HEAD').stdout.strip()
+        tree = self.git('rev-parse', 'HEAD^{tree}').stdout.strip()
+        unrelated = self.git('commit-tree', tree, '-m', 'Unrelated test state').stdout.strip()
+        zero = '0' * 40
+        for base, expected in ((zero, zero), ('f' * 40, zero),
+                               (unrelated, zero), (self.initial, self.initial)):
+            with self.subTest(base=base):
+                env = dict(self.env, EVENT_NAME='push', PUSH_BASE=base, PUSH_HEAD=head)
+                result = subprocess.run(['bash', '-euc', selector + '\nprintf "%s" "$base"'],
+                                        cwd=self.repo, env=env, capture_output=True, text=True)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(expected, result.stdout)
 
     def test_range_scans_all_messages_with_generic_scanner(self):
         # Construct synthetic scanner-shaped content; it is not in the denylist.
