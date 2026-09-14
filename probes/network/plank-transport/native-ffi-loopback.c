@@ -514,7 +514,9 @@ int main(int argc, char **argv) {
         if (closure_result != PLANK_TRANSPORT_TIMEOUT) break;
     }
     if (closure_result != PLANK_TRANSPORT_ERROR_RUNTIME) {
-        fprintf(stderr, "peer closure did not reach control receiver: %d\n", closure_result);
+        fprintf(stderr, "peer closure did not reach control receiver: result=%d state=%u\n",
+                closure_result, plank_transport_native_endpoint_state(client));
+        print_error("peer closure", client);
         goto failure;
     }
     struct timespec closure_finished;
