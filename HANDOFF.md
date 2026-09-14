@@ -51,3 +51,11 @@ Client: b16b12cf1166a1279ed7e0fefe4f9822c202c3f9.
 Linux Host: 94d49f87c7460809f0fe33096d3919a4f1ee88eb.
 Transport is unchanged: 912ece5c64787997f978673ca60d313898a3548c.
 No new package was built or installed during this final source audit.
+
+Remaining operator decision: the four already-public common-C, build-deps,
+libvirtualhid and ENet repositories retain personal author/committer email.
+The four preparation repositories have zero owner personal-email occurrences.
+No public dependency history was rewritten. Decide whether to prepare sanitized
+private dependency replacements or retain already-public attribution before
+calling the entire dependency graph noreply-only. The root privacy workflow
+passed after the rewritten push; all 20 privacy cases pass.

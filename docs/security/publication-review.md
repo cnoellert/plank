@@ -39,6 +39,14 @@ network constants to make heuristic counts reach zero.
 
 ## Publication boundaries
 
+The four prepared root/Client/Host/transport repositories use the maintainer's
+noreply address. A final attribution check found personal author/committer email
+in the already-public common-C, build-deps, libvirtualhid and ENet dependencies.
+Their existing public histories were not rewritten. Before treating the whole
+dependency graph as noreply-only, decide whether to prepare sanitized private
+replacements or retain that already-public attribution. These are identity
+metadata findings, not password matches.
+
 Preparation remotes remain private. Their GitHub releases, issues, commit
 comments, uploaded Actions artifacts and caches were empty at review time;
 available root workflow logs had no known-secret or private-deployment match.
