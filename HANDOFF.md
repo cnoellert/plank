@@ -10,13 +10,31 @@ the 1.0.103 release unchanged. See
 have no signing/deployment secrets, private sources or access to internal
 machines. No candidates have been installed and no existing builder is retired.
 
-Initial hosted macOS Host compile/portable tests passed in
-[run 34833324611](https://github.com/instinctual/plank/actions/runs/34833324611).
-That overall run is not a passing four-platform qualification: Rocky container
-ownership/setup and a transient macOS Client download failure required fixes.
-The Linux Client portion continues independently. Selected-product manual
-dispatch permits retries without canceling other platforms. Final conclusions
-and artifact provenance must be recorded before calling the migration complete.
+Hosted qualification results so far:
+
+- macOS Host compile/portable tests and Ubuntu Client DEB/package gates passed
+  in [run 34833324611](https://github.com/instinctual/plank/actions/runs/34833324611).
+  Its overall result is failure because the other initial jobs needed fixes.
+- macOS Client clean bootstrap/build passed in
+  [run 34833858993](https://github.com/instinctual/plank/actions/runs/34833858993).
+- Node 24 privacy checks passed in
+  [run 34834417907](https://github.com/instinctual/plank/actions/runs/34834417907).
+- Linux Host retry is active in
+  [run 34836078210](https://github.com/instinctual/plank/actions/runs/34836078210),
+  explicitly checked against source `882cf322128584b30f48791f2b0ce3436b0a0f55`.
+  Do not claim the Host RPM passed until that run completes.
+
+The Client DEB was transferred through the checked collector to
+`artifacts/packages/candidates/1.0.103-github-builds/linux/`. SHA-256:
+`831e04102110cb586ab2824630100f653479691e62a696c8f4852bedea5ccb23`.
+Its manifest retains its actual source commit, not the newer workflow-only tip.
+
+Selected-product manual dispatch permits retries without canceling other
+platforms. Use `scripts/ci/dispatch.sh`: the expected-source gate now rejects
+stale ref propagation before bootstrap. Container trust is exact-path only;
+Rocky repositories are pinned before the first transaction; `python3-jinja2`
+is declared and checked before lengthy dependency builds. Current Actions use
+Node 24. These are CI/build fixes, not Host/Client runtime changes.
 
 macOS distribution remains gated on operator provisioning of Developer ID and
 notarization credentials in a separate protected environment. Ordinary Mac CI
