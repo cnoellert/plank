@@ -19,8 +19,18 @@ administrator opt-in and are disabled/hidden by default. Linux and macOS share
 the same policy and menu implementation. Ordinary streaming is unchanged.
 Eighteen Qt policy test cases pass on the Linux Client builder.
 
-The preceding 1.0.99 package verification predates this product split and is
-not validation of these new package bytes. Record subsequent build results here.
+All four 1.0.100 Host/Client packages pass clean build and uninstalled package
+gates from source 79345726c2d6c549e34c12ee208978fd6f0b7c11. Linux Host retains
+BUILD_TESTS=OFF and the full CUDA target list. Mac Host/Client distributions
+passed signing, notarization, stapling and Gatekeeper. No installation or live
+session test was performed. Package hashes and exact source provenance are in
+artifacts/packages/releases/1.0.100/manifest.json. Infrastructure artifacts are
+kept in their independent private repositories, never in this public catalog.
+
+Four portable root CTest entries pass, including 19 privacy tests. GitHub privacy
+CI passed for the package source. All retained historical root gitlinks resolve
+in the maintained companions; no excluded private implementation blob remains
+in the reachable public object set. The earlier 1.0.99 packages predate the split.
 Hardware/session acceptance remains governed by
 docs/development/acceptance-criteria.md.
 
