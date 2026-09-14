@@ -11,3 +11,10 @@
 /sunshine_state.json
 /write_file_test_*.txt
 .DS_Store
+# Defense in depth only: private material belongs outside the checkout.
+password_audit.txt
+passwords_audit.txt
+private-notes/
+private-audit/
+.env
+.env.local

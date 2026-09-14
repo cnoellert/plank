@@ -39,3 +39,8 @@ Do not commit packages, caches, signing material, credentials, logs or private
 deployment inventories. Keep operational notes outside Git and use synthetic
 addresses/accounts in reproducible examples. Report security issues privately
 to the maintainers instead of posting secrets in a public issue.
+
+Read [Private information and public Git](docs/security/private-information.md)
+and enable the local pre-commit/commit-message checks before contributing.
+Keep optional private denylists outside the checkout; CI must never receive
+operator credentials. Hooks and CI supplement, not replace, a publication audit.

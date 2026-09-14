@@ -1,0 +1,10 @@
+title = "PLANK secret prevention"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "literal-ssh-password"
+description = "Do not embed SSH passwords in source or operational notes"
+regex = '''(?i)\bSSHPASS\s*=\s*["']([^"'$\r\n]{4,})["']'''
+secretGroup = 1
