@@ -254,7 +254,7 @@ sudo dnf install -y \
   libXfixes-devel libXi-devel libXinerama-devel libXrandr-devel \
   libXtst-devel libxkbcommon-devel mesa-libgbm-devel mesa-libGL-devel \
   numactl-devel openssl-devel opus-devel pam-devel pipewire-devel \
-  pulseaudio-libs-devel python3-devel systemd-devel \
+  pulseaudio-libs-devel python3-devel python3-jinja2 systemd-devel \
   vulkan-loader-devel wayland-devel wayland-protocols-devel
 ```
 

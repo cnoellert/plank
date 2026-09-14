@@ -16,7 +16,7 @@ case "$role:$ID:$VERSION_ID" in
     dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
     dnf install -y --setopt=install_weak_deps=False \
       autoconf automake clang cmake curl-minimal git libtool make nasm ninja-build patch \
-      pkgconf-pkg-config ripgrep rpm-build cpio wget xz tar gzip python3 \
+      pkgconf-pkg-config ripgrep rpm-build cpio wget xz tar gzip python3 python3-jinja2 \
       gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ \
       cuda-compiler-13-0 cuda-cudart-devel-13-0 cuda-driver-devel-13-0 \
       cuda-nvml-devel-13-0 cuda-nvrtc-devel-13-0 \
