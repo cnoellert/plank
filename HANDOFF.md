@@ -4,10 +4,10 @@ Read AGENTS.md and the platform build runbook before work.
 
 ## Current source
 
-The final Host/Client repository is `instinctual/plank`. Current work is on
-`build-privacy`, preparing reproducible package-path cleanup. ENet cleanup is
-pushed and merged to main at **5844885**, candidate version **1.0.102**; previous package source remains
-the 1.0.101 mainline recorded below. It remains PRIVATE pending explicit publication approval. The
+The final Host/Client repository is `instinctual/plank`. Build-path cleanup is
+ready for mainline **1.0.103** package validation. ENet cleanup was pushed and
+merged at **5844885**; its **1.0.102** candidate provenance is retained below.
+The repository remains PRIVATE pending explicit publication approval. The
 original development repository is preserved privately; do not import its
 history, old gitlinks, deployment notes or credentials here. Private
 infrastructure products remain independent and are not build dependencies.
@@ -59,6 +59,31 @@ The current header branch replaces the Host-specific common-C branch, never the
 Client's branch. Old remote repos/history were not deleted or rewritten.
 
 ## Audit and validation
+
+### Build-path cleanup
+
+Product builds now map C/C++ and Rust diagnostic paths to neutral build labels.
+Cargo native compiler flags are isolated from qmake's Make variables. Client
+FFmpeg bootstrap sanitizes only its generated configure-description string,
+retaining the exact identity-GBR patch and actual private link/pkg-config paths.
+macOS Client dependencies were rebuilt from pinned archives; OpenSSL runtime
+defaults no longer point into an operator's home. No TLS verification downgrade,
+new shipped trust/configuration file, media source or transport source change.
+
+Normal package assembly strips debug sections before distribution signing.
+All four package paths have a fail-closed home-path gate. Three exact public Qt
+vendor paths (six occurrences) are narrowly allowed only in the pinned official
+QtQuick/QtWidgets frameworks; there is no general home-path exemption.
+
+Nine focused build-path cases pass. Five portable CTest entries pass, including
+privacy and bootstrap contracts. Linux Host/Client candidate package gates pass;
+the Mac Host passes package/signing/notarization gates. The Mac Client signed
+application passes path review and a certificate-verified TLS1.3 loopback using
+its bundled OpenSSL3.5.5. Initial fixture/compiler-flag failures are retained in
+private evidence; none were waived. A new mainline four-package build and final
+payload denylist review are next. No installs or hardware/session tests occurred.
+
+### Previous source/distribution audit
 
 Every rewritten commit was checked for allowed URL/gitlink/pin changes, unchanged
 executable source, retained messages and parent relationships. Historical
