@@ -170,6 +170,14 @@ assumed the bundle advertises `HEAD`; use the exact ref printed by
 
 ## Client DEB — linux-client-builder only
 
+The Host/Client base version is packaging/VERSION. Increment it for new package
+bytes. Set PLANK_BUILD_BRANCH explicitly on detached snapshots: main produces
+an unqualified version; a feature branch adds its lowercase kebab-case name to
+package filenames and visible application versions. Never relabel a candidate
+after merging; rebuild from main. RPM feature Release values sort below the
+same-version main package; Debian feature versions sort above it and require
+an explicit downgrade when replacing them at the same base version.
+
 For the explicitly authorized .52 frame-flow diagnostic, export
 `PLANK_CLIENT_FRAME_FLOW_TRACE=1` before `build-client-package-binaries.sh`.
 Default0 leaves tracing disabled. This passes `CONFIG+=plank-frame-flow-trace`

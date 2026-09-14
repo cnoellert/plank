@@ -97,7 +97,7 @@ Clone from Git. Do not copy the old work folder and do not use an archive:
 
 ```bash
 git clone --recurse-submodules=no \
-  https://github.com/instinctual/plank-public.git "$PLANK_CANONICAL_ROOT"
+  https://github.com/instinctual/plank.git "$PLANK_CANONICAL_ROOT"
 git -C "$PLANK_CANONICAL_ROOT" checkout main
 git -C "$PLANK_CANONICAL_ROOT" submodule update --init \
   third_party/kyber-kymux apps/host/linux apps/client
@@ -127,7 +127,7 @@ that credential:
 gh auth login
 gh auth setup-git
 gh auth status
-git ls-remote https://github.com/instinctual/plank-public.git HEAD
+git ls-remote https://github.com/instinctual/plank.git HEAD
 git config --global user.name "Your Name"
 git config --global user.email "YOUR_GITHUB_NOREPLY_ADDRESS"
 git config --get user.name
