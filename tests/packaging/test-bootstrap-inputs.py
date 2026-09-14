@@ -19,6 +19,8 @@ class BootstrapInputs(unittest.TestCase):
             script = base / 'source/scripts/build/build-client-ffmpeg.sh'
             script.parent.mkdir(parents=True)
             shutil.copyfile(ROOT / 'scripts/build/build-client-ffmpeg.sh', script)
+            for helper in ('build-paths.sh', 'sanitize-ffmpeg-build-info.py'):
+                shutil.copyfile(ROOT / 'scripts/build' / helper, script.parent / helper)
             if with_patch:
                 destination = base / 'source' / PATCH
                 destination.parent.mkdir(parents=True)
