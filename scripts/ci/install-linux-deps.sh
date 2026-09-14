@@ -27,6 +27,7 @@ case "$role:$ID:$VERSION_ID" in
       pam-devel pipewire-devel pulseaudio-libs-devel python3-devel systemd-devel \
       vulkan-loader-devel wayland-devel wayland-protocols-devel
     /usr/local/cuda/bin/nvcc --version
+    python3 -c 'import jinja2' # Fail before the long FFmpeg bootstrap.
     rpm -qa | sort
     ;;
   client:ubuntu:26.04)

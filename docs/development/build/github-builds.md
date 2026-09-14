@@ -44,3 +44,27 @@ after clean runs pass, keyed by platform, toolchain and exact dependency/patch
 inputs. Never cache signing material or application worktrees. Do not silently
 switch to paid larger runners, older SDKs or reduced CUDA architectures when a
 standard runner is insufficient; record the resource limitation first.
+
+## Diagnosing a hosted build
+
+Manual dispatch accepts `product=all`, `linux-host`, `linux-client`,
+`macos-host` or `macos-client`. A selected-product run has an independent
+concurrency group, so retrying it does not cancel other platforms. Inspect the
+failed job's first error, not the final nonzero-exit summary.
+
+- Rocky container ownership: checkout is runner-owned while the container runs
+  as root. `context.py` trusts only the exact workspace. Never use a wildcard
+  `safe.directory` exception.
+- Rocky minor-release drift: a 9.7 image's ordinary mirror configuration can
+  follow the next 9.x release. Pin the 9.7 vault **before the first package
+  transaction**, including Git/Python installation. The container's existing
+  `curl-minimal` is sufficient; do not conflict with it by installing `curl`.
+- `glad: jinja2 not found`: `python3-jinja2` is an explicit Host bootstrap
+  prerequisite. Do not depend on a previous builder's Python environment or
+  let CMake install ad hoc dependencies late in the build.
+- Download HTTP 502/503: use bounded retries of the pinned input, retaining its
+  SHA-256 gate. Do not change versions or accept a partial download.
+- Node.js 20 deprecation: the Node runtime embedded in a GitHub Action is
+  separate from the OS `node` executable. Current pinned checkout/artifact
+  actions use Node.js 24; installing a newer OS Node does not update an old
+  Action.
