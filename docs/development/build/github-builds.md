@@ -29,7 +29,7 @@ local builders remain available until hosted builds are qualified.
 
 Ordinary CI intentionally has no Apple credentials. Its unsigned results are
 not end-user installers. Signed, notarized PKG/DMG publication requires a
-separate protected, manually approved release environment with Developer ID
+separate branch-restricted release environment with Developer ID
 Application and Installer certificates/private keys and notarization authority.
 Do not copy a developer's entire keychain or reuse personal GitHub credentials.
 Do not weaken existing signing/notarization gates to make an unsigned CI job
@@ -38,10 +38,14 @@ separate gate.
 
 `build.yml` has a separate signing job selected with `signed=true` for one Mac
 product. The job requires manual dispatch and directly names the protected
-`macos-signing` environment. Require human review, disallow bypass,
-and allow only approved release/candidate branches in that environment. Review
-the exact source SHA, workflows and dependency changes before approving; do not
-auto-approve through a token. Public push/PR jobs have no signing authority.
+`macos-signing` environment. At the operator's request, this environment has no
+required reviewers or wait timer: an explicitly dispatched signed build on an
+allowed branch proceeds automatically. Keep custom deployment branch policies
+enabled (currently `main` and `macos-display-recovery`); do not replace them with
+an all-branches wildcard. Review source, workflow and dependency changes before
+dispatching or adding a candidate branch. Public push/PR jobs have no signing
+authority. This removes the approval gate itself, not through a bot/token that
+approves each run; it does not enable signing on every push.
 
 Environment secrets (never repository files):
 
@@ -58,7 +62,8 @@ Keep Developer ID distinct from Apple Development and Mac App Store identities.
 
 After a clean committed/pushed source is qualified, request signing with
 `bash scripts/ci/dispatch.sh macos-host true` (or `macos-client true`). The job
-waits for manual approval. Only its signing step receives secrets. The helper
+starts without a separate approval prompt on an allowed branch. Only its
+signing step receives secrets. The helper
 checks presence before bootstrap and removes them from child environments. It
 bootstraps dependencies without credentials, then imports into a temporary 0700 runner
 directory/keychain with narrowly allowed Apple signing tools, and stores

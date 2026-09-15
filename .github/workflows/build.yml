@@ -15,7 +15,7 @@ on:
         description: Expected commit (optional in UI; required by the dispatch helper)
         type: string
       signed:
-        description: Request protected macOS signing (manual approval required)
+        description: Request protected macOS signing (allowed branches only)
         type: boolean
         default: false
 

@@ -29,10 +29,13 @@ search list restored. No build ran on the dedicated development Mac.
 The fresh unqualified 1.0.104 build is queued in
 [run 35013030130](https://github.com/instinctual/plank/actions/runs/35013030130)
 at exact source `9284c204b6974e322e480442a0b0b91767420d2a`. Policy checks passed;
-the signed job is waiting for operator approval of `macos-signing`.
-Next: after approval, monitor that run and collect its verified package under
-`artifacts/packages/releases/1.0.104/macos/`. Do not approve it programmatically
-or relabel the candidate package.
+the signed job is now running. At the operator's explicit request, the
+`macos-signing` environment no longer requires reviewers or a wait timer.
+Custom branch restrictions remain `main` and `macos-display-recovery`; secret
+scope and dispatch-only signing are unchanged. The already waiting job started
+automatically after the policy change, without an approval API call.
+Next: monitor that run and collect its verified package under
+`artifacts/packages/releases/1.0.104/macos/`. Do not relabel the candidate package.
 No mainline rebuild or release publication is claimed yet. Client/Linux runtime
 and dependency gitlinks remain unchanged; a new Client is not required.
 
@@ -124,15 +127,15 @@ Rocky repositories are pinned before the first transaction; `python3-jinja2`
 is declared and checked before lengthy dependency builds. Current Actions use
 Node 24. These are CI/build fixes, not Host/Client runtime changes.
 
-macOS distribution requires manual approval of the protected Developer ID and
-notarization environment. Ordinary Mac CI
+macOS distribution uses the branch-restricted Developer ID and notarization
+environment, without a separate reviewer approval. Ordinary Mac CI
 does not upload unsigned applications as release packages. Initial clean runs
 use no dependency caches; add exact-input caches only after clean bootstrap
 qualification. Hardware/session gates remain separate from hosted build tests.
 Protected GitHub signing was authorized. The protected `macos-signing`
 environment contains encrypted certificate exports, their passwords and
 notarization credentials; values have not been retrieved or logged. A separate
-manual-approval job prepares a disposable keychain and invokes the normal
+explicit-dispatch job prepares a disposable keychain and invokes the normal
 package gates. Fourteen CI policy/helper tests pass. Credential validity and
 the first signed/notarized Host runner package are now qualified. The Mac
 Client signed runner job has not yet been exercised.

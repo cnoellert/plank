@@ -68,7 +68,7 @@ class ContextTests(unittest.TestCase):
             self.assertRegex(action, r'@([0-9a-f]{40})$')
         self.assertEqual(workflow.count('actions/checkout@'), workflow.count('persist-credentials: false'))
 
-    def test_signing_requires_separate_manual_approval(self):
+    def test_signing_requires_explicit_dispatch_and_protected_environment(self):
         caller = (ROOT / '.github/workflows/build.yml').read_text().split('  macos-signed:\n')[1]
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.signed", caller)
         self.assertIn('needs: policy', caller)
