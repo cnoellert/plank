@@ -2,7 +2,7 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
-## Full release 1.0.105 in preparation
+## Full release 1.0.105 verified; publication next
 
 The operator requested a full rebuild and GitHub release of all four public
 Host/Client packages with relevant change notes. Version 1.0.105 preserves the
@@ -12,6 +12,32 @@ and notarize both Mac packages, then collect and verify artifacts before
 creating the release tag and publishing. No installations are requested.
 Release notes: `docs/releases/1.0.105.md`. Private infrastructure products are
 outside this public repository/release. Do not claim fresh hardware acceptance.
+
+All four jobs pin `78e068edf9240de44e2aea5949dd94df713468b0` on `main`:
+
+- Linux Host: https://github.com/instinctual/plank/actions/runs/35018358540
+- Linux Client: https://github.com/instinctual/plank/actions/runs/35018361548
+- Signed macOS Host: https://github.com/instinctual/plank/actions/runs/35018364501
+- Signed macOS Client: https://github.com/instinctual/plank/actions/runs/35018367944
+
+All four hosted jobs passed and their artifacts were collected under
+`artifacts/packages/releases/1.0.105/`. Local CI/version, package-collection,
+build-path and bootstrap-input contract tests passed. Both Mac artifacts passed
+Developer ID signing, notarization, stapling, Gatekeeper and signing cleanup.
+The Mac Host's recovery/TLS and final-PKG permissions gates, Linux Client's
+exact-decoder/private-FFmpeg/dependency/no-autostart gates, and Host RPM manifest
+and log-directory gates passed. Fresh hardware/session testing was not performed.
+
+Verified SHA-256 values (sizes and full source/gitlinks are in the manifest):
+
+- Host RPM: `7aa4a71077ba22b836738ec53152c966af76555375da1514cc811065f3efb1be`
+- Client DEB: `eb4c918e0c5c52fc3d5b0ef0bc16d340a89393971b71c8384f5491be0ec44985`
+- Host PKG: `6e99f7509e31a17a097ee56c9f295f267bea5cd5a00dabf09582433646b94f92`
+- Client DMG: `e88a62aee26d553d836ed7dbe6266441bf8037fa1623a27c307d4e602ea6fa54`
+
+Next: tag the exact build commit as `v1.0.105`, publish all four packages plus
+flat-filename release checksums and the provenance manifest, then verify the
+published asset hashes. No package installation is authorized by this task.
 
 ## Ready: signed mainline macOS Host 1.0.104
 
