@@ -78,6 +78,15 @@ remain unchanged. See [GitHub's signing guidance](https://docs.github.com/en/act
 
 ## Initial qualification
 
+The protected direct Host job passed signing, notarization, stapling, final
+package permission checks and temporary-keychain cleanup in
+[run 35011167754](https://github.com/instinctual/plank/actions/runs/35011167754)
+at source `ca36e48123d58cc84104f6fab5df59c35d14f05e`. This is not live
+installation/recovery acceptance or qualification of the signed Client job.
+The initial reusable-workflow version received empty secret values despite
+environment metadata being present; the direct environment-protected job is
+the qualified path. Do not restore that indirection or broaden secret access.
+
 First runs deliberately bootstrap from source without dependency caches. This
 checks the public-clone path and exposes missing prerequisites. Add caches only
 after clean runs pass, keyed by platform, toolchain and exact dependency/patch

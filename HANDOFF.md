@@ -2,6 +2,28 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
+## Ready for operator test: signed GitHub Host 1.0.104
+
+`macos-display-recovery` is committed/pushed, not merged. The first signed
+GitHub Host candidate passed in
+[run 35011167754](https://github.com/instinctual/plank/actions/runs/35011167754),
+exact source `ca36e48123d58cc84104f6fab5df59c35d14f05e`. This includes both
+authenticated display recovery and the 1.0.103 app-permission correction.
+
+Package: `artifacts/packages/candidates/1.0.104-macos-display-recovery/macos/plank-host_1.0.104-macos-display-recovery_arm64.pkg`
+(6,604,549 bytes). SHA-256:
+`08727763e3c970c89b91b7930c1032bd5b1b6876764bdca7eea8c9cd4365b706`.
+The collector independently verified the transferred bytes and retained the
+exact root/gitlinks in the manifest. Developer ID signing, Apple notarization,
+stapling, Gatekeeper, final BOM/extracted-payload permissions, all recovery and
+portable tests passed. The temporary CI signing keychain was deleted and its
+search list restored. No build ran on the dedicated development Mac.
+
+Next: operator installs the candidate and verifies ordinary-account app launch,
+reconnection after the owned virtual output becomes inactive, and login/logout.
+No candidate install, live recovery acceptance, merge or release publication is
+claimed. Client/Linux runtime and dependency gitlinks remain unchanged.
+
 ## macOS app permissions correction
 
 Host 1.0.103's signed PKG preserved owner-only app directories and icon/signature
@@ -16,7 +38,7 @@ The correction is alongside display recovery on `macos-display-recovery`,
 changing private installed-state policy. New gates check the app, payload and
 finished PKG BOM/extraction. All eight permission tests, including an actual
 unsigned PKG roundtrip, passed on the GitHub Mac. Its complete ad-hoc app bundle
-also passed under caller umask 077. No new installer has been produced yet. Existing 1.0.103
+also passed under caller umask 077. The signed installer is recorded above. Existing 1.0.103
 release bytes are unchanged; earlier package review missed this permission gate.
 
 Clean GitHub Host build/test passed at `9d0203563465e97fc26fa18afd851e66ad7d6191`
@@ -38,16 +60,16 @@ the last successful mode and republishes existing virtual settings only if
 offline; it does not create another display or modify physical display modes.
 The main-queue operation has a three-second authority deadline; the network
 queue stays responsive, and request cancellation/ownership loss stops recovery.
-No deployment, live recovery pass or signed package is recorded yet.
+The signed package is recorded above; live recovery qualification remains open.
 
 The operator intentionally powered off the dedicated development Mac to require
 GitHub-hosted builds. Do not build on it or turn it on as a fallback. Compilation
 and synthetic recovery/TLS gates must run on the hosted macOS runner. Protected
 GitHub Developer ID/notarization configuration is now explicitly authorized;
-credential provisioning is complete and signing validation remains to be completed. No
+credential provisioning and Host signing validation are complete. No
 credential values, private operational logs or deployment identities belong here.
 
-## Hosted builds qualified; signing pending
+## Hosted builds qualified; Host signing qualified
 
 The approved `github-builds` work is fast-forward merged into `main`, adding
 GitHub-hosted clean-worktree builds. The 1.0.103 release is unchanged. See
@@ -88,8 +110,8 @@ Rocky repositories are pinned before the first transaction; `python3-jinja2`
 is declared and checked before lengthy dependency builds. Current Actions use
 Node 24. These are CI/build fixes, not Host/Client runtime changes.
 
-macOS distribution remains gated on operator provisioning of Developer ID and
-notarization credentials in a separate protected environment. Ordinary Mac CI
+macOS distribution requires manual approval of the protected Developer ID and
+notarization environment. Ordinary Mac CI
 does not upload unsigned applications as release packages. Initial clean runs
 use no dependency caches; add exact-input caches only after clean bootstrap
 qualification. Hardware/session gates remain separate from hosted build tests.
@@ -98,16 +120,17 @@ environment contains encrypted certificate exports, their passwords and
 notarization credentials; values have not been retrieved or logged. A separate
 manual-approval job prepares a disposable keychain and invokes the normal
 package gates. Fourteen CI policy/helper tests pass. Credential validity and
-the first signed/notarized runner package remain pending actual execution.
+the first signed/notarized Host runner package are now qualified. The Mac
+Client signed runner job has not yet been exercised.
 The first protected run, `35010539351`, received empty values for all six
 environment secrets despite their presence in the environment metadata. It
 stopped before keychain creation or certificate validation; no installer was
 produced. Signing now runs as a direct environment-protected job in build.yml,
 not through a reusable-workflow call. Missing secrets are checked before
-dependency bootstrap. Approval and a successful signed rerun remain required.
+dependency bootstrap. The direct-job signed rerun passed as recorded above.
 The public and both private infrastructure CI branches are merged into their
-respective `main` branches. Next: resolve signing authority and qualify an
-exact-input dependency cache. Existing candidate packages keep their original
+respective `main` branches. Next: candidate hardware acceptance and, separately,
+qualification of an exact-input dependency cache. Existing candidate packages keep their original
 branch/source provenance; merging does not promote or relabel those artifacts.
 
 ## Current source
