@@ -59,9 +59,10 @@ permission tests (7 passed/1 Mac-only skipped) and 23 installer shell checks pas
 - No workstation packages were installed for this release. Fresh live hardware/
   session tests were not performed; manifests correctly retain functional
   validation `not-recorded` and package validation `passed`.
-- `github-builds`, `macos-display-recovery` and `macos-media-recovery` still exist locally/remotely,
-  fully merged with no outstanding work. Branch deletion was not requested in
-  the notes update; do not infer permission to remove other repositories.
+- Deleted the fully merged `github-builds`, `macos-display-recovery` and
+  `macos-media-recovery` branches locally and remotely at the operator's request.
+  Only `main` remains in this repository; release tags and history are retained.
+  Other repositories and their branches were not changed.
 
 ## Release evidence
 
@@ -162,7 +163,7 @@ not imply missing release dependencies.
 ## Remaining gates and publication boundaries
 
 Mainline macOS Host 1.0.106 is rebuilt, collected and checksum-verified, ready
-for manual installation. The feature branch remains merged, not deleted.
+for manual installation. The merged feature branch has been deleted.
 Volume/mute is operator-validated. Longer app/alert audio, device changes,
 sleep/reconnect/topology and login/logout remain follow-up coverage, not
 blockers invented beyond the operator's merge approval. Inspect the new audio
