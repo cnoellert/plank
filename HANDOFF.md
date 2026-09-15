@@ -5,8 +5,9 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Working branch: `macos-media-recovery`, based on main `cf0f47d`.
-  Host-only candidate 1.0.106 removes offline virtual-display settings
+- Working branch: `main`. Accepted macOS media recovery is merged/pushed at
+  `4b634071d0aa96c5568e90068f5f42b7cd953365`.
+  Host-only 1.0.106 removes offline virtual-display settings
   reapplication, adds recoverable audio overruns/bounded audio restart and
   follows default-output volume/mute. See
   `docs/development/plans/macos-media-recovery.plan`.
@@ -19,7 +20,17 @@ notes' README before machine-specific work; deployment information stays outside
   Transfer hash and source manifest match the runner. The operator confirmed
   volume/mute works, reported good behavior so far and approved merge/rebuild.
   This is not an exhaustive long-duration or sleep/recovery qualification.
-  Mainline rebuild is next; no agent installation or session interruption.
+  Mainline signed rebuild passed at that exact merge commit in
+  [35035036281](https://github.com/instinctual/plank/actions/runs/35035036281).
+  Collected: `artifacts/packages/releases/1.0.106/macos/plank-host_1.0.106_arm64.pkg`,
+  6,606,256 bytes; SHA-256:
+  `bdb59fb5ddf2df0afb4704920684b83d81c9b8975602e3d643bed5dd1c8d3e49`.
+  Runner provenance and transferred checksum match. Audio/display/pen/installer
+  tests, signing, notarization, stapling and Gatekeeper passed again on main.
+  Package validation is `passed`; functional validation remains `not-recorded`
+  for this exact mainline installer. Release notes: `docs/releases/1.0.106.md`.
+  No new GitHub Release was published; the latest published release is below.
+  No agent installation or session interruption.
   No Client update is needed. All maintained gitlinks below are unchanged.
 
 Candidate validation: 11 synthetic display-recovery checks, 100 audio-tap
@@ -42,7 +53,7 @@ permission tests (7 passed/1 Mac-only skipped) and 23 installer shell checks pas
 - No workstation packages were installed for this release. Fresh live hardware/
   session tests were not performed; manifests correctly retain functional
   validation `not-recorded` and package validation `passed`.
-- `github-builds` and `macos-display-recovery` still exist locally/remotely,
+- `github-builds`, `macos-display-recovery` and `macos-media-recovery` still exist locally/remotely,
   fully merged with no outstanding work. Branch deletion was not requested in
   the notes update; do not infer permission to remove other repositories.
 
@@ -125,7 +136,7 @@ secrets fail before bootstrap. No per-run human approval is needed.
 Exact-input dependency caching remains optional, unimplemented future work,
 not an outstanding release blocker or an automatically authorized task.
 
-## Maintained inputs (1.0.105)
+## Maintained inputs (unchanged from 1.0.105 through 1.0.106)
 
 | Maintained input | Package source commit |
 | --- | --- |
@@ -144,7 +155,8 @@ not imply missing release dependencies.
 
 ## Remaining gates and publication boundaries
 
-Next: merge the accepted candidate and rebuild macOS Host 1.0.106 from main.
+Mainline macOS Host 1.0.106 is rebuilt, collected and checksum-verified, ready
+for manual installation. The feature branch remains merged, not deleted.
 Volume/mute is operator-validated. Longer app/alert audio, device changes,
 sleep/reconnect/topology and login/logout remain follow-up coverage, not
 blockers invented beyond the operator's merge approval. Inspect the new audio
