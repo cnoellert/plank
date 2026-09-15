@@ -26,8 +26,13 @@ stapling, Gatekeeper, final BOM/extracted-payload permissions, all recovery and
 portable tests passed. The temporary CI signing keychain was deleted and its
 search list restored. No build ran on the dedicated development Mac.
 
-Next: rebuild the macOS Host as unqualified 1.0.104 on GitHub. Protected signing requires operator
-approval; do not approve it programmatically or relabel the candidate package.
+The fresh unqualified 1.0.104 build is queued in
+[run 35013030130](https://github.com/instinctual/plank/actions/runs/35013030130)
+at exact source `9284c204b6974e322e480442a0b0b91767420d2a`. Policy checks passed;
+the signed job is waiting for operator approval of `macos-signing`.
+Next: after approval, monitor that run and collect its verified package under
+`artifacts/packages/releases/1.0.104/macos/`. Do not approve it programmatically
+or relabel the candidate package.
 No mainline rebuild or release publication is claimed yet. Client/Linux runtime
 and dependency gitlinks remain unchanged; a new Client is not required.
 
