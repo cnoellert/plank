@@ -29,7 +29,11 @@ notes' README before machine-specific work; deployment information stays outside
   tests, signing, notarization, stapling and Gatekeeper passed again on main.
   Package validation is `passed`; functional validation remains `not-recorded`
   for this exact mainline installer. Release notes: `docs/releases/1.0.106.md`.
-  No new GitHub Release was published; the latest published release is below.
+  Published [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106)
+  with the signed Host PKG, manifest and checksums. The annotated tag identifies
+  the exact merge/build commit above, not subsequent documentation commits.
+  GitHub asset digests match all three local files. Published checksums use flat
+  asset filenames; the local catalog retains platform subdirectories.
   No agent installation or session interruption.
   No Client update is needed. All maintained gitlinks below are unchanged.
 
@@ -44,7 +48,9 @@ Clang ASan/UBSan outside the sandbox. GCC ASan could not link its missing local
 runtime; sandboxed LeakSanitizer cannot inspect threads. Neither limitation was
 treated as a product failure or a passed test. Local CI policy (14), bundle
 permission tests (7 passed/1 Mac-only skipped) and 23 installer shell checks pass.
-- Latest release: [v1.0.105](https://github.com/instinctual/plank/releases/tag/v1.0.105).
+- Previous full-platform release: [v1.0.105](https://github.com/instinctual/plank/releases/tag/v1.0.105).
+  Its Linux Host and Linux/macOS Clients remain current; 1.0.106 updates only
+  the macOS Host.
   All four packages were clean-bootstrapped and rebuilt on GitHub runners at
   `78e068edf9240de44e2aea5949dd94df713468b0`. The annotated tag identifies
   that exact build commit, not subsequent documentation commits.
