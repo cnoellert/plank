@@ -22,8 +22,9 @@ def run(executable, config, mode):
                                    env=dict(os.environ, PLANK_TEST_RECOVERY=mode))
         try:
             assert select.select([process.stdout], [], [], 10)[0], "listener timeout"
-            match = re.fullmatch(r"macos_https_auth_ready port=(\d+) desktop_active=1\n", process.stdout.readline())
-            assert match, "listener not ready"
+            line = process.stdout.readline()
+            match = re.fullmatch(r"macos_https_auth_ready port=(\d+) desktop_active=1\n", line)
+            assert match, "listener not ready: " + ("identity import failed" if line == "macos_https_identity_create=failed\n" else "unexpected startup result")
             port = int(match[1])
             tls = auth.context(cert)
             auth.discovery(tls, port)

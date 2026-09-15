@@ -27,4 +27,4 @@ xcrun clang "${common[@]}" -DPLANK_SYNTHETIC_AUTH_TEST \
     "$source_root/apps/host/macos/auth/graphical-authority.m" \
     "$source_root/probes/macos/https-auth.m" -o "$output/https-auth-synthetic"
 python3 "$source_root/tests/auth/macos-topology-recovery.py" \
-    "$output/https-auth-synthetic" "$source_root/probes/macos/loopback-cert.cnf"
+    "$output/https-auth-synthetic" "$source_root/probes/macos/https-cert.cnf"

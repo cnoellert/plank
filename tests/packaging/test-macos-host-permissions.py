@@ -4,6 +4,7 @@ import importlib.util
 import os
 from pathlib import Path
 import platform
+import plistlib
 import stat
 import subprocess
 import tempfile
@@ -33,6 +34,11 @@ class Permissions(unittest.TestCase):
                 path = self.app / name
                 if not path.is_dir():
                     path.write_text("synthetic fixture\n")
+            (self.app / "Contents/Info.plist").write_bytes(plistlib.dumps({
+                "CFBundleIdentifier": "org.example.permission-fixture",
+                "CFBundleVersion": "1.0", "CFBundleExecutable": "plank-host",
+                "CFBundlePackageType": "APPL",
+            }))
             for role in ("machine", "desktop", "sign-in"):
                 folder = "LaunchDaemons" if role == "machine" else "LaunchAgents"
                 path = self.root / "Library" / folder / f"la.instinctual.PLANK.Host.{role}.plist"
