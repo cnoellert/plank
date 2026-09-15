@@ -92,6 +92,11 @@ def main():
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
     try:
+        # Check required secrets first, then bootstrap with them removed from
+        # the child environment and before creating any signing keychain.
+        result = subprocess.run(["bash", str(Path(os.environ["PLANK_SOURCE_ROOT"]) / "scripts/ci/bootstrap.sh"), role])
+        if result.returncode:
+            raise SigningError(f"Credential-free dependency bootstrap failed (exit {result.returncode})")
         previous = shlex.split(command("read keychain search list", ["security", "list-keychains", "-d", "user"]))
         state = directory / "search-list.json"
         state.write_text(json.dumps(previous))

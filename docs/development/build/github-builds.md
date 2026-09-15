@@ -36,9 +36,9 @@ Do not weaken existing signing/notarization gates to make an unsigned CI job
 produce a release. Credential provisioning and release automation are a
 separate gate.
 
-`build.yml` can manually call `sign-macos.yml` with `signed=true` for one Mac
-product. The reusable workflow independently requires manual dispatch and the
-protected `macos-signing` environment. Require human review, disallow bypass,
+`build.yml` has a separate signing job selected with `signed=true` for one Mac
+product. The job requires manual dispatch and directly names the protected
+`macos-signing` environment. Require human review, disallow bypass,
 and allow only approved release/candidate branches in that environment. Review
 the exact source SHA, workflows and dependency changes before approving; do not
 auto-approve through a token. Public push/PR jobs have no signing authority.
@@ -59,7 +59,8 @@ Keep Developer ID distinct from Apple Development and Mac App Store identities.
 After a clean committed/pushed source is qualified, request signing with
 `bash scripts/ci/dispatch.sh macos-host true` (or `macos-client true`). The job
 waits for manual approval. Only its signing step receives secrets. The helper
-removes them from child environments, imports into a temporary 0700 runner
+checks presence before bootstrap and removes them from child environments. It
+bootstraps dependencies without credentials, then imports into a temporary 0700 runner
 directory/keychain with narrowly allowed Apple signing tools, and stores
 notarization credentials in that keychain. It restores the prior search list
 and deletes temporary material on completion/failure; an always-run cleanup step

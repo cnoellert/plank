@@ -99,6 +99,12 @@ notarization credentials; values have not been retrieved or logged. A separate
 manual-approval job prepares a disposable keychain and invokes the normal
 package gates. Fourteen CI policy/helper tests pass. Credential validity and
 the first signed/notarized runner package remain pending actual execution.
+The first protected run, `35010539351`, received empty values for all six
+environment secrets despite their presence in the environment metadata. It
+stopped before keychain creation or certificate validation; no installer was
+produced. Signing now runs as a direct environment-protected job in build.yml,
+not through a reusable-workflow call. Missing secrets are checked before
+dependency bootstrap. Approval and a successful signed rerun remain required.
 The public and both private infrastructure CI branches are merged into their
 respective `main` branches. Next: resolve signing authority and qualify an
 exact-input dependency cache. Existing candidate packages keep their original
