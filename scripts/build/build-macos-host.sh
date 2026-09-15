@@ -53,6 +53,18 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -framework Foundation -framework CoreMedia -framework CoreAudio -framework Security -o "$output/audio-tap-lifecycle-test"
 "$output/audio-tap-lifecycle-test"
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Iapps/host/macos/media tests/audio/macos-output-volume.m \
+    -framework Foundation -framework CoreAudio -o "$output/output-volume-test"
+"$output/output-volume-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Iapps/host/macos/media -Iapps/host/macos/auth -Iapps/host/macos/control -Iapps/host/macos/input -Iprotocol/plank-transport/include \
+    tests/audio/macos-audio-recovery.m apps/host/macos/media/screen-capture.m \
+    apps/host/macos/media/audio-tap.m apps/host/macos/media/opus-encoder.m apps/host/macos/control/fixed-capture.m \
+    -framework Foundation -framework CoreMedia -framework CoreAudio -framework Security \
+    -framework CoreGraphics -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox \
+    -o "$output/audio-recovery-test"
+"$output/audio-recovery-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Iapps/host/macos/media tests/audio/macos-opus-encoder.m apps/host/macos/media/opus-encoder.m \
     -framework Foundation -framework CoreMedia -framework AudioToolbox -o "$output/opus-encoder-test"
 "$output/opus-encoder-test" "$output/opus-fixture.pao"

@@ -110,9 +110,12 @@ static BOOL supportedAPI(void) {
     IOReturn wake = IOPMAssertionDeclareUserActivity(CFSTR("PLANK authenticated display recovery"),
                                                    kIOPMUserActiveRemote, &activity);
     if (wake != kIOReturnSuccess) NSLog(@"PLANK display wake request failed: %d", wake);
-    // An offline virtual output may need its existing settings republished.
-    // Releasing/recreating CGVirtualDisplay can leave an extra output behind.
-    if (!valid() || (!CGDisplayIsOnline(self.displayID) && ![self applyModes])) {
+    // Never reapply CGVirtualDisplay settings to an existing offline output.
+    // SDK/OS 27 can abort WindowServer in GenerateModeListForDisplay on that
+    // path. Wake asynchronously, then wait for the same output to return; the
+    // bounded prepare loop only selects modes once it is online. Do not create
+    // a duplicate output or claim recovery of a permanently removed display.
+    if (!valid()) {
         if (activity != kIOPMNullAssertionID) IOPMAssertionRelease(activity);
         completion(NO); return;
     }

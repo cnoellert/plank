@@ -13,8 +13,11 @@ Request expiry/cancellation and a three-second recovery deadline stop work.
 
 Recover only the same agent-owned virtual display, retaining its last successful
 mode and encoding profile. Declare remote user activity through IOKit, release
-the temporary assertion on every outcome, republish the existing modes if
-offline, and validate real active geometry. Never fabricate a topology, reset
+the temporary assertion on every outcome, and validate real active geometry.
+The original offline mode-republication path is superseded by
+`macos-media-recovery.plan`: never reapply settings to an existing offline
+virtual output, because that path was associated with a WindowServer abort.
+Never fabricate a topology, reset
 TCC, change physical display modes, create duplicate outputs, reboot, or alter
 persistent power settings. Failure remains a bounded 503, not false success.
 

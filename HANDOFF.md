@@ -5,8 +5,15 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Working branch: `main`. Hosted builds and accepted macOS display recovery
-  are merged and pushed. No unfinished implementation is in progress.
+- Working branch: `macos-media-recovery`, based on main `cf0f47d`.
+  Host-only candidate 1.0.106 removes offline virtual-display settings
+  reapplication, adds recoverable audio overruns/bounded audio restart and
+  follows default-output volume/mute. See
+  `docs/development/plans/macos-media-recovery.plan`.
+  Portable ring tests and CI policy tests pass. Hosted Mac compilation,
+  signing and live acceptance are pending; do not claim this candidate fixed
+  the observed runtime failures until those gates pass. No installation or
+  session interruption has been performed.
 - Latest release: [v1.0.105](https://github.com/instinctual/plank/releases/tag/v1.0.105).
   All four packages were clean-bootstrapped and rebuilt on GitHub runners at
   `78e068edf9240de44e2aea5949dd94df713468b0`. The annotated tag identifies
@@ -117,8 +124,9 @@ not imply missing release dependencies.
 
 ## Remaining gates and publication boundaries
 
-No build, approval or publication task remains. Await the next user task;
-do not automatically install packages or start hardware tests. Acceptance
+Next: run the new synthetic audio/display tests on the hosted Mac builder,
+build a signed branch-qualified Host candidate and collect its exact package.
+Do not interrupt a production session to install it. Acceptance
 criteria still apply, including final macOS release revalidation and live
 recovery/ownership transitions.
 
