@@ -115,8 +115,9 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
     }
     case 5: {
         active = online = NO; pixelWidth = 3840;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100*NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ online = YES; });
         [display recoverWithValidity:valid completion:^(BOOL ok) {
-            assert(ok && pixelWidth == 5120 && creations == 1 && applications == 2 && wakes == 2 && releases == 2); next();
+            assert(ok && pixelWidth == 5120 && creations == 1 && applications == 1 && wakes == 2 && releases == 2); next();
         }]; break;
     }
     case 6: {
@@ -126,7 +127,7 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
     case 7: {
         authorized = YES; revokeOnWake = YES;
         [display recoverWithValidity:valid completion:^(BOOL ok) {
-            assert(!ok && !active && wakes == 3 && releases == 3 && applications == 2); next();
+            assert(!ok && !active && wakes == 3 && releases == 3 && applications == 1); next();
         }]; break;
     }
     case 8: {
@@ -141,8 +142,19 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
         refuseMode = NO;
         [display recoverWithValidity:valid completion:^(BOOL ok) {
             assert(ok && creations == 1 && pixelWidth == 5120 && wakes == releases);
-            puts("macos_display_recovery=pass checks=10 synthetic_only=1"); exit(0);
+            next();
         }]; break;
+    }
+    case 10: {
+        active = online = NO;
+        NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + .15;
+        unsigned priorSelections = selections;
+        [display recoverWithValidity:^BOOL { return NSProcessInfo.processInfo.systemUptime < deadline; }
+            completion:^(BOOL ok) {
+                assert(!ok && applications == 1 && creations == 1 && selections == priorSelections);
+                assert(wakes == releases);
+                puts("macos_display_recovery=pass checks=11 synthetic_only=1"); exit(0);
+            }]; break;
     }
     default: abort();
     }

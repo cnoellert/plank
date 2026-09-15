@@ -5,8 +5,34 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Working branch: `main`. Hosted builds and accepted macOS display recovery
-  are merged and pushed. No unfinished implementation is in progress.
+- Working branch: `macos-media-recovery`, based on main `cf0f47d`.
+  Host-only candidate 1.0.106 removes offline virtual-display settings
+  reapplication, adds recoverable audio overruns/bounded audio restart and
+  follows default-output volume/mute. See
+  `docs/development/plans/macos-media-recovery.plan`.
+  Code is committed/pushed at `9af28c1356adada0dc70a1513d80551b37c5479d`.
+  Signed hosted run [35032611418](https://github.com/instinctual/plank/actions/runs/35032611418)
+  passed and its installer is collected under
+  `artifacts/packages/candidates/1.0.106-macos-media-recovery/macos/`.
+  Package: `plank-host_1.0.106-macos-media-recovery_arm64.pkg`, 6,606,315 bytes;
+  SHA-256: `46fc5bbb8501dee80028bbf284507e476103f318cce866c76d7c8c5767e369dc`.
+  Transfer hash and source manifest match the runner. The operator confirmed
+  volume/mute works, reported good behavior so far and approved merge/rebuild.
+  This is not an exhaustive long-duration or sleep/recovery qualification.
+  Mainline rebuild is next; no agent installation or session interruption.
+  No Client update is needed. All maintained gitlinks below are unchanged.
+
+Candidate validation: 11 synthetic display-recovery checks, 100 audio-tap
+lifecycle races, synthetic output-volume/mute policy and actual recovery
+controller with fake audio boundaries all pass on SDK/OS 27. Existing Opus
+fixture passed 6,998 checks; pen fixture passed 1,130 non-posting checks;
+installer passed 29 checks. Developer ID signing, notarization, stapling,
+Gatekeeper and temporary-keychain cleanup passed. Local portable ring test
+passed 100,000 concurrent blocks, wraparound and overflow/resumption, including
+Clang ASan/UBSan outside the sandbox. GCC ASan could not link its missing local
+runtime; sandboxed LeakSanitizer cannot inspect threads. Neither limitation was
+treated as a product failure or a passed test. Local CI policy (14), bundle
+permission tests (7 passed/1 Mac-only skipped) and 23 installer shell checks pass.
 - Latest release: [v1.0.105](https://github.com/instinctual/plank/releases/tag/v1.0.105).
   All four packages were clean-bootstrapped and rebuilt on GitHub runners at
   `78e068edf9240de44e2aea5949dd94df713468b0`. The annotated tag identifies
@@ -88,7 +114,8 @@ runbook before the next build.
 Signing is an explicitly dispatched direct job in `build.yml`, selected with
 `signed=true`; ordinary push/PR builds never receive signing credentials.
 At the operator's request, `macos-signing` has no reviewers or wait timer.
-Custom branch restrictions remain `main` and `macos-display-recovery`, not a
+Custom branch restrictions are `main`, `macos-display-recovery` and the explicit
+`macos-media-recovery` candidate, not a
 wildcard. Certificate exports, passwords and notarization credentials remain
 environment secrets. Temporary runner keychains are removed on success/failure.
 
@@ -117,8 +144,15 @@ not imply missing release dependencies.
 
 ## Remaining gates and publication boundaries
 
-No build, approval or publication task remains. Await the next user task;
-do not automatically install packages or start hardware tests. Acceptance
+Next: merge the accepted candidate and rebuild macOS Host 1.0.106 from main.
+Volume/mute is operator-validated. Longer app/alert audio, device changes,
+sleep/reconnect/topology and login/logout remain follow-up coverage, not
+blockers invented beyond the operator's merge approval. Inspect the new audio
+reason/overrun/restart logs if it fails.
+The initial failure cause is not proven; overflow no longer permanently
+disables audio. An offline display that never returns still fails boundedly
+rather than forcing settings into WindowServer. Do not interrupt a production
+session to install. Acceptance
 criteria still apply, including final macOS release revalidation and live
 recovery/ownership transitions.
 

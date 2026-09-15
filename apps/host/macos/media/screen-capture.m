@@ -19,6 +19,8 @@
     PLANKMacOpusEncoder *_audioEncoder;
     PLANKMacAudioTap *_audioTap;
     BOOL _desktopAudioTap, _audioStopped;
+    BOOL _audioReady, _audioRestartPending, _audioDiscontinuity;
+    unsigned _audioRestarts;
     SCStream *_stream;
     VTCompressionSessionRef _encoder;
     void (^_failed)(void);
@@ -114,30 +116,51 @@
     });
 }
 - (BOOL)available { return CGPreflightScreenCaptureAccess(); }
+- (void)createAudioEncoder {
+    __weak typeof(self) weakSelf = self;
+    _audioEncoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts, BOOL discontinuity) {
+        typeof(self) capture = weakSelf;
+        if (!capture || capture->_stopping) return NO;
+        int32_t sent = [capture->_audio sendOpusPacket:packet presentationTime:pts
+            discontinuity:discontinuity || capture->_audioDiscontinuity];
+        BOOL accepted = sent == PLANK_TRANSPORT_OK || sent == PLANK_TRANSPORT_DROPPED;
+        if (accepted) capture->_audioDiscontinuity = NO;
+        else NSLog(@"PLANK audio send failed: result=%d", sent);
+        return accepted;
+    }];
+}
+- (void)createDesktopAudioTap {
+    __weak typeof(self) weakSelf = self;
+    _audioReady = NO;
+    _audioTap = [[PLANKMacAudioTap alloc] initWithQueue:_queue sample:^BOOL(CMSampleBufferRef sample) {
+        typeof(self) capture = weakSelf;
+        return capture && !capture->_stopping && [capture->_audioEncoder encodeSample:sample];
+    } failed:^{
+        typeof(self) capture = weakSelf;
+        if (capture && !capture->_stopping) [capture disableDesktopAudio];
+    }];
+    _audioStopped = _audioTap == nil;
+    if (!_audioTap) NSLog(@"PLANK desktop audio unavailable; video and input remain enabled");
+}
+- (void)startDesktopAudio {
+    if (_stopping || !_audioTap) return;
+    NSLog(@"PLANK desktop audio starting; video and input are ready");
+    __weak typeof(self) weakSelf = self;
+    [_audioTap startWithCompletion:^(BOOL ready) {
+        typeof(self) capture = weakSelf;
+        if (!capture || capture->_stopping) return;
+        capture->_audioReady = ready;
+        if (!ready) [capture disableDesktopAudio];
+    }];
+}
 - (void)startWithTopology:(NSDictionary *)topology bitrate:(uint32_t)bitrate video:(PLANKMacNativeVideo *)video
                    audio:(PLANKMacNativeAudio *)audio
                    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
     if (_queue || !queue || !video || !audio || !started || !failed) { if (failed) failed(); return; }
     _queue = queue; _video = video; _audio = audio; _failed = [failed copy];
     _timing = calloc(1, sizeof(*_timing)); // allocation failure must not affect capture
-    __weak typeof(self) weakSelf = self;
-    _audioEncoder = [[PLANKMacOpusEncoder alloc] initWithOutput:^BOOL(NSData *packet, CMTime pts, BOOL discontinuity) {
-        typeof(self) capture = weakSelf;
-        if (!capture || capture->_stopping) return NO;
-        int32_t sent = [capture->_audio sendOpusPacket:packet presentationTime:pts discontinuity:discontinuity];
-        return sent == PLANK_TRANSPORT_OK || sent == PLANK_TRANSPORT_DROPPED;
-    }];
-    if (_desktopAudioTap) {
-        _audioTap = [[PLANKMacAudioTap alloc] initWithQueue:_queue sample:^BOOL(CMSampleBufferRef sample) {
-            typeof(self) capture = weakSelf;
-            return capture && !capture->_stopping && [capture->_audioEncoder encodeSample:sample];
-        } failed:^{
-            typeof(self) capture = weakSelf;
-            if (capture && !capture->_stopping) [capture disableDesktopAudio];
-        }];
-        _audioStopped = _audioTap == nil;
-        if (!_audioTap) NSLog(@"PLANK desktop audio unavailable; video and input remain enabled");
-    }
+    [self createAudioEncoder];
+    if (_desktopAudioTap) [self createDesktopAudioTap];
     _lastPTS = kCMTimeInvalid;
     _width = [topology[@"capture"][@"width"] unsignedIntegerValue];
     _height = [topology[@"capture"][@"height"] unsignedIntegerValue];
@@ -210,13 +233,7 @@
                     // consent. In particular, remote input must already work
                     // while macOS presents an audio permission dialog.
                     started(peak);
-                    if (!self->_stopping && self->_audioTap) {
-                        NSLog(@"PLANK desktop audio starting; video and input are ready");
-                        [self->_audioTap startWithCompletion:^(BOOL ready) {
-                            typeof(self) capture = weakSelf;
-                            if (capture && !capture->_stopping && !ready) [capture disableDesktopAudio];
-                        }];
-                    }
+                    [self startDesktopAudio];
                 });
             }];
         });
@@ -224,7 +241,13 @@
 }
 - (void)disableDesktopAudio {
     if (!_audioTap) return;
-    NSLog(@"PLANK desktop audio unavailable; video and input continue without audio");
+    // Retry only a previously active tap, never a denied/pending consent flow.
+    // Cap restarts per connection; persistent HAL/transport faults must not loop.
+    _audioRestartPending = _audioReady && !_stopping && _audioRestarts < 3;
+    if (_audioRestartPending) ++_audioRestarts;
+    NSLog(@"PLANK desktop audio interrupted; video and input continue; restart=%d attempt=%u/3",
+        _audioRestartPending, _audioRestarts);
+    _audioReady = NO;
     [_audioEncoder stop]; _audioEncoder = nil;
     [self stopDesktopAudio];
 }
@@ -235,6 +258,16 @@
     [tap stopWithCompletion:^{
         self->_audioStopped = YES;
         [self finishStop];
+        if (self->_stopping || !self->_audioRestartPending) return;
+        // HAL teardown and release of the single-tap slot have completed.
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), self->_queue, ^{
+            if (self->_stopping || !self->_audioRestartPending) return;
+            self->_audioRestartPending = NO;
+            self->_audioDiscontinuity = YES; // new encoder clock/priming, same transport
+            [self createAudioEncoder];
+            [self createDesktopAudioTap];
+            [self startDesktopAudio];
+        });
     }];
 }
 - (void)stream:(SCStream *)stream didOutputSampleBuffer:(CMSampleBufferRef)sample ofType:(SCStreamOutputType)type {
@@ -340,6 +373,7 @@
 - (void)stopWithCompletion:(void (^)(void))completion {
     if (_stopping) return; // owner calls once and fans out its own completions
     _stopping = YES; _failed = nil; _drained = [completion copy];
+    _audioRestartPending = NO;
     _replacementCompletion = nil;
     [_audioEncoder stop]; _audioEncoder = nil;
     [self stopDesktopAudio];

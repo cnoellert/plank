@@ -3,6 +3,7 @@
 #import "audio-tap-buffer.h"
 #import "audio-tap-policy.h"
 #import "audio-tap-system-alerts.h"
+#import "audio-output-volume.h"
 #import <CoreAudio/CoreAudio.h>
 #import <CoreAudio/AudioHardwareTapping.h>
 #import <CoreAudio/CATapDescription.h>
@@ -59,6 +60,12 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     AudioObjectPropertyListenerBlock _processesChanged, _formatChanged;
     AudioStreamBasicDescription _inputFormat;
     CMAudioFormatDescriptionRef _format;
+    AudioObjectID _outputDevice;
+    AudioObjectPropertyListenerBlock _outputChanged;
+    BOOL _outputListening, _deviceListening;
+    float _leftGain, _rightGain; // owner queue only; HAL properties read on control
+    uint64_t _overrunEvents;
+    BOOL _failureReported;
 }
 - (instancetype)init { return nil; }
 - (instancetype)initWithQueue:(dispatch_queue_t)queue sample:(BOOL (^)(CMSampleBufferRef))sample failed:(void (^)(void))failed {
@@ -118,9 +125,52 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     _description.processes = processes;
     AudioObjectPropertyAddress address = property(kAudioTapPropertyDescription);
     CFTypeRef description = (__bridge CFTypeRef)_description;
-    return AudioObjectSetPropertyData(_tap, &address, 0, NULL, sizeof(description), &description) == noErr;
+    OSStatus status = AudioObjectSetPropertyData(_tap, &address, 0, NULL, sizeof(description), &description);
+    if (status) NSLog(@"PLANK audio tap process update failed: status=%d", (int)status);
+    return status == noErr;
+}
+- (void)refreshOutputVolume {
+    if (atomic_load(&_input->buffer.stopped)) return;
+    AudioObjectID output = kAudioObjectUnknown; UInt32 bytes = sizeof(output);
+    AudioObjectPropertyAddress address = property(kAudioHardwarePropertyDefaultOutputDevice);
+    OSStatus status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, 0, NULL, &bytes, &output);
+    if (status) output = kAudioObjectUnknown;
+    AudioObjectPropertyAddress deviceProperty = {kAudioObjectPropertySelectorWildcard,
+        kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementWildcard};
+    if (output != _outputDevice || (output && !_deviceListening)) {
+        if (_deviceListening)
+            AudioObjectRemovePropertyListenerBlock(_outputDevice, &deviceProperty, _control, _outputChanged);
+        _outputDevice = output; _deviceListening = NO;
+        if (output) {
+            OSStatus added = AudioObjectAddPropertyListenerBlock(output, &deviceProperty, _control, _outputChanged);
+            _deviceListening = added == noErr;
+            if (added) NSLog(@"PLANK audio output-volume listener unavailable: status=%d", (int)added);
+        }
+    }
+    float gains[2] = {0, 0};
+    BOOL valid = _deviceListening && PLANKOutputGains(output, gains);
+    float left = valid ? gains[0] : 0, right = valid ? gains[1] : 0;
+    dispatch_async(_owner, ^{
+        if (self->_stopped) return;
+        self->_leftGain = left;
+        self->_rightGain = right;
+    });
+}
+- (BOOL)observeOutputVolume {
+    __weak typeof(self) weakSelf = self;
+    _outputChanged = ^(UInt32 count, const AudioObjectPropertyAddress *addresses) {
+        (void)count; (void)addresses;
+        [weakSelf refreshOutputVolume];
+    };
+    AudioObjectPropertyAddress address = property(kAudioHardwarePropertyDefaultOutputDevice);
+    OSStatus status = AudioObjectAddPropertyListenerBlock(kAudioObjectSystemObject, &address, _control, _outputChanged);
+    if (status) { NSLog(@"PLANK audio default-output listener failed: status=%d", (int)status); return NO; }
+    _outputListening = YES;
+    [self refreshOutputVolume];
+    return YES;
 }
 - (BOOL)prepare {
+    if (![self observeOutputVolume]) return NO;
     NSArray *processes = [self ownedAudioProcesses];
     if (!processes) return NO;
     _description = [[CATapDescription alloc] initStereoMixdownOfProcesses:processes];
@@ -217,11 +267,31 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
     });
 }
 - (void)drain {
-    if (_stopped) return;
-    if (atomic_load(&_input->buffer.failed)) { if (_failed) _failed(); return; }
+    if (_stopped || _failureReported) return;
+    int failure = atomic_load(&_input->buffer.failed);
+    if (failure) {
+        _failureReported = YES;
+        const char *reason = failure == 1 ? "invalid-callback" : failure == 3 ? "process-update" :
+            failure == 4 ? "format-change" : "unknown";
+        NSLog(@"PLANK audio tap failed: reason=%s code=%d", reason, failure);
+        if (_failed) _failed(); return;
+    }
     PLANKTapBlock *block;
-    while (!_stopped && (block = PLANKTapPeek(&_input->buffer))) {
+    for (unsigned handled = 0; !_stopped && handled < PLANKTapSlots; ++handled) {
+        uint32_t dropped = PLANKTapDiscardOverrun(&_input->buffer);
+        if (dropped) {
+            ++_overrunEvents;
+            if ((_overrunEvents & (_overrunEvents - 1)) == 0)
+                NSLog(@"PLANK audio tap overrun: events=%llu rejected-blocks=%u backlog-discarded=1 capture-continues=1",
+                    (unsigned long long)_overrunEvents, dropped);
+        }
+        block = PLANKTapPeek(&_input->buffer);
+        if (!block) break;
         @autoreleasepool {
+            for (uint32_t i = 0; i < block->frames; ++i) {
+                block->samples[i * 2] *= _leftGain;
+                block->samples[i * 2 + 1] *= _rightGain;
+            }
             CMBlockBufferRef data = NULL; CMSampleBufferRef sample = NULL;
             size_t bytes = block->frames * 2 * sizeof(float);
             OSStatus result = CMBlockBufferCreateWithMemoryBlock(NULL, NULL, bytes, NULL, NULL, 0, bytes, 0, &data);
@@ -232,9 +302,15 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
             if (sample) CFRelease(sample);
             if (data) CFRelease(data);
             PLANKTapPop(&_input->buffer);
-            if (!delivered) { if (_failed) _failed(); return; }
+            if (!delivered) {
+                _failureReported = YES;
+                NSLog(@"PLANK audio tap failed: reason=%s status=%d", result ? "sample-creation" : "encoder-or-send", (int)result);
+                if (_failed) _failed(); return;
+            }
         }
     }
+    // Give video/input/cancellation an owner turn even if HAL keeps producing.
+    if (!_stopped && PLANKTapPeek(&_input->buffer)) dispatch_source_merge_data(_ready, 1);
 }
 - (void)stopWithCompletion:(void (^)(void))completion {
     if (_stopped) return; // one-shot owner calls exactly once
@@ -262,6 +338,18 @@ static OSStatus receive(AudioObjectID device, const AudioTimeStamp *now,
 }
 - (void)destroy {
     BOOL clean = YES;
+    if (_outputListening) {
+        AudioObjectPropertyAddress address = property(kAudioHardwarePropertyDefaultOutputDevice);
+        AudioObjectRemovePropertyListenerBlock(kAudioObjectSystemObject, &address, _control, _outputChanged);
+    }
+    if (_deviceListening) {
+        AudioObjectPropertyAddress address = {kAudioObjectPropertySelectorWildcard,
+            kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementWildcard};
+        // An unplugged output may already be gone. Callbacks are weak and gated
+        // by stopped, so listener cleanup never needs to retire the worker.
+        AudioObjectRemovePropertyListenerBlock(_outputDevice, &address, _control, _outputChanged);
+    }
+    _outputChanged = nil;
     if (_listening) {
         AudioObjectPropertyAddress address = property(kAudioHardwarePropertyProcessObjectList);
         clean &= AudioObjectRemovePropertyListenerBlock(kAudioObjectSystemObject, &address, _control, _processesChanged) == noErr;

@@ -37,7 +37,11 @@ int main(void) {
     assert(!memcmp(block->samples, stereo, sizeof(stereo)));
     PLANKTapPop(buffer); assert(!PLANKTapPeek(buffer));
     for (unsigned i = 0; i < PLANKTapSlots; i++) assert(PLANKTapPush(buffer, stereo, NULL, 2, 1));
-    assert(!PLANKTapPush(buffer, stereo, NULL, 2, 1)); assert(atomic_load(&buffer->failed) == 2);
+    assert(!PLANKTapPush(buffer, stereo, NULL, 2, 1)); assert(!atomic_load(&buffer->failed));
+    assert(PLANKTapDiscardOverrun(buffer) == 1); assert(!PLANKTapPeek(buffer));
+    assert(!PLANKTapDiscardOverrun(buffer));
+    assert(PLANKTapPush(buffer, stereo, NULL, 2, 900));
+    assert(PLANKTapPeek(buffer)->hostTime == 900); PLANKTapPop(buffer);
     PLANKTapBufferInit(buffer);
     assert(!PLANKTapPush(buffer, NULL, NULL, 1, 1)); assert(atomic_load(&buffer->failed) == 1);
     assert(!PLANKTapPush(buffer, stereo, NULL, 0, 1));

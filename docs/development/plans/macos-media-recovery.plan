@@ -1,0 +1,58 @@
+# macOS display and audio resilience
+
+Branch: `macos-media-recovery`. Host-only candidate; Linux, Client, transport,
+authentication and codec/color behavior remain unchanged.
+
+Observed failure classes:
+
+- WindowServer aborted in virtual-display mode-list generation. One incident
+  coincided with republishing an offline PLANK display's existing settings.
+- A running desktop audio tap stopped while video/input continued. The old
+  log omitted the cause; ring overrun is a plausible cause, not a proven one.
+- Process-tap PCM did not follow the default output device's volume or mute.
+
+Implementation:
+
+1. Do not call private `applySettings` again on an existing offline display.
+   Request remote-user wake and boundedly wait for the same output, preserving
+   authority checks and the last successful geometry. Permanent disappearance
+   remains a clear failure. No duplicate output, forced logout, reboot, global
+   power change, or claim that every OS display crash is resolved.
+2. Keep the lock-free audio ring bounded. Overflow rejects incoming blocks;
+   the single consumer discards its stale backlog and the existing Opus clock
+   handling reanchors to real timestamps. Invalid samples remain errors.
+   Never overwrite consumer-owned audio or replay delayed sound.
+3. Log the audio failure class and transport-send rejection. After failure of
+   a previously active tap, wait for complete HAL teardown, then retry audio
+   after one second, at most three times per connection. Mark the replacement
+   encoder's first packet as a discontinuity. Denied/pending startup consent
+   does not retry; session stop cancels pending retries. Video/input are untouched.
+4. Observe the default output device and output property changes on the HAL
+   control queue. Apply read-only master/channel gain and mute to streamed PCM
+   before Opus. No HAL queries in the real-time callback or per-frame polling.
+   Fixed-volume devices use unity; failed reads mute rather than unexpectedly
+   restoring volume. Preserve process ownership and local-speaker suppression.
+
+Validation: portable ring tests including overflow/resumption and concurrent
+wraparound; synthetic display tests prohibiting settings reapplication;
+synthetic volume tests for master, stereo channels, mute, fixed-volume and read
+failure; real lifecycle controller with fake audio boundaries covering restart
+cap, teardown barrier, cancellation and denied startup. Run all existing Mac
+Host gates and produce a branch-qualified signed/notarized hosted candidate.
+
+Remaining hardware gates: repeated connect/disconnect and sleeping-display
+recovery, long-running application/alert audio, mute/volume/unmute and output
+device changes, disconnect during recovery, login/logout. Production evidence
+and private deployment identities stay outside Git. No live installation is
+authorized by the build alone.
+
+Reference: Apple documents that output devices may expose master, channel, or
+no volume controls in [QA1016](https://developer.apple.com/library/archive/qa/qa1016/_index.html).
+Use current AudioObject APIs, not the deprecated API calls in that old sample.
+
+Candidate status: 1.0.106-macos-media-recovery passed hosted Mac compilation,
+all of the above synthetic tests and signed/notarized PKG gates in run
+35032611418 at `9af28c1356adada0dc70a1513d80551b37c5479d`. The verified package
+is in the local candidate catalog. The operator confirmed volume/mute works,
+reported good ongoing behavior, and approved merge/rebuild. No exhaustive
+long-duration, output-device-switch or sleeping-display qualification is implied.
