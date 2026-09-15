@@ -16,9 +16,10 @@ notes' README before machine-specific work; deployment information stays outside
   `artifacts/packages/candidates/1.0.106-macos-media-recovery/macos/`.
   Package: `plank-host_1.0.106-macos-media-recovery_arm64.pkg`, 6,606,315 bytes;
   SHA-256: `46fc5bbb8501dee80028bbf284507e476103f318cce866c76d7c8c5767e369dc`.
-  Transfer hash and source manifest match the runner. No installation, session
-  interruption, merge or release publication has been performed.
-  Live acceptance is pending; do not claim the runtime failures are resolved.
+  Transfer hash and source manifest match the runner. The operator confirmed
+  volume/mute works, reported good behavior so far and approved merge/rebuild.
+  This is not an exhaustive long-duration or sleep/recovery qualification.
+  Mainline rebuild is next; no agent installation or session interruption.
   No Client update is needed. All maintained gitlinks below are unchanged.
 
 Candidate validation: 11 synthetic display-recovery checks, 100 audio-tap
@@ -143,9 +144,11 @@ not imply missing release dependencies.
 
 ## Remaining gates and publication boundaries
 
-Next: operator installation/testing of candidate 1.0.106. Check sustained app
-and alert audio, output volume/mute/unmute, device changes, reconnect/topology
-and login/logout. Inspect the new audio reason/overrun/restart logs if it fails.
+Next: merge the accepted candidate and rebuild macOS Host 1.0.106 from main.
+Volume/mute is operator-validated. Longer app/alert audio, device changes,
+sleep/reconnect/topology and login/logout remain follow-up coverage, not
+blockers invented beyond the operator's merge approval. Inspect the new audio
+reason/overrun/restart logs if it fails.
 The initial failure cause is not proven; overflow no longer permanently
 disables audio. An offline display that never returns still fails boundedly
 rather than forcing settings into WindowServer. Do not interrupt a production

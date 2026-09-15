@@ -53,4 +53,6 @@ Use current AudioObject APIs, not the deprecated API calls in that old sample.
 Candidate status: 1.0.106-macos-media-recovery passed hosted Mac compilation,
 all of the above synthetic tests and signed/notarized PKG gates in run
 35032611418 at `9af28c1356adada0dc70a1513d80551b37c5479d`. The verified package
-is in the local candidate catalog. No installation or hardware acceptance yet.
+is in the local candidate catalog. The operator confirmed volume/mute works,
+reported good ongoing behavior, and approved merge/rebuild. No exhaustive
+long-duration, output-device-switch or sleeping-display qualification is implied.
