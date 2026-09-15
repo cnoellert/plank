@@ -14,10 +14,18 @@ policy were changed. Finder launch has not been user-retested yet.
 The correction is alongside display recovery on `macos-display-recovery`,
 1.0.104. Public app assembly uses explicit distribution permissions without
 changing private installed-state policy. New gates check the app, payload and
-finished PKG BOM/extraction. Seven portable tests pass; the eighth real-PKG
-roundtrip requires the hosted Mac. CI will also assemble an ad-hoc test bundle
-under caller umask 077. No new installer has been produced yet. Existing 1.0.103
+finished PKG BOM/extraction. All eight permission tests, including an actual
+unsigned PKG roundtrip, passed on the GitHub Mac. Its complete ad-hoc app bundle
+also passed under caller umask 077. No new installer has been produced yet. Existing 1.0.103
 release bytes are unchanged; earlier package review missed this permission gate.
+
+Clean GitHub Host build/test passed at `9d0203563465e97fc26fa18afd851e66ad7d6191`
+in [run 35008511989](https://github.com/instinctual/plank/actions/runs/35008511989).
+Ten synthetic display recovery checks and four real
+loopback TLS scenarios (success, failure, revoked authority, timeout) pass.
+Initial runs exposed ARC test-case scoping and OpenSSL 3 PKCS#8-default fixture
+issues; those were corrected, not bypassed. Host/Client/transport gitlinks are
+unchanged. No live display-recovery test or candidate installation yet.
 
 ## macOS inactive-display recovery candidate
 
@@ -36,7 +44,7 @@ The operator intentionally powered off the dedicated development Mac to require
 GitHub-hosted builds. Do not build on it or turn it on as a fallback. Compilation
 and synthetic recovery/TLS gates must run on the hosted macOS runner. Protected
 GitHub Developer ID/notarization configuration is now explicitly authorized;
-credential provisioning and signing validation remain to be completed. No
+credential provisioning is complete and signing validation remains to be completed. No
 credential values, private operational logs or deployment identities belong here.
 
 ## Hosted builds qualified; signing pending
@@ -86,8 +94,11 @@ does not upload unsigned applications as release packages. Initial clean runs
 use no dependency caches; add exact-input caches only after clean bootstrap
 qualification. Hardware/session gates remain separate from hosted build tests.
 Protected GitHub signing was authorized. The protected `macos-signing`
-environment exists, but certificate/key exports and notarization credential
-provisioning remain pending; no secrets have been transferred yet.
+environment contains encrypted certificate exports, their passwords and
+notarization credentials; values have not been retrieved or logged. A separate
+manual-approval job prepares a disposable keychain and invokes the normal
+package gates. Fourteen CI policy/helper tests pass. Credential validity and
+the first signed/notarized runner package remain pending actual execution.
 The public and both private infrastructure CI branches are merged into their
 respective `main` branches. Next: resolve signing authority and qualify an
 exact-input dependency cache. Existing candidate packages keep their original

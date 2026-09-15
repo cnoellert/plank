@@ -14,6 +14,10 @@ on:
       source_sha:
         description: Expected commit (optional in UI; required by the dispatch helper)
         type: string
+      signed:
+        description: Request protected macOS signing (manual approval required)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -105,7 +109,7 @@ jobs:
         run: df -h
 
   macos:
-    if: ${{ !inputs.product || inputs.product == 'all' || startsWith(inputs.product, 'macos-') }}
+    if: ${{ !inputs.signed && (!inputs.product || inputs.product == 'all' || startsWith(inputs.product, 'macos-')) }}
     needs: policy
     runs-on: xcode-27
     timeout-minutes: 120
@@ -135,3 +139,10 @@ jobs:
       - name: Report disk usage
         if: always()
         run: df -h
+
+  macos-signed:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed && (inputs.product == 'macos-host' || inputs.product == 'macos-client') }}
+    needs: policy
+    uses: ./.github/workflows/sign-macos.yml
+    with:
+      product: ${{ inputs.product }}

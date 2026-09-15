@@ -83,7 +83,12 @@ dmg="$output/plank-client_${PLANK_PACKAGE_VERSION}_arm64.dmg"
 python3 "$source_root/scripts/test/check-package-build-paths.py" "$app"
 hdiutil create -volname "PLANK Client $PLANK_PACKAGE_VERSION" -srcfolder "$output/image" -format UDZO "$dmg"
 codesign --timestamp --sign "$PLANK_MACOS_SIGNING_IDENTITY" "$dmg"
-xcrun notarytool submit "$dmg" --keychain-profile "$PLANK_NOTARY_PROFILE" --wait --timeout 10m --output-format json > "$output/notary.json"
+notary_flags=(--keychain-profile "$PLANK_NOTARY_PROFILE")
+if [[ -n ${PLANK_NOTARY_KEYCHAIN:-} ]]; then
+  [[ $PLANK_NOTARY_KEYCHAIN = /* && -f $PLANK_NOTARY_KEYCHAIN ]]
+  notary_flags+=(--keychain "$PLANK_NOTARY_KEYCHAIN")
+fi
+xcrun notarytool submit "$dmg" "${notary_flags[@]}" --wait --timeout 10m --output-format json > "$output/notary.json"
 test "$(plutil -extract status raw "$output/notary.json")" = Accepted
 xcrun stapler staple "$dmg"
 xcrun stapler validate "$dmg"

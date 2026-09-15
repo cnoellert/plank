@@ -1,0 +1,57 @@
+name: Protected macOS distribution
+
+on:
+  workflow_call:
+    inputs:
+      product:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  distribution:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' }}
+    environment: macos-signing
+    runs-on: xcode-27
+    timeout-minutes: 120
+    env:
+      BUILD_REF: ${{ github.ref_name }}
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+      PLANK_CI_PRODUCT: ${{ inputs.product }}
+      PLANK_BUILD_JOBS: '3'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate target and clean source
+        run: |
+          case "$PLANK_CI_PRODUCT" in macos-host|macos-client) ;; *) exit 2;; esac
+          test "$(uname -m)" = arm64
+          test "$(sw_vers -productVersion | cut -d . -f 1)" -ge 27
+          test "$(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1)" -ge 27
+          python3 scripts/ci/context.py
+      - name: Bootstrap without signing credentials
+        run: bash scripts/ci/bootstrap.sh "$PLANK_CI_PRODUCT"
+      - name: Build, sign, notarize and verify
+        env:
+          PLANK_DEVELOPER_ID_APPLICATION_P12: ${{ secrets.PLANK_DEVELOPER_ID_APPLICATION_P12 }}
+          PLANK_DEVELOPER_ID_INSTALLER_P12: ${{ secrets.PLANK_DEVELOPER_ID_INSTALLER_P12 }}
+          PLANK_DEVELOPER_ID_APPLICATION_PASSWORD: ${{ secrets.PLANK_DEVELOPER_ID_APPLICATION_PASSWORD }}
+          PLANK_DEVELOPER_ID_INSTALLER_PASSWORD: ${{ secrets.PLANK_DEVELOPER_ID_INSTALLER_PASSWORD }}
+          PLANK_APPLE_ID: ${{ secrets.PLANK_APPLE_ID }}
+          PLANK_APPLE_APP_PASSWORD: ${{ secrets.PLANK_APPLE_APP_PASSWORD }}
+          PLANK_MACOS_TEAM_ID: ${{ vars.PLANK_MACOS_TEAM_ID }}
+        run: python3 scripts/ci/sign-macos.py
+      - name: Remove temporary signing material
+        if: always()
+        run: python3 scripts/ci/sign-macos.py --cleanup
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: signed-${{ inputs.product }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PLANK_ARTIFACT_ROOT }}/
+          if-no-files-found: error
+          retention-days: 7

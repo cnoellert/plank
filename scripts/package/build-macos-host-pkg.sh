@@ -66,7 +66,12 @@ productbuild --distribution "$output/host-distribution.xml" --resources "$output
   --package-path "$output" --sign "$PLANK_MACOS_INSTALLER_IDENTITY" --timestamp "$output/$name"
 pkgutil --check-signature "$output/$name"
 python3 "$source_root/scripts/test/check-macos-host-permissions.py" --pkg "$output/$name"
-xcrun notarytool submit "$output/$name" --keychain-profile "$PLANK_NOTARY_PROFILE" --wait --timeout 10m --output-format json > "$output/host-notary.json"
+notary_flags=(--keychain-profile "$PLANK_NOTARY_PROFILE")
+if [[ -n ${PLANK_NOTARY_KEYCHAIN:-} ]]; then
+  [[ $PLANK_NOTARY_KEYCHAIN = /* && -f $PLANK_NOTARY_KEYCHAIN ]]
+  notary_flags+=(--keychain "$PLANK_NOTARY_KEYCHAIN")
+fi
+xcrun notarytool submit "$output/$name" "${notary_flags[@]}" --wait --timeout 10m --output-format json > "$output/host-notary.json"
 /usr/bin/plutil -extract status raw "$output/host-notary.json" | grep -x Accepted
 xcrun stapler staple "$output/$name"
 xcrun stapler validate "$output/$name"

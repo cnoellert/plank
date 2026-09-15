@@ -34,7 +34,46 @@ Application and Installer certificates/private keys and notarization authority.
 Do not copy a developer's entire keychain or reuse personal GitHub credentials.
 Do not weaken existing signing/notarization gates to make an unsigned CI job
 produce a release. Credential provisioning and release automation are a
-separate gate; neither is configured by the ordinary build workflow.
+separate gate.
+
+`build.yml` can manually call `sign-macos.yml` with `signed=true` for one Mac
+product. The reusable workflow independently requires manual dispatch and the
+protected `macos-signing` environment. Require human review, disallow bypass,
+and allow only approved release/candidate branches in that environment. Review
+the exact source SHA, workflows and dependency changes before approving; do not
+auto-approve through a token. Public push/PR jobs have no signing authority.
+
+Environment secrets (never repository files):
+
+- `PLANK_DEVELOPER_ID_APPLICATION_P12`, `PLANK_DEVELOPER_ID_INSTALLER_P12`:
+  base64-encoded encrypted exports including the matching private keys.
+- `PLANK_DEVELOPER_ID_APPLICATION_PASSWORD`,
+  `PLANK_DEVELOPER_ID_INSTALLER_PASSWORD`: the respective export passwords.
+- `PLANK_APPLE_ID`, `PLANK_APPLE_APP_PASSWORD`: notarization account and its
+  Apple app-specific password, not its ordinary login password.
+
+Set environment variable `PLANK_MACOS_TEAM_ID` to the Developer Team ID.
+Certificate type, private-key presence and team are validated on the runner.
+Keep Developer ID distinct from Apple Development and Mac App Store identities.
+
+After a clean committed/pushed source is qualified, request signing with
+`bash scripts/ci/dispatch.sh macos-host true` (or `macos-client true`). The job
+waits for manual approval. Only its signing step receives secrets. The helper
+removes them from child environments, imports into a temporary 0700 runner
+directory/keychain with narrowly allowed Apple signing tools, and stores
+notarization credentials in that keychain. It restores the prior search list
+and deletes temporary material on completion/failure; an always-run cleanup step
+also handles interruption. Only the gated package catalog is uploaded, never
+signing scratch, keys or keychains. Artifacts expire in seven days; this does
+not publish a release or install on any machine.
+
+This isolated-runner automation uses GitHub's per-step secret environment and
+Apple CLI password arguments during import/profile setup. They are not echoed;
+tool output/exception arguments are suppressed at that boundary. They may be
+visible to another process under the same runner account, which is why this is
+restricted to disposable GitHub-hosted machines running approved source, never
+an operator's Mac, shared runner or public PR. Local interactive keychain rules
+remain unchanged. See [GitHub's signing guidance](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications).
 
 ## Initial qualification
 

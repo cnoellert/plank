@@ -65,8 +65,30 @@ class ContextTests(unittest.TestCase):
         actions = re.findall(r'uses: ([^\s]+)', workflow)
         self.assertTrue(actions)
         for action in actions:
+            if action == './.github/workflows/sign-macos.yml':
+                continue
             self.assertRegex(action, r'@([0-9a-f]{40})$')
         self.assertEqual(workflow.count('actions/checkout@'), workflow.count('persist-credentials: false'))
+
+    def test_signing_requires_separate_manual_approval(self):
+        caller = (ROOT / '.github/workflows/build.yml').read_text().split('  macos-signed:\n')[1]
+        self.assertIn("github.event_name == 'workflow_dispatch' && inputs.signed", caller)
+        self.assertIn('needs: policy', caller)
+        workflow = (ROOT / '.github/workflows/sign-macos.yml').read_text()
+        self.assertIn('  workflow_call:', workflow)
+        self.assertIn("github.event_name == 'workflow_dispatch'", workflow)
+        self.assertIn('environment: macos-signing', workflow)
+        self.assertIn('runs-on: xcode-27', workflow)
+        for forbidden in ('pull_request_target', 'secrets: inherit', 'contents: write', 'self-hosted'):
+            self.assertNotIn(forbidden, workflow)
+        before, signing = workflow.split('      - name: Build, sign, notarize and verify\n')
+        self.assertNotIn('secrets.', before)
+        secret_step, after = signing.split('      - name: Remove temporary signing material\n')
+        self.assertEqual(secret_step.count('secrets.'), 6)
+        self.assertNotIn('secrets.', after)
+        self.assertIn('if: always()', after)
+        self.assertIn('path: ${{ env.PLANK_ARTIFACT_ROOT }}/', after)
+        self.assertNotIn('RUNNER_TEMP', after)
 
     def test_all_root_workflows_use_current_node_actions(self):
         for path in (ROOT / '.github/workflows').glob('*.yml'):
