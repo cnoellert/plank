@@ -2,7 +2,7 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
-## Full release 1.0.105 verified; publication next
+## Published: full release 1.0.105
 
 The operator requested a full rebuild and GitHub release of all four public
 Host/Client packages with relevant change notes. Version 1.0.105 preserves the
@@ -35,9 +35,13 @@ Verified SHA-256 values (sizes and full source/gitlinks are in the manifest):
 - Host PKG: `6e99f7509e31a17a097ee56c9f295f267bea5cd5a00dabf09582433646b94f92`
 - Client DMG: `e88a62aee26d553d836ed7dbe6266441bf8037fa1623a27c307d4e602ea6fa54`
 
-Next: tag the exact build commit as `v1.0.105`, publish all four packages plus
-flat-filename release checksums and the provenance manifest, then verify the
-published asset hashes. No package installation is authorized by this task.
+Release [v1.0.105](https://github.com/instinctual/plank/releases/tag/v1.0.105)
+is published as latest. The annotated tag identifies the exact build commit
+above, not later release-validation notes. All four packages, flat-filename
+release checksums and the provenance manifest are attached; GitHub's SHA-256
+asset digests match every local file. No package was installed on a workstation.
+Both signed Mac jobs completed without manual environment approval. The signed
+Mac Client hosted path is now build/package-qualified, not hardware-qualified.
 
 ## Ready: signed mainline macOS Host 1.0.104
 
