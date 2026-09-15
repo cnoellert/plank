@@ -149,6 +149,15 @@ and100 race checks. A pass is not live permission-dialog/input acceptance.
 The signed product must still be tested from the fresh user's actual Aqua
 session; do not substitute a plain SSH permission check or reset TCC.
 
+The Host build also runs `macos-output-volume.m` (synthetic HAL reads) and
+`macos-audio-recovery.m` (the actual capture audio controller with fake tap/
+encoder boundaries). These check master/channel/mute/fixed-output policies,
+failed reads, teardown before restart, retry limits, denied startup and stop
+cancellation. They never open an audio device or request consent. The portable
+ring test includes overflow recovery without overwriting unread blocks. A
+passing build does not establish live output-volume behavior or the cause of a
+reported audio interruption; check the product's reason/overrun/restart logs.
+
 For system-alert source qualification, compile
 `probes/macos/alert-audio-processes.c` with SDK/target27, warnings-as-errors,
 `-Iapps/host/macos/media` and CoreAudio/AudioToolbox/CoreFoundation/Security frameworks.

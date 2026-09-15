@@ -49,3 +49,8 @@ authorized by the build alone.
 Reference: Apple documents that output devices may expose master, channel, or
 no volume controls in [QA1016](https://developer.apple.com/library/archive/qa/qa1016/_index.html).
 Use current AudioObject APIs, not the deprecated API calls in that old sample.
+
+Candidate status: 1.0.106-macos-media-recovery passed hosted Mac compilation,
+all of the above synthetic tests and signed/notarized PKG gates in run
+35032611418 at `9af28c1356adada0dc70a1513d80551b37c5479d`. The verified package
+is in the local candidate catalog. No installation or hardware acceptance yet.
