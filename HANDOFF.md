@@ -2,6 +2,26 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
+## macOS inactive-display recovery candidate
+
+Branch `macos-display-recovery`, version 1.0.104, addresses authenticated
+topology reads failing after the agent-owned sign-in display becomes inactive.
+Recovery is attempted only after a valid peer-bound token, only for the owned
+virtual display, and never while a stream is active. The existing real geometry
+snapshot remains authoritative. Recovery reports remote user activity, reuses
+the last successful mode and republishes existing virtual settings only if
+offline; it does not create another display or modify physical display modes.
+The main-queue operation has a three-second authority deadline; the network
+queue stays responsive, and request cancellation/ownership loss stops recovery.
+No deployment, live recovery pass or signed package is recorded yet.
+
+The operator intentionally powered off the dedicated development Mac to require
+GitHub-hosted builds. Do not build on it or turn it on as a fallback. Compilation
+and synthetic recovery/TLS gates must run on the hosted macOS runner. Protected
+GitHub Developer ID/notarization configuration is now explicitly authorized;
+credential provisioning and signing validation remain to be completed. No
+credential values, private operational logs or deployment identities belong here.
+
 ## Hosted builds qualified; signing pending
 
 The approved `github-builds` work is fast-forward merged into `main`, adding

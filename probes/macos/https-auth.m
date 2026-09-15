@@ -80,14 +80,18 @@ int main(int argc, const char *argv[]) {
         if (certificate) CFRelease(certificate);
         if (!identity) { puts("macos_https_identity_create=failed"); return 2; }
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
-        PLANKMacGraphicalSnapshot snapshot = ^{ return (PLANKMacGraphicalIdentity){true, 1, {123, {1}}, PLANKMacScopeDesktop}; };
+        __block BOOL scopeActive = YES;
+        PLANKMacGraphicalSnapshot snapshot = ^{ return (PLANKMacGraphicalIdentity){scopeActive, 1, {123, {1}}, PLANKMacScopeDesktop}; };
 #else
         PLANKMacGraphicalSnapshot snapshot = ^{ return [authority snapshot]; };
 #endif
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
         __block unsigned desktopWidth = 3840, desktopHeight = 2160;
         __block NSString *encodingMode = @"hevc-10-420-videotoolbox";
+        NSString *recoveryMode = NSProcessInfo.processInfo.environment[@"PLANK_TEST_RECOVERY"];
+        __block BOOL topologyReady = recoveryMode == nil;
         NSDictionary *(^topology)(void) = ^{
+            if (!topologyReady) return (NSDictionary *)nil;
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
                 desktopWidth, desktopHeight, CGRectMake(-1920, 0, 1920, 1080), encodingMode);
         };
@@ -135,6 +139,21 @@ int main(int argc, const char *argv[]) {
         PLANKMacAuthenticationSession *sessions = [[PLANKMacAuthenticationSession alloc] initWithGraphicalSnapshot:snapshot];
         PLANKMacHTTPSAuthServer *server = [[PLANKMacHTTPSAuthServer alloc] initWithIdentity:identity
             sessions:sessions information:information topology:topology launch:nil];
+#ifdef PLANK_SYNTHETIC_AUTH_TEST
+        if (recoveryMode) server.recoverTopology = ^BOOL(BOOL (^valid)(void)) {
+            if (!valid()) abort();
+            puts("macos_recovery_called"); fflush(stdout);
+            if ([recoveryMode isEqual:@"revoked"]) scopeActive = NO;
+            if ([recoveryMode isEqual:@"timeout"]) {
+                // Test-only stalled provider: the real request deadline must
+                // revoke authority while the network queue remains responsive.
+                while (valid()) usleep(10000);
+                puts("macos_recovery_cancelled"); fflush(stdout);
+            }
+            topologyReady = [recoveryMode isEqual:@"success"];
+            return topologyReady && valid();
+        };
+#endif
 #endif
         CFRelease(identity);
         void (^ready)(uint16_t) = ^(uint16_t port) {

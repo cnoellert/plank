@@ -49,6 +49,22 @@
         if (!owner) { *status = 503; return nil; }
         return [owner prepareDisplayRequest:request token:token peer:peer status:status];
     };
+    _server.recoverTopology = ^BOOL(BOOL (^authorized)(void)) {
+        typeof(self) owner = weakSelf;
+        if (!owner) return NO;
+        @synchronized(owner) {
+            if (!owner.recoverDisplay || !owner->_started || atomic_load(&owner->_stopping) ||
+                (owner->_stream && owner->_stream.state != PLANKMacPreviewStopped)) return NO;
+            PLANKMacGraphicalIdentity scope = owner->_snapshot();
+            BOOL (^valid)(void) = ^BOOL {
+                return !atomic_load(&owner->_stopping) && authorized() &&
+                    plank_macos_same_graphical_scope(scope, owner->_snapshot());
+            };
+            unsigned status = 0;
+            if (!valid() || [owner permissionError:&status]) return NO;
+            return owner.recoverDisplay(valid) && valid();
+        }
+    };
     return _server ? self : nil;
 }
 - (NSDictionary *)prepareDisplayRequest:(NSDictionary *)request token:(NSString *)token

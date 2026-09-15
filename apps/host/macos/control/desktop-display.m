@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "desktop-display.h"
 #import <objc/runtime.h>
+#import <IOKit/pwr_mgt/IOPMLib.h>
 #include <math.h>
 #include <stdatomic.h>
 #include <string.h>
@@ -59,6 +60,7 @@ static BOOL supportedAPI(void) {
     atomic_uint _displayID;
     BOOL _busy;
     BOOL _signIn;
+    unsigned _readyWidth, _readyHeight;
 }
 - (instancetype)initForSignIn {
     self = [super init];
@@ -77,6 +79,11 @@ static BOOL supportedAPI(void) {
     descriptor.queue = dispatch_get_main_queue();
     _display = [[NSClassFromString(@"CGVirtualDisplay") alloc] initWithDescriptor:descriptor];
     if (!_display) { NSLog(@"PLANK virtual display descriptor rejected"); return NO; }
+    if (![self applyModes]) return NO;
+    atomic_store(&_displayID, _display.displayID);
+    return self.displayID != kCGNullDirectDisplay;
+}
+- (BOOL)applyModes {
     NSMutableArray *available = [NSMutableArray array];
     for (size_t i = 0; i < sizeof(modes)/sizeof(modes[0]); ++i) {
         id mode = [[NSClassFromString(@"CGVirtualDisplayMode") alloc]
@@ -87,8 +94,33 @@ static BOOL supportedAPI(void) {
     PLANKMacDisplaySettings *settings = [[NSClassFromString(@"CGVirtualDisplaySettings") alloc] init];
     settings.hiDPI = 0; settings.modes = available;
     if (![_display applySettings:settings]) { NSLog(@"PLANK virtual display modes rejected"); return NO; }
-    atomic_store(&_displayID, _display.displayID);
-    return self.displayID != kCGNullDirectDisplay;
+    return YES;
+}
+- (void)recoverWithValidity:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion {
+    NSAssert(NSThread.isMainThread, @"Display recovery belongs to the graphical main queue");
+    if (!completion) return;
+    if (_busy || !valid || !valid() || !_display || !self.displayID || !_readyWidth || !_readyHeight) {
+        completion(NO); return;
+    }
+    if (CGDisplayIsActive(self.displayID)) { completion(YES); return; }
+    NSLog(@"PLANK owned display recovery starting: display=%u mode=%ux%u", self.displayID, _readyWidth, _readyHeight);
+    // Report an authenticated remote user, not a synthetic keyboard/mouse event.
+    // No global power preference or permanent sleep assertion is installed.
+    IOPMAssertionID activity = kIOPMNullAssertionID;
+    IOReturn wake = IOPMAssertionDeclareUserActivity(CFSTR("PLANK authenticated display recovery"),
+                                                   kIOPMUserActiveRemote, &activity);
+    if (wake != kIOReturnSuccess) NSLog(@"PLANK display wake request failed: %d", wake);
+    // An offline virtual output may need its existing settings republished.
+    // Releasing/recreating CGVirtualDisplay can leave an extra output behind.
+    if (!valid() || (!CGDisplayIsOnline(self.displayID) && ![self applyModes])) {
+        if (activity != kIOPMNullAssertionID) IOPMAssertionRelease(activity);
+        completion(NO); return;
+    }
+    [self prepareWidth:_readyWidth height:_readyHeight valid:valid completion:^(BOOL ready) {
+        if (activity != kIOPMNullAssertionID) IOPMAssertionRelease(activity);
+        NSLog(@"PLANK owned display recovery %@", ready ? @"ready" : @"not ready");
+        completion(ready);
+    }];
 }
 - (BOOL)selectWidth:(unsigned)width height:(unsigned)height {
     CGDirectDisplayID display = self.displayID;
@@ -138,7 +170,10 @@ static BOOL supportedAPI(void) {
             dispatch_source_cancel(timer);
             dispatch_source_set_event_handler(timer, nil);
             self->_busy = NO;
-            if (ready) NSLog(@"PLANK desktop mode ready: %ux%u", width, height);
+            if (ready) {
+                self->_readyWidth = width; self->_readyHeight = height;
+                NSLog(@"PLANK desktop mode ready: %ux%u", width, height);
+            }
             else NSLog(@"PLANK desktop mode not ready: selected=%d authorized=%d", selected, allowed);
             completion(ready);
         }

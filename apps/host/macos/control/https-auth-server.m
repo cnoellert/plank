@@ -5,8 +5,12 @@
 #include <arpa/inet.h>
 #include <sys/resource.h>
 #include <time.h>
+#include <stdatomic.h>
 
-@interface PLANKMacHTTPSRequest : NSObject
+@interface PLANKMacHTTPSRequest : NSObject {
+@public
+    atomic_bool cancelled;
+}
 @property nw_connection_t connection;
 @property NSMutableData *bytes;
 @property NSData *peer;
@@ -58,6 +62,7 @@
 - (void)finish:(PLANKMacHTTPSRequest *)request {
     if (request.finished) return;
     request.finished = YES;
+    atomic_store(&request->cancelled, true);
     [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
     request.bytes = nil;
     nw_connection_set_state_changed_handler(request.connection, NULL);
@@ -203,6 +208,19 @@
                                     if (token && [owner->_sessions authorizeToken:token peer:request.peer identity:&before]) {
                                         authorized = YES;
                                         if (!information) topology = owner->_topology();
+                                        if (!topology && PLANKMacIsTopologyTarget(path) && owner.recoverTopology) {
+                                            // At most one attempt per request, on the existing auth lane.
+                                            // Discovery, app-list reads and invalid tokens never wake or
+                                            // mutate a display. Cancellation is shared with the network lane.
+                                            BOOL (^valid)(void) = ^BOOL {
+                                                PLANKMacAccountIdentity current = {0};
+                                                return !atomic_load(&request->cancelled) &&
+                                                    clock_gettime_nsec_np(CLOCK_MONOTONIC) < request.deadline &&
+                                                    [owner->_sessions authorizeToken:token peer:request.peer identity:&current] &&
+                                                    before.uid == current.uid && !memcmp(before.uuid, current.uuid, sizeof(before.uuid));
+                                            };
+                                            if (valid() && owner.recoverTopology(valid) && valid()) topology = owner->_topology();
+                                        }
                                         status = information || topology ? 200 : 503;
                                         if (![owner->_sessions authorizeToken:token peer:request.peer identity:&after] ||
                                             before.uid != after.uid || memcmp(before.uuid, after.uuid, sizeof(before.uuid))) {

@@ -12,5 +12,8 @@
 @property(nonatomic, readonly) CGDirectDisplayID displayID;
 - (void)prepareWidth:(unsigned)width height:(unsigned)height
               valid:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion;
+// Authenticated recovery only. Reuse our display and last successful mode;
+// never create another display or change a physical display's mode.
+- (void)recoverWithValidity:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion;
 @end
 BOOL PLANKMacDesktopModeSupported(unsigned width, unsigned height);
