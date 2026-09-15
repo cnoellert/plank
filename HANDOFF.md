@@ -2,6 +2,23 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
+## macOS app permissions correction
+
+Host 1.0.103's signed PKG preserved owner-only app directories and icon/signature
+resources. Gatekeeper accepted notarization, but an ordinary account could not
+open the app. The authorized installed test Host was repaired with exact 0755
+bundle-directory / 0644 resource changes; ordinary-user deep strict signature
+verification and Gatekeeper now pass. No keys, settings, logs, services or TCC
+policy were changed. Finder launch has not been user-retested yet.
+
+The correction is alongside display recovery on `macos-display-recovery`,
+1.0.104. Public app assembly uses explicit distribution permissions without
+changing private installed-state policy. New gates check the app, payload and
+finished PKG BOM/extraction. Seven portable tests pass; the eighth real-PKG
+roundtrip requires the hosted Mac. CI will also assemble an ad-hoc test bundle
+under caller umask 077. No new installer has been produced yet. Existing 1.0.103
+release bytes are unchanged; earlier package review missed this permission gate.
+
 ## macOS inactive-display recovery candidate
 
 Branch `macos-display-recovery`, version 1.0.104, addresses authenticated
@@ -68,8 +85,9 @@ notarization credentials in a separate protected environment. Ordinary Mac CI
 does not upload unsigned applications as release packages. Initial clean runs
 use no dependency caches; add exact-input caches only after clean bootstrap
 qualification. Hardware/session gates remain separate from hosted build tests.
-The user was asked whether to provision protected GitHub signing secrets or
-retain local Mac signing; no answer/credential transfer is recorded yet.
+Protected GitHub signing was authorized. The protected `macos-signing`
+environment exists, but certificate/key exports and notarization credential
+provisioning remain pending; no secrets have been transferred yet.
 The public and both private infrastructure CI branches are merged into their
 respective `main` branches. Next: resolve signing authority and qualify an
 exact-input dependency cache. Existing candidate packages keep their original
