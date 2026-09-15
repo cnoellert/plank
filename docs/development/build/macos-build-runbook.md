@@ -1,7 +1,9 @@
 # macOS development build notes
 
-Status: experimental macOS Host; standard PKG qualification is in progress. Build only
-on the authorized dedicated development Mac. Linux builder roles are unchanged.
+Status: experimental macOS Host; standard PKG qualification is in progress.
+Authorized GitHub-hosted builders are documented in [github-builds.md](github-builds.md).
+The local sequences below apply only when use of the dedicated development Mac
+is authorized. Linux builder roles are unchanged.
 Require Apple Silicon, macOS 27, SDK 27 and explicit deployment target 27.0.
 Probe signing/installation remains documented in `probes/macos/README.md`.
 
@@ -38,7 +40,10 @@ needed. Verify the displayed grouping after an actual package upgrade.
 Export `PLANK_BUILD_BRANCH`, `PLANK_MACOS_SIGNING_IDENTITY` (Developer ID
 Application SHA-1), `PLANK_MACOS_INSTALLER_IDENTITY` (Developer ID Installer
 SHA-1), `PLANK_MACOS_TEAM_ID`, and `PLANK_NOTARY_PROFILE` (Keychain profile name).
-Never supply a password in a command argument, environment or repository file.
+For local interactive signing, never supply a password in a command argument,
+environment or repository file. Protected disposable GitHub signing uses the
+narrow per-step secret/Apple-tool boundary documented in `github-builds.md`;
+do not run that helper on an operator's Mac or shared runner.
 The Mac App Store installer certificate is not the Developer ID Installer.
 Use `notarytool store-credentials` interactively once; it requires an Apple
 app-specific password generated through the Apple Account website, not the

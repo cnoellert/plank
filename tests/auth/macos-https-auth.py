@@ -188,7 +188,11 @@ def create_identity(temporary, config):
     os.chmod(key, 0o600)
     subprocess.run(["openssl", "x509", "-in", str(cert), "-outform", "DER", "-out", str(Path(temporary) / "cert.der")],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["openssl", "rsa", "-in", str(key), "-outform", "DER", "-out", str(Path(temporary) / "key.der")],
+    # Apple's SecKeyCreateWithData expects PKCS#1 RSA, not OpenSSL 3's default
+    # PKCS#8 wrapper. LibreSSL already emits PKCS#1 and lacks this flag.
+    help_result = subprocess.run(["openssl", "rsa", "-help"], capture_output=True)
+    traditional = ["-traditional"] if b"-traditional" in help_result.stdout + help_result.stderr else []
+    subprocess.run(["openssl", "rsa", *traditional, "-in", str(key), "-outform", "DER", "-out", str(Path(temporary) / "key.der")],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     os.chmod(Path(temporary) / "key.der", 0o600)
     return cert

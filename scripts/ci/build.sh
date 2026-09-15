@@ -27,8 +27,12 @@ case $role in
     if [[ ${PLANK_CI_SIGNED:-false} = true ]]; then
       bash "$PLANK_SOURCE_ROOT/scripts/package/build-macos-host-pkg.sh" "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/host-package" "$PLANK_WORK_ROOT/transport/release/libplank_transport.a"
     else
+      (
+      # Prove app assembly does not inherit an operator's private umask.
+      umask 077
       PLANK_MACOS_HOST_VERSION="$PLANK_PACKAGE_VERSION" bash "$PLANK_SOURCE_ROOT/scripts/build/build-macos-host.sh" \
         "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/host-build" "$PLANK_WORK_ROOT/transport/release/libplank_transport.a"
+      )
     fi
     ;;
   macos-client)

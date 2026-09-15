@@ -14,8 +14,9 @@ typedef NSDictionary *(^PLANKMacLaunchHandler)(NSDictionary *request, NSString *
 
 // Native TLS 1.3 discovery/authentication/authorized-topology adapter.
 // No implicit streaming capability. A nil launch handler leaves launch absent.
-// Topology provider must be bounded and must
-// not change displays. It runs only after auth and is followed by an owner recheck.
+// The topology provider is read-only. An optional bounded recovery hook may
+// restore the agent's own display after an authenticated topology read fails.
+// Both run only after auth and are followed by an owner recheck.
 // Caller supplies an administrator-controlled TLS identity and explicit local
 // IPv4 bind address/port; no implicit wildcard and no insecure fallback.
 // Core dumps must already be disabled before construction. Stop before release.
@@ -23,6 +24,7 @@ typedef NSDictionary *(^PLANKMacLaunchHandler)(NSDictionary *request, NSString *
 // Configure before start. Runs on the bounded auth lane; authenticates before
 // dispatch and rechecks ownership before returning any display description.
 @property(copy) PLANKMacLaunchHandler prepareDisplay;
+@property(copy) BOOL (^recoverTopology)(BOOL (^valid)(void));
 - (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions
                     information:(PLANKMacServerInformation *)information
                        topology:(NSDictionary *(^)(void))topology

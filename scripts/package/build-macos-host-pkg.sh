@@ -1,5 +1,5 @@
 #!/bin/bash
-# Standard receipt-backed macOS distribution. Run only on the dedicated Mac.
+# Receipt-backed distribution on an authorized macOS builder (including CI).
 set -euo pipefail
 if [[ $# != 3 || $1 != /* || $2 != /* || $3 != /* || $(uname -s) != Darwin ]]; then
   echo 'Usage: build-macos-host-pkg.sh CLEAN_SOURCE NEW_OUTPUT RETAINED_TRANSPORT_ARCHIVE' >&2; exit 2
@@ -19,6 +19,9 @@ identities=$(security find-identity -v)
 echo "$identities" | grep -F "$PLANK_MACOS_SIGNING_IDENTITY" | grep -F '"Developer ID Application:'
 echo "$identities" | grep -F "$PLANK_MACOS_INSTALLER_IDENTITY" | grep -F '"Developer ID Installer:'
 mkdir "$output"
+# Only public distribution staging lives here. Installed private state retains
+# its separate restrictive umask in pkg-common.sh.
+umask 022
 printf '%s\n' "source=$(git -C "$source_root" rev-parse HEAD)" "version=$PLANK_PACKAGE_VERSION"
 shasum -a 256 "$archive"
 bash "$source_root/scripts/build/build-macos-host.sh" "$source_root" "$output/host" "$archive"
@@ -49,6 +52,7 @@ test -x "$app/Contents/Resources/uninstall.sh"
 bash -n "$app/Contents/Resources/uninstall.sh"
 install -m 0644 "$source_root/packaging/host/macos/welcome.html" "$source_root/packaging/host/macos/conclusion.html" "$output/resources/"
 python3 "$source_root/scripts/test/check-package-build-paths.py" "$output/payload"
+python3 "$source_root/scripts/test/check-macos-host-permissions.py" --payload "$output/payload"
 pkgbuild --root "$output/payload" --component-plist "$source_root/packaging/host/macos/component.plist" \
   --identifier la.instinctual.PLANK.Host --version "$PLANK_BASE_VERSION" --install-location / \
   --ownership recommended --scripts "$output/install-scripts" "$output/host-component.pkg"
@@ -61,7 +65,13 @@ sed -e "s/@TITLE@/PLANK Host $PLANK_PACKAGE_VERSION/g" \
 productbuild --distribution "$output/host-distribution.xml" --resources "$output/resources" \
   --package-path "$output" --sign "$PLANK_MACOS_INSTALLER_IDENTITY" --timestamp "$output/$name"
 pkgutil --check-signature "$output/$name"
-xcrun notarytool submit "$output/$name" --keychain-profile "$PLANK_NOTARY_PROFILE" --wait --timeout 10m --output-format json > "$output/host-notary.json"
+python3 "$source_root/scripts/test/check-macos-host-permissions.py" --pkg "$output/$name"
+notary_flags=(--keychain-profile "$PLANK_NOTARY_PROFILE")
+if [[ -n ${PLANK_NOTARY_KEYCHAIN:-} ]]; then
+  [[ $PLANK_NOTARY_KEYCHAIN = /* && -f $PLANK_NOTARY_KEYCHAIN ]]
+  notary_flags+=(--keychain "$PLANK_NOTARY_KEYCHAIN")
+fi
+xcrun notarytool submit "$output/$name" "${notary_flags[@]}" --wait --timeout 10m --output-format json > "$output/host-notary.json"
 /usr/bin/plutil -extract status raw "$output/host-notary.json" | grep -x Accepted
 xcrun stapler staple "$output/$name"
 xcrun stapler validate "$output/$name"

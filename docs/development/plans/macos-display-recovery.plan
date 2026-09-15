@@ -1,0 +1,38 @@
+# Authenticated macOS display recovery
+
+Failure: the Host can remain discoverable after its selected virtual display
+becomes inactive. The Client reads topology before posting display preparation,
+so an unavailable topology blocks the path that could restore the display.
+
+Keep topology snapshots read-only and exact. Add one explicit recovery hook for
+an authenticated topology request, rechecking peer-bound authorization and
+graphical ownership before/during/after work. Public discovery, app-list reads,
+invalid tokens and active streams must not trigger display mutation. The
+graphical main queue owns all display work; only the existing auth lane waits.
+Request expiry/cancellation and a three-second recovery deadline stop work.
+
+Recover only the same agent-owned virtual display, retaining its last successful
+mode and encoding profile. Declare remote user activity through IOKit, release
+the temporary assertion on every outcome, republish the existing modes if
+offline, and validate real active geometry. Never fabricate a topology, reset
+TCC, change physical display modes, create duplicate outputs, reboot, or alter
+persistent power settings. Failure remains a bounded 503, not false success.
+
+Validation: synthetic CG/IOKit tests for healthy no-op, inactive/online and
+offline restoration, 5K mode retention, no unowned-display recovery, revoked
+authority, timeout, concurrent rejection and assertion cleanup. Real loopback
+TLS tests for unauthenticated/no-op paths, successful recovery, failed recovery,
+revocation and request expiry with responsive public discovery. Require hosted
+macOS compilation. Live sleeping/inactive-output recovery, login/logout and
+ownership-transition checks remain hardware gates before acceptance.
+
+Reference: Apple's
+[IOPMAssertionDeclareUserActivity](https://developer.apple.com/documentation/iokit/1557127-iopmassertiondeclareuseractivity)
+documents display wake/user activity without requiring special privileges.
+This is not evidence that sleep caused a particular inactive-display incident.
+
+Status: the operator accepted signed candidate 1.0.104-macos-display-recovery
+and requested merge plus a mainline rebuild. Hosted synthetic and real-loopback
+TLS gates passed; the acceptance report does not enumerate every hardware case.
+Retain exact package provenance in HANDOFF.md and rebuild rather than relabeling
+the branch package.

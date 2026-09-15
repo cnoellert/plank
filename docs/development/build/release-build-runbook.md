@@ -86,6 +86,19 @@ edit its runtime strings solely to remove public upstream diagnostics.
 
 ## Classify failures correctly
 
+macOS Finder's prohibited icon / "damaged or incomplete" can be inaccessible
+bundle metadata, not a corrupt binary or rejected notarization. Host 1.0.103
+contained owner-only bundle directories and resources inherited from umask 077.
+Root signature/notary checks did not prove ordinary desktop users could read
+the app. Build assembly now scopes public resources to umask 022, including
+codesign's generated seal. `check-macos-host-permissions.py` independently checks
+the app, staged payload and the finished PKG's BOM and extracted payload.
+Directories must be 0755, resources 0644, executable/uninstaller 0755; symlinks
+and unexpected executable/write permissions fail. CI assembles an ad-hoc Host
+bundle under caller umask 077 and tests an unsigned PKG roundtrip. These are
+not distribution signing or live installation passes. Never broaden installed
+private keys, configuration or log permissions to repair a public app bundle.
+
 A compiler, linker, package gate, or nonzero packaging-script exit is a build
 failure. A later ad hoc inspection command is a validation-command failure and
 does not invalidate an already successful build unless it exposes a package
