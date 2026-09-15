@@ -93,34 +93,42 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
     BOOL (^valid)(void) = ^BOOL { return authorized; };
     void (^next)(void) = ^{ dispatch_async(dispatch_get_main_queue(), ^{ step(display, index + 1); }); };
     switch (index) {
-    case 0:
+    case 0: {
         [display recoverWithValidity:valid completion:^(BOOL ok) { assert(!ok && !creations && !wakes); next(); }]; break;
-    case 1:
+    }
+    case 1: {
         [display prepareWidth:3840 height:2160 valid:valid completion:^(BOOL ok) {
             assert(ok && creations == 1 && display.displayID == 42); next();
         }]; break;
-    case 2:
+    }
+    case 2: {
         [display recoverWithValidity:valid completion:^(BOOL ok) { assert(ok && !wakes && !selections); next(); }]; break;
-    case 3:
+    }
+    case 3: {
         active = NO;
         [display recoverWithValidity:valid completion:^(BOOL ok) {
             assert(ok && wakes == 1 && releases == 1 && applications == 1 && pixelWidth == 3840); next();
         }]; break;
-    case 4:
+    }
+    case 4: {
         [display prepareWidth:5120 height:2160 valid:valid completion:^(BOOL ok) { assert(ok); next(); }]; break;
-    case 5:
+    }
+    case 5: {
         active = online = NO; pixelWidth = 3840;
         [display recoverWithValidity:valid completion:^(BOOL ok) {
             assert(ok && pixelWidth == 5120 && creations == 1 && applications == 2 && wakes == 2 && releases == 2); next();
         }]; break;
-    case 6:
+    }
+    case 6: {
         active = NO; authorized = NO;
         [display recoverWithValidity:valid completion:^(BOOL ok) { assert(!ok && wakes == 2); next(); }]; break;
-    case 7:
+    }
+    case 7: {
         authorized = YES; revokeOnWake = YES;
         [display recoverWithValidity:valid completion:^(BOOL ok) {
             assert(!ok && !active && wakes == 3 && releases == 3 && applications == 2); next();
         }]; break;
+    }
     case 8: {
         authorized = YES; revokeOnWake = NO; refuseMode = YES;
         NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + .15;
@@ -129,12 +137,13 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
         // Another request cannot race an in-progress recovery.
         [display recoverWithValidity:valid completion:^(BOOL ok) { assert(!ok && wakes == 4); }]; break;
     }
-    case 9:
+    case 9: {
         refuseMode = NO;
         [display recoverWithValidity:valid completion:^(BOOL ok) {
             assert(ok && creations == 1 && pixelWidth == 5120 && wakes == releases);
             puts("macos_display_recovery=pass checks=10 synthetic_only=1"); exit(0);
         }]; break;
+    }
     default: abort();
     }
 }
