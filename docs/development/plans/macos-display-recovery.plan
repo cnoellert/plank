@@ -30,3 +30,9 @@ Reference: Apple's
 [IOPMAssertionDeclareUserActivity](https://developer.apple.com/documentation/iokit/1557127-iopmassertiondeclareuseractivity)
 documents display wake/user activity without requiring special privileges.
 This is not evidence that sleep caused a particular inactive-display incident.
+
+Status: the operator accepted signed candidate 1.0.104-macos-display-recovery
+and requested merge plus a mainline rebuild. Hosted synthetic and real-loopback
+TLS gates passed; the acceptance report does not enumerate every hardware case.
+Retain exact package provenance in HANDOFF.md and rebuild rather than relabeling
+the branch package.

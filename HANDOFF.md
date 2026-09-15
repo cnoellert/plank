@@ -2,9 +2,12 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
-## Ready for operator test: signed GitHub Host 1.0.104
+## Accepted: signed GitHub Host 1.0.104 candidate
 
-`macos-display-recovery` is committed/pushed, not merged. The first signed
+The operator reports the candidate works and authorizes commit, push, merge
+and a fresh mainline rebuild. This acceptance does not claim every individual
+sleep/ownership-transition hardware scenario was explicitly exercised.
+`macos-display-recovery` is awaiting that merge/rebuild. The first signed
 GitHub Host candidate passed in
 [run 35011167754](https://github.com/instinctual/plank/actions/runs/35011167754),
 exact source `ca36e48123d58cc84104f6fab5df59c35d14f05e`. This includes both
@@ -19,10 +22,11 @@ stapling, Gatekeeper, final BOM/extracted-payload permissions, all recovery and
 portable tests passed. The temporary CI signing keychain was deleted and its
 search list restored. No build ran on the dedicated development Mac.
 
-Next: operator installs the candidate and verifies ordinary-account app launch,
-reconnection after the owned virtual output becomes inactive, and login/logout.
-No candidate install, live recovery acceptance, merge or release publication is
-claimed. Client/Linux runtime and dependency gitlinks remain unchanged.
+Next: merge while preserving current mainline README edits, then rebuild the
+macOS Host as unqualified 1.0.104 on GitHub. Protected signing requires operator
+approval; do not approve it programmatically or relabel the candidate package.
+No mainline rebuild or release publication is claimed yet. Client/Linux runtime
+and dependency gitlinks remain unchanged; a new Client is not required.
 
 ## macOS app permissions correction
 
@@ -31,7 +35,8 @@ resources. Gatekeeper accepted notarization, but an ordinary account could not
 open the app. The authorized installed test Host was repaired with exact 0755
 bundle-directory / 0644 resource changes; ordinary-user deep strict signature
 verification and Gatekeeper now pass. No keys, settings, logs, services or TCC
-policy were changed. Finder launch has not been user-retested yet.
+policy were changed. The subsequent candidate received operator acceptance
+as recorded above.
 
 The correction is alongside display recovery on `macos-display-recovery`,
 1.0.104. Public app assembly uses explicit distribution permissions without
@@ -47,7 +52,7 @@ Ten synthetic display recovery checks and four real
 loopback TLS scenarios (success, failure, revoked authority, timeout) pass.
 Initial runs exposed ARC test-case scoping and OpenSSL 3 PKCS#8-default fixture
 issues; those were corrected, not bypassed. Host/Client/transport gitlinks are
-unchanged. No live display-recovery test or candidate installation yet.
+unchanged. Subsequent candidate acceptance is recorded above.
 
 ## macOS inactive-display recovery candidate
 
@@ -60,7 +65,8 @@ the last successful mode and republishes existing virtual settings only if
 offline; it does not create another display or modify physical display modes.
 The main-queue operation has a three-second authority deadline; the network
 queue stays responsive, and request cancellation/ownership loss stops recovery.
-The signed package is recorded above; live recovery qualification remains open.
+The signed package and operator acceptance are recorded above; exhaustive
+sleep/ownership-transition hardware coverage is not inferred from that report.
 
 The operator intentionally powered off the dedicated development Mac to require
 GitHub-hosted builds. Do not build on it or turn it on as a fallback. Compilation
