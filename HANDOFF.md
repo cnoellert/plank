@@ -2,7 +2,7 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
-## Merged: accepted macOS Host 1.0.104; mainline rebuild next
+## Ready: signed mainline macOS Host 1.0.104
 
 The operator reports the candidate works and authorizes commit, push, merge
 and a fresh mainline rebuild. This acceptance does not claim every individual
@@ -26,18 +26,28 @@ stapling, Gatekeeper, final BOM/extracted-payload permissions, all recovery and
 portable tests passed. The temporary CI signing keychain was deleted and its
 search list restored. No build ran on the dedicated development Mac.
 
-The fresh unqualified 1.0.104 build is queued in
+The fresh unqualified 1.0.104 build passed in
 [run 35013030130](https://github.com/instinctual/plank/actions/runs/35013030130)
-at exact source `9284c204b6974e322e480442a0b0b91767420d2a`. Policy checks passed;
-the signed job is now running. At the operator's explicit request, the
+at exact source `9284c204b6974e322e480442a0b0b91767420d2a`. Later documentation
+and workflow-label commits do not change these package bytes. The mainline
+package is `artifacts/packages/releases/1.0.104/macos/plank-host_1.0.104_arm64.pkg`
+(6,604,496 bytes), SHA-256
+`51d4a7e7689482e2cedd89f2685c1550fc9963c5b5100698df7bf449e3e1059f`.
+The collector and local SHA256SUMS verification passed; the manifest retains
+the exact source and unchanged dependency gitlinks. Ten synthetic recovery
+tests, four TLS recovery scenarios, eight permission tests and 29 installer
+checks passed, along with signing, notarization, stapling, Gatekeeper and
+temporary-keychain cleanup. No build ran on a local Mac.
+
+At the operator's explicit request, the
 `macos-signing` environment no longer requires reviewers or a wait timer.
 Custom branch restrictions remain `main` and `macos-display-recovery`; secret
 scope and dispatch-only signing are unchanged. The already waiting job started
 automatically after the policy change, without an approval API call.
-Next: monitor that run and collect its verified package under
-`artifacts/packages/releases/1.0.104/macos/`. Do not relabel the candidate package.
-No mainline rebuild or release publication is claimed yet. Client/Linux runtime
-and dependency gitlinks remain unchanged; a new Client is not required.
+Ready for manual installation. This exact mainline package has not been
+installed or hardware-tested by the agent, and no GitHub Release was published.
+Client/Linux runtime and dependency gitlinks remain unchanged; a new Client
+is not required. The accepted branch package remains separately cataloged.
 
 ## macOS app permissions correction
 
