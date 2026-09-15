@@ -2,6 +2,17 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
+## Full release 1.0.105 in preparation
+
+The operator requested a full rebuild and GitHub release of all four public
+Host/Client packages with relevant change notes. Version 1.0.105 preserves the
+already collected 1.0.104 package rather than replacing its bytes. Build all
+four products on disposable GitHub runners at one exact mainline commit, sign
+and notarize both Mac packages, then collect and verify artifacts before
+creating the release tag and publishing. No installations are requested.
+Release notes: `docs/releases/1.0.105.md`. Private infrastructure products are
+outside this public repository/release. Do not claim fresh hardware acceptance.
+
 ## Ready: signed mainline macOS Host 1.0.104
 
 The operator reports the candidate works and authorizes commit, push, merge
