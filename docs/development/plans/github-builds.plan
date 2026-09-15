@@ -1,7 +1,14 @@
 # GitHub-hosted builds
 
-Status: all four ordinary hosted product builds qualified in separate clean
-runs; signing authority and dependency-cache qualification remain pending.
+Status: all four clean hosted builds and both signed/notarized Mac packaging
+paths are qualified. Release 1.0.105 was rebuilt on hosted runners at one exact
+mainline commit and published. See HANDOFF.md for run IDs and provenance.
+Dependency caching remains optional, unimplemented future work; existing local
+builders have not been retired and hardware acceptance remains separate.
+
+Signing policy: explicit dispatch on allowed branches, without a separate
+reviewer approval, as requested by the operator. Environment secret isolation,
+branch restrictions, disposable keychains and cleanup remain required.
 
 ## Scope
 

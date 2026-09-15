@@ -31,8 +31,8 @@ Reference: Apple's
 documents display wake/user activity without requiring special privileges.
 This is not evidence that sleep caused a particular inactive-display incident.
 
-Status: the operator accepted signed candidate 1.0.104-macos-display-recovery
-and requested merge plus a mainline rebuild. Hosted synthetic and real-loopback
-TLS gates passed; the acceptance report does not enumerate every hardware case.
-Retain exact package provenance in HANDOFF.md and rebuild rather than relabeling
-the branch package.
+Status: the operator accepted signed candidate 1.0.104-macos-display-recovery.
+The work is merged into main, rebuilt and published in release 1.0.105. Hosted
+synthetic and real-loopback TLS gates passed; the acceptance report does not
+enumerate every hardware case. Exact package provenance is in HANDOFF.md and
+the artifact manifests. No implementation work remains on this plan.
