@@ -92,6 +92,14 @@ The initial reusable-workflow version received empty secret values despite
 environment metadata being present; the direct environment-protected job is
 the qualified path. Do not restore that indirection or broaden secret access.
 
+All four 1.0.105 release packages were subsequently rebuilt from mainline
+`78e068edf9240de44e2aea5949dd94df713468b0` on hosted runners. The signed Client
+job passed in [run 35018367944](https://github.com/instinctual/plank/actions/runs/35018367944),
+including package launch/version, dependency closure, signing, notarization,
+stapling, Gatekeeper and temporary-keychain cleanup. Both Mac release jobs
+started without reviewer approval under the branch-restricted policy. This
+qualifies the hosted packaging path, not live hardware behavior.
+
 First runs deliberately bootstrap from source without dependency caches. This
 checks the public-clone path and exposes missing prerequisites. Add caches only
 after clean runs pass, keyed by platform, toolchain and exact dependency/patch

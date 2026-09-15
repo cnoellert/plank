@@ -189,7 +189,8 @@ notarization credentials; values have not been retrieved or logged. A separate
 explicit-dispatch job prepares a disposable keychain and invokes the normal
 package gates. Fourteen CI policy/helper tests pass. Credential validity and
 the first signed/notarized Host runner package are now qualified. The Mac
-Client signed runner job has not yet been exercised.
+Client signed runner job is also qualified by the 1.0.105 release run recorded
+above; live hardware/session validation remains separate.
 The first protected run, `35010539351`, received empty values for all six
 environment secrets despite their presence in the environment metadata. It
 stopped before keychain creation or certificate validation; no installer was
