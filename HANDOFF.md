@@ -2,12 +2,16 @@
 
 Read AGENTS.md and the platform build runbook before work.
 
-## Accepted: signed GitHub Host 1.0.104 candidate
+## Merged: accepted macOS Host 1.0.104; mainline rebuild next
 
 The operator reports the candidate works and authorizes commit, push, merge
 and a fresh mainline rebuild. This acceptance does not claim every individual
 sleep/ownership-transition hardware scenario was explicitly exercised.
-`macos-display-recovery` is awaiting that merge/rebuild. The first signed
+`macos-display-recovery` is merged into `main` at
+`13e0c3248d223fd63d84919517df092d3e6d41ef`, preserving the newer README edits.
+Fourteen CI tests, seven portable permission tests (the Mac-only PKG test is
+skipped locally), and 23 installer script checks passed after merging.
+The first signed
 GitHub Host candidate passed in
 [run 35011167754](https://github.com/instinctual/plank/actions/runs/35011167754),
 exact source `ca36e48123d58cc84104f6fab5df59c35d14f05e`. This includes both
@@ -22,8 +26,7 @@ stapling, Gatekeeper, final BOM/extracted-payload permissions, all recovery and
 portable tests passed. The temporary CI signing keychain was deleted and its
 search list restored. No build ran on the dedicated development Mac.
 
-Next: merge while preserving current mainline README edits, then rebuild the
-macOS Host as unqualified 1.0.104 on GitHub. Protected signing requires operator
+Next: rebuild the macOS Host as unqualified 1.0.104 on GitHub. Protected signing requires operator
 approval; do not approve it programmatically or relabel the candidate package.
 No mainline rebuild or release publication is claimed yet. Client/Linux runtime
 and dependency gitlinks remain unchanged; a new Client is not required.
