@@ -39,3 +39,11 @@ Limits
   this is not a promise of availability through arbitrary OS/network failures.
 - Display wake/recovery is a separate issue. Removing auth exhaustion must not
   be presented as proof that an inactive capture display can always recover.
+
+Validation result
+- Hosted signed run 35057106376 passed from b7407097fef78f10952f9969d6711d92ed454890.
+  Authentication fixture: 504 checks; repeated real-TLS topology failures:
+  32 attempts; recovery success/failure/revocation/timeout all pass.
+  All existing package gates, signing and notarization pass.
+- Package is collected with independent checksum verification. No live
+  installation, merge or hardware acceptance yet; see HANDOFF for provenance.

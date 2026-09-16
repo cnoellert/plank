@@ -8,7 +8,20 @@ notes' README before machine-specific work; deployment information stays outside
 - Active fix: `macos-auth-recovery`, isolated worktree, candidate 1.0.107.
   Fixes abandoned macOS setup-token capacity exhaustion; see
   `docs/development/plans/macos-auth-recovery.plan`. No Client/Linux changes.
-  Source tests added; hosted macOS execution/package validation pending.
+  Source/package commit `b7407097fef78f10952f9969d6711d92ed454890` is pushed.
+  Signed hosted run [35057106376](https://github.com/instinctual/plank/actions/runs/35057106376)
+  passed: 504 authentication checks, 32 real-TLS failed topology/relogin cycles,
+  success/revocation/timeout recovery, 11 synthetic display checks, existing
+  audio/pen/installer gates, signing/notarization/stapling/Gatekeeper.
+  Collected `artifacts/packages/candidates/1.0.107-macos-auth-recovery/macos/plank-host_1.0.107-macos-auth-recovery_arm64.pkg`;
+  6,607,323 bytes; SHA-256
+  `f32a23094dabc1df8d0f2468c0694c12853f5a770c6d6fae3a232e20827c5fe2`.
+  Source/manifest and transferred checksum match. Functional validation remains
+  not-recorded; next is coordinated installation/reconnect testing. No new
+  Client is required. Display wake failure is separate and not fixed here.
+  Protected signing now also permits this exact candidate branch, without
+  widening access for other branches or public PRs. Known unchanged Quinn
+  dead-code warnings do not affect the passing package gates.
   No installation or production restart. The separate `rk3576-client` research
   branch and its uncommitted notes remain untouched in the primary worktree.
 
@@ -140,7 +153,7 @@ Signing is an explicitly dispatched direct job in `build.yml`, selected with
 `signed=true`; ordinary push/PR builds never receive signing credentials.
 At the operator's request, `macos-signing` has no reviewers or wait timer.
 Custom branch restrictions are `main`, `macos-display-recovery` and the explicit
-`macos-media-recovery` candidate, not a
+`macos-media-recovery` and `macos-auth-recovery` candidates, not a
 wildcard. Certificate exports, passwords and notarization credentials remain
 environment secrets. Temporary runner keychains are removed on success/failure.
 
