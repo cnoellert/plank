@@ -88,5 +88,12 @@ Validation result
   Authentication fixture: 504 checks; repeated real-TLS topology failures:
   32 attempts; recovery success/failure/revocation/timeout all pass.
   All existing package gates, signing and notarization pass.
-- Package is collected with independent checksum verification. No live
-  installation, merge or hardware acceptance yet; see HANDOFF for provenance.
+- Follow-up Host 1.0.111 passed 23 synthetic display cases, six TLS recovery
+  scenarios and 509 authentication checks. Installed signed payload was verified.
+  Real authenticated topology and exact 3024x1964, 3456x2234, 2880x1864 and
+  5120x2160 preparation passed; initial dimensions were restored afterward.
+- Matching Mac Client run 35062445761 passed all 16 shared topology tests and
+  signed/notarized DMG gates. The earlier run compiled the app but failed the
+  new standalone test's missing SDK27 include; build policy now supplies it.
+- Laptop presentation/reconnect acceptance and full Client retry-lifecycle
+  simplification remain outstanding. No merge; see HANDOFF for exact provenance.

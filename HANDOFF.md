@@ -18,10 +18,19 @@ notes' README before machine-specific work; deployment information stays outside
   Real authenticated topology passed. Exact real display preparation passed
   3024x1964, 3456x2234, 2880x1864, 5120x2160, then restored 1920x1080;
   each took 0.28–0.62 seconds. These are setup checks, not streamed-video or
-  laptop acceptance. Mac Client run 35061634744 compiled the application but
+  laptop acceptance. Authentication/topology also passed after over ten minutes
+  idle; the owned virtual display remained active, so this is not a proven
+  real sleep/wake cycle. Mac Client run 35061634744 compiled the application but
   failed the new standalone Qt fixture because its build omitted the documented
   SDK27 arm_acle.h include. Corrected in the build script and runbook; no Client
-  package was produced by that run. Matching signed Client rebuild is pending.
+  package was produced by that run. Corrected signed Client run 35062445761
+  passed from `fe5a9bbeed6907f80bf4d8470dac523983ac4b81`: 16 topology tests,
+  package/version/dependency gates, signing/notarization and Gatekeeper.
+  DMG collected in the same candidate catalog, size 86,345,482; SHA256
+  `ad37e0638f4f461523d05185dbf56e28fc173c91ba682e48a0f6355d5d197141`.
+  Client is ready for manual installation, not remotely installed.
+  Next: operator laptop test with Match Client, checking native desktop size
+  and disconnect/reconnect without topology errors. No merge before acceptance.
   No sleep settings, TCC, desktop login or physical display modes were changed.
 
   Dynamic Mac Match Client dimensions (even 2–8192 per
