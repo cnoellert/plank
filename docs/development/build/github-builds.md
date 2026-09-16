@@ -107,7 +107,70 @@ prerequisites. Do not silently
 switch to paid larger runners, older SDKs or reduced CUDA architectures when a
 standard runner is insufficient; record the resource limitation first.
 
-### Mac Client dependency cache
+### Exact-input dependency caches
+
+All four products support dependency caching (including unsigned and signed
+Mac jobs). Cold-save/warm-restore qualification is recorded below; local policy
+tests alone do not prove a hosted speedup.
+
+| Product | Cached inputs |
+| --- | --- |
+| Linux Host | Prepared FFmpeg, its dependency-only build/source tree for independent patch verification, Boost sources, Rust toolchain and Cargo downloads |
+| Ubuntu Client | Prepared FFmpeg, patched source and pristine archive for the source audit, Rust toolchain and Cargo downloads |
+| macOS Host | Rust toolchain and Cargo downloads; capture/encoding/audio use Apple frameworks |
+| macOS Client | Prepared libraries, patched sources, downloads and Qt (existing qualified cache) |
+
+Rust caches contain only toolchains, Cargo tool binaries and downloaded registry/
+Git sources. They exclude Cargo credentials/configuration and target objects.
+Linux keys include exact installed package versions and compiler/build-tool
+versions after prerequisite installation. The Host build-deps Git pin and its
+tracked files cover all dependency source pins, flags and patches. Client keys
+include the FFmpeg build script and all FFmpeg patches. Every new key also
+includes bootstrap scripts, Rust pins/lockfile, architecture and absolute
+source/dependency paths. Source updates that do not affect dependencies reuse
+the cache; dependency changes produce a cold build. OS packages are still
+installed by the package manager on each disposable runner, not restored from
+a copied system root. CUDA architecture coverage is unchanged.
+
+Mac Host's cache avoids Rust installation/downloads, not application or
+transport compilation. Do not promise the same improvement as caching FFmpeg.
+Cache selection is exact, with no fallback restore keys. A receipt must match
+the selected key, required outputs must exist, and Linux FFmpeg patches are
+checked independently before bootstrap. Existing package/source gates still
+run. A mismatched/incomplete cache fails closed rather than silently using
+unverified dependencies. Use a clean-bootstrap build to diagnose such a failure.
+
+#### Four-product qualification
+
+All listed runs passed full application build/tests after dependency bootstrap;
+Linux jobs also passed package gates. Mac runs here were unsigned, not deployment
+or signing qualification. Existing signed release gates remain unchanged.
+
+| Product | Cold run | Warm run | Bootstrap cold / warm | Warm restore |
+| --- | --- | --- | --- | --- |
+| Linux Host | 35144970937, attempt 1 | 35144970937, attempt 2 (Host job only) | 4m29s / 23s | 12s |
+| Ubuntu Client | 35146540028 | 35147537196 | 5m06s / 3s | 4s |
+| macOS Host | 35144970937, attempt 1 | 35145530809 | 11s / 2s | 4s |
+| macOS Client | 35144970937, attempt 1 | 35145993419 | 6m26s / 16s | 14s |
+
+These are dependency-phase times, not total-job benchmarks. OS package
+installation, source checkout/key selection, fresh application builds/tests
+and packaging still take time. Linux Host dependency-source checkout was about
+4m19s in both runs, outside the bootstrap times shown.
+
+Host and initial Mac runs used `478edad0ee302c22c713df1cb67b4c4c185340a5`;
+the Mac Client warm run used docs-only successor `265fba442d690a18f85e7d232dae36241947c789`.
+Ubuntu used `64f368a4fdb58cc0de267bc8f59ec108a8f43be8`, which adds its original
+FFmpeg archive to the cache and required-file checks. That Ubuntu-only content
+correction invalidates new cache keys without changing Host cache logic or
+paths; Mac Host also passed cold run 35146543166 at that source.
+
+The first Ubuntu warm experiment (35146202369) correctly failed the pristine-
+source audit: patched sources and libraries alone are insufficient. Always
+retain the original checksum-verified FFmpeg archive, which packaging extracts
+for its full-source comparison. Do not disable that audit to accept a cache hit.
+
+#### Existing Mac Client qualification
 
 After successful cold-build qualification, Mac Client jobs may reuse prepared
 libraries, their sources (needed for licenses and patch verification), downloads,
@@ -128,7 +191,8 @@ PLANK and its tests build fresh. Application build trees, packages, Cargo object
 signing material and credentials are not cached. Public pull requests may read
 dependency caches but cannot save them through this workflow. Trusted jobs save
 only after a successful build; signed jobs first clean their temporary keychain.
-Other product jobs still use their existing cold bootstrap.
+All product jobs save only successful dependency state; cold-bootstrap bypass
+applies to every product. The standalone fullscreen probe has no dependency cache.
 
 To prove a fresh bootstrap, dispatch with `clean_bootstrap=true`, or use:
 

@@ -90,16 +90,17 @@ class DependencyCacheTests(unittest.TestCase):
 
     def test_workflow_has_exact_restore_and_trusted_save(self):
         workflow = (ROOT / '.github/workflows/build.yml').read_text()
-        self.assertEqual(workflow.count('actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25'), 2)
-        self.assertEqual(workflow.count('actions/cache/save@caa296126883cff596d87d8935842f9db880ef25'), 2)
+        self.assertEqual(workflow.count('actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25'), 4)
+        self.assertEqual(workflow.count('actions/cache/save@caa296126883cff596d87d8935842f9db880ef25'), 4)
         self.assertNotIn('restore-keys:', workflow)
-        self.assertEqual(workflow.count('test "$MATCHED_KEY" = "$CACHE_KEY"'), 2)
+        self.assertEqual(workflow.count('test "$MATCHED_KEY" = "$CACHE_KEY"'), 4)
         unsigned = workflow.split('  macos-signed:')[0]
-        save = unsigned.split('- name: Save Mac Client dependencies')[1].split('- name:')[0]
-        self.assertIn("github.event_name != 'pull_request'", save)
-        self.assertIn('!inputs.clean_bootstrap', save)
+        for save in unsigned.split('- name: Save dependencies')[1:]:
+            save = save.split('- name:')[0]
+            self.assertIn("github.event_name != 'pull_request'", save)
+            self.assertIn('!inputs.clean_bootstrap', save)
         signed = workflow.split('  macos-signed:')[1]
-        self.assertLess(signed.index('Remove temporary signing material'), signed.index('Save Mac Client dependencies'))
+        self.assertLess(signed.index('Remove temporary signing material'), signed.index('Save dependencies'))
 
 
 if __name__ == '__main__':

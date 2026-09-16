@@ -5,6 +5,32 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Dependency-cache follow-up is on `dependency-cache`, based on main `4001161`.
+  All four hosted products are wired for exact-input caches; the previously
+  qualified Mac Client cache format is unchanged. New Linux Host/Client caches
+  retain prepared FFmpeg and patch-verification sources; Host also retains
+  Boost. Those products and Mac Host cache Rust toolchains/downloaded Cargo
+  inputs, never application/transport objects or credentials. Installed Linux
+  package/compiler versions and dependency scripts/pins/patches invalidate keys.
+  Pull requests cannot save caches; clean bootstrap bypasses restore and save.
+  Local 37 CI tests and all five root CTest suites pass. Hosted cold/warm
+  qualification passed for all four products; exact runs and phase timings are
+  in `docs/development/build/github-builds.md`. Linux Host cold/warm used
+  `35144970937` attempts 1/2 at `478edad0ee302c22c713df1cb67b4c4c185340a5`.
+  The Ubuntu-specific archive correction is `64f368a4fdb58cc0de267bc8f59ec108a8f43be8`;
+  its cold/warm runs `35146540028` / `35147537196` both passed. Initial warm
+  run `35146202369` was correctly stopped by the source audit because the cache
+  omitted the pristine FFmpeg archive. The archive is now cached and required
+  by completeness tests; no source/patch gate was weakened. Mac Host warm run
+  `35145530809`, Mac Client warm run `35145993419`, and an additional Mac Host
+  cold build at the corrected source (`35146543166`) passed.
+  The Ubuntu correction changes cache keys but not the qualified Host cache
+  contents/logic. Application and transport source revisions remain identical
+  to the 1.0.120 release below. No runtime change, version bump or deployment.
+  Branch is pushed, not merged. Next: merge the CI-only branch when requested;
+  the first main build must populate its own branch-scoped caches. Do not
+  relabel the CI test packages or replace the published 1.0.120 assets.
+
 - Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
   push, merge and a full rebuild. Root merge `53c7c3988f88a440f1cffeda0ce61ed526de6c43`
   and Client merge `95060dee8fa63e0da98dfa83e7ddd8185731a837` are pushed to main.
@@ -24,8 +50,8 @@ notes' README before machine-specific work; deployment information stays outside
   acceptance was performed. Preserve unrelated primary-worktree research. Earlier candidate
   packages below are historical evidence, not the current mainline artifacts.
   Normal full application rebuilds may reuse verified dependency caches;
-  reserve cold bootstrap for explicit qualification. Hosted caching currently
-  exists only for the macOS Client, not the other three products.
+  reserve cold bootstrap for explicit qualification. At this release's source,
+  caching existed only for the macOS Client; the follow-up above extends it.
 
   | Package (relative to the 1.0.120 catalog) | SHA256 |
   | --- | --- |
