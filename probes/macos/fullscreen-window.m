@@ -49,13 +49,13 @@ typedef NS_ENUM(NSInteger, ProbeMode) {
     NSRectFill(self.bounds);
     // Edge markers must reach the visible panel edges, not just a larger
     // reported frame. The camera housing itself naturally obscures pixels.
-    [NSColor systemYellowColor].setFill;
+    [[NSColor systemYellowColor] setFill];
     NSRectFill(NSMakeRect(0, NSMaxY(self.bounds) - 8, self.bounds.size.width, 8));
-    [NSColor systemGreenColor].setFill;
+    [[NSColor systemGreenColor] setFill];
     NSRectFill(NSMakeRect(0, 0, 8, self.bounds.size.height));
-    [NSColor systemPinkColor].setFill;
+    [[NSColor systemPinkColor] setFill];
     NSRectFill(NSMakeRect(NSMaxX(self.bounds) - 8, 0, 8, self.bounds.size.height));
-    [NSColor systemOrangeColor].setFill;
+    [[NSColor systemOrangeColor] setFill];
     NSRectFill(NSMakeRect(0, 0, self.bounds.size.width, 8));
 }
 @end
@@ -232,13 +232,13 @@ typedef NS_ENUM(NSInteger, ProbeMode) {
 - (void)windowDidFailToEnterFullScreen:(NSWindow *)window
 {
     (void)window;
-    [self windowDidExitFullScreen:nil];
+    [self windowDidExitFullScreen:[NSNotification notificationWithName:NSWindowDidExitFullScreenNotification object:window]];
     [self snapshot:@"failed-enter"];
 }
 - (void)windowDidFailToExitFullScreen:(NSWindow *)window
 {
     (void)window;
-    [self windowDidEnterFullScreen:nil];
+    [self windowDidEnterFullScreen:[NSNotification notificationWithName:NSWindowDidEnterFullScreenNotification object:window]];
     [self snapshot:@"failed-exit"];
 }
 - (NSSize)window:(NSWindow *)window willUseFullScreenContentSize:(NSSize)size
