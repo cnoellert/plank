@@ -146,7 +146,9 @@
                         // expiry. Launch remains one-shot and all other failures
                         // revoke only after peer-bound authorization succeeded.
                         BOOL readinessPending = [path isEqual:@"/plank/display"] && status == 503;
-                        if (status != 200 && !readinessPending) [_sessions revokeToken:token];
+                        BOOL expiredRequest = atomic_load(&request->cancelled) ||
+                            clock_gettime_nsec_np(CLOCK_MONOTONIC) >= request.deadline;
+                        if ((status != 200 && !readinessPending) || expiredRequest) [_sessions revokeToken:token];
                         if ([path isEqual:@"/plank/display"] && (status == 200 || readinessPending))
                             claimedToken = token; // revoke if delivery fails/cancels
                     }
@@ -251,7 +253,8 @@
                                     // remain authoritative; cancellation and actual
                                     // rejection still finish this setup context.
                                     if (setupToken && ((status != 200 && !(status == 503 && authorized)) ||
-                                                      atomic_load(&request->cancelled)))
+                                                      atomic_load(&request->cancelled) ||
+                                                      clock_gettime_nsec_np(CLOCK_MONOTONIC) >= request.deadline))
                                         [owner->_sessions revokeToken:setupToken];
                                 }
                                 dispatch_async(owner->_networkQueue, ^{

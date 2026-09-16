@@ -8,7 +8,7 @@ notes' README before machine-specific work; deployment information stays outside
 - The accepted fixes are merged and pushed to main: root `d34a110`, Client
   `060e6424`. Current work is `reconnect-lifecycle` in the existing separate
   worktree (its directory name still says macos-auth-recovery).
-  Host candidate 1.0.115 and Client candidate 1.0.116 retain valid setup authorization across readiness retries,
+  Host and Client candidates 1.0.116 retain valid setup authorization across readiness retries,
   stops rejected authentication/TLS/permission failures, and gates new requests
   on the configured Ask/Disconnect deadline. Keep Waiting explicitly resumes.
   Mac Host retains authorized topology/display HTTP503 contexts within their
@@ -16,11 +16,14 @@ notes' README before machine-specific work; deployment information stays outside
   Linux Host is unchanged. See `client-reconnect-lifecycle.plan`.
   Local executable deadline/status checks, 14 reconnect source guards and 22
   CI tests pass. Hosted compile/package and live recovery tests remain pending.
-  Host run 35074146670 uses root f34ca0f and remains active. Initial Client
+  Host run 35074146670 at root f34ca0f passed same-token readiness/recovery
+  tests but failed the cancellation gate: a deadline could expire before the
+  network queue set its cancellation flag. Explicit monotonic deadline checks
+  now revoke that context too; no 1.0.115 package was produced. Initial Client
   runs 35074149761 / 35074153250 were cancelled to include two review fixes:
   restart an authentication conversation paused behind Ask (its challenge can
   expire), and discard a transport completing after the deadline rather than
-  keeping it hidden behind the unanswered prompt. Host source is unchanged.
+  keeping it hidden behind the unanswered prompt.
   The primary worktree's `rk3576-client` research branch and uncommitted notes
   remain untouched. Published mainline remains Host 1.0.106, other products
   1.0.105. Do not select an old candidate paragraph as the current source.
