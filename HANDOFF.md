@@ -28,7 +28,8 @@ notes' README before machine-specific work; deployment information stays outside
   `artifacts/packages/candidates/1.0.113-macos-auth-recovery/macos/`.
   PKG size 6,611,113; SHA256
   `2d40969bb830ae761f2f5581ed3db0f97404a2b3b440f7bf1ec55f465ed7f496`.
-  Not installed; live Retina acceptance remains pending.
+  Operator-installed Host/Client 1.0.113 are now observed in supplied logs;
+  full live Retina acceptance remains pending (fullscreen finding below).
 
 - Client 1.0.113 source is `ec17fc4`, Client gitlink
   `eb2d5ac1cc00630bd448b16976a15f93443ee15e`.
@@ -63,22 +64,35 @@ notes' README before machine-specific work; deployment information stays outside
   bounded verifier diagnostics and successful-auth cooldown reset; authenticated
   bootstrap wake and bounded topology-settle wait; dynamic exact Mac display
   dimensions. See the auth/media/display recovery plans and Git history.
-  The affected Mac still runs 1.0.111. Its real authenticated display preparation
+  Before the operator's upgrade, Host 1.0.111 real authenticated display preparation
   passed 3024x1964, 3456x2234, 2880x1864 and 5120x2160, then restored 1920x1080.
   These are geometry checks, not full streamed acceptance. Client endless-retry
   lifecycle simplification remains outstanding; do not claim Host fixes solved it.
 
-- Next: coordinate Host installation (never
-  interrupt a production session unannounced), then operator laptop acceptance:
+- Supplied Retina screenshot/logs confirm Match Client negotiates and receives
+  3420x2214, but a notched laptop's settled fullscreen drawable is 3420x2146
+  (logical 1710x1073 instead of 1710x1107). This explains the top strip and
+  aspect-preserving side borders; do not change Host Retina negotiation or
+  stretch the stream to conceal the mismatch. Current AppKit/SDL fullscreen
+  safe-area handling needs investigation, including keeping toolbar controls
+  reachable around the camera housing. Candidate 1.0.114 implements SDL
+  borderless desktop fullscreen without modesetting/Spaces and dynamically
+  places the toolbar beside the camera housing. Build/live gates pending.
+  Raw screenshots/logs remain outside Git.
+
+- Next: correct/qualify notched fullscreen geometry, then operator acceptance:
   readable/sharp Retina desktop, pointer alignment, disconnect/reconnect,
   manual 1x restoration and secure unlock without temporary caffeinate.
   No merge or release publication before acceptance. Private deployment
   details and captures remain outside Git.
 
-- The operator requested dependency caching after these builds. Add exact-input
-  Mac Client dependency/Qt caches, never application builds or signing material;
-  retain an explicit uncached bootstrap. This is CI-only follow-up, not a new
-  application version or permission to merge the unaccepted Retina candidate.
+- Exact-input Mac Client dependency/Qt caching is committed as `8730581`;
+  22 local CI tests pass. Hosted cold run 35070457888 passed and saved its
+  dependency cache; Client 1.0.114 will validate reuse across an app-only change.
+  Do not claim a speed improvement until that run passes. Never cache application
+  builds or signing material; `--clean-bootstrap` bypasses restore/save. This
+  CI-only follow-up does not change the application version or authorize merging
+  the unaccepted Retina candidate.
 
 ## Release evidence
 

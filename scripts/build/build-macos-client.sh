@@ -45,17 +45,20 @@ qmake -r "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     PLANK_VERSION="$version" \
     "QMAKE_CFLAGS+=$PLANK_C_FILE_FLAGS" "QMAKE_CXXFLAGS+=$PLANK_C_FILE_FLAGS"
 make -j"${PLANK_BUILD_JOBS:-8}" release
-# Run the real shared topology implementation on every Mac Client candidate.
-mkdir -p "$build/tests/outputtopology"
+# Run shared topology and toolbar geometry on every Mac Client candidate.
+for suite in outputtopology planktoolbarlogic; do
+mkdir -p "$build/tests/$suite"
 (
-    cd "$build/tests/outputtopology"
-    qmake "$client/tests/outputtopology/outputtopology.pro" CONFIG+=release CONFIG-=app_bundle \
+    cd "$build/tests/$suite"
+    qmake "$client/tests/$suite/$suite.pro" CONFIG+=release CONFIG-=app_bundle \
         QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
         "QMAKE_CXXFLAGS+=-include arm_acle.h"
     make -j"${PLANK_BUILD_JOBS:-8}"
-    PLANK_REPO_ROOT="$source_root" QT_QPA_PLATFORM=offscreen ./outputtopology
+    PLANK_REPO_ROOT="$source_root" QT_QPA_PLATFORM=offscreen "./$suite"
 )
+done
 plist="$build/app/plank-client.app/Contents/Info.plist"
+test "$(/usr/libexec/PlistBuddy -c 'Print :NSPrefersDisplaySafeAreaCompatibilityMode' "$plist")" = false
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PLANK_BASE_VERSION" "$plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $PLANK_BASE_VERSION" "$plist"
 if /usr/libexec/PlistBuddy -c 'Print :PLANKVersion' "$plist" >/dev/null 2>&1; then

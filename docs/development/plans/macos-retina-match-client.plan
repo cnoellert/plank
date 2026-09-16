@@ -30,3 +30,18 @@ Live acceptance still requires the laptop's Default/Scaled settings, readable
 UI with sharp text, pointer/click alignment, reconnect, and manual-mode 1x
 restoration. Package compilation alone cannot qualify the undocumented virtual
 display API. No production session interruption without operator coordination.
+
+Notched fullscreen follow-up: supplied 1.0.113 logs prove a 3420x2214 stream
+but a 3420x2146 AppKit fullscreen drawable. The missing 34 logical points are
+the camera-housing strip; aspect fitting then adds side borders. Candidate
+1.0.114 uses SDL borderless desktop fullscreen without a display-mode switch
+or AppKit fullscreen Space, and opts out of safe-area compatibility scaling.
+Only toolbar placement uses NSScreen auxiliary top areas; video is not cropped
+or stretched. A safe manually chosen position remains unchanged. If neither
+side fits the entire toolbar at an unusually small logical mode, its handle
+stays exposed at the left edge for manual repositioning.
+
+Qualify full-panel pixels, reachable toolbar/reveal/drag, pointer alignment,
+fullscreen/windowed toggles, minimize/restore and normal Dock/menu restoration
+after disconnect. Check a non-notched display and manual remote resolution
+as well. These are live acceptance gates, not implied by a successful build.
