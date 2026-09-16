@@ -99,11 +99,13 @@ static BOOL supportedAPI(void) {
 - (void)recoverWithValidity:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion {
     NSAssert(NSThread.isMainThread, @"Display recovery belongs to the graphical main queue");
     if (!completion) return;
-    if (_busy || !valid || !valid() || !_display || !self.displayID || !_readyWidth || !_readyHeight) {
+    if (_busy || !valid || !valid() ||
+            (_display && (!self.displayID || !_readyWidth || !_readyHeight))) {
         completion(NO); return;
     }
-    if (CGDisplayIsActive(self.displayID)) { completion(YES); return; }
-    NSLog(@"PLANK owned display recovery starting: display=%u mode=%ux%u", self.displayID, _readyWidth, _readyHeight);
+    CGDirectDisplayID target = _display ? self.displayID : CGMainDisplayID();
+    if (target && CGDisplayIsActive(target)) { completion(YES); return; }
+    NSLog(@"PLANK authenticated display recovery starting: owned=%d", _display != nil);
     // Report an authenticated remote user, not a synthetic keyboard/mouse event.
     // No global power preference or permanent sleep assertion is installed.
     IOPMAssertionID activity = kIOPMNullAssertionID;
@@ -118,6 +120,31 @@ static BOOL supportedAPI(void) {
     if (!valid()) {
         if (activity != kIOPMNullAssertionID) IOPMAssertionRelease(activity);
         completion(NO); return;
+    }
+    if (!_display) {
+        // Before the first bookmark preparation there is no owned virtual
+        // output. Topology must first describe the existing desktop so the
+        // Client can request preparation. Wake only; never change a physical
+        // mode or invent a bootstrap resolution to break that dependency.
+        _busy = YES;
+        NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + 2.5;
+        dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+        dispatch_source_set_timer(timer, DISPATCH_TIME_NOW, 50*NSEC_PER_MSEC, 5*NSEC_PER_MSEC);
+        dispatch_source_set_event_handler(timer, ^{
+            BOOL allowed = valid();
+            CGDirectDisplayID current = CGMainDisplayID();
+            BOOL ready = allowed && current && CGDisplayIsActive(current);
+            if (ready || !allowed || NSProcessInfo.processInfo.systemUptime >= deadline) {
+                dispatch_source_cancel(timer);
+                dispatch_source_set_event_handler(timer, nil);
+                self->_busy = NO;
+                if (activity != kIOPMNullAssertionID) IOPMAssertionRelease(activity);
+                NSLog(@"PLANK bootstrap display recovery %@", ready ? @"ready" : @"not ready");
+                completion(ready);
+            }
+        });
+        dispatch_resume(timer);
+        return;
     }
     [self prepareWidth:_readyWidth height:_readyHeight valid:valid completion:^(BOOL ready) {
         if (activity != kIOPMNullAssertionID) IOPMAssertionRelease(activity);

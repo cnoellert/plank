@@ -12,6 +12,8 @@
 
 static unsigned creations, applications, selections, wakes, releases;
 static BOOL online = YES, active = YES, authorized = YES, refuseMode, revokeOnWake;
+static BOOL bootstrapActive = YES, failWake;
+static CGDirectDisplayID bootstrapID = 43;
 static unsigned pixelWidth = 3840, pixelHeight = 2160;
 
 @interface FakeDescriptor : NSObject
@@ -58,7 +60,10 @@ Class PLANKTestClassFromString(NSString *name) {
     if ([name isEqual:@"CGVirtualDisplay"]) return FakeDisplay.class;
     assert(!"unexpected class lookup"); return Nil;
 }
-boolean_t CGDisplayIsActive(CGDirectDisplayID display) { assert(display == 42); return active; }
+CGDirectDisplayID CGMainDisplayID(void) { return bootstrapID; }
+boolean_t CGDisplayIsActive(CGDirectDisplayID display) {
+    assert(display == 42 || display == 43); return display == 42 ? active : bootstrapActive;
+}
 boolean_t CGDisplayIsOnline(CGDirectDisplayID display) { assert(display == 42); return online; }
 boolean_t CGDisplayIsInMirrorSet(CGDirectDisplayID display) { assert(display == 42); return NO; }
 size_t CGDisplayPixelsWide(CGDirectDisplayID display) { assert(display == 42); return pixelWidth; }
@@ -83,7 +88,9 @@ CGError CGDisplaySetDisplayMode(CGDirectDisplayID display, CGDisplayModeRef mode
 }
 IOReturn IOPMAssertionDeclareUserActivity(CFStringRef name, IOPMUserActiveType type, IOPMAssertionID *result) {
     assert(name && type == kIOPMUserActiveRemote && *result == kIOPMNullAssertionID);
-    wakes++; *result = 19;
+    wakes++;
+    if (failWake) return kIOReturnError;
+    *result = 19;
     if (revokeOnWake) authorized = NO;
     return kIOReturnSuccess;
 }
@@ -94,7 +101,7 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
     void (^next)(void) = ^{ dispatch_async(dispatch_get_main_queue(), ^{ step(display, index + 1); }); };
     switch (index) {
     case 0: {
-        [display recoverWithValidity:valid completion:^(BOOL ok) { assert(!ok && !creations && !wakes); next(); }]; break;
+        [display recoverWithValidity:valid completion:^(BOOL ok) { assert(ok && !creations && !wakes); next(); }]; break;
     }
     case 1: {
         [display prepareWidth:3840 height:2160 valid:valid completion:^(BOOL ok) {
@@ -153,8 +160,67 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
             completion:^(BOOL ok) {
                 assert(!ok && applications == 1 && creations == 1 && selections == priorSelections);
                 assert(wakes == releases);
-                puts("macos_display_recovery=pass checks=11 synthetic_only=1"); exit(0);
+                next();
             }]; break;
+    }
+    case 11: {
+        bootstrapActive = NO;
+        unsigned priorWake = wakes, priorRelease = releases, priorSelect = selections;
+        PLANKMacDesktopDisplay *fresh = [PLANKMacDesktopDisplay new];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100*NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ bootstrapActive = YES; });
+        [fresh recoverWithValidity:valid completion:^(BOOL ok) {
+            assert(ok && !fresh.displayID && creations == 1 && applications == 1 && selections == priorSelect);
+            assert(wakes == priorWake + 1 && releases == priorRelease + 1); next();
+        }];
+        [fresh recoverWithValidity:valid completion:^(BOOL ok) { assert(!ok && wakes == priorWake + 1); }];
+        break;
+    }
+    case 12: {
+        authorized = NO; bootstrapActive = NO;
+        unsigned priorWake = wakes;
+        [[PLANKMacDesktopDisplay new] recoverWithValidity:valid completion:^(BOOL ok) {
+            assert(!ok && wakes == priorWake); next();
+        }]; break;
+    }
+    case 13: {
+        authorized = YES; revokeOnWake = YES;
+        unsigned priorRelease = releases;
+        [[PLANKMacDesktopDisplay new] recoverWithValidity:valid completion:^(BOOL ok) {
+            assert(!ok && releases == priorRelease + 1 && creations == 1); next();
+        }]; break;
+    }
+    case 14: {
+        authorized = YES; revokeOnWake = NO;
+        unsigned priorRelease = releases;
+        NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + .15;
+        [[PLANKMacDesktopDisplay new] recoverWithValidity:^BOOL { return NSProcessInfo.processInfo.systemUptime < deadline; }
+            completion:^(BOOL ok) { assert(!ok && releases == priorRelease + 1); next(); }]; break;
+    }
+    case 15: {
+        bootstrapID = 0;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100*NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            bootstrapID = 43; bootstrapActive = YES;
+        });
+        [[PLANKMacDesktopDisplay new] recoverWithValidity:valid completion:^(BOOL ok) {
+            assert(ok && creations == 1 && applications == 1); next();
+        }]; break;
+    }
+    case 16: {
+        failWake = YES; bootstrapActive = NO;
+        unsigned priorRelease = releases;
+        NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + .15;
+        [[PLANKMacDesktopDisplay new] recoverWithValidity:^BOOL { return NSProcessInfo.processInfo.systemUptime < deadline; }
+            completion:^(BOOL ok) { assert(!ok && releases == priorRelease); next(); }]; break;
+    }
+    case 17: {
+        failWake = NO; bootstrapID = 0;
+        unsigned priorRelease = releases;
+        NSTimeInterval started = NSProcessInfo.processInfo.systemUptime;
+        [[PLANKMacDesktopDisplay new] recoverWithValidity:valid completion:^(BOOL ok) {
+            assert(!ok && NSProcessInfo.processInfo.systemUptime - started < 3);
+            assert(releases == priorRelease + 1 && creations == 1 && applications == 1);
+            puts("macos_display_recovery=pass checks=18 synthetic_only=1"); exit(0);
+        }]; break;
     }
     default: abort();
     }

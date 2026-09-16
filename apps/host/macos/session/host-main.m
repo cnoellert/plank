@@ -293,7 +293,10 @@ static int graphical(const char *service, NSString *role, NSString *directory, B
             return !atomic_load(&cancelled) && clock_gettime_nsec_np(CLOCK_MONOTONIC) < deadline && authorized();
         };
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (!valid() || !desktopDisplay.displayID || capture.selectedDisplay != desktopDisplay.displayID) {
+            // Zero/zero is first-use capture of the current desktop, before
+            // bookmark preparation creates our virtual display. It may need
+            // waking too. A nonzero selection must still be our owned output.
+            if (!valid() || capture.selectedDisplay != desktopDisplay.displayID) {
                 dispatch_semaphore_signal(finished); return;
             }
             [desktopDisplay recoverWithValidity:valid completion:^(BOOL success) {

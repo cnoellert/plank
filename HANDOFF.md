@@ -5,10 +5,33 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Preparing 1.0.110: authenticated topology recovery now also wakes the current
+  desktop before the first virtual-display preparation. Previously a fresh
+  desktop worker required topology before preparation, but only recovered an
+  already-created owned output. Bootstrap recovery is wake-only, bounded and
+  cancellation/ownership checked; no physical modes or sleep settings change.
+  Synthetic coverage adds bootstrap wake, authorization loss, concurrent
+  admission, wake failure and missing-display timeout. Not yet built/installed.
+  Next requested work: dynamic native-pixel Match Client modes for Mac Hosts;
+  retain manual presets and Linux EDID behavior. Keep changes separately tested.
+
+- 1.0.109 passed hosted run 35059613856 at
+  `7608a4b75c343e00935da40747669c8edd7b6779`; 19 isolated-channel cases,
+  509 auth-session checks, topology recovery and existing package/signing gates.
+  Collected `candidates/1.0.109-macos-auth-recovery/macos/`, size 6,608,164,
+  SHA256 `3bb9aff9d594ba49f8bc20153e5a01252241e9ec4afc863611188a39e725b14f`.
+  Transferred/verified but NOT installed; affected Host still runs 1.0.108.
+  Operator stopped the retrying Client: connections and diagnostic growth stopped;
+  isolated real PLANK authentication then succeeded in 0.174 seconds.
+  The remaining topology failure is HTTP503 after successful authentication;
+  Client displays Qt network enum403, NOT HTTP403/permission denial.
+  Endpoint discovery remains HTTP200. Client retry-lifecycle simplification is
+  still outstanding; do not claim it was fixed by Host-only cooldown changes.
+
 - Follow-up candidate 1.0.108 is built and installed on `macos-auth-recovery`.
   After the token-capacity correction, native directory verification passed
-  but PLANK still returned denied on the affected Mac. The precise rejection
-  remains unproven. Helper unavailability now maps to busy, not bad credentials;
+  but PLANK still returned denied on the affected Mac. Diagnostics subsequently
+  identified retry cooldown. Helper unavailability maps to busy, not bad credentials;
   bounded fixed-stage diagnostics distinguish directory, private-channel and
   desktop-authority failures without account/credential/token logging.
   Full isolated-helper tests join the hosted Host package gates. No security

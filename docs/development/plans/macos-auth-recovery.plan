@@ -1,7 +1,7 @@
 # macOS authentication setup recovery
 
-Scope: native macOS Host only, branch macos-auth-recovery, candidate 1.0.107.
-No display-power policy, capture pipeline, Linux Host or Client changes.
+Scope: native macOS Host authentication and authenticated display bootstrap,
+branch macos-auth-recovery. No global display-power policy or Linux Host changes.
 
 Observed failure
 - Read-only live allocation ownership inspection found 16 authentication
@@ -58,6 +58,13 @@ Follow-up: precise failures before lifecycle simplification
   it after failures; test immediate success/success and denied/backoff sequences.
   This avoids penalizing successful authentication without permitting parallel
   directory work or removing failed-password throttling.
+- With the retrying Client stopped, real PLANK authentication succeeds. The
+  topology request then fails HTTP503 (Qt's displayed network error403 is not
+  HTTP403). A fresh worker has no owned virtual display yet; its inactive
+  current desktop cannot provide topology, while recovery required an owned
+  display. Add bounded authenticated wake-only bootstrap with no physical-mode
+  mutation or guessed resolution. Keep existing owned-mode recovery and test
+  both paths, including cancellation, failed wake and unavailable display.
 
 Validation result
 - Hosted signed run 35057106376 passed from b7407097fef78f10952f9969d6711d92ed454890.
