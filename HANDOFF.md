@@ -74,8 +74,18 @@ XRandR and Mutter agree on actual current modes and adjacent monitor rectangles.
 The clean `b05ccdc` candidate is packaged under
 `artifacts/development/macos15-windowed-transition/`; 106 target checks,
 dependency closure and ad-hoc signatures pass. The new native Client is open
-for live input/order/transition retesting. Current state: two native-resolution
-Host monitors; user sign-in/results pending.
+for live input/order/transition retesting. The operator confirms the display gap
+is closed. An authenticated windowed-start session now transitions to two Metal
+outputs and back. A slow manual trace preserves the held button through twelve
+Host display-seam crossings; continuous window movement was not recorded, so
+cross-display drag acceptance remains open. Automated rapid dragging exposed a
+separate input-order defect: later motion overwrites the press location.
+Client `0be626c` / common-c `0c82257` coalesces only adjacent mouse motion at both
+SDL and native-input layers. A deterministic queued-drag worker test fails on
+the previous implementation and passes after the fix. All 71 Client cases pass;
+the worker check now runs in every Mac Client build. A new development package
+and live retest are next. Current state: connected windowed Client, two
+native-resolution Host monitors; original layout restoration still due.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.

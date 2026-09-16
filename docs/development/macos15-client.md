@@ -337,6 +337,30 @@ and ad-hoc signatures pass. Main executable SHA-256:
 The candidate remains unsigned for distribution/not notarized and is not yet
 live-accepted.
 
+### Mouse event ordering follow-up
+
+The operator confirms the native Host mode closes the display gap. The
+windowed-start candidate successfully switches from one composite surface to
+two Metal outputs, then back. A manual Host pointer trace retains the left
+button across twelve monitor seam crossings. This rules out a release at those
+crossings, but does not establish correct continuous window movement.
+
+Automated rapid dragging reveals a separate reproducible ordering defect.
+Common-c's shared absolute-position cache can replace the position before a
+queued press with the later drag destination. SDL's motion-only queue search
+can also consume later motion across queued button/focus events. Client
+`0be626c` / common-c `0c82257` preserves event order by coalescing only adjacent
+moves. SDL additionally preserves window, device and button-state boundaries.
+The in-memory native worker test queues a complete drag while its sender is
+blocked: the old implementation loses two position boundaries; the corrected
+implementation preserves the expected press, drag and release coordinates.
+Nine SDL queue regression cases pass, bringing the Client suite to 71 cases.
+The native worker regression now runs in each Mac Client candidate build.
+These checks establish event ordering, not full live multi-monitor acceptance.
+A freshly packaged client must still pass remote click/drag and both fullscreen
+seam directions. The prepared Host layout remains temporary and requires the
+saved restoration procedure after testing.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

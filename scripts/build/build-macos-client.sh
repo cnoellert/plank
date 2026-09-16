@@ -62,6 +62,15 @@ mkdir -p "$build/tests/$suite"
     PLANK_REPO_ROOT="$source_root" QT_QPA_PLATFORM=offscreen "./$suite"
 )
 done
+# Exercise the actual input worker with a queued drag, without a host or UI.
+cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -DNDEBUG \
+    -arch arm64 -mmacosx-version-min="$MACOSX_DEPLOYMENT_TARGET" \
+    -I"$client/moonlight-common-c/moonlight-common-c/src" \
+    -I"$source_root/protocol/plank-transport/include" \
+    "$source_root/tests/session/native-input-wire.c" \
+    "$build/moonlight-common-c/libmoonlight-common-c.a" \
+    -o "$build/tests/native-input-wire"
+"$build/tests/native-input-wire"
 plist="$build/app/plank-client.app/Contents/Info.plist"
 test "$(/usr/libexec/PlistBuddy -c 'Print :NSPrefersDisplaySafeAreaCompatibilityMode' "$plist")" = false
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PLANK_BASE_VERSION" "$plist"
