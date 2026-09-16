@@ -30,6 +30,7 @@ version=$PLANK_PACKAGE_VERSION
 client="$source_root/apps/client"
 test "$(qmake -query QT_VERSION)" = 6.10.2
 test "$(rustc --version | awk '{print $2}')" = 1.89.0
+python3 "$source_root/tests/packaging/test-macos-fullscreen.py" "$source_root"
 patch_file="$client/app/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch"
 printf '%s  %s\n' 059cc9c0d585d71e292cd7421a43f239b1e7ce94e8598d0a7427dfe48e55847e "$patch_file" | shasum -a 256 -c -
 patch --batch --reverse --dry-run -d "$PLANK_MAC_CLIENT_DEPS/src/ffmpeg-9.0.1" -p1 < "$patch_file"

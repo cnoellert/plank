@@ -81,7 +81,7 @@ def main():
         raise SigningError("Unexpected signing arguments")
     role = os.environ.get("PLANK_CI_PRODUCT")
     team = os.environ.get("PLANK_MACOS_TEAM_ID", "")
-    if role not in ("macos-host", "macos-client") or not re.fullmatch(r"[A-Z0-9]{10}", team):
+    if role not in ("macos-host", "macos-client", "macos-fullscreen-probe") or not re.fullmatch(r"[A-Z0-9]{10}", team):
         raise SigningError("Invalid product or Developer Team ID")
     material = {name: os.environ.pop(name, "") for name in SECRET_NAMES}
     missing = [name for name, value in material.items() if not value]
@@ -94,7 +94,15 @@ def main():
     try:
         # Check required secrets first, then bootstrap with them removed from
         # the child environment and before creating any signing keychain.
-        result = subprocess.run(["bash", str(Path(os.environ["PLANK_SOURCE_ROOT"]) / "scripts/ci/bootstrap.sh"), role])
+        root = Path(os.environ["PLANK_SOURCE_ROOT"])
+        probe = role == "macos-fullscreen-probe"
+        probe_script = root / "scripts/package/build-macos-fullscreen-probe.sh"
+        probe_output = str(Path(os.environ["PLANK_WORK_ROOT"]) / "fullscreen-probe") if probe else ""
+        if probe:
+            Path(os.environ["PLANK_WORK_ROOT"]).mkdir(parents=True, exist_ok=True)
+        prepare = (["bash", str(probe_script), "--build", str(root), probe_output] if probe else
+                   ["bash", str(root / "scripts/ci/bootstrap.sh"), role])
+        result = subprocess.run(prepare)
         if result.returncode:
             raise SigningError(f"Credential-free dependency bootstrap failed (exit {result.returncode})")
         previous = shlex.split(command("read keychain search list", ["security", "list-keychains", "-d", "user"]))
@@ -132,7 +140,9 @@ def main():
         material.clear()
         os.environ.update(PLANK_CI_SIGNED="true", PLANK_NOTARY_PROFILE="plank-ci", PLANK_NOTARY_KEYCHAIN=keychain)
         print("protected_signing_inputs=ready", flush=True)
-        result = subprocess.run(["bash", str(Path(os.environ["PLANK_SOURCE_ROOT"]) / "scripts/ci/build.sh"), role])
+        build = (["bash", str(probe_script), "--package", str(root), probe_output] if probe else
+                 ["bash", str(root / "scripts/ci/build.sh"), role])
+        result = subprocess.run(build)
         if result.returncode:
             raise SigningError(f"Signed build/package gates failed (exit {result.returncode})")
     finally:

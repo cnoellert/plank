@@ -1,0 +1,161 @@
+# Native macOS fullscreen Spaces
+
+Work on macos-fullscreen; Client only. Preserve the accepted Host and Linux
+presentation, protocol, Retina Match Client and exact-format decode paths.
+
+## Finding and approach
+
+Current decision (Client 1.0.119): the operator tested all standalone probe
+modes. They had no side borders but retained the same native top notch strip.
+The operator accepts that system-owned strip, including its protection for
+remote menus. Stop pursuing full-panel overrides. Keep native Spaces/swipes;
+fullscreen Match Client now subtracts NSScreen.safeAreaInsets.top from logical
+and backing heights at the existing Retina scale. Zero inset means the entire
+display; do not subtract Dock/menu visibleFrame or hardcode a laptop size.
+Authentication and session/reconnect validation share this geometry. Preserve
+the full display bounds separately for screen identity/window placement.
+Manual resolutions and windowed startup retain existing aspect/sizing policy;
+toggling window mode does not renegotiate the active Host resolution.
+Remove the ineffective SDL patch/helper/hint and invalidate dependency cache.
+No Host/Linux behavior change. Candidate still needs notched and non-notched
+live checks; compiled geometry tests and source guards are not visual proof.
+
+The following investigation is retained as evidence, not an active build policy.
+
+Candidate 1.0.119 passed signed hosted run 35131997746 from root
+9167fd8412172fee9d47be9eb2bc67cc155d7750 / Client
+6f0c25269c5a8bf1051814317440f2cd57fda005. Cold bootstrap, compiled geometry,
+19 topology / 21 toolbar / seven desktop-stage tests, native compilation and
+distribution gates passed. HANDOFF records the verified DMG checksum/location.
+The operator accepted 1.0.119 and authorized merging and a full mainline rebuild
+as 1.0.120. No Host behavior change. Acceptance is operator-reported; do not
+infer separate coverage of every monitor/input combination.
+
+Client 1.0.114 disabled SDL's native fullscreen Spaces while also opting out
+of display safe-area compatibility. This fixed full-panel coverage but removed
+normal fullscreen Space participation. SDL 3.4.2's Cocoa delegate accepts
+AppKit's proposed fullscreen content size without an application override.
+
+Restore Spaces and request the actual NSScreen frame size through AppKit's
+documented window:willUseFullScreenContentSize: delegate callback. Implement
+that narrow opt-in inside the pinned SDL Cocoa delegate, not a replacement
+delegate, runtime swizzle, gesture interceptor or manual window-movement loop.
+Do not switch display modes, stretch/crop video or hardcode a notch dimension.
+Keep the safe-area compatibility opt-out and existing dynamic toolbar placement.
+
+The SDL patch is a required build input: apply-or-prove-applied at bootstrap,
+independently verify before every build, and include it in dependency cache
+fingerprints. An unpatched prepared tree must fail. Other SDL users retain
+upstream behavior unless the PLANK-specific hint is enabled.
+
+## Validation
+
+Check patch application/reverse verification and source wiring, native build,
+shared toolbar/topology/reconnect tests and signed/notarized package gates.
+Log the proposed/fullscreen screen size and settled native content/drawable
+geometry to distinguish an AppKit restriction from renderer letterboxing.
+The AppKit sizing override is a candidate, not proof of notch behavior: the
+hosted builder has no operator laptop/notch/trackpad acceptance coverage.
+
+Operator checks before merge: swipe between fullscreen apps and back; verify
+full-panel Retina Match Client, sharp text, accurate mouse/pen positions,
+toolbar reveal/drag, held-key release on focus loss, window/fullscreen toggle,
+minimize/restore and disconnect. Also check a non-notched display/manual mode.
+No new Host package is required. Do not merge without operator acceptance.
+
+## Candidate
+
+Signed Client 1.0.117-macos-fullscreen passed hosted run 35124970815 from root
+aea1ab33e7c03ebf8c9ee67e36239beb81261217 / Client
+509f2fc73718b3dffdb9fd9ad9c03065bc14b6c2. Patch/prepared-library verification,
+six focused guards, shared Qt suites, package closure/version, signing,
+notarization and Gatekeeper pass. The exact hash-verified DMG is in the
+candidate catalog; HANDOFF records its checksum. Operator installed it and
+confirmed swipe switching works, but the top/side borders returned. No merge.
+Keep the accepted Host unchanged.
+
+## Live result and next decision
+
+The sizing callback executes: proposed 1710x1073, requested 1710x1107 points.
+After the native transition, frame and content are still 1710x1073 with a
+3420x2146 drawable. The stream is 3420x2214. Aspect fitting that stream to the
+shorter drawable explains the side borders; the missing top area is outside
+the native window. These are observed dimensions, not constants to encode.
+
+The callback is insufficient. Do not add blind resize loops, private AppKit
+hooks, cropping or distortion. Native fullscreen with Match Client based on
+the usable content area is the simpler alternative: it would remove the side
+borders while preserving Retina scale and gestures, but retain the system
+notch strip. That differs from full-panel coverage and needs operator agreement.
+Otherwise investigate and prove a full-panel native-Space architecture before
+another product candidate. Custom animation alone is not established as a fix.
+
+## Follow-up investigation
+
+The operator requested continued investigation of full-panel coverage WITH
+native Spaces, not acceptance of the reduced viewport. No production code was
+changed during this investigation.
+
+Source comparisons:
+
+- Mozilla bug 1737953 comment 18 describes the same system-owned top strip
+  in native fullscreen, including Safari. This supports the log diagnosis,
+  not a universal claim that every alternative architecture is impossible.
+- Helium's notch-fullscreen demo explicitly bypasses native fullscreen in its
+  controller. It is not proof of a full-panel native Space.
+- Ghostty separates native and non-native fullscreen implementations; its
+  borderless mode fills the screen. It is not the missing combined solution.
+- mpv's macOS Window subclass uses native toggleFullScreen, custom fullscreen
+  animation to the screen frame, AND a constrainFrameRect override during
+  fullscreen/transition. SDL3.4.2 lacks that override. Apple documents overriding
+  constrainFrameRect to change frame constraints. This is a concrete single-
+  window hypothesis, NOT confirmed notch behavior on macOS 27. IINA's custom
+  animation alone must not be taken as evidence; it also has an open notch issue.
+
+Next diagnostic should be a standalone AppKit window probe comparing stock
+native fullscreen against custom animation, frame-constraint override, and
+their combination. Log proposed/constrained/settled frame and backing content
+dimensions, including after swiping away/back and fullscreen exit/re-entry.
+Use current screen geometry; no fixed notch dimensions, private selectors,
+method swizzling, resizing timers, display mode changes or global settings.
+Success requires visible full-panel content AND native Space switching; merely
+returning a larger rectangle or compiling successfully is not success.
+
+If that fails, a separate native fullscreen owner plus attached borderless
+presentation window is a possible second probe: Apple's fullScreenAuxiliary
+and addChildWindow APIs provide the attachment primitives. Their documentation
+does NOT establish notch coverage or correct swipe animation. That approach
+adds focus/input/cleanup complexity and must not enter PLANK without a proof.
+No notched-Mac execution was available in this research turn; a hosted compile
+alone cannot close the live geometry/gesture gate.
+
+## Standalone probe delivery
+
+`probes/macos/fullscreen-window.m` now implements five single-window modes.
+All enter native Spaces. It has private geometry-only logs, visual edge markers,
+an explicit mode selector and normal Quit/Escape controls, no product/network
+dependency and no system setting writes. Full test instructions are alongside
+the source in `fullscreen-window.md`.
+
+The 1.0.118-macos-fullscreen diagnostic passed signed hosted run 35129303592,
+root 21c295446892c6d0a6bb57c326040e94763871c1. Strict native compilation and
+distribution gates passed; the downloaded hash matches the runner. HANDOFF
+records the separate `artifacts/diagnostics/` path/checksum. No new Client or
+Host package was produced. Live notched-Mac coverage and swipe tests remain
+pending; do not integrate an experimental policy based on this build alone.
+
+Additional references (implementation references, no code copied):
+- https://bugzilla.mozilla.org/show_bug.cgi?id=1737953#c18
+- https://github.com/vvitovec/helium-macos/blob/notch-fullscreen-demo-v0.3/patches/helium/macos/notch-aware-fullscreen-toolbar.patch
+- https://github.com/ghostty-org/ghostty/blob/main/macos/Sources/Helpers/Fullscreen.swift
+- https://github.com/mpv-player/mpv/blob/master/video/out/mac/window.swift
+- https://github.com/iina/iina/issues/4083
+- https://developer.apple.com/documentation/appkit/nswindow/constrainframerect(_:to:)
+- https://developer.apple.com/documentation/appkit/nswindowdelegate/customwindowstoenterfullscreen(for:)
+- https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/fullscreenauxiliary
+- https://developer.apple.com/documentation/appkit/nswindow/addchildwindow(_:ordered:)
+
+References:
+- https://wiki.libsdl.org/SDL3/SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES
+- https://github.com/libsdl-org/SDL/blob/release-3.4.2/src/video/cocoa/SDL_cocoawindow.m
+- https://developer.apple.com/documentation/appkit/nswindowdelegate/window(_:willusefullscreencontentsize:)

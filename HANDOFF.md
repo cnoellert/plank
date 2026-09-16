@@ -5,11 +5,58 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
+  push, merge and a full rebuild. Preparing all four Host/Client packages as
+  1.0.120 from main on disposable GitHub-hosted builders; no installs or GitHub
+  release publication requested. Preserve unrelated primary-worktree research.
+  Candidate packages below remain unchanged; mainline packages are rebuilt,
+  never relabeled. Record final source, hosted runs and checksums here.
+
+- Accepted Client 1.0.119-macos-fullscreen evidence:
+  Operator tested all five standalone AppKit modes: no side borders, same
+  system-owned top notch strip. Operator accepts that strip and native Spaces.
+  New policy: Mac-to-Mac fullscreen Match Client uses NSScreen's dynamic top
+  camera inset and preserves compositor backing density. Zero inset leaves
+  non-notched displays unchanged. Windowed/manual sizing stays unchanged.
+  Authentication, startup validation and reconnect use the same viewport;
+  original display bounds remain separate for window placement/identity.
+  Removed ineffective SDL content-size patch/hint/helper. Bootstrap/cache inputs
+  changed, forcing fresh upstream SDL dependencies; FFmpeg patch gates remain.
+  Local five fullscreen tests (including compiled geometry), 26 CI tests,
+  14 reconnect guards and five root CTest suites pass. Signed hosted run
+  `35131997746` passed from root `9167fd8412172fee9d47be9eb2bc67cc155d7750`,
+  Client `6f0c25269c5a8bf1051814317440f2cd57fda005`: cold dependency bootstrap,
+  SDK27 native compile, 19 topology / 21 toolbar / seven desktop-stage tests,
+  package/version/dependency gates, Developer ID signing, notarization, staple,
+  Gatekeeper and signing-material cleanup. New dependency cache sealed.
+  Operator reports the fix works and accepts it. This is not a claim that every
+  display/input combination was individually tested. No Host behavior change.
+  Start a fresh fullscreen connection; toggling window mode alone does not
+  renegotiate an existing Host resolution.
+  Hash-verified DMG (85,582,956 bytes):
+  `artifacts/packages/candidates/1.0.119-macos-fullscreen/macos/plank-client_1.0.119-macos-fullscreen_arm64.dmg`.
+  SHA256: `58f8d4b56b6f68e3490e5c54b066030525e7ebee074ababcaccba96eaba709c9`.
+  Unchanged gitlinks: Linux Host `9329784ac41f50cbec0c9d76badfd22227ec5e5f`,
+  Kymux `912ece5c64787997f978673ca60d313898a3548c`; Client common-c
+  `b9650552f98d97f6e30c9f007115c6246f0809e5`, qmdnsengine
+  `b7a5a9f225d5e14b39f9fd1f905c4f505cf2ee99`.
+
+- Superseded fullscreen evidence: Client 1.0.117 (root `aea1ab33`,
+  Client `509f2fc7`, signed run `35124970815`) restored swipes but retained
+  side borders; AppKit ignored the requested full-panel content size. The
+  standalone 1.0.118 probe (root `21c29544`, signed run `35129303592`) passed
+  build/signing and the operator compared all five modes. That probe is NOT
+  Client 1.0.118. Its retained diagnostic DMG is under
+  `artifacts/diagnostics/1.0.118-macos-fullscreen/macos/`; SHA256
+  `8e391cf9c07ed7df9faaad1964f5319626e84a3f521c6527d8bec360600f06a9`.
+  Full-panel override experiments are retired. See
+  `docs/development/plans/macos-fullscreen.plan` for findings and acceptance gates.
+
 - The operator authorized merging the reconnect follow-up into main after
   manually installing Host 1.0.116. Reconnect implementation root `4173138`
   and Client `e8fc0cc0` extend the previously accepted root `d34a110` / Client
   `060e6424`. The separate worktree (directory still named macos-auth-recovery)
-  is now the mainline continuation point; preserve unrelated primary-worktree research.
+  contains the continuation work; preserve unrelated primary-worktree research.
   Host and Client candidates 1.0.116 retain valid setup authorization across readiness retries,
   stop rejected authentication/TLS/permission failures, and gate new requests
   on the configured Ask/Disconnect deadline. Keep Waiting explicitly resumes.
