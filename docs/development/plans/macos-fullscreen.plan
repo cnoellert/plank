@@ -37,6 +37,16 @@ toolbar reveal/drag, held-key release on focus loss, window/fullscreen toggle,
 minimize/restore and disconnect. Also check a non-notched display/manual mode.
 No new Host package is required. Do not merge without operator acceptance.
 
+## Candidate
+
+Signed Client 1.0.117-macos-fullscreen passed hosted run 35124970815 from root
+aea1ab33e7c03ebf8c9ee67e36239beb81261217 / Client
+509f2fc73718b3dffdb9fd9ad9c03065bc14b6c2. Patch/prepared-library verification,
+six focused guards, shared Qt suites, package closure/version, signing,
+notarization and Gatekeeper pass. The exact hash-verified DMG is in the
+candidate catalog; HANDOFF records its checksum. No install, live swipe/notch
+acceptance or merge has occurred. Keep the accepted Host unchanged.
+
 References:
 - https://wiki.libsdl.org/SDL3/SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES
 - https://github.com/libsdl-org/SDL/blob/release-3.4.2/src/video/cocoa/SDL_cocoawindow.m

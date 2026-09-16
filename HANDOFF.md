@@ -11,8 +11,20 @@ notes' README before machine-specific work; deployment information stays outside
   narrow required SDL3.4.2 Cocoa content-size callback using the full NSScreen
   frame. Retina sizing, no-modeset policy and dynamic notch-safe toolbar remain.
   Source/installed-SDL preflight and dependency cache fingerprint include the
-  patch. Six fullscreen wiring/patch-gate tests and 22 CI policy tests pass;
-  native compile/signing and laptop gesture/notch acceptance remain pending.
+  patch. Signed hosted run `35124970815` passed from root
+  `aea1ab33e7c03ebf8c9ee67e36239beb81261217`, Client
+  `509f2fc73718b3dffdb9fd9ad9c03065bc14b6c2`. Six fullscreen wiring/patch-gate
+  tests, 22 CI policy tests, 18 topology / 21 toolbar / seven desktop-stage
+  tests, native compile, dependency/package/signing/notarization/Gatekeeper
+  and signing cleanup passed. All five local root CTest suites also pass.
+  This cold build rebuilt and sealed the changed SDL dependency cache.
+  Hash-verified DMG (86,188,280 bytes) is collected at
+  `artifacts/packages/candidates/1.0.117-macos-fullscreen/macos/plank-client_1.0.117-macos-fullscreen_arm64.dmg`.
+  SHA256: `236ce095c42cbf79ab607e5b4924f3d61bc3e03497ccabc97529a587f95cf438`.
+  Laptop gesture/notch acceptance remains pending: install the Client only,
+  test swiping away/back, border-free Match Client and toolbar/pointer alignment.
+  If sizing is still restricted, inspect the new native fullscreen content
+  and Mac presentation geometry log lines before changing the approach.
   This is Client-only: no Host update, automatic install or merge is planned.
   See `docs/development/plans/macos-fullscreen.plan`.
 
