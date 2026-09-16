@@ -1,0 +1,41 @@
+# macOS authentication setup recovery
+
+Scope: native macOS Host only, branch macos-auth-recovery, candidate 1.0.107.
+No display-power policy, capture pipeline, Linux Host or Client changes.
+
+Observed failure
+- Read-only live allocation ownership inspection found 16 authentication
+  records retained by the setup-token dictionary, with no stream lease.
+  No token content or private deployment information was collected into Git.
+- A failed topology GET retained its authenticated token. Automatic reconnect
+  authenticated again, eventually filling the old 16-token table and making
+  subsequent auth/start return busy before password verification.
+
+Implementation
+- Keep 16 short-lived pending challenges as the unauthenticated resource bound.
+- Keep at most four unused verified setup tokens, at most one per verified
+  account (UID and UUID) and network peer. Authenticate before superseding;
+  invalid passwords/names and different users sharing NAT cannot revoke access.
+- Permit challenge/verification even when setup capacity is full, so a verified
+  owner can replace their own abandoned token. Preserve bounded verification.
+- Revoke authorized setup on topology failure/cancellation and delivery error.
+  Preserve a successful token for display preparation/launch.
+- Keep the live lease separate. Login does not grant implicit takeover or
+  disturb a working stream. Unobserved abandonment retains finite expiry.
+
+Qualification
+- Synthetic real session class: 64 replacement cycles, full-table replacement,
+  wrong credentials/owner, peer isolation, same-peer different-account isolation,
+  stream-lease survival, expiry, revocation and blocked-verifier scope change.
+- Real loopback TLS with synthetic account/display: 32 consecutive failed
+  topology setups without expiry, each token revoked; recovery success,
+  scope revocation and request timeout.
+- Run those fixtures in every macOS Host build, plus existing packaging gates.
+- Build/package on GitHub; no production restart/install without operator
+  coordination. Live reconnect acceptance remains required after installation.
+
+Limits
+- Bounded admission may still reject concurrent overload or invalid credentials;
+  this is not a promise of availability through arbitrary OS/network failures.
+- Display wake/recovery is a separate issue. Removing auth exhaustion must not
+  be presented as proof that an inactive capture display can always recover.

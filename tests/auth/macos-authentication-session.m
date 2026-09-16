@@ -18,6 +18,7 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
         NSString *name, NSMutableData *password, PLANKMacAccountIdentity *output) {
     ++verifications;
     [password resetBytesInRange:NSMakeRange(0, password.length)];
+    if ([name isEqualToString:@"invalid-password"]) return PLANKMacAuthenticationDenied;
     *output = (PLANKMacAccountIdentity){123, {1}};
     if ([name isEqualToString:@"wrong-owner"]) output->uid = 456;
     if ([name isEqualToString:@"root"]) output->uid = 0;
@@ -103,17 +104,42 @@ int main(void) {
         CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"busy"]);
         [sessions revokeAll];
 
-        // Capacity is not a credential failure; revoking one abandoned setup
-        // immediately restores admission without changing the bounded limit.
-        for (int i = 0; i < 16; ++i) {
+        // Repeated abandoned setups from one verified account/peer stay at one
+        // token. A name alone, wrong password or wrong owner cannot replace it.
+        NSString *priorToken = nil;
+        for (int i = 0; i < 64; ++i) {
             start = [sessions startForPeer:peer username:@"test"];
             token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
             CHECK(token != nil);
+            CHECK([tokens count] == 1);
+            if (priorToken) CHECK(![sessions authorizeToken:priorToken peer:peer identity:&identity]);
+            priorToken = token;
         }
-        CHECK([[sessions startForPeer:peer username:@"test"][@"state"] isEqual:@"busy"]);
-        [sessions revokeToken:token];
+        for (NSString *name in @[@"invalid-password", @"wrong-owner"]) {
+            start = [sessions startForPeer:peer username:name];
+            CHECK([sessions authorizeToken:token peer:peer identity:&identity]);
+            CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"denied"]);
+            CHECK([sessions authorizeToken:token peer:peer identity:&identity]);
+        }
+        // Four distinct peers may prepare concurrently. Even at the bound the
+        // existing peer can verify and replace, without an expiry/restart wait.
+        for (uint32_t i = 1; i <= 3; ++i) {
+            NSData *distinctPeer = [NSData dataWithBytes:&i length:sizeof(i)];
+            start = [sessions startForPeer:distinctPeer username:@"test"];
+            CHECK(respond(sessions, distinctPeer, start[@"conversation_id"])[@"session_token"] != nil);
+        }
+        CHECK([tokens count] == 4);
+        start = [sessions startForPeer:other username:@"test"];
+        CHECK([start[@"state"] isEqual:@"challenge"]);
+        CHECK([respond(sessions, other, start[@"conversation_id"])[@"state"] isEqual:@"busy"]);
         start = [sessions startForPeer:peer username:@"test"];
-        CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"authenticated"]);
+        priorToken = token;
+        token = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        CHECK(token != nil && [tokens count] == 4);
+        CHECK(![sessions authorizeToken:priorToken peer:peer identity:&identity]);
+        [sessions revokeToken:token];
+        start = [sessions startForPeer:other username:@"test"];
+        CHECK([respond(sessions, other, start[@"conversation_id"])[@"state"] isEqual:@"authenticated"]);
         [sessions revokeAll];
 
         start = [sessions startForPeer:peer username:@"test"];
@@ -136,6 +162,20 @@ int main(void) {
         // A claimed lease must not inherit the five-minute setup-token expiry.
         [[lease valueForKey:@"record"] setValue:@0 forKey:@"expires"];
         [lease setValue:@0 forKey:@"activateBefore"];
+        CHECK([sessions authorizeStreamLease:lease identity:&identity]);
+        // Setup retries and bad credentials must not disturb the live stream.
+        for (int i = 0; i < 32; ++i) {
+            start = [sessions startForPeer:peer username:@"test"];
+            CHECK(respond(sessions, peer, start[@"conversation_id"])[@"session_token"] != nil);
+            CHECK([sessions authorizeStreamLease:lease identity:&identity]);
+        }
+        start = [sessions startForPeer:peer username:@"invalid-password"];
+        CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"denied"]);
+        CHECK([sessions authorizeStreamLease:lease identity:&identity]);
+        // A second client can authenticate, but may not implicitly take over.
+        start = [sessions startForPeer:other username:@"test"];
+        NSString *otherToken = respond(sessions, other, start[@"conversation_id"])[@"session_token"];
+        CHECK(otherToken != nil && [sessions claimToken:otherToken peer:other] == nil);
         CHECK([sessions authorizeStreamLease:lease identity:&identity]);
         start = [sessions startForPeer:peer username:@"test"];
         NSString *second = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
@@ -206,6 +246,12 @@ int main(void) {
         success = respond(sessions, peer, start[@"conversation_id"]);
         CHECK([success[@"desktop_stage"] isEqual:@"greeter"]);
         token = success[@"session_token"];
+        CHECK([sessions authorizeToken:token peer:peer identity:&identity] && identity.uid == 456);
+        // Different accounts behind the same relay/NAT do not supersede each
+        // other during sign-in. Identity is verified, not a username string.
+        start = [sessions startForPeer:peer username:@"test"];
+        NSString *samePeerOtherAccount = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
+        CHECK(samePeerOtherAccount != nil && [tokens count] == 2);
         CHECK([sessions authorizeToken:token peer:peer identity:&identity] && identity.uid == 456);
         lease = [sessions claimToken:token peer:peer];
         CHECK([sessions activateStreamLease:lease]);

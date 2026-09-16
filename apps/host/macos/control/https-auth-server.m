@@ -199,6 +199,7 @@
                         dispatch_async(owner->_authQueue, ^{
                             @autoreleasepool {
                                 NSDictionary *topology = nil;
+                                NSString *setupToken = nil;
                                 BOOL authorized = NO;
                                 unsigned status = 401;
                                 @try {
@@ -207,6 +208,7 @@
                                     PLANKMacAccountIdentity before = {0}, after = {0};
                                     if (token && [owner->_sessions authorizeToken:token peer:request.peer identity:&before]) {
                                         authorized = YES;
+                                        if (PLANKMacIsTopologyTarget(path)) setupToken = token;
                                         if (!information) topology = owner->_topology();
                                         if (!topology && PLANKMacIsTopologyTarget(path) && owner.recoverTopology) {
                                             // At most one attempt per request, on the existing auth lane.
@@ -229,6 +231,12 @@
                                     }
                                 } @catch (NSException *exception) {
                                     (void)exception; authorized = NO; topology = nil; status = 503;
+                                } @finally {
+                                    // Topology is part of setup, before display/launch.
+                                    // Failed or cancelled recovery must not occupy a
+                                    // login slot until expiry while the Client retries.
+                                    if (setupToken && (status != 200 || atomic_load(&request->cancelled)))
+                                        [owner->_sessions revokeToken:setupToken];
                                 }
                                 dispatch_async(owner->_networkQueue, ^{
                                     if (information) {
@@ -241,7 +249,9 @@
                                             dataUsingEncoding:NSUTF8StringEncoding];
                                         [owner replyBytes:desktop type:@"application/xml; charset=utf-8" token:nil
                                                   status:200 request:request];
-                                    } else [owner reply:topology ?: @{@"state": @"denied"} status:status request:request];
+                                    } else [owner replyBytes:[NSJSONSerialization dataWithJSONObject:
+                                                topology ?: @{@"state": @"denied"} options:0 error:NULL]
+                                                type:@"application/json" token:setupToken status:status request:request];
                                     owner->_authBusy = NO;
                                 });
                             }

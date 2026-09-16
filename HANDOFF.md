@@ -5,6 +5,13 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Active fix: `macos-auth-recovery`, isolated worktree, candidate 1.0.107.
+  Fixes abandoned macOS setup-token capacity exhaustion; see
+  `docs/development/plans/macos-auth-recovery.plan`. No Client/Linux changes.
+  Source tests added; hosted macOS execution/package validation pending.
+  No installation or production restart. The separate `rk3576-client` research
+  branch and its uncommitted notes remain untouched in the primary worktree.
+
 - Working branch: `main`. Accepted macOS media recovery is merged/pushed at
   `4b634071d0aa96c5568e90068f5f42b7cd953365`.
   Host-only 1.0.106 removes offline virtual-display settings

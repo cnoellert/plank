@@ -29,8 +29,19 @@ Capture/input still recheck access at startup to cover revocation races.
 
 Authentication capacity/verification contention returns `{"state":"busy"}`,
 distinct from `{"state":"denied"}` for rejected authentication. The Client
-reports busy as HTTP503 locally, not an incorrect-password message. The existing
-16-record limits remain unchanged. No account details or secrets enter errors.
+reports busy as HTTP503 locally, not an incorrect-password message. Pending
+challenges are bounded at 16; unused authenticated setup tokens are bounded at
+four. After successful account/ownership verification, a new token supersedes
+unused tokens for the same verified account and peer. A full token table does
+not prevent that verification/replacement. Account UUID and UID, not an
+unverified username, define identity. Different accounts sharing a relay/NAT
+remain independent. Active stream leases are separate and are never replaced
+by a login attempt. Failed passwords cannot invalidate setup or stream access.
+Failed/cancelled topology retrieval and failed topology reply delivery revoke
+the authorized setup token, just as failed display/launch already does.
+Unobserved client abandonment remains bounded by replacement and the five-minute
+setup expiry. No account details or secrets enter errors. The wire format is
+unchanged; existing Clients need no update.
 
 The body has exactly the nine fields in
 `tests/protocol/macos-preview-launch-v2.json`:
