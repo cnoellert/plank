@@ -343,7 +343,8 @@ The operator confirms the native Host mode closes the display gap. The
 windowed-start candidate successfully switches from one composite surface to
 two Metal outputs, then back. A manual Host pointer trace retains the left
 button across twelve monitor seam crossings. This rules out a release at those
-crossings, but does not establish correct continuous window movement.
+crossings. The operator then confirms the Settings window moves between both
+Host desktops in windowed mode. Fullscreen dragging remains pending.
 
 Automated rapid dragging reveals a separate reproducible ordering defect.
 Common-c's shared absolute-position cache can replace the position before a
@@ -357,8 +358,12 @@ implementation preserves the expected press, drag and release coordinates.
 Nine SDL queue regression cases pass, bringing the Client suite to 71 cases.
 The native worker regression now runs in each Mac Client candidate build.
 These checks establish event ordering, not full live multi-monitor acceptance.
-A freshly packaged client must still pass remote click/drag and both fullscreen
-seam directions. The prepared Host layout remains temporary and requires the
+The clean root `deb9e8a` candidate is packaged at
+`artifacts/development/macos15-input-order/`; 106 ARM64/macOS15 checks,
+dependency closure, build-path checks and ad-hoc signatures pass. Executable
+SHA-256: `6b7d206f6d7791ae274d9984725909d80fd2ec7c9f9aef15c4681fa62c476e61`.
+It is open in the native desktop for direct user sign-in and still must pass
+rapid click/drag and both fullscreen seam directions. The prepared Host layout remains temporary and requires the
 saved restoration procedure after testing.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,

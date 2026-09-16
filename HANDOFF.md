@@ -77,15 +77,20 @@ dependency closure and ad-hoc signatures pass. The new native Client is open
 for live input/order/transition retesting. The operator confirms the display gap
 is closed. An authenticated windowed-start session now transitions to two Metal
 outputs and back. A slow manual trace preserves the held button through twelve
-Host display-seam crossings; continuous window movement was not recorded, so
-cross-display drag acceptance remains open. Automated rapid dragging exposed a
+Host display-seam crossings; the operator confirms the Settings window moves
+between both Host desktops in windowed mode. Fullscreen cross-display drag
+acceptance remains open. Automated rapid dragging exposed a
 separate input-order defect: later motion overwrites the press location.
 Client `0be626c` / common-c `0c82257` coalesces only adjacent mouse motion at both
 SDL and native-input layers. A deterministic queued-drag worker test fails on
 the previous implementation and passes after the fix. All 71 Client cases pass;
-the worker check now runs in every Mac Client build. A new development package
-and live retest are next. Current state: connected windowed Client, two
-native-resolution Host monitors; original layout restoration still due.
+the worker check now runs in every Mac Client build. The clean root `deb9e8a`
+candidate is packaged under `artifacts/development/macos15-input-order/`;
+106 target checks, dependency closure and ad-hoc signatures pass. The previous
+client disconnected cleanly. The replacement is open at direct sign-in for a
+rapid windowed drag followed by fullscreen dragging. Current state: user
+sign-in pending, two native-resolution Host monitors; original layout
+restoration still due.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
