@@ -257,6 +257,33 @@ separate acceptance items. Future display qualification must compare the
 compositor's logical monitor inventory and CRTC geometry with XRandR and the
 streaming topology.
 
+### Cross-display drag candidate and layout recovery
+
+The operator reports that the pointer crosses the screen boundary but window
+dragging does not. During a subsequent manual revert attempt, the Host changed
+to three 1024×768 outputs with a gap. The exact trigger is not established.
+The saved pre-test NVIDIA MetaMode has now been restored. XRandR reports one
+2560×1440 active output, and GNOME independently reports the matching desktop
+and work area. The two-output test layout is no longer active.
+
+Client `a78f7bd` corrects a captured-pointer mapping defect: Cocoa can continue
+sending drag events relative to the window where the button press began, even
+after the pointer crosses into the other window. Those coordinates must first
+be resolved in logical desktop space, then converted using the target output's
+canvas/DPI mapping. The correction covers button positions as well as motion;
+button releases and clamping outside all presentation windows retain their
+existing behavior. All 62 Client test cases pass, including mixed-DPI dragging
+in both directions, exact seams, offset origins and out-of-window positions.
+This is a code-level correction with live acceptance pending, not proof that
+the reported window-drag failure is resolved.
+
+The next controlled test must check within-screen dragging, movement across
+both directions of the seam, button release and Client disconnect. Compare
+windowed presentation of the whole Host desktop with the two-window fullscreen
+case if failure persists. Preserve and verify the pre-test Host layout after
+the test instead of relying on a physical-display bookmark to restore manual
+administrative changes.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

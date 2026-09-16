@@ -50,9 +50,17 @@ Selecting its other existing timing preserved native geometry and made Mutter
 recognize both outputs. The operator confirms resolution and screen fill now
 work; the 53-second retest rendered at 59.82 FPS and disconnected cleanly.
 Framebuffer/stream agreement alone is insufficient acceptance. See the fork
-notes and private diagnosis. Pointer acceptance is pending. Automatic Retina matching remains blocked by the mode
-allowlist. Restore the saved Host baseline and temporary Mac refresh setting
-after testing; machine-specific details and logs are in private notes/audit.
+notes and private diagnosis. Pointer acceptance is pending. Automatic Retina
+matching remains blocked by the mode allowlist. The operator then reported that
+window dragging cannot cross displays and that an attempted manual revert left
+the Host layout unusable. The saved single-output 2560×1440 Host baseline has
+been restored and independently verified in XRandR and GNOME. Do not assume the
+two-output test layout is active. Client `a78f7bd` resolves captured drag
+coordinates through the target Mac window before applying its DPI mapping;
+all 62 Client tests pass. This correction is not yet live-accepted and the exact
+cause of the reported drag failure remains unconfirmed. Restore the temporary
+Mac refresh setting after testing; machine-specific details and logs remain
+in private notes/audit.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
