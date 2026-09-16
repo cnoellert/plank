@@ -133,11 +133,15 @@ The next operator-selected target is USB Wacom forwarding. A standalone
 [Mac Client read probe](probes/wacom/macos-client-hid.md) builds and passes target
 and signature checks. Two USB tablet interfaces expose exact descriptors and
 allow nonexclusive open/close and feature GET with the Wacom driver running.
-The initial activity capture contains only periodic unchanged status reports;
-operator-confirmed pen/touch activity during capture is still needed. No Client
-capture backend, exclusive ownership, SET/output or Host injection was added.
-Next tablet step: coordinate a bounded activity capture, then assess ownership
-and feature exchanges before implementing the Mac backend.
+A coordinated 60-second capture now receives 5,548 ID 16 reports (27 bytes) and
+seven ID 17 reports (nine bytes), with changing payloads, intact report ID
+prefixes and no callback errors. Both interfaces close successfully. The separate
+touch interface is quiet; exact controls exercised await operator confirmation.
+Active raw-report access works alongside the installed Wacom driver, but report
+semantics and touch delivery are unverified. No Client capture backend, exclusive
+ownership, SET/output or Host injection was added. Next tablet step: assess
+ownership and feature exchanges before implementing the Mac backend, then verify
+native pressure and mapping on the Host.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

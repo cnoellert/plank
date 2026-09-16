@@ -74,9 +74,17 @@ A watchdog termination produces no `feature_end` record and is not a pass.
 The initial macOS 15.7.4 test with a USB Intuos Pro M (`056a:0357`) finds two
 interfaces with 549-byte and 949-byte descriptors under one USB parent.
 Both nonexclusive opens and closes succeed with the installed Wacom driver
-running. Feature GET succeeds on both interfaces. An unconfirmed activity
-window receives only periodic, unchanged ID 19 status reports; actual pen and
-touch delivery remains untested.
+running. Feature GET succeeds on both interfaces. The first unconfirmed activity
+window receives only periodic, unchanged ID 19 status reports.
+
+A later coordinated 60-second watch receives 5,548 input reports on ID 16
+(27 bytes each, 5,409 changed) and seven on ID 17 (nine bytes each, six changed).
+Every report retains its ID prefix; both interfaces open and close successfully,
+with no callback errors. Thirty unchanged ID 19 status reports are also seen.
+This establishes active raw-report access alongside the installed Wacom driver.
+The separate touch interface receives no reports. The exact controls exercised
+still await operator confirmation; pressure/tilt/button semantics are not decoded
+by this probe, and touch delivery remains unverified.
 
 Before integrating a Mac capture backend, establish:
 

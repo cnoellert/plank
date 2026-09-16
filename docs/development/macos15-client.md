@@ -439,9 +439,14 @@ are available, nonexclusive opens and closes succeed, and feature GET succeeds
 with the Wacom driver running. One vendor response is 15 bytes despite an
 advertised maximum feature size of two bytes, so the probe uses the protocol's
 4096-byte response cap. The first activity window received periodic unchanged
-status reports only, without operator confirmation of pen/touch use during
-capture. Active input, ownership, feature SET/output, Host recreation and target
-application acceptance remain open. The current streaming Client is unchanged.
+status reports only. A later coordinated 60-second capture receives 5,548 ID 16
+reports (27 bytes, 5,409 changed) and seven ID 17 reports (nine bytes, six
+changed), with intact report ID prefixes, no callback errors, and successful
+opens/closes. Active raw input is accessible alongside the installed Wacom
+driver. The separate touch interface is quiet; confirmation of the exact controls
+exercised is pending. Pressure/tilt/button semantics, touch delivery, ownership,
+feature SET/output, Host recreation and target application acceptance remain
+open. The current streaming Client is unchanged.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
