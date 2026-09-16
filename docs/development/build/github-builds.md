@@ -116,7 +116,7 @@ qualification; local policy tests alone do not prove a hosted speedup.
 | Product | Cached inputs |
 | --- | --- |
 | Linux Host | Prepared FFmpeg, its dependency-only build/source tree for independent patch verification, Boost sources, Rust toolchain and Cargo downloads |
-| Ubuntu Client | Prepared FFmpeg and patched source, Rust toolchain and Cargo downloads |
+| Ubuntu Client | Prepared FFmpeg, patched source and pristine archive for the source audit, Rust toolchain and Cargo downloads |
 | macOS Host | Rust toolchain and Cargo downloads; capture/encoding/audio use Apple frameworks |
 | macOS Client | Prepared libraries, patched sources, downloads and Qt (existing qualified cache) |
 

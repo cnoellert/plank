@@ -103,7 +103,8 @@ class ProductDependencyCacheTests(unittest.TestCase):
             if product == 'linux-host':
                 expected += [self.deps / 'host-ffmpeg', self.deps / 'boost-1.89.0', self.host_deps / 'build']
             elif product == 'linux-client':
-                expected += [self.deps / 'client-ffmpeg/install', self.deps / 'client-ffmpeg/ffmpeg-9.0.1']
+                expected += [self.deps / 'client-ffmpeg/install', self.deps / 'client-ffmpeg/ffmpeg-9.0.1',
+                             self.deps / 'client-ffmpeg/ffmpeg-9.0.1.tar.xz']
             expected.append(self.deps / (product + '-cache-receipt.json'))
             self.assertEqual(paths, expected)
             for path in paths:
@@ -130,6 +131,7 @@ class ProductDependencyCacheTests(unittest.TestCase):
                 cache.check_prepared(self.root, self.deps, product)
         for name in ('cargo/bin/rustup', 'rustup/settings.toml', 'host-ffmpeg/lib/libavcodec.a',
                      'host-ffmpeg/lib/libavutil.a', 'boost-1.89.0/CMakeLists.txt',
+                     'client-ffmpeg/ffmpeg-9.0.1.tar.xz',
                      *(f'client-ffmpeg/install/lib/{name}.so' for name in
                        ('libavcodec', 'libavutil', 'libswscale', 'libswresample'))):
             self.write(self.deps / name, 'fixture')
@@ -143,6 +145,9 @@ class ProductDependencyCacheTests(unittest.TestCase):
                 else:
                     self.assertIn('verify-host-dependency-patches.sh', run.call_args.args[0][1])
         cache.check_prepared(self.root, self.deps, 'macos-host')
+        (self.deps / 'client-ffmpeg/ffmpeg-9.0.1.tar.xz').unlink()
+        with self.assertRaises(ValueError):
+            cache.check_prepared(self.root, self.deps, 'linux-client')
 
     def test_all_products_wired_before_bootstrap_after_build(self):
         workflow = (ROOT / '.github/workflows/build.yml').read_text()

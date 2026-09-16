@@ -64,7 +64,8 @@ def cache_paths(root, deps, product):
     if product == 'linux-host':
         paths += [deps / 'host-ffmpeg', deps / 'boost-1.89.0', root / HOST_DEPS / 'build']
     elif product == 'linux-client':
-        paths += [deps / 'client-ffmpeg/install', deps / 'client-ffmpeg/ffmpeg-9.0.1']
+        paths += [deps / 'client-ffmpeg/install', deps / 'client-ffmpeg/ffmpeg-9.0.1',
+                  deps / 'client-ffmpeg/ffmpeg-9.0.1.tar.xz']
     paths.append(deps / (product + '-cache-receipt.json'))
     return paths
 
@@ -87,6 +88,9 @@ def check_prepared(root, deps, product):
         required += ['host-ffmpeg/lib/libavcodec.a', 'host-ffmpeg/lib/libavutil.a',
                      'boost-1.89.0/CMakeLists.txt']
     elif product == 'linux-client':
+        # Packaging extracts the original checksum-verified archive to compare
+        # the entire prepared source, not just the selected patch hunks.
+        required += ['client-ffmpeg/ffmpeg-9.0.1.tar.xz']
         required += ['client-ffmpeg/install/lib/' + name + '.so'
                      for name in ('libavcodec', 'libavutil', 'libswscale', 'libswresample')]
     if any(not (deps / name).is_file() for name in required):

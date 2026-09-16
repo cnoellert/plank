@@ -15,10 +15,14 @@ notes' README before machine-specific work; deployment information stays outside
   Pull requests cannot save caches; clean bootstrap bypasses restore and save.
   Local 37 CI tests and all five root CTest suites pass. Hosted all-product
   cold-save run `35144970937` at `478edad0ee302c22c713df1cb67b4c4c185340a5`
-  passed both Mac jobs; Linux jobs are pending. Mac Host warm-restore run
+  passed both Mac jobs and Ubuntu Client; Linux Host is pending. Mac Host warm-restore run
   `35145530809` passed at the same source: restore four seconds, verified
   bootstrap two seconds (versus eleven cold), followed by a fresh application
-  build/tests. Linux cold-save/warm-restore validation remains pending.
+  build/tests. Mac Client warm run `35145993419` passed. Ubuntu warm run
+  `35146202369` restored/verified its cache but the independent pristine-source
+  audit correctly rejected the omitted original FFmpeg archive. Cache paths and
+  completeness tests now include it; corrected cold/warm validation is pending.
+  This does not affect the separately published, cold-built 1.0.120 release.
   No runtime changes, version bump, deployment or release publication requested.
 
 - Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
