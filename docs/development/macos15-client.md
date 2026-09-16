@@ -134,11 +134,16 @@ and mouse appear to work. This establishes basic interactive use; modifier keys,
 scrolling and coordinate mapping across display modes still need focused checks.
 The operator also reports that sound is working. Basic audible playback is
 confirmed; channel placement, lip-sync and sustained playback are not yet graded.
+Normal toolbar disconnect/reconnect also works according to the operator.
+All operator testing so far uses a single monitor. This confirms ordinary
+reconnection for that setup; multi-monitor layouts and recovery after a network
+outage or Host restart remain untested.
 
 This completes the first connection smoke test. Visual/color accuracy,
-audio channel/sync behavior, sustained frame pacing, Retina/fullscreen mapping and reconnect still
-need acceptance checks. Mac Client tablet capture is not implemented. Packet
-delivery and decoder logs do not establish those subjective or semantic results.
+audio channel/sync behavior, sustained frame pacing, Retina/fullscreen mapping,
+multi-monitor operation and outage recovery still need acceptance checks.
+Mac Client tablet capture is not implemented. Packet delivery and decoder logs
+do not establish those subjective or semantic results.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
