@@ -113,6 +113,12 @@ explicitly reject right-clicks solely for missing keyboard focus. Trace native
 button receipt, focus and Host delivery before changing focus policy. Acceptance:
 first right-click after crossing either direction works without an activation
 click, while held seam dragging and button release continue working.
+A focus-handoff candidate is being built: while a presentation window already
+owns keyboard focus, unpressed pointer movement may raise the fullscreen output
+under the current desktop pointer. Held drags retain their starting window;
+a final button release can hand focus to the destination afterward. Hidden,
+minimized, windowed and non-presentation focus states are excluded. Live first
+right-click and drag-regression acceptance remain pending.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.

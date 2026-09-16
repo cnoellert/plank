@@ -405,6 +405,16 @@ without a separate activation click. Retain the validated held-drag behavior
 and release handling when correcting this path. No Client or Host state change
 was made in response to this observation.
 
+The next candidate implements Mac-only pointer-following focus for fullscreen
+multi-output sessions. It transfers focus only from another presentation window
+and only when event, SDL and global mouse state show no held buttons. The
+current global pointer must be inside the visible destination window, so stale
+queued motion cannot activate an old output. Captured dragging retains its
+original focus until release; a release can hand off without another move.
+Normal windowed behavior and other applications' focus are excluded. Compilation
+and existing input checks pass; live first-right-click and retained-drag
+acceptance are still required.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
