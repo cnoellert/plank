@@ -6,11 +6,16 @@ notes' README before machine-specific work; deployment information stays outside
 ## Current state
 
 - Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
-  push, merge and a full rebuild. Preparing all four Host/Client packages as
-  1.0.120 from main on disposable GitHub-hosted builders; no installs or GitHub
-  release publication requested. Preserve unrelated primary-worktree research.
+  push, merge and a full rebuild. Root merge `53c7c3988f88a440f1cffeda0ce61ed526de6c43`
+  and Client merge `95060dee8fa63e0da98dfa83e7ddd8185731a837` are pushed to main.
+  Preparing all four Host/Client packages as 1.0.120 from that exact root on
+  disposable GitHub-hosted builders with `clean_bootstrap=true`; no installs or
+  GitHub release publication requested. Preserve unrelated primary-worktree research.
   Candidate packages below remain unchanged; mainline packages are rebuilt,
-  never relabeled. Record final source, hosted runs and checksums here.
+  never relabeled. Active runs: Linux Host `35137573043`, Ubuntu Client
+  `35137572752`, signed Mac Host `35137572797`, signed Mac Client `35137572549`.
+  All dispatched SHAs match the root merge. Build/package results are pending;
+  collect exact artifacts/checksums under `artifacts/packages/releases/1.0.120/`.
 
 - Accepted Client 1.0.119-macos-fullscreen evidence:
   Operator tested all five standalone AppKit modes: no side borders, same
