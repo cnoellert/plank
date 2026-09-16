@@ -1,5 +1,6 @@
-// Read-only Mac Client feasibility probe. No report writes, exclusive opens,
+// Mac Client feasibility probe. No report writes,
 // event injection, permission requests, serial collection or network transport.
+// --ownership temporarily seizes every interface for at most three seconds.
 #import <Foundation/Foundation.h>
 #import <CommonCrypto/CommonDigest.h>
 #import <IOKit/hid/IOHIDManager.h>
@@ -241,16 +242,20 @@ int main(int argc, const char **argv)
 {
     @autoreleasepool {
         unsigned seconds = 0;
+        BOOL ownership = NO;
         int featureIndex = -1;
         unsigned featureID = 0;
-        if (argc == 3 && strcmp(argv[1], "--watch") == 0) {
+        if (argc == 2 && strcmp(argv[1], "--ownership") == 0) {
+            ownership = YES;
+            seconds = 3;
+        } else if (argc == 3 && strcmp(argv[1], "--watch") == 0) {
             if (!parseNumber(argv[2], 60, &seconds) || !seconds) return 2;
         } else if (argc == 4 && strcmp(argv[1], "--get-feature") == 0) {
             unsigned index;
             if (!parseNumber(argv[2], 15, &index) || !parseNumber(argv[3], 255, &featureID)) return 2;
             featureIndex = (int)index;
         } else if (argc != 1) {
-            fprintf(stderr, "usage: macos-client-hid [--watch SECONDS(1..60) | --get-feature INDEX REPORT_ID]\n");
+            fprintf(stderr, "usage: macos-client-hid [--watch SECONDS(1..60) | --ownership | --get-feature INDEX REPORT_ID]\n");
             return 2;
         }
         signal(SIGINT, interruptProbe);
@@ -298,8 +303,8 @@ int main(int argc, const char **argv)
             }
             if ((seconds || featureIndex == (int)probes.count) &&
                     access == kIOHIDAccessTypeGranted && descriptorValid && ordered.count <= 16) {
-                IOReturn result = IOHIDDeviceOpen(device, kIOHIDOptionsTypeNone);
-                probe.record[@"nonexclusive_open"] = resultInfo(result);
+                IOReturn result = IOHIDDeviceOpen(device, ownership ? kIOHIDOptionsTypeSeizeDevice : kIOHIDOptionsTypeNone);
+                probe.record[ownership ? @"exclusive_open" : @"nonexclusive_open"] = resultInfo(result);
                 if (result == kIOReturnSuccess) {
                     probe.opened = YES;
                     probe.buffer = [NSMutableData dataWithLength:4096];
@@ -316,11 +321,13 @@ int main(int argc, const char **argv)
         }
         NSMutableDictionary *summary = [@{ @"event": seconds ? @"capture_start" : featureIndex >= 0 ? @"feature_start" : @"inventory",
             @"listen_access": accessName, @"interfaces": records, @"requested_seconds": @(seconds),
-            @"exclusive": @NO, @"report_writes": @NO, @"permission_requests": @NO,
+            @"exclusive": @(ownership), @"report_writes": @NO, @"permission_requests": @NO,
             @"raw_report_payloads_recorded": @NO } mutableCopy];
         emitJSON(summary);
         BOOL opened = NO;
+        BOOL allOpened = probes.count > 0;
         for (ProbeDevice *probe in probes) opened |= probe.opened;
+        for (ProbeDevice *probe in probes) allOpened &= probe.opened;
         CFAbsoluteTime started = CFAbsoluteTimeGetCurrent();
         BOOL featureSuccess = NO;
         if (featureIndex >= 0) {
@@ -347,7 +354,7 @@ int main(int argc, const char **argv)
                     @"payload_recorded": @NO };
             }
         }
-        while (opened && !interrupted && CFAbsoluteTimeGetCurrent() - started < seconds) {
+        while (opened && (!ownership || allOpened) && !interrupted && CFAbsoluteTimeGetCurrent() - started < seconds) {
             CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);
         }
         for (ProbeDevice *probe in probes) {
@@ -358,7 +365,8 @@ int main(int argc, const char **argv)
                         (CFIndex)probe.buffer.length, NULL, NULL);
                     IOHIDDeviceUnscheduleFromRunLoop(probe.device, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
                 }
-                probe.record[@"close"] = resultInfo(IOHIDDeviceClose(probe.device, 0));
+                probe.record[@"close"] = resultInfo(IOHIDDeviceClose(probe.device,
+                    ownership ? kIOHIDOptionsTypeSeizeDevice : kIOHIDOptionsTypeNone));
             }
             probe.record[@"observed_reports"] = probe.reports;
             [probe.previous removeAllObjects];
@@ -372,7 +380,7 @@ int main(int argc, const char **argv)
         }
         if (devices) CFRelease(devices);
         CFRelease(manager);
-        return records.count == 0 || (seconds && !opened) ||
+        return records.count == 0 || (seconds && !opened) || (ownership && !allOpened) ||
             (featureIndex >= 0 && !featureSuccess) ? 1 : 0;
     }
 }

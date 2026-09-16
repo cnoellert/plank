@@ -461,6 +461,18 @@ probe confirms local pressure/tilt/button access and raw touch delivery, with
 the Wacom driver running. Host forwarding and remote application acceptance
 remain separate gates.
 
+### Experimental Mac raw tablet backend
+
+Client `285d58b` adds grouped IOKit USB discovery, exclusive ownership, raw
+report transport, feature GET/SET and output replies on the existing authenticated
+control stream. Focus loss and reconnect release physical ownership while
+suspending retained Host endpoints. A passive Cocoa cursor surface follows the
+Host position without sending mouse motion back. The standalone three-second
+ownership test opens and closes both physical interfaces successfully. Five
+wire-validation tests and strict backend/Cocoa syntax checks pass. Product build,
+feature exchanges, lifecycle and pressure inside Autodesk Flame remain pending;
+local capture alone is not end-to-end acceptance.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

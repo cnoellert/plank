@@ -1,4 +1,4 @@
-# macOS Client Wacom read probe
+# macOS Client Wacom feasibility probe
 
 This standalone Apple Silicon probe checks the local half of the existing
 [raw Wacom protocol](../../protocol/wacom-hid.md). It does not forward input or
@@ -23,6 +23,11 @@ The build uses the installed Apple SDK, validates the deployment target, and
 ad-hoc signs the executable. No additional libraries or drivers are installed.
 The output directory must not already exist. Audit directories must be private
 and outside Git, following the repository's private-information policy.
+
+The separate `--ownership` mode exclusively opens the whole USB group for
+three seconds, then releases it. It temporarily prevents ordinary local tablet
+input. If any interface cannot be opened, the already-opened interfaces are
+released immediately. Use it only as part of authorized local device testing.
 
 During the bounded watch, hover and move the pen, vary pressure in a safe area,
 try the eraser and side buttons, and exercise tablet touch/ring if enabled.
@@ -50,8 +55,9 @@ A watchdog termination produces no `feature_end` record and is not a pass.
 - Watch and GET require already-granted IOHID listen access. The probe never
   requests permission. Access granted to this launch context does not establish
   permission for a packaged Client with another executable identity.
-- Opens are nonexclusive. The probe never seizes devices, stops a driver,
-  sends SET/output reports, injects events, or uses the network.
+- Inventory, watch and GET modes never seize devices. Only `--ownership` uses
+  exclusive opens. The probe never stops a driver, sends SET/output reports,
+  injects events, or uses the network.
 - Input payloads and feature response bytes are not written to disk. Records
   contain report IDs, counts, lengths and change counts. A previous input
   report is retained in memory only to compare successive values. Serial
@@ -76,9 +82,10 @@ A watchdog termination produces no `feature_end` record and is not a pass.
   two bytes returned a successful 15-byte response.
 - Normal completion and SIGINT/SIGTERM during watch unregister callbacks,
   unschedule devices and close handles. Watch success means at least one
-  interface opened; inspect every interface's open, callback and close results
+  interface opened; ownership mode requires all interfaces. Inspect every interface's open, callback and close results
   before drawing a complete-device conclusion. No devices, no opened watch
-  interface, or an unsuccessful GET returns status 1; invalid arguments return 2.
+  interface, a partial ownership open, or an unsuccessful GET returns status 1;
+  invalid arguments return 2.
 
 ## Initial result and remaining gates
 
@@ -113,6 +120,11 @@ Pressure, tilt and pen buttons are now observed locally without stopping the
 Wacom driver. Touch raw-report delivery is also observed, but its contact
 semantics are not decoded. None of these measurements prove Host forwarding or
 remote application behavior.
+
+The subsequent ownership probe successfully seizes both interfaces and closes
+both after three seconds with the Wacom software still installed/running. This
+qualifies the primitive used by the experimental Mac backend; full focus and
+reconnect lifecycle acceptance remains a Client/Host test.
 
 Before integrating a Mac capture backend, establish:
 

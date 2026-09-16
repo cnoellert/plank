@@ -142,10 +142,14 @@ The follow-up adds selected HID value callbacks and confirms local pressure
 barrel buttons and 2527 intact 44-byte reports on the touch interface. Both
 interfaces open/close cleanly with no raw/value callback errors or out-of-range
 values. Eraser, pad keys and ring remain unverified. Active raw input and core
-pen fields are accessible alongside the installed Wacom driver. No Client capture
-backend, exclusive ownership, SET/output or Host injection was added. Next tablet
-step: assess ownership and feature exchanges before implementing the Mac backend,
-then verify native pressure and mapping on the Host.
+pen fields are accessible alongside the installed Wacom driver. A subsequent
+three-second exclusive ownership probe succeeds for both interfaces and releases
+both cleanly. Client `285d58b` now implements Mac raw HID forwarding and passive
+host-position cursor display through the existing authenticated protocol. Five
+wire tests and strict syntax checks pass; product build/live feature exchanges
+are next. Focus/reconnect and pressure-sensitive strokes inside Autodesk Flame
+remain required acceptance gates. No live Host tablet has yet been attached by
+the new backend.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
