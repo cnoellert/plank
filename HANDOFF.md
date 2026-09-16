@@ -16,8 +16,12 @@ notes' README before machine-specific work; deployment information stays outside
   packages passed Developer ID signing, notarization, stapling and Gatekeeper.
   All four downloaded packages passed SHA256 verification and collection with
   exact source provenance under `artifacts/packages/releases/1.0.120/`.
-  No installation, new hardware acceptance, or GitHub release publication was
-  performed. Preserve unrelated primary-worktree research. Earlier candidate
+  At the operator's subsequent request, all four packages were published as
+  [v1.0.120](https://github.com/instinctual/plank/releases/tag/v1.0.120).
+  The annotated tag identifies the exact package source above. Server-side
+  SHA256 digests match all four packages, manifest and release checksum file.
+  Notes are in `docs/releases/1.0.120.md`. No installation or new hardware
+  acceptance was performed. Preserve unrelated primary-worktree research. Earlier candidate
   packages below are historical evidence, not the current mainline artifacts.
   Normal full application rebuilds may reuse verified dependency caches;
   reserve cold bootstrap for explicit qualification. Hosted caching currently
@@ -233,7 +237,11 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Release evidence
 
-Latest published Host-only release: [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106),
+Latest published release is **v1.0.120**, all four products, recorded above.
+The `dependency-cache` branch extends hosted caches without runtime changes;
+qualification runs are separate from the published package source.
+
+Historical Host-only release: [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106),
 mainline source `4b634071d0aa96c5568e90068f5f42b7cd953365`, signed run
 35035036281. Catalog `releases/1.0.106/macos/plank-host_1.0.106_arm64.pkg`;
 SHA256 `bdb59fb5ddf2df0afb4704920684b83d81c9b8975602e3d643bed5dd1c8d3e49`.
