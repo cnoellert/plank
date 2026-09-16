@@ -171,9 +171,7 @@ dependency closure, build-path and ad-hoc signature checks pass. The local app
 and source/test manifest are retained in
 `artifacts/development/macos15-multimonitor/`. Its main executable SHA-256 is
 `4df22074b9637a25f45dbefbf3ec02f6c33d6bb5fe285288bf72b719cbd0c2b9`.
-The candidate opens in the native desktop and reaches the Host sign-in dialog.
-The bookmark is prepared for two 1920×1080 outputs, Scaled-Span and borderless
-windowed presentation; authenticated two-monitor acceptance is still pending.
+The candidate opens in the native desktop and connects to the Linux Host.
 
 Run the native probe explicitly on an authorized Mac desktop (it briefly shows
 colored windows). It is not part of an unattended headless package build:
@@ -198,6 +196,33 @@ deployment choice. Verify the live Host has two usable outputs before testing.
 `Match client displays` also accepts only listed native resolution presets;
 3456×2234 is not currently included. Begin with an explicit supported dual
 horizontal Host layout, then qualify mixed-resolution/Retina matching.
+
+### Initial live two-monitor results
+
+The first dual-1080p connection negotiated 3840×1080@60 and initialized two
+fullscreen Metal outputs over a 6016×2234 Client canvas. The session delivered
+5,216 video frames and 2,960 input events, with zero video receive drops or QUIC
+loss; 39 audio receive drops were logged. Fullscreen rendered at 48.16 FPS
+with the internal screen at 48 Hz and external screen at 60 Hz. Switching to
+one window restored 59.96 FPS; these are separate renderer segments, not one
+session-wide performance result. Toolbar disconnect completed. The operator
+reported that the fixed Host resolutions did not match the Client screens.
+
+For the follow-up, an administrator temporarily prepared a physical Host
+logical layout at 3456×2234 on the left and 2560×1440 on the right, with the
+right output primary. This uses the existing scanout timings and NVIDIA
+`ViewPortIn`, preserving the exact prior MetaMode for restoration. The bookmark
+uses Physical displays/Scaled-Span. Both Client screens are at 60 Hz for this
+operator-approved test. Host, stream and Client canvas now agree at
+6016×2234@60, with two fullscreen Metal outputs and exact HEVC 10-bit 4:4:4
+VideoToolbox/P410 decoding. The repeated roughly 12 FPS pacing deficit stops;
+sustained performance and visual/pointer acceptance still need grading.
+
+This manual preparation does not implement automatic Retina resolution matching
+or per-output independent scaling. The preset allowlist remains unchanged.
+Restore both the Host's saved pre-test MetaMode and the temporary Client refresh
+setting after testing; physical-bookmark disconnect does not undo these manual
+administrative changes.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

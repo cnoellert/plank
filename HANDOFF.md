@@ -20,8 +20,7 @@ transport receive drops. Render rate was 59.67 FPS with 15 pacer drops (0.57%).
 Toolbar disconnect completed and services remain active without restarts.
 The operator confirms login and reports working basic keyboard/mouse input and
 audible audio playback. Channel placement, sync and sustained audio remain unchecked.
-The operator also confirms normal disconnect/reconnect works. All operator
-testing so far uses one monitor; multi-monitor behavior is untested.
+The operator also confirms normal disconnect/reconnect works on one monitor.
 The next candidate implements two-display Cocoa/Metal presentation at Client
 `31f6081`. One decode feeds two cropped Metal surfaces using the shared input
 geometry; the toolbar stays on the primary output. All 58 Client test cases pass.
@@ -33,11 +32,18 @@ the exact previous layout and restoration instructions are in private notes.
 Linux display matching still rejects unlisted native presets.
 The clean candidate built at root `50544c9` is staged with its manifest under
 `artifacts/development/macos15-multimonitor/`; all 106 Mach-O target checks,
-dependency closure and ad-hoc signatures pass. The native app is open at the
-Host sign-in dialog with two 1920×1080 outputs and Scaled-Span selected.
-Next immediate action: operator sign-in, then confirm two presentation outputs
-in logs and check pointer alignment on each physical display. The Host's saved
-preparation baseline must be restored after the two-monitor test is finished.
+dependency closure and ad-hoc signatures pass. A live dual-1080p session
+established two Metal outputs, fullscreen/windowed transition and clean
+disconnect. Its fullscreen renderer ran at 48.16 FPS with mixed 48/60 Hz client
+displays; the final windowed segment ran at 59.96 FPS. The operator reported
+the fixed Host resolutions did not match the intended Client screens.
+The next live connection uses a manually prepared physical Host layout matching
+the Client's two native resolutions, with both client screens at 60 Hz by explicit
+operator approval. Host, stream and Client canvas agree at 6016×2234; both Metal
+outputs and exact HEVC10/P410 hardware decode initialize. Visual and pointer
+acceptance is pending. Automatic Retina matching remains blocked by the mode
+allowlist. Restore the saved Host baseline and temporary Mac refresh setting
+after testing; machine-specific details and logs are in private notes/audit.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
