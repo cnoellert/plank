@@ -510,17 +510,29 @@ forwarding does not move the Mac's pointer, so its position cannot validate the
 tablet's target. Both paths still require active capture and existing focus in
 a presentation window, reject hidden/minimized/non-fullscreen targets, and
 preserve native mouse drags. Stale tablet positions after mouse takeover or
-capture/connection epoch reset are rejected. Live acceptance remains pending;
-this does not yet accept pen buttons or cross-output tablet drags.
+capture/connection epoch reset are rejected. The live findings below qualify
+pressure and focus; cross-output tablet drags remain untested.
 
 Clean root `f0d9558` is packaged under
 `artifacts/development/macos15-tablet-focus/`. All 77 Client checks, native
 input ordering, 106 target checks, dependency closure and signatures pass.
 Executable SHA-256:
 `c87083eaa4d12066b2f2cef3f42d4fbd5f2ad286e7180c9ac2fe31555399793e`.
-The app connects in two-output fullscreen. Its changed ad-hoc signature fails
-the existing macOS Input Monitoring code requirement, so tablet validation is
-pending the operator's grant through normal System Settings and relaunch.
+The app connects in two-output fullscreen. Its changed ad-hoc signature initially
+fails the existing macOS Input Monitoring code requirement, preventing raw
+attachment and causing the operator's report of lost pressure. Resetting only
+this app's Input Monitoring decision through macOS's documented `tccutil`,
+followed by normal operator approval and relaunch, restores raw attachment.
+An old Client also launched by the OS reopen action is closed. The operator now
+confirms both pressure in Flame and pen focus across fullscreen displays work;
+the Client log independently records eight focus transfers in both directions.
+A coordinated 120-second read-only Host observation receives 1,933 pressure
+changes spanning 0–7711 of the declared 0–8191 range, changes on both tilt axes,
+proximity/tip transitions, four press/release pairs on one barrel button and
+three on the other, with no read errors. Both buttons produce events while
+hovering with zero tip pressure. This verifies OS delivery of those controls;
+it does not qualify every control's application behavior. Held tablet drags,
+remaining application controls and full reconnect behavior remain open.
 
 The operator separately reports that side-button clicks require a lower hover
 height than with the macOS Wacom driver. Read-only inspection finds hover
@@ -528,8 +540,12 @@ clicking enabled and the Host stylus in absolute mode. The matching
 [X driver source](https://github.com/linuxwacom/xf86-input-wacom/blob/xf86-input-wacom-1.0.0/src/wcmCommon.c#L1392)
 limits its configurable proximity cutoff to relative mode, so changing that
 property is not a supported explanation or fix here. Pressure and proximity
-settings remain unchanged. A coordinated event observation is still needed to
-locate the loss between proximity, button delivery and application behavior.
+settings remain unchanged. The coordinated observation above receives distance
+values spanning 0–63 and hovering button events at several values. Button
+samples retain the last observed distance, pressure and proximity; they may
+precede the current input frame and are not physical height measurements.
+The operator's current comparison is still needed to determine whether the
+reported height difference persists and whether movement stops with the button.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

@@ -168,19 +168,27 @@ The operator reports the tablet also needs fullscreen focus handoff. Client
 focus helper, without comparing them to the stationary Mac mouse pointer.
 Mouse drag guards and the requirement for existing presentation-window focus
 remain in place. A regression covers stale positions after mouse takeover and
-cursor epoch reset. Live pen/button/drag acceptance remains pending.
+cursor epoch reset.
 The clean root `f0d9558` focus candidate is now packaged at
 `artifacts/development/macos15-tablet-focus/`: all 77 Client checks, native input
-ordering, 106 target checks, dependency closure and signatures pass. It connects
-with two fullscreen outputs, but macOS rejects its Input Monitoring grant because
-the previous ad-hoc code requirement does not match the new build. The correct
-app is selected in the normal privacy file picker for the operator to approve;
-raw attachment and live focus acceptance await that grant/relaunch.
+ordering, 106 target checks, dependency closure and signatures pass. Its initial
+launch lost pressure because the old Input Monitoring grant did not match the
+new ad-hoc signature. A targeted macOS permission reset, normal operator approval
+and relaunch restore raw attachment. The operator now confirms both Flame
+pressure and fullscreen pen focus work; Client logs also show eight focus
+transfers across both outputs. An older Client launched by the OS reopen action
+was closed; only the corrected candidate remains running. A coordinated
+120-second Host recording independently receives pressure 0–7711 of 8191,
+both tilt axes, proximity/tip transitions and both barrel buttons, with no read
+errors. Both buttons reach the Host while hovering with zero tip pressure.
+Held tablet drags, remaining application controls and full reconnect
+qualification remain open.
 The operator also reports reduced side-button hover distance compared with macOS.
 The Host already enables hover clicks and uses absolute mode. Its X driver 1.0.0
 applies the configurable proximity cutoff only in relative mode. No Host tablet
-settings were changed. A read-only distance/proximity/button observation is
-prepared privately; exact failure behavior and cause remain unconfirmed.
+settings were changed. The recording shows button events at several raw distance
+values; these are not physical height measurements and do not establish parity
+with macOS. The operator's current hover-distance comparison remains pending.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
