@@ -33,6 +33,10 @@ static const unsigned modes[][2] = {
     {4096,2160}, {5120,2160}
 };
 BOOL PLANKMacDesktopModeSupported(unsigned width, unsigned height) {
+    return width >= 2 && height >= 2 && width <= 8192 && height <= 8192 &&
+        !(width & 1) && !(height & 1);
+}
+static BOOL presetMode(unsigned width, unsigned height) {
     for (size_t i = 0; i < sizeof(modes)/sizeof(modes[0]); ++i)
         if (modes[i][0] == width && modes[i][1] == height) return YES;
     return NO;
@@ -61,6 +65,7 @@ static BOOL supportedAPI(void) {
     BOOL _busy;
     BOOL _signIn;
     unsigned _readyWidth, _readyHeight;
+    unsigned _dynamicWidth, _dynamicHeight;
 }
 - (instancetype)initForSignIn {
     self = [super init];
@@ -68,22 +73,22 @@ static BOOL supportedAPI(void) {
     return self;
 }
 - (CGDirectDisplayID)displayID { return atomic_load(&_displayID); }
-- (BOOL)create {
+- (BOOL)createWidth:(unsigned)width height:(unsigned)height {
     if (!supportedAPI()) { NSLog(@"PLANK virtual display API signature unavailable"); return NO; }
     PLANKMacDisplayDescriptor *descriptor = [[NSClassFromString(@"CGVirtualDisplayDescriptor") alloc] init];
     descriptor.name = _signIn ? @"PLANK Sign In" : @"PLANK Desktop";
-    descriptor.maxPixelsWide = 5120;
-    descriptor.maxPixelsHigh = 2160;
+    descriptor.maxPixelsWide = 8192;
+    descriptor.maxPixelsHigh = 8192;
     descriptor.sizeInMillimeters = CGSizeMake(600, 340);
     descriptor.vendorID = 0xF0F0; descriptor.productID = 2; descriptor.serialNum = _signIn ? 2 : 1;
     descriptor.queue = dispatch_get_main_queue();
     _display = [[NSClassFromString(@"CGVirtualDisplay") alloc] initWithDescriptor:descriptor];
     if (!_display) { NSLog(@"PLANK virtual display descriptor rejected"); return NO; }
-    if (![self applyModes]) return NO;
+    if (![self applyModesWidth:width height:height]) { _display = nil; return NO; }
     atomic_store(&_displayID, _display.displayID);
     return self.displayID != kCGNullDirectDisplay;
 }
-- (BOOL)applyModes {
+- (BOOL)applyModesWidth:(unsigned)width height:(unsigned)height {
     NSMutableArray *available = [NSMutableArray array];
     for (size_t i = 0; i < sizeof(modes)/sizeof(modes[0]); ++i) {
         id mode = [[NSClassFromString(@"CGVirtualDisplayMode") alloc]
@@ -91,9 +96,17 @@ static BOOL supportedAPI(void) {
         if (!mode) return NO;
         [available addObject:mode];
     }
+    if (!presetMode(width, height)) {
+        id mode = [[NSClassFromString(@"CGVirtualDisplayMode") alloc]
+            initWithWidth:width height:height refreshRate:60];
+        if (!mode) return NO;
+        [available addObject:mode];
+    }
     PLANKMacDisplaySettings *settings = [[NSClassFromString(@"CGVirtualDisplaySettings") alloc] init];
     settings.hiDPI = 0; settings.modes = available;
     if (![_display applySettings:settings]) { NSLog(@"PLANK virtual display modes rejected"); return NO; }
+    // Keep only the current custom mode, not an ever-growing session history.
+    _dynamicWidth = width; _dynamicHeight = height;
     return YES;
 }
 - (void)recoverWithValidity:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion {
@@ -155,6 +168,12 @@ static BOOL supportedAPI(void) {
 - (BOOL)selectWidth:(unsigned)width height:(unsigned)height {
     CGDirectDisplayID display = self.displayID;
     if (!CGDisplayIsOnline(display) || CGDisplayIsInMirrorSet(display)) return NO;
+    if (!presetMode(width, height) && (_dynamicWidth != width || _dynamicHeight != height)) {
+        if (![self applyModesWidth:width height:height]) return NO;
+        // Settings can temporarily take the output offline. Wait for the next
+        // bounded poll; never apply settings while it is offline.
+        return NO;
+    }
     // Mode objects can appear after the bootstrap canvas becomes active.
     // Already-correct geometry needs no mode switch in either graphical role.
     if (CGDisplayIsActive(display) &&
@@ -182,7 +201,7 @@ static BOOL supportedAPI(void) {
     if (_busy || !valid || !completion || !valid() || !PLANKMacDesktopModeSupported(width, height)) {
         if (completion) completion(NO); return;
     }
-    if (!_display && ![self create]) { completion(NO); return; }
+    if (!_display && ![self createWidth:width height:height]) { completion(NO); return; }
     _busy = YES;
     NSLog(@"PLANK desktop mode preparing: %ux%u display=%u", width, height, self.displayID);
     __block BOOL selected = NO;

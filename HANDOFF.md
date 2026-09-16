@@ -5,13 +5,31 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Preparing 1.0.110: authenticated topology recovery now also wakes the current
+- Preparing 1.0.111: dynamic Mac Match Client dimensions (even 2–8192 per
+  axis) use the same native-pixel lookup before authentication and streaming.
+  Host mode registration keeps presets plus one requested custom 60 Hz mode;
+  offline settings mutation remains forbidden. Linux EDID selection is unchanged.
+  Shared topology fixtures now run during hosted Mac Client builds.
+  Live 1.0.110 woke the desktop but exposed a subsequent capture-reconfiguration
+  race; 1.0.111 adds a bounded, authorized geometry-settle wait without repeating
+  authentication. Synthetic TLS tests cover delayed readiness and permanent
+  unavailability. Not yet built or accepted; full Client retry-lifecycle work
+  remains outstanding.
+
+- 1.0.110 passed hosted run 35060603472 at
+  `fe2996c567aab27c210ff6087648adcb362f2c7c`, including 18 display recovery checks.
+  Collected and installed with matching payload hash and signature checks.
+  Package SHA256 `0c41d5e08b652b570ae5bf2af76e04cddd2e34ab11b0f8392794f26af89b90ba`;
+  installed binary `8b18176d60fab53c57331ece2f5e6a1b6afdc1261d088dcad90514c1abbda9b0`.
+  Authentication passed; topology still returned HTTP503 because geometry was
+  queried immediately after wake during display reconfiguration. Not accepted.
+  Authenticated topology recovery now also wakes the current
   desktop before the first virtual-display preparation. Previously a fresh
   desktop worker required topology before preparation, but only recovered an
   already-created owned output. Bootstrap recovery is wake-only, bounded and
   cancellation/ownership checked; no physical modes or sleep settings change.
   Synthetic coverage adds bootstrap wake, authorization loss, concurrent
-  admission, wake failure and missing-display timeout. Not yet built/installed.
+  admission, wake failure and missing-display timeout.
   Next requested work: dynamic native-pixel Match Client modes for Mac Hosts;
   retain manual presets and Linux EDID behavior. Keep changes separately tested.
 

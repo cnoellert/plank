@@ -15,6 +15,7 @@ static BOOL online = YES, active = YES, authorized = YES, refuseMode, revokeOnWa
 static BOOL bootstrapActive = YES, failWake;
 static CGDirectDisplayID bootstrapID = 43;
 static unsigned pixelWidth = 3840, pixelHeight = 2160;
+static NSArray *registeredModes;
 
 @interface FakeDescriptor : NSObject
 @property(copy) NSString *name;
@@ -46,9 +47,17 @@ static unsigned pixelWidth = 3840, pixelHeight = 2160;
 @end
 @implementation FakeDisplay
 - (instancetype)initWithDescriptor:(id)descriptor {
-    self = [super init]; if (self) { assert(descriptor); creations++; } return self;
+    self = [super init]; if (self) {
+        assert([descriptor maxPixelsWide] == 8192 && [descriptor maxPixelsHigh] == 8192);
+        creations++;
+    } return self;
 }
-- (BOOL)applySettings:(id)settings { assert(settings); applications++; online = YES; return YES; }
+- (BOOL)applySettings:(id)settings {
+    assert(settings && [settings hiDPI] == 0);
+    registeredModes = [settings modes];
+    assert(registeredModes.count >= 12 && registeredModes.count <= 13);
+    applications++; online = YES; return YES;
+}
 - (unsigned)displayID { return 42; }
 @end
 
@@ -71,8 +80,7 @@ size_t CGDisplayPixelsHigh(CGDirectDisplayID display) { assert(display == 42); r
 CGRect CGDisplayBounds(CGDirectDisplayID display) { assert(display == 42); return CGRectMake(0, 0, pixelWidth, pixelHeight); }
 CFArrayRef CGDisplayCopyAllDisplayModes(CGDirectDisplayID display, CFDictionaryRef options) {
     assert(display == 42 && !options);
-    return CFBridgingRetain(@[[[FakeMode alloc] initWithWidth:3840 height:2160 refreshRate:60],
-                             [[FakeMode alloc] initWithWidth:5120 height:2160 refreshRate:60]]);
+    return CFBridgingRetain(registeredModes);
 }
 size_t CGDisplayModeGetPixelWidth(CGDisplayModeRef mode) { return [(__bridge FakeMode *)mode width]; }
 size_t CGDisplayModeGetPixelHeight(CGDisplayModeRef mode) { return [(__bridge FakeMode *)mode height]; }
@@ -219,7 +227,45 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
         [[PLANKMacDesktopDisplay new] recoverWithValidity:valid completion:^(BOOL ok) {
             assert(!ok && NSProcessInfo.processInfo.systemUptime - started < 3);
             assert(releases == priorRelease + 1 && creations == 1 && applications == 1);
-            puts("macos_display_recovery=pass checks=18 synthetic_only=1"); exit(0);
+            next();
+        }]; break;
+    }
+    case 18: {
+        online = active = YES;
+        [display prepareWidth:3024 height:1964 valid:valid completion:^(BOOL ok) {
+            assert(ok && pixelWidth == 3024 && pixelHeight == 1964 && applications == 2); next();
+        }]; break;
+    }
+    case 19: {
+        online = active = NO;
+        unsigned previous = applications;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100*NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            assert(applications == previous); online = YES;
+        });
+        [display prepareWidth:3456 height:2234 valid:valid completion:^(BOOL ok) {
+            assert(ok && pixelWidth == 3456 && pixelHeight == 2234 && applications == previous + 1); next();
+        }]; break;
+    }
+    case 20: {
+        [display prepareWidth:3456 height:2234 valid:valid completion:^(BOOL ok) {
+            assert(ok && applications == 3); next();
+        }]; break;
+    }
+    case 21: {
+        assert(!PLANKMacDesktopModeSupported(3023, 1964));
+        assert(!PLANKMacDesktopModeSupported(3024, 1963));
+        assert(!PLANKMacDesktopModeSupported(8194, 2160));
+        assert(!PLANKMacDesktopModeSupported(3840, 8194));
+        assert(!PLANKMacDesktopModeSupported(0, 0));
+        assert(PLANKMacDesktopModeSupported(8192, 8192));
+        [display prepareWidth:3023 height:1964 valid:valid completion:^(BOOL ok) {
+            assert(!ok && applications == 3); next();
+        }]; break;
+    }
+    case 22: {
+        [[PLANKMacDesktopDisplay new] prepareWidth:2880 height:1864 valid:valid completion:^(BOOL ok) {
+            assert(ok && pixelWidth == 2880 && pixelHeight == 1864 && applications == 4);
+            puts("macos_display_recovery=pass checks=23 synthetic_only=1"); exit(0);
         }]; break;
     }
     default: abort();

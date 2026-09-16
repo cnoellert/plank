@@ -90,8 +90,9 @@ int main(int argc, const char *argv[]) {
         __block NSString *encodingMode = @"hevc-10-420-videotoolbox";
         NSString *recoveryMode = NSProcessInfo.processInfo.environment[@"PLANK_TEST_RECOVERY"];
         __block BOOL topologyReady = recoveryMode == nil;
+        __block NSTimeInterval topologyReadyAt = 0;
         NSDictionary *(^topology)(void) = ^{
-            if (!topologyReady) return (NSDictionary *)nil;
+            if (!topologyReady || NSProcessInfo.processInfo.systemUptime < topologyReadyAt) return (NSDictionary *)nil;
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
                 desktopWidth, desktopHeight, CGRectMake(-1920, 0, 1920, 1080), encodingMode);
         };
@@ -150,7 +151,9 @@ int main(int argc, const char *argv[]) {
                 while (valid()) usleep(10000);
                 puts("macos_recovery_cancelled"); fflush(stdout);
             }
-            topologyReady = [recoveryMode isEqual:@"success"];
+            topologyReady = [@[@"success", @"settling", @"unsettled"] containsObject:recoveryMode];
+            if ([recoveryMode isEqual:@"settling"]) topologyReadyAt = NSProcessInfo.processInfo.systemUptime + .2;
+            if ([recoveryMode isEqual:@"unsettled"]) topologyReadyAt = NSProcessInfo.processInfo.systemUptime + 60;
             return topologyReady && valid();
         };
 #endif

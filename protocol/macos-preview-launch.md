@@ -107,3 +107,16 @@ The ordinary Session calls the pinned HTTPS launch, then consumes this manifest
 instead of sending a Linux setup exchange. Capture pixels remain host-native;
 Scaled-Span fits them at presentation. A changed topology requires fresh
 authentication/geometry instead of silently reusing stale dimensions.
+
+Mac display preparation accepts exact even dimensions from 2 through 8192 per
+axis under the existing schema-2 numeric contract. Match Client supplies native
+pixel dimensions, not a member of the Linux EDID preset list or the Retina
+logical/backing size. One display or two horizontally arranged displays form
+one canvas (sum of widths, maximum height). Manual presets remain available.
+The Host registers at most one additional custom 60 Hz mode alongside its
+presets, only applying changed settings while an existing output is online.
+Preparation and launch must confirm the exact geometry and selected encoder
+profile; these bounds are not a promise of encoder support for every size.
+There is no nearest-preset substitution, Linux EDID change, new request field
+or wire-version change. Matching Host/Client builds are required for this
+expanded implementation of the existing dimensions contract.

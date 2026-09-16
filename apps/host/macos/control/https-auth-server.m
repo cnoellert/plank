@@ -221,7 +221,17 @@
                                                     [owner->_sessions authorizeToken:token peer:request.peer identity:&current] &&
                                                     before.uid == current.uid && !memcmp(before.uuid, current.uuid, sizeof(before.uuid));
                                             };
-                                            if (valid() && owner.recoverTopology(valid) && valid()) topology = owner->_topology();
+                                            if (valid() && owner.recoverTopology(valid)) {
+                                                // Display-active arrives before capture geometry settles.
+                                                // Poll readiness on this bounded worker, not the main or
+                                                // network loop, and never repeat credential verification.
+                                                uint64_t settle = clock_gettime_nsec_np(CLOCK_MONOTONIC) + NSEC_PER_SEC;
+                                                while (valid()) {
+                                                    topology = owner->_topology();
+                                                    if (topology || clock_gettime_nsec_np(CLOCK_MONOTONIC) >= settle) break;
+                                                    [NSThread sleepForTimeInterval:.05];
+                                                }
+                                            }
                                         }
                                         status = information || topology ? 200 : 503;
                                         if (![owner->_sessions authorizeToken:token peer:request.peer identity:&after] ||

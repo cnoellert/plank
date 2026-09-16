@@ -58,16 +58,16 @@ def run(executable, config, mode):
                     pending.kill(); pending.communicate(timeout=3)
             else:
                 status, reply = auth.request(tls, port, {}, raw=get("/plank/topology", token))
-                assert status == {"success": 200, "failure": 503, "revoked": 401}[mode]
+                assert status == {"success": 200, "settling": 200, "unsettled": 503, "failure": 503, "revoked": 401}[mode]
                 assert select.select([process.stdout], [], [], 2)[0]
                 assert process.stdout.readline() == "macos_recovery_called\n"
-                if mode == "success":
+                if mode in ("success", "settling"):
                     assert reply["capture"]["width"] == 3840
                     assert auth.request(tls, port, {}, raw=get("/plank/topology", token)) == (200, reply)
                     assert not select.select([process.stdout], [], [], .1)[0], "healthy topology repeated recovery"
                 else:
                     assert reply == {"state": "denied"}
-            if mode != "success":
+            if mode not in ("success", "settling"):
                 # Failure, timeout and scope revocation all finish this setup.
                 assert auth.request(tls, port, {}, raw=get("/plank/topology", token))[0] == 401
             if mode == "failure":
@@ -92,5 +92,5 @@ def run(executable, config, mode):
 
 
 if __name__ == "__main__":
-    for scenario in ("success", "failure", "revoked", "timeout"):
+    for scenario in ("success", "settling", "unsettled", "failure", "revoked", "timeout"):
         run(Path(sys.argv[1]), Path(sys.argv[2]), scenario)

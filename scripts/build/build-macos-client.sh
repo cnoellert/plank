@@ -45,6 +45,15 @@ qmake -r "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     PLANK_VERSION="$version" \
     "QMAKE_CFLAGS+=$PLANK_C_FILE_FLAGS" "QMAKE_CXXFLAGS+=$PLANK_C_FILE_FLAGS"
 make -j"${PLANK_BUILD_JOBS:-8}" release
+# Run the real shared topology implementation on every Mac Client candidate.
+mkdir -p "$build/tests/outputtopology"
+(
+    cd "$build/tests/outputtopology"
+    qmake "$client/tests/outputtopology/outputtopology.pro" CONFIG+=release CONFIG-=app_bundle \
+        QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64
+    make -j"${PLANK_BUILD_JOBS:-8}"
+    PLANK_REPO_ROOT="$source_root" QT_QPA_PLATFORM=offscreen ./outputtopology
+)
 plist="$build/app/plank-client.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PLANK_BASE_VERSION" "$plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $PLANK_BASE_VERSION" "$plist"

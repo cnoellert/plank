@@ -65,6 +65,23 @@ Follow-up: precise failures before lifecycle simplification
   display. Add bounded authenticated wake-only bootstrap with no physical-mode
   mutation or guessed resolution. Keep existing owned-mode recovery and test
   both paths, including cancellation, failed wake and unavailable display.
+- Live wake succeeds before capture geometry leaves its reconfiguration phase.
+  Wait at most one additional second on the existing authorized setup lane,
+  bounded by the original request deadline. Never reauthenticate while waiting.
+  TLS fixtures cover transient and permanent geometry unavailability.
+
+Dynamic Match Client follow-up
+- Retain manual presets and Linux EDID restrictions. Mac display preparation
+  already carries numeric width/height in schema 2; accept even native-pixel
+  dimensions 2–8192 on each axis, without nearest-preset substitution.
+- Use the same CoreGraphics native-pixel query in Mac Client authentication
+  and streaming. Do not confuse Retina logical/backing sizes with native pixels,
+  or assume SDL and CoreGraphics enumeration order is identical.
+- Keep one custom 60 Hz virtual mode alongside presets. Register new custom
+  modes only on an online existing output; preserve bounded ownership checks.
+- Test laptop/portrait dimensions, changed reconnect sizes, invalid dimensions,
+  delayed output readiness and Linux preset rejection. Hosted checks do not
+  replace real laptop/encoder acceptance. Build matching Host and Mac Client.
 
 Validation result
 - Hosted signed run 35057106376 passed from b7407097fef78f10952f9969d6711d92ed454890.
