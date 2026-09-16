@@ -2,8 +2,9 @@
 
 This fork adds an explicit Apple Silicon macOS 15 Client build target.
 The initial goal is keyboard, mouse, video and audio from a Linux Host.
-Mac Client tablet capture remains a separate implementation task. The Linux
-tablet implementation is not part of the Mac binary.
+An experimental Mac raw USB Wacom backend now also passes initial attachment
+and variable-pressure delivery in Autodesk Flame. See the tablet evidence below
+for the candidate and remaining hardware qualification gates.
 
 ## Build contract
 
@@ -482,8 +483,19 @@ The operator grants the normal macOS Input Monitoring permission; after a
 Client relaunch, the first authenticated attachment succeeds for both interfaces.
 The Linux Host independently exposes Intuos Pro M Pen, Pad and Finger nodes,
 including pressure 0–8191 and both tilt axes. The Client reports exclusive raw
-forwarding active without an I/O error. Initial attachment is verified; actual
-pressure delivery and visible behavior inside Flame are still pending.
+forwarding active without an I/O error. Initial attachment is verified.
+
+The operator subsequently supplies a screen recording of Autodesk Flame's
+Input Devices / Threshold Test. Reviewed frames show the pressure bar varying
+through intermediate levels, reaching full scale and returning to zero. This
+is direct application evidence of variable-pressure delivery on this candidate;
+brush strokes are not required to repeat that check. The recording and review
+frames remain in private audit storage. Two separate 60-second Host event
+captures contain no selected pen events, but temporal overlap with the recorded
+physical test is unproven; those captures establish neither success nor failure.
+Full-display cursor alignment, pen buttons, eraser, forwarded tilt/pad/touch
+behavior and focus/reconnect recovery remain unqualified. No implementation
+change was made in response to the empty captures.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

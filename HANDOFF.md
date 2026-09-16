@@ -153,17 +153,21 @@ pass. After the operator grants Input Monitoring and the Client is relaunched,
 both physical interfaces attach successfully. The Linux Host now exposes native
 Intuos Pro M Pen, Pad and Finger nodes, with pressure maximum 8191 and two tilt
 axes. The Client reports exclusive raw forwarding active with no report I/O
-failure logged. This accepts initial attachment, not application pressure.
-The replacement is connected; the remote Flame launch is in progress and the
-operator has been asked to prepare a safe Paint test. Host pressure observation,
-visible cursor/mapping, focus/reconnect and pressure-sensitive strokes inside
-Autodesk Flame remain required acceptance gates.
+failure logged. The operator's screen recording now demonstrates variable
+pressure in Autodesk Flame's Input Devices / Threshold Test: the pressure bar
+changes through intermediate levels, reaches full scale and returns to zero.
+This passes application pressure delivery for this candidate. Two separate Host
+event captures were empty; their overlap with the recorded physical test is not
+established, so they remain inconclusive. The private recording is the acceptance
+evidence. Full-display cursor/mapping, buttons/eraser/tilt/pad/touch behavior and
+focus/reconnect recovery still need live qualification. The Client remains
+connected for operator testing.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
 hostname/offline discrepancy is not root-caused. See the fork evidence notes;
 this smoke test is not full live qualification. Credentials must be entered
-directly in the Client. Mac Client Wacom capture remains separate implementation work.
+directly in the Client. Mac Client Wacom support remains experimental.
 The upstream operational record below is retained as source context; its
 installation and signing authorizations do not describe this fork's machines.
 
