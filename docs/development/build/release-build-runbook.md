@@ -1,6 +1,9 @@
 # PLANK Release Build Runbook
 
 For disposable GitHub-hosted workers, see [GitHub-hosted builds](github-builds.md).
+Mac Client hosted jobs reuse exact-input dependencies, never application objects
+or signing state. Use the dispatch helper's `--clean-bootstrap` third argument
+to bypass both cache restore and save when qualifying a fresh bootstrap.
 Those workflows establish the same OS, dependency, clean-source and package
 contracts through `scripts/ci/`; they do not deploy or replace hardware gates.
 

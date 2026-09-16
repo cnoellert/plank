@@ -18,6 +18,10 @@ on:
         description: Request protected macOS signing (allowed branches only)
         type: boolean
         default: false
+      clean_bootstrap:
+        description: Bypass dependency cache restore and save
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -132,8 +136,38 @@ jobs:
           command -v cmake
           command -v ninja
       - run: python3 scripts/ci/context.py
+      - name: Select exact Mac Client dependency inputs
+        if: ${{ matrix.product == 'client' && !inputs.clean_bootstrap }}
+        id: deps-key
+        run: python3 scripts/ci/cache-macos-client.py prepare
+      - name: Restore Mac Client dependencies
+        if: ${{ matrix.product == 'client' && !inputs.clean_bootstrap }}
+        id: deps-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        with:
+          key: ${{ steps.deps-key.outputs.key }}
+          path: ${{ steps.deps-key.outputs.paths }}
+      - name: Verify exact restored dependencies
+        if: ${{ steps.deps-cache.outputs.cache-matched-key != '' }}
+        env:
+          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
+          MATCHED_KEY: ${{ steps.deps-cache.outputs.cache-matched-key }}
+        run: |
+          test "$MATCHED_KEY" = "$CACHE_KEY"
+          python3 scripts/ci/cache-macos-client.py verify --key "$CACHE_KEY"
       - run: bash scripts/ci/bootstrap.sh macos-${{ matrix.product }}
       - run: bash scripts/ci/build.sh macos-${{ matrix.product }}
+      - name: Seal successful Mac Client dependencies
+        if: ${{ matrix.product == 'client' && !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
+        env:
+          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
+        run: python3 scripts/ci/cache-macos-client.py seal --key "$CACHE_KEY"
+      - name: Save Mac Client dependencies
+        if: ${{ matrix.product == 'client' && !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        with:
+          key: ${{ steps.deps-key.outputs.key }}
+          path: ${{ steps.deps-key.outputs.paths }}
       - name: Explain unsigned build scope
         run: echo 'Unsigned compile/test only. No distributable macOS package, signing credentials, or hardware acceptance.' >> "$GITHUB_STEP_SUMMARY"
       - name: Report disk usage
@@ -161,6 +195,25 @@ jobs:
           test "$(sw_vers -productVersion | cut -d . -f 1)" -ge 27
           test "$(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1)" -ge 27
           python3 scripts/ci/context.py
+      - name: Select exact Mac Client dependency inputs
+        if: ${{ inputs.product == 'macos-client' && !inputs.clean_bootstrap }}
+        id: deps-key
+        run: python3 scripts/ci/cache-macos-client.py prepare
+      - name: Restore Mac Client dependencies
+        if: ${{ inputs.product == 'macos-client' && !inputs.clean_bootstrap }}
+        id: deps-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        with:
+          key: ${{ steps.deps-key.outputs.key }}
+          path: ${{ steps.deps-key.outputs.paths }}
+      - name: Verify exact restored dependencies
+        if: ${{ steps.deps-cache.outputs.cache-matched-key != '' }}
+        env:
+          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
+          MATCHED_KEY: ${{ steps.deps-cache.outputs.cache-matched-key }}
+        run: |
+          test "$MATCHED_KEY" = "$CACHE_KEY"
+          python3 scripts/ci/cache-macos-client.py verify --key "$CACHE_KEY"
       - name: Build, sign, notarize and verify
         env:
           PLANK_DEVELOPER_ID_APPLICATION_P12: ${{ secrets.PLANK_DEVELOPER_ID_APPLICATION_P12 }}
@@ -174,6 +227,17 @@ jobs:
       - name: Remove temporary signing material
         if: always()
         run: python3 scripts/ci/sign-macos.py --cleanup
+      - name: Seal successful Mac Client dependencies
+        if: ${{ success() && inputs.product == 'macos-client' && !inputs.clean_bootstrap && steps.deps-cache.outputs.cache-hit != 'true' }}
+        env:
+          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
+        run: python3 scripts/ci/cache-macos-client.py seal --key "$CACHE_KEY"
+      - name: Save Mac Client dependencies
+        if: ${{ success() && inputs.product == 'macos-client' && !inputs.clean_bootstrap && steps.deps-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        with:
+          key: ${{ steps.deps-key.outputs.key }}
+          path: ${{ steps.deps-key.outputs.paths }}
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: signed-${{ inputs.product }}-${{ github.run_id }}-${{ github.run_attempt }}

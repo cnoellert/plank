@@ -101,12 +101,37 @@ stapling, Gatekeeper and temporary-keychain cleanup. Both Mac release jobs
 started without reviewer approval under the branch-restricted policy. This
 qualifies the hosted packaging path, not live hardware behavior.
 
-First runs deliberately bootstrap from source without dependency caches. This
-checks the public-clone path and exposes missing prerequisites. Add caches only
-after clean runs pass, keyed by platform, toolchain and exact dependency/patch
-inputs. Never cache signing material or application worktrees. Do not silently
+Clean bootstrap runs qualify the public-clone path and expose missing
+prerequisites. Do not silently
 switch to paid larger runners, older SDKs or reduced CUDA architectures when a
 standard runner is insufficient; record the resource limitation first.
+
+### Mac Client dependency cache
+
+After successful cold-build qualification, Mac Client jobs may reuse prepared
+libraries, their sources (needed for licenses and patch verification), downloads,
+and Qt. The exact key includes dependency bootstrap scripts, all Client FFmpeg
+patches, source/dependency paths, architecture, runner image, OS, SDK, compiler,
+and build-tool versions. Application-only changes do not invalidate it.
+There are no fallback restore keys. A restored receipt must match the exact key;
+the mandatory FFmpeg patch is independently verified before use. Normal build
+and package dependency checks still run. Missing or mismatched inputs fail.
+
+PLANK and its tests build fresh. Application build trees, packages, Cargo objects,
+signing material and credentials are not cached. Public pull requests may read
+dependency caches but cannot save them through this workflow. Trusted jobs save
+only after a successful build; signed jobs first clean their temporary keychain.
+Other product jobs still use their existing cold bootstrap.
+
+To prove a fresh bootstrap, dispatch with `clean_bootstrap=true`, or use:
+
+```bash
+bash scripts/ci/dispatch.sh macos-client false --clean-bootstrap
+```
+
+This bypasses both cache restore and save. Omitting the option enables caching;
+the first run for a new key is naturally cold. Cache availability and retention
+are optimizations, not build requirements.
 
 ## Diagnosing a hosted build
 
