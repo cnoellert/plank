@@ -229,6 +229,28 @@ Restore both the Host's saved pre-test MetaMode and the temporary Client refresh
 setting after testing; physical-bookmark disconnect does not undo these manual
 administrative changes.
 
+### Partial desktop on the Retina output
+
+The operator's screenshots exposed a gap in the native-resolution smoke test:
+the second screen contained a desktop image only in its upper-left region,
+with large black areas. Matching framebuffer/stream dimensions did not prove
+that the desktop compositor recognized both monitors.
+
+On the test Host, XRandR reported two active monitors, but Mutter's
+`GetCurrentState` listed only one logical monitor. The second output exposed
+two different advertised mode IDs with the same 1024×768 name and refresh;
+its selected preferred timing was absent from Mutter's current mode list.
+Selecting the other existing timing with XRandR, while preserving the same
+3456×2234 transform and position, made Mutter recognize the second monitor.
+`GetResources` then confirmed active CRTC rectangles of 3456×2234 at the left
+and 2560×1440 at the right. Mode IDs are session-specific and must not be
+hardcoded into a product fix.
+
+No Client renderer change was needed for this host configuration correction.
+Visual retesting remains required before claiming the screenshot defect is
+resolved. Future display qualification must compare the compositor's logical
+monitor inventory and CRTC geometry with XRandR and the streaming topology.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

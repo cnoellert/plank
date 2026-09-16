@@ -43,6 +43,12 @@ operator approval. Host, stream and Client canvas agree at 6016×2234; both Meta
 outputs and exact HEVC10/P410 hardware decode initialize. The 24-second test
 rendered at 59.63 FPS, delivered 1,449 frames and 1,251 input events with zero
 transport receive drops, and disconnected cleanly; nine pacer drops (0.65%).
+The operator's screenshots show an incomplete desktop on the Retina output.
+Host investigation found two XRandR monitors but only one Mutter logical monitor:
+the second output's duplicate-name mode selection was not recognized by Mutter.
+Selecting its other existing timing preserved native geometry and made Mutter
+recognize both outputs; visual retest is pending. Framebuffer/stream agreement
+alone is insufficient acceptance. See the fork notes and private diagnosis.
 Operator visual and pointer acceptance is pending. Automatic Retina matching remains blocked by the mode
 allowlist. Restore the saved Host baseline and temporary Mac refresh setting
 after testing; machine-specific details and logs are in private notes/audit.
