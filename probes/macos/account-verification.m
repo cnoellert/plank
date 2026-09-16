@@ -30,13 +30,13 @@ static int selfTest(void) {
         [NSMutableData dataWithBytes:"not-a-credential" length:16]];
     for (NSUInteger i = 0; i < names.count; ++i) {
         PLANKMacAccountIdentity identity = {123, {1}};
-        if (PLANKMacVerifyAccount(names[i], inputs[i], &identity) != PLANKMacAuthenticationDenied ||
+        if (PLANKMacVerifyAccount(names[i], inputs[i], &identity, NULL) != PLANKMacAuthenticationDenied ||
             !emptyIdentity(identity) || !wiped(inputs[i])) return 1;
     }
     NSMutableData *oversized = [NSMutableData dataWithLength:4097];
     memset(oversized.mutableBytes, 'x', oversized.length);
     PLANKMacAccountIdentity identity = {123, {1}};
-    if (PLANKMacVerifyAccount(@"ordinary", oversized, &identity) != PLANKMacAuthenticationDenied ||
+    if (PLANKMacVerifyAccount(@"ordinary", oversized, &identity, NULL) != PLANKMacAuthenticationDenied ||
         !emptyIdentity(identity) || !wiped(oversized)) return 1;
     puts("macos_account_verifier_negative=pass cases=7 password_buffers_wiped=1");
     return 0;
@@ -63,7 +63,7 @@ int main(int argc, const char *argv[]) {
         PLANKMacAccountIdentity identity = {0};
         PLANKMacAuthenticationResult result = isolated ?
             PLANKMacVerifyAccountIsolated(name, password, &identity) :
-            PLANKMacVerifyAccount(name, password, &identity);
+            PLANKMacVerifyAccount(name, password, &identity, NULL);
         BOOL passed = result == PLANKMacAuthenticationVerified && identity.uid == geteuid() && wiped(password);
         printf("macos_account_verified=%d matches_process_account=%d password_buffer_wiped=%d desktop_authorized=0\n",
             result == PLANKMacAuthenticationVerified, identity.uid == geteuid(), wiped(password));

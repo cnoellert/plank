@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "authentication-session.h"
 #import <Security/Security.h>
+#include <stdio.h>
 #include <time.h>
 
 @interface PLANKMacAuthRecord : NSObject
@@ -132,9 +133,17 @@ enum { MaximumPendingChallenges = 16, MaximumSetupTokens = 4 };
             PLANKMacAccountIdentity account = {0};
             PLANKMacAuthenticationResult result = PLANKMacVerifyAccountIsolated(record.username, password, &account);
             @synchronized(self) {
-                if (generation != _revocationGeneration ||
-                        result != PLANKMacAuthenticationVerified ||
-                        !plank_macos_account_may_attach(account, record.scope, _snapshot())) return denied();
+                if (generation != _revocationGeneration) {
+                    fprintf(stderr, "macos_auth_setup rejected=revoked-during-verification\n");
+                    return denied();
+                }
+                // A helper timeout/cooldown is not a rejected OS password.
+                if (result == PLANKMacAuthenticationUnavailable) return busy();
+                if (result != PLANKMacAuthenticationVerified) return denied();
+                if (!plank_macos_account_may_attach(account, record.scope, _snapshot())) {
+                    fprintf(stderr, "macos_auth_setup rejected=desktop-authority\n");
+                    return denied();
+                }
                 [self prune];
                 // Only a VERIFIED account can supersede its unused setup on
                 // this peer. Never let an unauthenticated name/IP invalidate

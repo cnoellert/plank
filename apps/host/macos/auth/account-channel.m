@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdio.h>
 #include <spawn.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -20,11 +21,31 @@
 // uint32 words followed by exact byte counts. Never send native struct padding.
 // The existing Client gives an HTTPS auth request five seconds. Reserve time
 // for the response instead of leaving an orphan verification after that wait.
-enum { ChannelFD = 3, Magic = 0x50414331, Version = 1, DeadlineSeconds = 4 };
+enum { ChannelFD = 3, Magic = 0x50414331, Version = 2, DeadlineSeconds = 4 };
 static pthread_mutex_t attemptLock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t nextAttempt;
 
 static uint64_t nowNS(void) { return clock_gettime_nsec_np(CLOCK_MONOTONIC); }
+
+static void reportFailure(const char *stage, PLANKMacAuthenticationResult result,
+        uint64_t started) {
+    // Reconnect loops must not flood the product log. All text is from fixed
+    // internal stages, never from Open Directory, credentials or peer metadata.
+    static pthread_mutex_t logLock = PTHREAD_MUTEX_INITIALIZER;
+    static const char *lastStage;
+    static PLANKMacAuthenticationResult lastResult;
+    static uint64_t lastTime;
+    uint64_t now = nowNS();
+    pthread_mutex_lock(&logLock);
+    if (!lastStage || strcmp(lastStage, stage) || lastResult != result ||
+            now - lastTime >= 5000000000ULL) {
+        fprintf(stderr, "macos_auth_verification result=%s stage=%s elapsed_ms=%llu\n",
+            result == PLANKMacAuthenticationDenied ? "denied" : "unavailable",
+            stage, (unsigned long long)((now - started) / 1000000));
+        lastStage = stage; lastResult = result; lastTime = now;
+    }
+    pthread_mutex_unlock(&logLock);
+}
 
 static void erase(void *bytes, size_t length) {
     volatile unsigned char *p = bytes;
@@ -134,8 +155,9 @@ int PLANKMacAccountWorkerMain(void) {
                 !exactEnd(ChannelFD, deadline)) return 2;
             NSString *name = [[NSString alloc] initWithData:nameBytes encoding:NSUTF8StringEncoding];
             PLANKMacAccountIdentity identity = {0};
-            PLANKMacAuthenticationResult result = PLANKMacVerifyAccount(name, password, &identity);
-            uint32_t response[3] = {htonl(Magic), htonl(result), htonl(identity.uid)};
+            PLANKMacAuthenticationStage stage = PLANKMacAuthInput;
+            PLANKMacAuthenticationResult result = PLANKMacVerifyAccount(name, password, &identity, &stage);
+            uint32_t response[4] = {htonl(Magic), htonl(result), htonl(identity.uid), htonl(stage)};
             bool sent = transfer(ChannelFD, response, sizeof(response), true, deadline) &&
                 transfer(ChannelFD, identity.uuid, sizeof(identity.uuid), true, deadline);
             shutdown(ChannelFD, SHUT_WR);
@@ -201,6 +223,9 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
         NSString *name, NSMutableData *password, PLANKMacAccountIdentity *output) {
     if (output) memset(output, 0, sizeof(*output));
     bool locked = false;
+    uint64_t started = nowNS();
+    const char *stage = "input";
+    PLANKMacAuthenticationResult outcome = PLANKMacAuthenticationUnavailable;
     int sockets[2] = {-1, -1};
     pid_t child = -1;
     @try {
@@ -208,54 +233,74 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
         if (!output || !nameBytes.length || nameBytes.length > 255 ||
             memchr(nameBytes.bytes, 0, nameBytes.length) ||
             !password.length || password.length > 4096 || memchr(password.bytes, 0, password.length))
-            return PLANKMacAuthenticationDenied;
+            return (outcome = PLANKMacAuthenticationDenied);
+        stage = "process-identity";
         if (getuid() != geteuid() || getgid() != getegid()) return PLANKMacAuthenticationUnavailable;
         // Caller must disable core dumps at service startup before receiving
         // credentials; fail closed rather than silently weaken that contract.
         struct rlimit core;
+        stage = "core-policy";
         if (getrlimit(RLIMIT_CORE, &core) || core.rlim_cur != 0) return PLANKMacAuthenticationUnavailable;
+        stage = "concurrent-verification";
         if (pthread_mutex_trylock(&attemptLock)) return PLANKMacAuthenticationUnavailable;
         locked = true;
         uint64_t now = nowNS();
+        stage = "retry-cooldown";
         if (now < nextAttempt) return PLANKMacAuthenticationUnavailable;
         nextAttempt = now + 2000000000ULL;
         uint64_t deadline = now + DeadlineSeconds * 1000000000ULL;
+        stage = "socket";
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) return PLANKMacAuthenticationUnavailable;
         // Serialize spawning in this component and mark both descriptors closed
         // on exec; CLOEXEC_DEFAULT independently closes all unrelated FDs.
         if (fcntl(sockets[0], F_SETFD, FD_CLOEXEC) || fcntl(sockets[1], F_SETFD, FD_CLOEXEC) ||
             !prepareSocket(sockets[0])) return PLANKMacAuthenticationUnavailable;
+        stage = "helper-launch";
         child = launchWorker(sockets[1]);
         close(sockets[1]); sockets[1] = -1;
-        if (child <= 0 || !sameProductProcess(child)) return PLANKMacAuthenticationUnavailable;
+        if (child <= 0) return PLANKMacAuthenticationUnavailable;
+        stage = "helper-signature";
+        if (!sameProductProcess(child)) return PLANKMacAuthenticationUnavailable;
         uint32_t header[4] = {htonl(Magic), htonl(Version),
             htonl((uint32_t)nameBytes.length), htonl((uint32_t)password.length)};
+        stage = "helper-request";
         if (!transfer(sockets[0], header, sizeof(header), true, deadline) ||
             !transfer(sockets[0], (void *)nameBytes.bytes, nameBytes.length, true, deadline) ||
             !transfer(sockets[0], password.mutableBytes, password.length, true, deadline) ||
             shutdown(sockets[0], SHUT_WR)) return PLANKMacAuthenticationUnavailable;
         [password resetBytesInRange:NSMakeRange(0, password.length)];
-        uint32_t response[3] = {0};
+        stage = "helper-response";
+        uint32_t response[4] = {0};
         PLANKMacAccountIdentity identity = {0};
         if (!transfer(sockets[0], response, sizeof(response), false, deadline) ||
             !transfer(sockets[0], identity.uuid, sizeof(identity.uuid), false, deadline) ||
             !exactEnd(sockets[0], deadline)) return PLANKMacAuthenticationUnavailable;
+        stage = "helper-exit";
         bool cleanExit = reap(child, deadline);
         child = -1;
-        if (!cleanExit || ntohl(response[0]) != Magic || ntohl(response[1]) > PLANKMacAuthenticationUnavailable)
+        if (!cleanExit) return PLANKMacAuthenticationUnavailable;
+        stage = "helper-framing";
+        if (ntohl(response[0]) != Magic || ntohl(response[1]) > PLANKMacAuthenticationUnavailable ||
+                ntohl(response[3]) > PLANKMacAuthException)
             return PLANKMacAuthenticationUnavailable;
         PLANKMacAuthenticationResult result = ntohl(response[1]);
         identity.uid = ntohl(response[2]);
         if (result == PLANKMacAuthenticationVerified) {
-            if (!plank_macos_account_identity_valid(identity)) return PLANKMacAuthenticationUnavailable;
+            if (!plank_macos_account_identity_valid(identity) ||
+                    ntohl(response[3]) != PLANKMacAuthComplete) return PLANKMacAuthenticationUnavailable;
             *output = identity;
         } else {
             PLANKMacAccountIdentity empty = {0};
             if (memcmp(&identity, &empty, sizeof(empty))) return PLANKMacAuthenticationUnavailable;
         }
-        return result;
+        static const char *directoryStages[] = {"directory-input", "directory-node",
+            "directory-record", "directory-identity", "directory-password-policy",
+            "directory-identity-recheck", "directory-complete", "directory-exception"};
+        stage = directoryStages[ntohl(response[3])];
+        return (outcome = result);
     } @catch (NSException *exception) {
         (void)exception;
+        stage = "parent-exception";
         if (output) memset(output, 0, sizeof(*output));
         return PLANKMacAuthenticationUnavailable;
     } @finally {
@@ -264,5 +309,6 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
         if (sockets[1] >= 0) close(sockets[1]);
         if (child > 0) { kill(child, SIGKILL); reap(child, nowNS()); }
         if (locked) pthread_mutex_unlock(&attemptLock);
+        if (outcome != PLANKMacAuthenticationVerified) reportFailure(stage, outcome, started);
     }
 }

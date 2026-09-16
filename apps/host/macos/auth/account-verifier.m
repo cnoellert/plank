@@ -32,7 +32,11 @@ static BOOL readIdentity(ODRecord *record, PLANKMacAccountIdentity *identity) {
 }
 
 PLANKMacAuthenticationResult PLANKMacVerifyAccount(
-        NSString *name, NSMutableData *password, PLANKMacAccountIdentity *output) {
+        NSString *name, NSMutableData *password, PLANKMacAccountIdentity *output,
+        PLANKMacAuthenticationStage *stage) {
+    PLANKMacAuthenticationStage unused;
+    if (!stage) stage = &unused;
+    *stage = PLANKMacAuthInput;
     if (output) memset(output, 0, sizeof(*output));
     @try {
         @autoreleasepool {
@@ -44,26 +48,34 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccount(
             NSString *secret = [[NSString alloc] initWithBytes:password.bytes
                 length:password.length encoding:NSUTF8StringEncoding];
             if (!secret) return PLANKMacAuthenticationDenied;
+            *stage = PLANKMacAuthDirectory;
             ODNode *node = [ODNode nodeWithSession:ODSession.defaultSession
                 type:kODNodeTypeAuthentication error:NULL];
             if (!node) return PLANKMacAuthenticationUnavailable;
+            *stage = PLANKMacAuthRecord;
             ODRecord *record = [node recordWithRecordType:kODRecordTypeUsers name:name
                 attributes:@[kODAttributeTypeUniqueID, kODAttributeTypeGUID] error:NULL];
             PLANKMacAccountIdentity identity = {0};
-            if (!record || !readIdentity(record, &identity)) return PLANKMacAuthenticationDenied;
+            if (!record) return PLANKMacAuthenticationDenied;
+            *stage = PLANKMacAuthIdentity;
+            if (!readIdentity(record, &identity)) return PLANKMacAuthenticationDenied;
             // SDK 27 documents that verifyPassword already evaluates record and
             // node authentication/password policies. Do not duplicate policy or
             // turn a password-expired/disabled result into successful access.
+            *stage = PLANKMacAuthPassword;
             if (![record verifyPassword:secret error:NULL]) return PLANKMacAuthenticationDenied;
+            *stage = PLANKMacAuthIdentityRecheck;
             PLANKMacAccountIdentity confirmed = {0};
             if (!readIdentity(record, &confirmed) || confirmed.uid != identity.uid ||
                 memcmp(confirmed.uuid, identity.uuid, sizeof(identity.uuid)))
                 return PLANKMacAuthenticationDenied;
             *output = identity;
+            *stage = PLANKMacAuthComplete;
             return PLANKMacAuthenticationVerified;
         }
     } @catch (NSException *exception) {
         (void)exception; // Never log directory/framework credential-bearing text.
+        *stage = PLANKMacAuthException;
         if (output) memset(output, 0, sizeof(*output));
         return PLANKMacAuthenticationUnavailable;
     } @finally {

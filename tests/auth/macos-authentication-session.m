@@ -19,6 +19,7 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
     ++verifications;
     [password resetBytesInRange:NSMakeRange(0, password.length)];
     if ([name isEqualToString:@"invalid-password"]) return PLANKMacAuthenticationDenied;
+    if ([name isEqualToString:@"unavailable"]) return PLANKMacAuthenticationUnavailable;
     *output = (PLANKMacAccountIdentity){123, {1}};
     if ([name isEqualToString:@"wrong-owner"]) output->uid = 456;
     if ([name isEqualToString:@"root"]) output->uid = 0;
@@ -63,6 +64,12 @@ int main(void) {
         CHECK(token.length == 44 && [NSJSONSerialization isValidJSONObject:success]);
         CHECK([respond(sessions, peer, start[@"conversation_id"])[@"state"] isEqual:@"denied"]);
         CHECK(verifications == 1);
+        NSDictionary *unavailable = [sessions startForPeer:peer username:@"unavailable"];
+        CHECK([respond(sessions, peer, unavailable[@"conversation_id"])[@"state"] isEqual:@"busy"]);
+        CHECK(verifications == 2);
+        // Temporary verifier failure neither grants a token nor revokes an
+        // existing verified setup, and its consumed challenge cannot replay.
+        CHECK([respond(sessions, peer, unavailable[@"conversation_id"])[@"state"] isEqual:@"denied"]);
         PLANKMacAccountIdentity identity = {0};
         CHECK([sessions authorizeToken:token peer:peer identity:&identity] && identity.uid == 123);
         CHECK(![sessions authorizeToken:token peer:other identity:&identity] && identity.uid == 0);

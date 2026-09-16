@@ -5,6 +5,16 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Follow-up candidate 1.0.108 is being prepared on `macos-auth-recovery`.
+  After the token-capacity correction, native directory verification passed
+  but PLANK still returned denied on the affected Mac. The precise rejection
+  remains unproven. Helper unavailability now maps to busy, not bad credentials;
+  bounded fixed-stage diagnostics distinguish directory, private-channel and
+  desktop-authority failures without account/credential/token logging.
+  Full isolated-helper tests join the hosted Host package gates. No security
+  check was removed; no Client/Linux or display-power change. Do not describe
+  this diagnostic candidate as an accepted login fix before live testing.
+
 - Active fix: `macos-auth-recovery`, isolated worktree, candidate 1.0.107.
   Fixes abandoned macOS setup-token capacity exhaustion; see
   `docs/development/plans/macos-auth-recovery.plan`. No Client/Linux changes.
@@ -17,12 +27,19 @@ notes' README before machine-specific work; deployment information stays outside
   6,607,323 bytes; SHA-256
   `f32a23094dabc1df8d0f2468c0694c12853f5a770c6d6fae3a232e20827c5fe2`.
   Source/manifest and transferred checksum match. Functional validation remains
-  not-recorded; next is coordinated installation/reconnect testing. No new
+  not-recorded; next is operator reconnect testing. No new
   Client is required. Display wake failure is separate and not fixed here.
   Protected signing now also permits this exact candidate branch, without
   widening access for other branches or public PRs. Known unchanged Quinn
   dead-code warnings do not affect the passing package gates.
-  No installation or production restart. The separate `rk3576-client` research
+  Operator-authorized upgrade on the affected Mac succeeded. Installer signature,
+  notarization and transferred package hash passed; installed executable matches
+  the extracted payload (`67970b312c8e5665b34bc9dda43ec1831e8549f6432771abaf66a3a82085a264`).
+  Installed version and deep/strict signature verified; coordinator and desktop
+  worker restarted and the control listener is active. Capture still reports an
+  inactive display; no power settings or desktop session were changed. This is
+  installation/startup validation, not successful reconnect acceptance.
+  The separate `rk3576-client` research
   branch and its uncommitted notes remain untouched in the primary worktree.
 
 - Working branch: `main`. Accepted macOS media recovery is merged/pushed at

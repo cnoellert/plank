@@ -40,6 +40,20 @@ Limits
 - Display wake/recovery is a separate issue. Removing auth exhaustion must not
   be presented as proof that an inactive capture display can always recover.
 
+Follow-up: precise failures before lifecycle simplification
+- Separate helper unavailability from rejected credentials using existing busy
+  state; do not remove cooldown, signature, ownership or private IPC checks.
+- Return only a bounded stage enum from the isolated directory verifier. Log
+  fixed stage/result/elapsed time in the parent, suppressing repeated identical
+  diagnostics for five seconds. Never emit directory error descriptions,
+  account names/IDs, passwords, tokens or peer addresses.
+- Exercise real isolated helper framing/timeout/cleanup on hosted builders,
+  alongside session and topology fixtures. This is not live OD validation.
+- Determine the remaining live failure before redesigning desktop preparation.
+  Target authenticate once -> prepare desktop -> stream; readiness retry must
+  not repeatedly verify credentials or accumulate setup tokens. Authority
+  changes, cancellation and takeover still need explicit state/ownership tests.
+
 Validation result
 - Hosted signed run 35057106376 passed from b7407097fef78f10952f9969d6711d92ed454890.
   Authentication fixture: 504 checks; repeated real-TLS topology failures:

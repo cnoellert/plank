@@ -9,10 +9,7 @@ common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -I"$source_root/apps/host/macos/control" -I"$source_root/apps/host/macos/auth"
     -framework Foundation -framework AppKit -framework CoreGraphics -framework Security
     -framework SystemConfiguration -framework Network -framework IOKit)
-xcrun clang "${common[@]}" \
-    "$source_root/apps/host/macos/auth/authentication-session.m" \
-    "$source_root/tests/auth/macos-authentication-session.m" -o "$output/authentication-session-test"
-"$output/authentication-session-test"
+bash "$source_root/scripts/test/build-macos-auth.sh" "$source_root" "$output/auth"
 # Only the test object redirects virtual-class lookup; production compilation
 # always uses the real framework classes. CG/IOKit stubs are test-link-only.
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
