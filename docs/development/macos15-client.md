@@ -362,9 +362,26 @@ The clean root `deb9e8a` candidate is packaged at
 `artifacts/development/macos15-input-order/`; 106 ARM64/macOS15 checks,
 dependency closure, build-path checks and ad-hoc signatures pass. Executable
 SHA-256: `6b7d206f6d7791ae274d9984725909d80fd2ec7c9f9aef15c4681fa62c476e61`.
-It is open in the native desktop for direct user sign-in and still must pass
-rapid click/drag and both fullscreen seam directions. The prepared Host layout remains temporary and requires the
-saved restoration procedure after testing.
+Live rapid windowed dragging now passes in both directions. The Host pointer
+and actual window geometry confirm that the press lands at the title bar and
+the window follows across the seam. Fullscreen dragging still clamps at the
+physical screen boundary. Native window bounds confirm that both presentation
+windows cover their displays simultaneously; the visible menu bar alone does
+not establish that one window has left fullscreen.
+
+### Fullscreen mouse capture correction
+
+An unobstructed local two-window SDL3 probe records held pointer motion across
+both physical screens in both directions, including negative and beyond-width
+coordinates relative to the starting window. The application had retained a
+startup hint disabling `SDL_MOUSE_AUTO_CAPTURE`, despite the SDL3 input handler
+explicitly relying on automatic capture. SDL then constrains drag motion to the
+starting window before the Client's cross-output coordinate mapping can run.
+Client `67564e5` enables automatic capture. All 71 Client checks and the native
+input worker regression pass; the corrected build still requires live
+fullscreen drag acceptance. No protocol or Host display change is needed.
+The prepared Host layout remains temporary and requires the saved restoration
+procedure after testing.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

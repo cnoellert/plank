@@ -87,10 +87,17 @@ the previous implementation and passes after the fix. All 71 Client cases pass;
 the worker check now runs in every Mac Client build. The clean root `deb9e8a`
 candidate is packaged under `artifacts/development/macos15-input-order/`;
 106 target checks, dependency closure and ad-hoc signatures pass. The previous
-client disconnected cleanly. The replacement is open at direct sign-in for a
-rapid windowed drag followed by fullscreen dragging. Current state: user
-sign-in pending, two native-resolution Host monitors; original layout
-restoration still due.
+client disconnected cleanly. The replacement passes rapid windowed dragging
+in both directions, with Host window geometry confirming the press and drag.
+Fullscreen dragging still stops at the physical screen seam, despite both
+native Client windows simultaneously covering their respective displays.
+A separate two-window SDL probe records held drags across both screens in both
+directions. Source inspection found startup explicitly disables automatic
+mouse capture while the SDL3 input handler relies on it. Client `67564e5`
+enables automatic capture; all 71 Client checks and the native input worker
+regression pass. The corrected candidate is being packaged for live validation.
+Current state: Client disconnected, local probe closed, two native-resolution
+Host monitors prepared; original layout restoration still due.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
