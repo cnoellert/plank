@@ -50,7 +50,8 @@ mkdir -p "$build/tests/outputtopology"
 (
     cd "$build/tests/outputtopology"
     qmake "$client/tests/outputtopology/outputtopology.pro" CONFIG+=release CONFIG-=app_bundle \
-        QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64
+        QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
+        "QMAKE_CXXFLAGS+=-include arm_acle.h"
     make -j"${PLANK_BUILD_JOBS:-8}"
     PLANK_REPO_ROOT="$source_root" QT_QPA_PLATFORM=offscreen ./outputtopology
 )

@@ -5,7 +5,26 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Preparing 1.0.111: dynamic Mac Match Client dimensions (even 2–8192 per
+- 1.0.111 candidate source is committed/pushed at
+  `02ec80f456d4d242c9101a7b00120726673feda1`; Client gitlink
+  `a5ad0e9436f1ccaee6a0e5b54702a74b8d805ef8`. Not merged.
+  Signed Host run 35061632741 passed: 509 authentication checks, 23 synthetic
+  display cases, six TLS recovery scenarios, existing pen/audio/installer gates
+  and signing/notarization. Collected under
+  `candidates/1.0.111-macos-auth-recovery/macos/` and installed on the affected
+  Mac. Package SHA256 `cd9534b9b7f0e00b482b3c9c410b00cec63432dd737235f2a0f525111f1720d1`;
+  installed binary matches payload
+  `ab2d6fd78539945ed83401694758508d0c1612417d479db7c89e3c98df0e956b`.
+  Real authenticated topology passed. Exact real display preparation passed
+  3024x1964, 3456x2234, 2880x1864, 5120x2160, then restored 1920x1080;
+  each took 0.28–0.62 seconds. These are setup checks, not streamed-video or
+  laptop acceptance. Mac Client run 35061634744 compiled the application but
+  failed the new standalone Qt fixture because its build omitted the documented
+  SDK27 arm_acle.h include. Corrected in the build script and runbook; no Client
+  package was produced by that run. Matching signed Client rebuild is pending.
+  No sleep settings, TCC, desktop login or physical display modes were changed.
+
+  Dynamic Mac Match Client dimensions (even 2–8192 per
   axis) use the same native-pixel lookup before authentication and streaming.
   Host mode registration keeps presets plus one requested custom 60 Hz mode;
   offline settings mutation remains forbidden. Linux EDID selection is unchanged.
@@ -13,7 +32,7 @@ notes' README before machine-specific work; deployment information stays outside
   Live 1.0.110 woke the desktop but exposed a subsequent capture-reconfiguration
   race; 1.0.111 adds a bounded, authorized geometry-settle wait without repeating
   authentication. Synthetic TLS tests cover delayed readiness and permanent
-  unavailability. Not yet built or accepted; full Client retry-lifecycle work
+  unavailability. Operator acceptance remains pending; full Client retry-lifecycle work
   remains outstanding.
 
 - 1.0.110 passed hosted run 35060603472 at

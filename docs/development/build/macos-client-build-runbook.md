@@ -99,7 +99,9 @@ the app to Trash. Host installation/permissions are separate and unchanged.
 - Private pkgconf filters its own prefix as system flags: require
   `PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1` and `PKG_CONFIG_ALLOW_SYSTEM_LIBS=1`.
 - Qt6.10.2/SDK27 Clang21 `__yield` declaration: the Mac arm64 build includes
-  `arm_acle.h` explicitly. Do not change Linux compiler flags.
+  `arm_acle.h` explicitly. Standalone Qt test projects must receive the same
+  `QMAKE_CXXFLAGS+=-include arm_acle.h` input; they do not inherit app.pro's
+  flags. The hosted outputtopology gate covers this. Do not change Linux flags.
 - FreeType's optional zlib pkgconfig dependency is not available from the SDK:
   bootstrap disables that optional compression backend; SDL_ttf fonts work
   through retained FreeType. Do not introduce a moving Homebrew dependency.
