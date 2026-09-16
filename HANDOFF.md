@@ -5,6 +5,18 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Dependency-cache follow-up is on `dependency-cache`, based on main `4001161`.
+  All four hosted products are wired for exact-input caches; the previously
+  qualified Mac Client cache format is unchanged. New Linux Host/Client caches
+  retain prepared FFmpeg and patch-verification sources; Host also retains
+  Boost. Those products and Mac Host cache Rust toolchains/downloaded Cargo
+  inputs, never application/transport objects or credentials. Installed Linux
+  package/compiler versions and dependency scripts/pins/patches invalidate keys.
+  Pull requests cannot save caches; clean bootstrap bypasses restore and save.
+  Local 37 CI tests and all five root CTest suites pass. Hosted cold-save/
+  warm-restore validation is pending.
+  No runtime changes, version bump, deployment or release publication requested.
+
 - Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
   push, merge and a full rebuild. Root merge `53c7c3988f88a440f1cffeda0ce61ed526de6c43`
   and Client merge `95060dee8fa63e0da98dfa83e7ddd8185731a837` are pushed to main.
@@ -20,8 +32,8 @@ notes' README before machine-specific work; deployment information stays outside
   performed. Preserve unrelated primary-worktree research. Earlier candidate
   packages below are historical evidence, not the current mainline artifacts.
   Normal full application rebuilds may reuse verified dependency caches;
-  reserve cold bootstrap for explicit qualification. Hosted caching currently
-  exists only for the macOS Client, not the other three products.
+  reserve cold bootstrap for explicit qualification. At this release's source,
+  caching existed only for the macOS Client; the follow-up above extends it.
 
   | Package (relative to the 1.0.120 catalog) | SHA256 |
   | --- | --- |
