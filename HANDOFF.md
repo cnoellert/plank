@@ -5,7 +5,7 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Client 1.0.119-macos-fullscreen is being prepared on `macos-fullscreen`.
+- Client 1.0.119-macos-fullscreen is ready for testing on `macos-fullscreen`.
   Operator tested all five standalone AppKit modes: no side borders, same
   system-owned top notch strip. Operator accepts that strip and native Spaces.
   New policy: Mac-to-Mac fullscreen Match Client uses NSScreen's dynamic top
@@ -15,64 +15,35 @@ notes' README before machine-specific work; deployment information stays outside
   original display bounds remain separate for window placement/identity.
   Removed ineffective SDL content-size patch/hint/helper. Bootstrap/cache inputs
   changed, forcing fresh upstream SDL dependencies; FFmpeg patch gates remain.
-  Local five fullscreen tests (including compiled geometry), 26 CI tests and
-  14 reconnect guards pass. Native compile/package and live acceptance pending.
-  No Host change, installation or merge. Next: signed hosted Mac Client build,
-  then operator checks Match Client side borders, swipes, Retina text, mouse/pen,
-  toolbar, window toggles and a non-notched display. Historical hypotheses below
-  are superseded by this explicitly accepted notch-safe policy.
+  Local five fullscreen tests (including compiled geometry), 26 CI tests,
+  14 reconnect guards and five root CTest suites pass. Signed hosted run
+  `35131997746` passed from root `9167fd8412172fee9d47be9eb2bc67cc155d7750`,
+  Client `6f0c25269c5a8bf1051814317440f2cd57fda005`: cold dependency bootstrap,
+  SDK27 native compile, 19 topology / 21 toolbar / seven desktop-stage tests,
+  package/version/dependency gates, Developer ID signing, notarization, staple,
+  Gatekeeper and signing-material cleanup. New dependency cache sealed.
+  No Host change, installation or merge. Next: operator checks Match Client side
+  borders, swipes, Retina text, mouse/pen, toolbar, window toggles and a non-notched
+  display. Start a fresh fullscreen connection; toggling window mode alone does
+  not renegotiate an existing Host resolution. Live acceptance remains pending.
+  Hash-verified DMG (85,582,956 bytes):
+  `artifacts/packages/candidates/1.0.119-macos-fullscreen/macos/plank-client_1.0.119-macos-fullscreen_arm64.dmg`.
+  SHA256: `58f8d4b56b6f68e3490e5c54b066030525e7ebee074ababcaccba96eaba709c9`.
+  Unchanged gitlinks: Linux Host `9329784ac41f50cbec0c9d76badfd22227ec5e5f`,
+  Kymux `912ece5c64787997f978673ca60d313898a3548c`; Client common-c
+  `b9650552f98d97f6e30c9f007115c6246f0809e5`, qmdnsengine
+  `b7a5a9f225d5e14b39f9fd1f905c4f505cf2ee99`.
 
-- Standalone fullscreen diagnostic is ready as
-  `1.0.118-macos-fullscreen` on the existing branch. No Host/Client source or
-  dependency changed. `probes/macos/fullscreen-window.m` offers five explicit
-  AppKit cases with geometry-only private logs and visible edge markers.
-  Hosted signing reuses the protected environment and isolated keychain;
-  probe compilation runs credential-free without product dependency bootstrap.
-  Read `probes/macos/fullscreen-window.md`. Signed hosted run `35129303592`
-  passed from root `21c295446892c6d0a6bb57c326040e94763871c1`: 26 CI tests,
-  strict SDK27/arm64 native compile, version/path checks, Developer ID signing,
-  notarization, staple, Gatekeeper and temporary keychain cleanup.
-  Hash-verified diagnostic DMG (58,471 bytes):
-  `artifacts/diagnostics/1.0.118-macos-fullscreen/macos/plank-fullscreen-probe_1.0.118-macos-fullscreen_arm64.dmg`.
-  SHA256: `8e391cf9c07ed7df9faaad1964f5319626e84a3f521c6527d8bec360600f06a9`.
-  This is NOT Client 1.0.118; the Client candidate remains 1.0.117.
-  Initial compile caught Objective-C warnings-as-errors, corrected before the
-  final build; superseded intermediate run was canceled. No gate bypassed.
-  Next: operator launches probe on a notched Mac, compares modes and shares
-  geometry logs plus coverage/swipe observations. No live execution or merge;
-  package validation does not prove fullscreen geometry or gesture behavior.
-
-- Current work is `macos-fullscreen` in the separate worktree (directory still
-  named macos-auth-recovery), based on main root `15e6000`, Client `e8fc0cc0`.
-  Candidate 1.0.117 restores native macOS fullscreen Spaces and opts into a
-  narrow required SDL3.4.2 Cocoa content-size callback using the full NSScreen
-  frame. Retina sizing, no-modeset policy and dynamic notch-safe toolbar remain.
-  Source/installed-SDL preflight and dependency cache fingerprint include the
-  patch. Signed hosted run `35124970815` passed from root
-  `aea1ab33e7c03ebf8c9ee67e36239beb81261217`, Client
-  `509f2fc73718b3dffdb9fd9ad9c03065bc14b6c2`. Six fullscreen wiring/patch-gate
-  tests, 22 CI policy tests, 18 topology / 21 toolbar / seven desktop-stage
-  tests, native compile, dependency/package/signing/notarization/Gatekeeper
-  and signing cleanup passed. All five local root CTest suites also pass.
-  This cold build rebuilt and sealed the changed SDL dependency cache.
-  Hash-verified DMG (86,188,280 bytes) is collected at
-  `artifacts/packages/candidates/1.0.117-macos-fullscreen/macos/plank-client_1.0.117-macos-fullscreen_arm64.dmg`.
-  SHA256: `236ce095c42cbf79ab607e5b4924f3d61bc3e03497ccabc97529a587f95cf438`.
-  Operator tested 1.0.117: native fullscreen swipes work, but top/side borders
-  returned. Uploaded Client geometry logs confirm the delegate runs and requests
-  1710x1107 points; AppKit settles at frame/content 1710x1073 and drawable
-  3420x2146, while Match Client requested a 3420x2214 stream. This is a native
-  window constraint, not a missing patch or renderer-only letterbox bug.
-  Full-panel acceptance FAILED; do not merge or claim the callback fixes it.
-  Operator requested continued full-panel/native-Space investigation. Next:
-  isolated AppKit probe of custom fullscreen animation and documented frame-
-  constraint override, inspired by mpv's Window subclass (absent in SDL3.4.2).
-  This is an unproven hypothesis, not a fix. Helium's notch demo and Ghostty's
-  full-panel mode bypass native Spaces and do not demonstrate the requirement.
-  The plan records references, alternative child-window hypothesis and gates.
-  No further product code/build after the log diagnosis; notched live test needed.
-  This is Client-only: no Host update, automatic install or merge is planned.
-  See `docs/development/plans/macos-fullscreen.plan`.
+- Superseded fullscreen evidence: Client 1.0.117 (root `aea1ab33`,
+  Client `509f2fc7`, signed run `35124970815`) restored swipes but retained
+  side borders; AppKit ignored the requested full-panel content size. The
+  standalone 1.0.118 probe (root `21c29544`, signed run `35129303592`) passed
+  build/signing and the operator compared all five modes. That probe is NOT
+  Client 1.0.118. Its retained diagnostic DMG is under
+  `artifacts/diagnostics/1.0.118-macos-fullscreen/macos/`; SHA256
+  `8e391cf9c07ed7df9faaad1964f5319626e84a3f521c6527d8bec360600f06a9`.
+  Full-panel override experiments are retired. See
+  `docs/development/plans/macos-fullscreen.plan` for findings and acceptance gates.
 
 - The operator authorized merging the reconnect follow-up into main after
   manually installing Host 1.0.116. Reconnect implementation root `4173138`

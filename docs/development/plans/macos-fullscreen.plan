@@ -22,6 +22,13 @@ live checks; compiled geometry tests and source guards are not visual proof.
 
 The following investigation is retained as evidence, not an active build policy.
 
+Candidate 1.0.119 passed signed hosted run 35131997746 from root
+9167fd8412172fee9d47be9eb2bc67cc155d7750 / Client
+6f0c25269c5a8bf1051814317440f2cd57fda005. Cold bootstrap, compiled geometry,
+19 topology / 21 toolbar / seven desktop-stage tests, native compilation and
+distribution gates passed. HANDOFF records the verified DMG checksum/location.
+Operator acceptance is pending; no merge or Host update.
+
 Client 1.0.114 disabled SDL's native fullscreen Spaces while also opting out
 of display safe-area compatibility. This fixed full-panel coverage but removed
 normal fullscreen Space participation. SDL 3.4.2's Cocoa delegate accepts
