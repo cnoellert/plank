@@ -20,7 +20,7 @@ class ReconnectPresentation(unittest.TestCase):
         for signature in ("QJsonObject NvHTTP::postPlankJson", "QJsonObject NvHTTP::postPinnedMacJson",
                           "NvHTTP::openConnection(QUrl"):
             body = http.split(signature, 1)[1].split("{", 1)[1]
-            self.assertTrue(body.lstrip().startswith("waitForRequestPermission();"))
+            self.assertTrue(body.lstrip().startswith("waitForRequestPermission("))
         gate = between(session, "bool Session::waitForPlankReconnectRequest", "bool Session::runPlankReconnect")
         self.assertIn("m_ReconnectCancelled.load()", gate)
         self.assertIn("m_ConnectionStartCancelled.load()", gate)
@@ -40,7 +40,10 @@ class ReconnectPresentation(unittest.TestCase):
         begin = between(session, "case SDL_CODE_PLANK_RECONNECT:", "case SDL_CODE_PLANK_REPLANK_COMPLETE:")
         self.assertLess(begin.index("m_ReconnectPolicy.allowUntil"), begin.index("reconnectThread->start()"))
         retry = between(session, "bool Session::runPlankReconnect", "bool Session::finishPlankReconnect")
-        self.assertIn("startConnectionAsync(true) &&\n                    waitForPlankReconnectRequest()", retry)
+        self.assertIn("m_ReconnectPolicy.allowsRequest(SDL_GetTicks())", retry)
+        gate = between(session, "bool Session::waitForPlankReconnectRequest", "bool Session::runPlankReconnect")
+        self.assertIn("return !(waited && restartAuthenticationAfterWait)", gate)
+        self.assertIn("waitForRequestPermission(true)", http)
 
     def test_control_queries_have_only_operation_parameters(self):
         request = between(http, "NvHTTP::openConnection(QUrl", "QNetworkRequest request(url);")
