@@ -129,11 +129,14 @@ endpoint-ended errors during teardown, and the Client logged transient invalid
 window IDs during renderer recreation. Retain these as follow-up findings;
 service survival alone does not prove repeated-session cleanup is correct.
 
-This completes the first connection smoke test. Audible sound, keyboard/mouse
-behavior, visual/color accuracy, sustained frame pacing, Retina/fullscreen
-mapping and reconnect still need acceptance checks. Mac Client tablet capture
-is not implemented. Packet delivery and decoder logs do not establish those
-subjective or semantic results.
+The operator subsequently confirmed successful login and reported that keyboard
+and mouse appear to work. This establishes basic interactive use; modifier keys,
+scrolling and coordinate mapping across display modes still need focused checks.
+
+This completes the first connection smoke test. Audible sound, visual/color
+accuracy, sustained frame pacing, Retina/fullscreen mapping and reconnect still
+need acceptance checks. Mac Client tablet capture is not implemented. Packet
+delivery and decoder logs do not establish those subjective or semantic results.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

@@ -18,7 +18,8 @@ identity with VideoToolbox/Metal, stereo audio packets and input delivery. Logs
 agree on 2,684 video frames, 8,595 audio packets and 1,875 input events, with zero
 transport receive drops. Render rate was 59.67 FPS with 15 pacer drops (0.57%).
 Toolbar disconnect completed and services remain active without restarts.
-Next: subjective video/audio/input acceptance, longer pacing and reconnect tests;
+The operator confirms login and reports working basic keyboard/mouse input.
+Next: video/audio acceptance, modifier/scroll/display-mapping checks, longer pacing and reconnect tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
 hostname/offline discrepancy is not root-caused. See the fork evidence notes;
 this smoke test is not full live qualification. Credentials must be entered
