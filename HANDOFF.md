@@ -5,219 +5,89 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Follow-up macOS secure-unlock diagnosis: nine rejected attempts logged
-  `The user did not become active for authentication. Fail the auth` before
-  the misleading incorrect-password UI, with a five-second activity wait.
-  Account verification through the separate authentication path succeeded.
-  Shift versus Caps Lock did not resolve it. A temporary `caffeinate -u -t 180`
-  changed UserIsActive from 0 to 1; the operator then unlocked successfully
-  with normal typing, confirmed by LoginWindow `checkAuth result: 1` and
-  unlock-success logs. No keyboard, password, TCC or persistent power setting
-  was changed. This establishes the activity-state cause for these attempts,
-  not when it was introduced. Proposed next step: bounded authenticated-session
-  user-activity reporting, including already-active virtual displays, with
-  lifecycle cleanup and lock/reconnect tests. The temporary assertion was
-  explicitly stopped after successful unlock; no persistent policy was set.
-  Candidate 1.0.112 implements activity on authorized real input, throttled to
-  once per second with a ten-second OS timeout and immediate teardown release.
-  No wake on media/discovery, synthetic key repeat or teardown events. Hosted
-  non-waking activity and real-QUIC authorization tests passed in signed hosted
-  run 35066026592 at `8a60ee3`; signing/notarization passed. Not installed.
-  Linux and Client are unchanged by this fix.
+- Active work: `macos-auth-recovery` in a separate worktree. It is not merged.
+  The primary worktree's `rk3576-client` research branch and uncommitted notes
+  remain untouched. Published mainline remains Host 1.0.106, other products
+  1.0.105. Do not select an old candidate paragraph as the current source.
 
 - Candidate 1.0.113 adds Retina-aware Mac Match Client: current logical desktop
   size AND current compositor backing pixels, for example 1710x1107 points at
-  3420x2214 pixels. Display preparation is schema 3 with an explicit 1x/2x scale;
-  matching Host/Client builds are required. Manual modes and Linux Client remain
-  1x; Linux Host/EDID are unchanged. Mixed-scale dual displays fail explicitly.
-  See `docs/development/plans/macos-retina-match-client.plan` for scope/gates.
-  Hosted Mac Host/Client compilation and live acceptance are pending. Local
-  Python CI policy checks (14), Python syntax and shell/diff checks passed.
-  An attempted standalone topology test with this machine's Qt5 is not a valid
-  Qt6 product test and did not compile; no Qt5 compatibility was added. The
-  candidate's required Qt6.10.2 runner test remains the actual compile gate.
+  3420x2214 pixels. Display preparation is schema 3 with explicit integer 1x/2x
+  scale; matching Host/Client builds are required. Manual modes and Linux
+  Client Match Client remain 1x; Linux Host/EDID are unchanged. Mixed-scale
+  dual displays fail explicitly. Mac Match Client preserves its measured
+  fullscreen mode and uses backing-pixel presentation tiles.
+  See `docs/development/plans/macos-retina-match-client.plan`.
 
-- 1.0.111 candidate source is committed/pushed at
-  `02ec80f456d4d242c9101a7b00120726673feda1`; Client gitlink
-  `a5ad0e9436f1ccaee6a0e5b54702a74b8d805ef8`. Not merged.
-  Signed Host run 35061632741 passed: 509 authentication checks, 23 synthetic
-  display cases, six TLS recovery scenarios, existing pen/audio/installer gates
-  and signing/notarization. Collected under
-  `candidates/1.0.111-macos-auth-recovery/macos/` and installed on the affected
-  Mac. Package SHA256 `cd9534b9b7f0e00b482b3c9c410b00cec63432dd737235f2a0f525111f1720d1`;
-  installed binary matches payload
-  `ab2d6fd78539945ed83401694758508d0c1612417d479db7c89e3c98df0e956b`.
-  Real authenticated topology passed. Exact real display preparation passed
-  3024x1964, 3456x2234, 2880x1864, 5120x2160, then restored 1920x1080;
-  each took 0.28–0.62 seconds. These are setup checks, not streamed-video or
-  laptop acceptance. Authentication/topology also passed after over ten minutes
-  idle; the owned virtual display remained active, so this is not a proven
-  real sleep/wake cycle. Mac Client run 35061634744 compiled the application but
-  failed the new standalone Qt fixture because its build omitted the documented
-  SDK27 arm_acle.h include. Corrected in the build script and runbook; no Client
-  package was produced by that run. Corrected signed Client run 35062445761
-  passed from `fe5a9bbeed6907f80bf4d8470dac523983ac4b81`: 16 topology tests,
-  package/version/dependency gates, signing/notarization and Gatekeeper.
-  DMG collected in the same candidate catalog, size 86,345,482; SHA256
-  `ad37e0638f4f461523d05185dbf56e28fc173c91ba682e48a0f6355d5d197141`.
-  Client is ready for manual installation, not remotely installed.
-  Next: operator laptop test with Match Client, checking native desktop size
-  and disconnect/reconnect without topology errors. No merge before acceptance.
-  No sleep settings, TCC, desktop login or physical display modes were changed.
+- Signed Host 1.0.113 passed hosted run 35067335971 at
+  `527cd5236e832396b6ed410fde4d9f00b345cefa`. Gates include 29 synthetic
+  display/recovery cases, authenticated TLS schema-3 preparation/negative cases,
+  real-QUIC no-media setup/teardown, 128 permission-denied setup cleanup cycles,
+  129 non-waking activity checks, 216 native-input checks across eight scenarios,
+  existing audio/installer tests and signing/notarization. Collected under
+  `artifacts/packages/candidates/1.0.113-macos-auth-recovery/macos/`.
+  PKG size 6,611,113; SHA256
+  `2d40969bb830ae761f2f5581ed3db0f97404a2b3b440f7bf1ec55f465ed7f496`.
+  Not installed; live Retina acceptance remains pending.
 
-  Dynamic Mac Match Client dimensions (even 2–8192 per
-  axis) use the same native-pixel lookup before authentication and streaming.
-  Host mode registration keeps presets plus one requested custom 60 Hz mode;
-  offline settings mutation remains forbidden. Linux EDID selection is unchanged.
-  Shared topology fixtures now run during hosted Mac Client builds.
-  Live 1.0.110 woke the desktop but exposed a subsequent capture-reconfiguration
-  race; 1.0.111 adds a bounded, authorized geometry-settle wait without repeating
-  authentication. Synthetic TLS tests cover delayed readiness and permanent
-  unavailability. Operator acceptance remains pending; full Client retry-lifecycle work
-  remains outstanding.
+- Client 1.0.113 source is `ec17fc4`, Client gitlink
+  `eb2d5ac1cc00630bd448b16976a15f93443ee15e`.
+  Signed Mac run 35067619279 and Ubuntu run 35067622416 passed. The Mac job
+  passed all 18 topology/request tests plus dependency/version/signing/notary
+  gates; Ubuntu passed dependency, version, private-FFmpeg and autostart gates.
+  Both packages are collected under the same version/platform catalog.
+  DMG SHA256 `a260b5d42ae87dc8d70a72dec786b461e0381c2a3d2ea09e5721d96bf7ecd4aa`;
+  DEB SHA256 `40ac84f2077f12573345283c8d27e42283f32226e29261c7e124a68f4f27b50a`.
+  Earlier Client runs 35067338936/35067341704 were deliberately cancelled before
+  producing packages to include the fullscreen/presentation correction.
+  Host source is unchanged between those two root revisions. Do not rebuild
+  or relabel the already-collected Host just to equalize provenance hashes.
+  Local CI policy checks (14), bundle permission tests (seven pass/one Mac-only
+  skip), Python syntax and shell/diff checks passed. An unsupported local Qt5
+  attempt did not compile; no Qt5 compatibility was added. Required Qt6.10.2
+  runner tests, not that attempt, are the Client compile gate.
 
-- 1.0.110 passed hosted run 35060603472 at
-  `fe2996c567aab27c210ff6087648adcb362f2c7c`, including 18 display recovery checks.
-  Collected and installed with matching payload hash and signature checks.
-  Package SHA256 `0c41d5e08b652b570ae5bf2af76e04cddd2e34ab11b0f8392794f26af89b90ba`;
-  installed binary `8b18176d60fab53c57331ece2f5e6a1b6afdc1261d088dcad90514c1abbda9b0`.
-  Authentication passed; topology still returned HTTP503 because geometry was
-  queried immediately after wake during display reconfiguration. Not accepted.
-  Authenticated topology recovery now also wakes the current
-  desktop before the first virtual-display preparation. Previously a fresh
-  desktop worker required topology before preparation, but only recovered an
-  already-created owned output. Bootstrap recovery is wake-only, bounded and
-  cancellation/ownership checked; no physical modes or sleep settings change.
-  Synthetic coverage adds bootstrap wake, authorization loss, concurrent
-  admission, wake failure and missing-display timeout.
-  Next requested work: dynamic native-pixel Match Client modes for Mac Hosts;
-  retain manual presets and Linux EDID behavior. Keep changes separately tested.
+- Secure-unlock fix is included: nine native lock-screen password rejections
+  logged `The user did not become active for authentication. Fail the auth`
+  after a five-second wait. Separate account verification succeeded; changing
+  Shift/Caps did not help. A temporary `caffeinate -u -t 180` changed
+  UserIsActive from 0 to 1 and the operator unlocked normally, with native
+  `checkAuth result: 1`. The temporary assertion was explicitly stopped.
+  Root `8a60ee3` (1.0.112, signed run 35066026592 passed) now reports only
+  authorized real input as local console activity, at most once per second,
+  with a ten-second OS timeout and immediate teardown release. No permanent
+  power setting, TCC change, password logging or synthetic repeat/cleanup wake.
+  The permanent implementation is not yet live-qualified.
 
-- 1.0.109 passed hosted run 35059613856 at
-  `7608a4b75c343e00935da40747669c8edd7b6779`; 19 isolated-channel cases,
-  509 auth-session checks, topology recovery and existing package/signing gates.
-  Collected `candidates/1.0.109-macos-auth-recovery/macos/`, size 6,608,164,
-  SHA256 `3bb9aff9d594ba49f8bc20153e5a01252241e9ec4afc863611188a39e725b14f`.
-  Transferred/verified but NOT installed; affected Host still runs 1.0.108.
-  Operator stopped the retrying Client: connections and diagnostic growth stopped;
-  isolated real PLANK authentication then succeeded in 0.174 seconds.
-  The remaining topology failure is HTTP503 after successful authentication;
-  Client displays Qt network enum403, NOT HTTP403/permission denial.
-  Endpoint discovery remains HTTP200. Client retry-lifecycle simplification is
-  still outstanding; do not claim it was fixed by Host-only cooldown changes.
+- Earlier fixes on this branch: abandoned setup-token replacement/cleanup,
+  bounded verifier diagnostics and successful-auth cooldown reset; authenticated
+  bootstrap wake and bounded topology-settle wait; dynamic exact Mac display
+  dimensions. See the auth/media/display recovery plans and Git history.
+  The affected Mac still runs 1.0.111. Its real authenticated display preparation
+  passed 3024x1964, 3456x2234, 2880x1864 and 5120x2160, then restored 1920x1080.
+  These are geometry checks, not full streamed acceptance. Client endless-retry
+  lifecycle simplification remains outstanding; do not claim Host fixes solved it.
 
-- Follow-up candidate 1.0.108 is built and installed on `macos-auth-recovery`.
-  After the token-capacity correction, native directory verification passed
-  but PLANK still returned denied on the affected Mac. Diagnostics subsequently
-  identified retry cooldown. Helper unavailability maps to busy, not bad credentials;
-  bounded fixed-stage diagnostics distinguish directory, private-channel and
-  desktop-authority failures without account/credential/token logging.
-  Full isolated-helper tests join the hosted Host package gates. No security
-  check was removed; no Client/Linux or display-power change. Do not describe
-  this diagnostic candidate as an accepted login fix before live testing.
-  Hosted run 35059051412 passed from e7fa9cec2d44af880ec55c9e5fc5d52d477928fa:
-  509 session checks, 18 isolated-channel cases, 27 account-policy cases,
-  seven negative verifier cases, 32 topology failure/relogin cycles, existing
-  package gates and signing/notarization. Initial run 35058870303 failed on a
-  new enum/class name collision; corrected before successful build/install.
-  Package SHA256 `7f78c8e7547bd1dc1e23b15820046e3aee13ce7448b0e129402438c6aa3a9235`,
-  size 6,608,276; catalog `candidates/1.0.108-macos-auth-recovery/macos/`.
-  Installed executable matches payload SHA256
-  `9529409b8d338292e4e99a38d190004a04b5399f5dd0a51dfac52be99ee97b28`.
-  Live failures now identify retry-cooldown, without observed directory rejection.
-  Operator requested to quit the reconnecting Client for an isolated test.
-  Candidate 1.0.109 clears cooldown after successful verification only; failed
-  attempts retain backoff and all verification remains serialized/bounded.
-  This fixes legitimate logins competing with successful reconnect attempts,
-  not the separate inactive-display issue or full reconnect lifecycle yet.
+- Next: coordinate Host installation (never
+  interrupt a production session unannounced), then operator laptop acceptance:
+  readable/sharp Retina desktop, pointer alignment, disconnect/reconnect,
+  manual 1x restoration and secure unlock without temporary caffeinate.
+  No merge or release publication before acceptance. Private deployment
+  details and captures remain outside Git.
 
-- Active fix: `macos-auth-recovery`, isolated worktree, candidate 1.0.107.
-  Fixes abandoned macOS setup-token capacity exhaustion; see
-  `docs/development/plans/macos-auth-recovery.plan`. No Client/Linux changes.
-  Source/package commit `b7407097fef78f10952f9969d6711d92ed454890` is pushed.
-  Signed hosted run [35057106376](https://github.com/instinctual/plank/actions/runs/35057106376)
-  passed: 504 authentication checks, 32 real-TLS failed topology/relogin cycles,
-  success/revocation/timeout recovery, 11 synthetic display checks, existing
-  audio/pen/installer gates, signing/notarization/stapling/Gatekeeper.
-  Collected `artifacts/packages/candidates/1.0.107-macos-auth-recovery/macos/plank-host_1.0.107-macos-auth-recovery_arm64.pkg`;
-  6,607,323 bytes; SHA-256
-  `f32a23094dabc1df8d0f2468c0694c12853f5a770c6d6fae3a232e20827c5fe2`.
-  Source/manifest and transferred checksum match. Functional validation remains
-  not-recorded; next is operator reconnect testing. No new
-  Client is required. Display wake failure is separate and not fixed here.
-  Protected signing now also permits this exact candidate branch, without
-  widening access for other branches or public PRs. Known unchanged Quinn
-  dead-code warnings do not affect the passing package gates.
-  Operator-authorized upgrade on the affected Mac succeeded. Installer signature,
-  notarization and transferred package hash passed; installed executable matches
-  the extracted payload (`67970b312c8e5665b34bc9dda43ec1831e8549f6432771abaf66a3a82085a264`).
-  Installed version and deep/strict signature verified; coordinator and desktop
-  worker restarted and the control listener is active. Capture still reports an
-  inactive display; no power settings or desktop session were changed. This is
-  installation/startup validation, not successful reconnect acceptance.
-  The separate `rk3576-client` research
-  branch and its uncommitted notes remain untouched in the primary worktree.
-
-- Working branch: `main`. Accepted macOS media recovery is merged/pushed at
-  `4b634071d0aa96c5568e90068f5f42b7cd953365`.
-  Host-only 1.0.106 removes offline virtual-display settings
-  reapplication, adds recoverable audio overruns/bounded audio restart and
-  follows default-output volume/mute. See
-  `docs/development/plans/macos-media-recovery.plan`.
-  Code is committed/pushed at `9af28c1356adada0dc70a1513d80551b37c5479d`.
-  Signed hosted run [35032611418](https://github.com/instinctual/plank/actions/runs/35032611418)
-  passed and its installer is collected under
-  `artifacts/packages/candidates/1.0.106-macos-media-recovery/macos/`.
-  Package: `plank-host_1.0.106-macos-media-recovery_arm64.pkg`, 6,606,315 bytes;
-  SHA-256: `46fc5bbb8501dee80028bbf284507e476103f318cce866c76d7c8c5767e369dc`.
-  Transfer hash and source manifest match the runner. The operator confirmed
-  volume/mute works, reported good behavior so far and approved merge/rebuild.
-  This is not an exhaustive long-duration or sleep/recovery qualification.
-  Mainline signed rebuild passed at that exact merge commit in
-  [35035036281](https://github.com/instinctual/plank/actions/runs/35035036281).
-  Collected: `artifacts/packages/releases/1.0.106/macos/plank-host_1.0.106_arm64.pkg`,
-  6,606,256 bytes; SHA-256:
-  `bdb59fb5ddf2df0afb4704920684b83d81c9b8975602e3d643bed5dd1c8d3e49`.
-  Runner provenance and transferred checksum match. Audio/display/pen/installer
-  tests, signing, notarization, stapling and Gatekeeper passed again on main.
-  Package validation is `passed`; functional validation remains `not-recorded`
-  for this exact mainline installer. Release notes: `docs/releases/1.0.106.md`.
-  Published [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106)
-  with the signed Host PKG, manifest and checksums. The annotated tag identifies
-  the exact merge/build commit above, not subsequent documentation commits.
-  GitHub asset digests match all three local files. Published checksums use flat
-  asset filenames; the local catalog retains platform subdirectories.
-  No agent installation or session interruption.
-  No Client update is needed. All maintained gitlinks below are unchanged.
-
-Candidate validation: 11 synthetic display-recovery checks, 100 audio-tap
-lifecycle races, synthetic output-volume/mute policy and actual recovery
-controller with fake audio boundaries all pass on SDK/OS 27. Existing Opus
-fixture passed 6,998 checks; pen fixture passed 1,130 non-posting checks;
-installer passed 29 checks. Developer ID signing, notarization, stapling,
-Gatekeeper and temporary-keychain cleanup passed. Local portable ring test
-passed 100,000 concurrent blocks, wraparound and overflow/resumption, including
-Clang ASan/UBSan outside the sandbox. GCC ASan could not link its missing local
-runtime; sandboxed LeakSanitizer cannot inspect threads. Neither limitation was
-treated as a product failure or a passed test. Local CI policy (14), bundle
-permission tests (7 passed/1 Mac-only skipped) and 23 installer shell checks pass.
-- Previous full-platform release: [v1.0.105](https://github.com/instinctual/plank/releases/tag/v1.0.105).
-  Its Linux Host and Linux/macOS Clients remain current; 1.0.106 updates only
-  the macOS Host.
-  All four packages were clean-bootstrapped and rebuilt on GitHub runners at
-  `78e068edf9240de44e2aea5949dd94df713468b0`. The annotated tag identifies
-  that exact build commit, not subsequent documentation commits.
-- Notes: `docs/releases/1.0.105.md`. Packages, manifest and checksums:
-  `artifacts/packages/releases/1.0.105/`.
-- No workstation packages were installed for this release. Fresh live hardware/
-  session tests were not performed; manifests correctly retain functional
-  validation `not-recorded` and package validation `passed`.
-- Deleted the fully merged `github-builds`, `macos-display-recovery` and
-  `macos-media-recovery` branches locally and remotely at the operator's request.
-  Only `main` remains in this repository; release tags and history are retained.
-  Other repositories and their branches were not changed.
+- The operator requested dependency caching after these builds. Add exact-input
+  Mac Client dependency/Qt caches, never application builds or signing material;
+  retain an explicit uncached bootstrap. This is CI-only follow-up, not a new
+  application version or permission to merge the unaccepted Retina candidate.
 
 ## Release evidence
+
+Latest published Host-only release: [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106),
+mainline source `4b634071d0aa96c5568e90068f5f42b7cd953365`, signed run
+35035036281. Catalog `releases/1.0.106/macos/plank-host_1.0.106_arm64.pkg`;
+SHA256 `bdb59fb5ddf2df0afb4704920684b83d81c9b8975602e3d643bed5dd1c8d3e49`.
+GitHub asset hashes match the local catalog. The other three products retain
+1.0.105 below. Feature candidates in Current state do not replace published main.
 
 All four exact-source runs passed:
 
@@ -315,8 +185,9 @@ not imply missing release dependencies.
 
 ## Remaining gates and publication boundaries
 
-Mainline macOS Host 1.0.106 is rebuilt, collected and checksum-verified, ready
-for manual installation. The merged feature branch has been deleted.
+Mainline macOS Host 1.0.106 is published, collected and checksum-verified.
+Its completed `macos-media-recovery` branch was deleted; current
+`macos-auth-recovery` and unrelated research work are still separate.
 Volume/mute is operator-validated. Longer app/alert audio, device changes,
 sleep/reconnect/topology and login/logout remain follow-up coverage, not
 blockers invented beyond the operator's merge approval. Inspect the new audio
