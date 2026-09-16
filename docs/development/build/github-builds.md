@@ -156,6 +156,12 @@ failed job's first error, not the final nonzero-exit summary.
 Use `bash scripts/ci/dispatch.sh linux-host` (or another product) after pushing.
 It requires a clean, fully pushed branch and passes its exact expected SHA.
 The policy job rejects a stale dispatch revision before costly bootstrap.
+
+Diagnostic-only `macos-fullscreen-probe` additionally requires `signed=true`.
+It builds the standalone AppKit probe, not either product, and uses the same
+protected environment/cleanup. It skips product dependency bootstrap entirely
+and uploads a separate `diagnostics/` catalog with source/hash evidence. See
+`probes/macos/fullscreen-window.md`; no ordinary push/PR signs this diagnostic.
 Always compare a run's `headSha` with the intended commit: an immediate dispatch
 after pushing can otherwise select the prior revision during ref propagation.
 

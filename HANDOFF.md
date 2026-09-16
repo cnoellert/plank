@@ -5,6 +5,15 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Standalone fullscreen diagnostic is being prepared as
+  `1.0.118-macos-fullscreen` on the existing branch. No Host/Client source or
+  dependency changed. `probes/macos/fullscreen-window.m` offers five explicit
+  AppKit cases with geometry-only private logs and visible edge markers.
+  Hosted signing reuses the protected environment and isolated keychain;
+  probe compilation runs credential-free without product dependency bootstrap.
+  Read `probes/macos/fullscreen-window.md`. Native compile/sign/notarization and
+  laptop execution are pending; do not treat source guards as a geometry pass.
+
 - Current work is `macos-fullscreen` in the separate worktree (directory still
   named macos-auth-recovery), based on main root `15e6000`, Client `e8fc0cc0`.
   Candidate 1.0.117 restores native macOS fullscreen Spaces and opts into a
@@ -21,10 +30,19 @@ notes' README before machine-specific work; deployment information stays outside
   Hash-verified DMG (86,188,280 bytes) is collected at
   `artifacts/packages/candidates/1.0.117-macos-fullscreen/macos/plank-client_1.0.117-macos-fullscreen_arm64.dmg`.
   SHA256: `236ce095c42cbf79ab607e5b4924f3d61bc3e03497ccabc97529a587f95cf438`.
-  Laptop gesture/notch acceptance remains pending: install the Client only,
-  test swiping away/back, border-free Match Client and toolbar/pointer alignment.
-  If sizing is still restricted, inspect the new native fullscreen content
-  and Mac presentation geometry log lines before changing the approach.
+  Operator tested 1.0.117: native fullscreen swipes work, but top/side borders
+  returned. Uploaded Client geometry logs confirm the delegate runs and requests
+  1710x1107 points; AppKit settles at frame/content 1710x1073 and drawable
+  3420x2146, while Match Client requested a 3420x2214 stream. This is a native
+  window constraint, not a missing patch or renderer-only letterbox bug.
+  Full-panel acceptance FAILED; do not merge or claim the callback fixes it.
+  Operator requested continued full-panel/native-Space investigation. Next:
+  isolated AppKit probe of custom fullscreen animation and documented frame-
+  constraint override, inspired by mpv's Window subclass (absent in SDL3.4.2).
+  This is an unproven hypothesis, not a fix. Helium's notch demo and Ghostty's
+  full-panel mode bypass native Spaces and do not demonstrate the requirement.
+  The plan records references, alternative child-window hypothesis and gates.
+  No further product code/build after the log diagnosis; notched live test needed.
   This is Client-only: no Host update, automatic install or merge is planned.
   See `docs/development/plans/macos-fullscreen.plan`.
 

@@ -10,7 +10,7 @@ on:
         description: Product to rebuild (all on ordinary push/PR)
         type: choice
         default: all
-        options: [all, linux-host, linux-client, macos-host, macos-client]
+        options: [all, linux-host, linux-client, macos-host, macos-client, macos-fullscreen-probe]
       source_sha:
         description: Expected commit (optional in UI; required by the dispatch helper)
         type: string
@@ -113,7 +113,7 @@ jobs:
         run: df -h
 
   macos:
-    if: ${{ !inputs.signed && (!inputs.product || inputs.product == 'all' || startsWith(inputs.product, 'macos-')) }}
+    if: ${{ !inputs.signed && (!inputs.product || inputs.product == 'all' || inputs.product == 'macos-host' || inputs.product == 'macos-client') }}
     needs: policy
     runs-on: xcode-27
     timeout-minutes: 120
@@ -175,7 +175,7 @@ jobs:
         run: df -h
 
   macos-signed:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed && (inputs.product == 'macos-host' || inputs.product == 'macos-client') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed && (inputs.product == 'macos-host' || inputs.product == 'macos-client' || inputs.product == 'macos-fullscreen-probe') }}
     needs: policy
     environment: macos-signing
     runs-on: xcode-27
@@ -190,7 +190,7 @@ jobs:
           persist-credentials: false
       - name: Validate target and clean source
         run: |
-          case "$PLANK_CI_PRODUCT" in macos-host|macos-client) ;; *) exit 2;; esac
+          case "$PLANK_CI_PRODUCT" in macos-host|macos-client|macos-fullscreen-probe) ;; *) exit 2;; esac
           test "$(uname -m)" = arm64
           test "$(sw_vers -productVersion | cut -d . -f 1)" -ge 27
           test "$(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1)" -ge 27
