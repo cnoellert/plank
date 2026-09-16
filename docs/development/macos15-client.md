@@ -391,6 +391,20 @@ checks, dependency closure and ad-hoc signatures pass. Executable SHA-256:
 The prepared Host layout remains temporary and requires the saved restoration
 procedure after testing.
 
+### Remaining fullscreen right-click activation issue
+
+After accepting the drag correction, the operator reports that each fullscreen
+presentation window needs an activation click before right-click works there.
+Native focus does not follow pointer movement between the two windows. This is
+an observed remaining input defect; its exact event-loss point is unconfirmed.
+`SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH` is already enabled, and the shared input
+handler does not explicitly gate right-clicks on keyboard focus. Investigate
+native event delivery, output routing and Host receipt before choosing a focus
+policy. The first right-click after crossing into either output must work
+without a separate activation click. Retain the validated held-drag behavior
+and release handling when correcting this path. No Client or Host state change
+was made in response to this observation.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

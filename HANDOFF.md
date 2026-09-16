@@ -105,6 +105,14 @@ Current state: corrected Client left connected for continued operator testing,
 local probe closed, two native-resolution Host monitors prepared; original
 layout restoration remains due when the operator finishes testing. This accepts
 the fullscreen drag correction, not all multi-monitor/color/pacing gates.
+The operator reports a remaining fullscreen input issue: right-clicking the
+other presentation window requires a prior activation click; native focus does
+not follow the pointer. This is not covered by the accepted drag test. First-click
+forwarding is already enabled in SDL, and the shared mouse handler does not
+explicitly reject right-clicks solely for missing keyboard focus. Trace native
+button receipt, focus and Host delivery before changing focus policy. Acceptance:
+first right-click after crossing either direction works without an activation
+click, while held seam dragging and button release continue working.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
