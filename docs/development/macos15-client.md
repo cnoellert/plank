@@ -307,6 +307,28 @@ case if failure persists. Preserve and verify the pre-test Host layout after
 the test instead of relying on a physical-display bookmark to restore manual
 administrative changes.
 
+### Native Host mode and windowed-start transition follow-up
+
+The operator's next screenshots showed GNOME Settings reporting the second
+output as 1024×768 and drawing a gap. The compositor still reported adjacent
+3456×2234 and 2560×1440 rectangles: the settings panel was showing the underlying
+scanout dimensions of the temporary scaling workaround. A temporary real
+3456×2234 CVT reduced-blanking mode was then added and selected successfully.
+Both NVIDIA viewport dimensions and Mutter's actual current mode now agree at
+3456×2234, without a scaling transform. The other output remains 2560×1440;
+the combined desktop stays 6016×2234. This is a temporary runtime mode, not an
+implemented Host preset or boot configuration change. Remove it after restoring
+the saved pre-test Host layout.
+
+The operator also reported that entering fullscreen after starting windowed
+only enlarged the single composite window. Source inspection confirmed that
+multi-display capability was incorrectly gated by the initial fullscreen state.
+Client `74402df` preserves that capability and creates the secondary surface
+hidden when starting windowed. Entering fullscreen shows both surfaces; leaving
+fullscreen hides the secondary again. The Client build and all 62 existing
+tests pass. Actual transition behavior, the reported reversed display order,
+and cross-display click/drag acceptance remain live test requirements.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

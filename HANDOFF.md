@@ -65,11 +65,15 @@ from clean root `af6de59` is packaged at
 `artifacts/development/macos15-multimonitor-drag/`; 106 target checks, dependency
 closure and signatures pass. The operator confirms moving and closing remote
 windows both work in Windowed mode against the restored single-display Host.
-After disconnect, the two-output Host layout was prepared again and independently
-verified in XRandR and Mutter. Current state: two Host monitors, Client Windowed
-mode at native sign-in, awaiting the same click/drag test inside one Client
-window. Restore the saved Host MetaMode after this controlled test. The
-temporary Mac refresh change has been restored to its original setting.
+The subsequent test exposed a windowed-start/fullscreen-toggle bug and a
+reported reversed monitor order. Client `74402df` keeps multi-output capability
+when starting windowed and prepares its second surface hidden; all 62 Client
+tests pass, but live transition/drag/order acceptance is pending. The Host now
+uses a temporary real 3456×2234 mode instead of scaling a 1024×768 scanout.
+XRandR and Mutter agree on actual current modes and adjacent monitor rectangles.
+Current state: two native-resolution Host monitors; Client disconnected.
+Restore the saved Host MetaMode and remove the temporary mode after testing.
+The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
