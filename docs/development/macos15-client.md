@@ -165,6 +165,16 @@ physical fullscreen outputs, with Metal API validation enabled. These are
 renderer fixture tests, not live multi-monitor session acceptance or another
 hardware decoder qualification.
 
+The self-contained candidate was staged from clean root `50544c9` and Client
+`31f6081`. All 106 Mach-O binaries pass the ARM64/macOS 15.0 target check;
+dependency closure, build-path and ad-hoc signature checks pass. The local app
+and source/test manifest are retained in
+`artifacts/development/macos15-multimonitor/`. Its main executable SHA-256 is
+`4df22074b9637a25f45dbefbf3ec02f6c33d6bb5fe285288bf72b719cbd0c2b9`.
+The candidate opens in the native desktop and reaches the Host sign-in dialog.
+The bookmark is prepared for two 1920×1080 outputs, Scaled-Span and borderless
+windowed presentation; authenticated two-monitor acceptance is still pending.
+
 Run the native probe explicitly on an authorized Mac desktop (it briefly shows
 colored windows). It is not part of an unattended headless package build:
 

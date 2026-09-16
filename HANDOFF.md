@@ -31,6 +31,13 @@ V-sync on/off and repeated single/dual renderer lifetimes. Full live two-monitor
 acceptance is pending. The Host's second scanout has been enabled for that test;
 the exact previous layout and restoration instructions are in private notes.
 Linux display matching still rejects unlisted native presets.
+The clean candidate built at root `50544c9` is staged with its manifest under
+`artifacts/development/macos15-multimonitor/`; all 106 Mach-O target checks,
+dependency closure and ad-hoc signatures pass. The native app is open at the
+Host sign-in dialog with two 1920×1080 outputs and Scaled-Span selected.
+Next immediate action: operator sign-in, then confirm two presentation outputs
+in logs and check pointer alignment on each physical display. The Host's saved
+preparation baseline must be restored after the two-monitor test is finished.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
