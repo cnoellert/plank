@@ -153,7 +153,8 @@ pass. After the operator grants Input Monitoring and the Client is relaunched,
 both physical interfaces attach successfully. The Linux Host now exposes native
 Intuos Pro M Pen, Pad and Finger nodes, with pressure maximum 8191 and two tilt
 axes. The Client reports exclusive raw forwarding active with no report I/O
-failure logged. The operator's screen recording now demonstrates variable
+failure logged. The operator also confirms that the Wacom appears in Rocky's
+Settings. The operator's screen recording now demonstrates variable
 pressure in Autodesk Flame's Input Devices / Threshold Test: the pressure bar
 changes through intermediate levels, reaches full scale and returns to zero.
 This passes application pressure delivery for this candidate. Two separate Host

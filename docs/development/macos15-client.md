@@ -483,7 +483,9 @@ The operator grants the normal macOS Input Monitoring permission; after a
 Client relaunch, the first authenticated attachment succeeds for both interfaces.
 The Linux Host independently exposes Intuos Pro M Pen, Pad and Finger nodes,
 including pressure 0–8191 and both tilt axes. The Client reports exclusive raw
-forwarding active without an I/O error. Initial attachment is verified.
+forwarding active without an I/O error. Initial attachment is verified. The
+operator also confirms the Wacom appears in Rocky's Settings, corroborating
+desktop device recognition.
 
 The operator subsequently supplies a screen recording of Autodesk Flame's
 Input Devices / Threshold Test. Reviewed frames show the pressure bar varying
