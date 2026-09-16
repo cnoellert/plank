@@ -132,9 +132,11 @@ service survival alone does not prove repeated-session cleanup is correct.
 The operator subsequently confirmed successful login and reported that keyboard
 and mouse appear to work. This establishes basic interactive use; modifier keys,
 scrolling and coordinate mapping across display modes still need focused checks.
+The operator also reports that sound is working. Basic audible playback is
+confirmed; channel placement, lip-sync and sustained playback are not yet graded.
 
-This completes the first connection smoke test. Audible sound, visual/color
-accuracy, sustained frame pacing, Retina/fullscreen mapping and reconnect still
+This completes the first connection smoke test. Visual/color accuracy,
+audio channel/sync behavior, sustained frame pacing, Retina/fullscreen mapping and reconnect still
 need acceptance checks. Mac Client tablet capture is not implemented. Packet
 delivery and decoder logs do not establish those subjective or semantic results.
 
