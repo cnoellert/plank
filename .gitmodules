@@ -1,9 +1,9 @@
 [submodule "host/sunshine-fork"]
 	path = apps/host/linux
-	url = https://github.com/instinctual/plank-host-linux.git
+	url = https://github.com/thedepartmentofexternalservices/plank-host-linux.git
 [submodule "client/moonlight-qt-fork"]
 	path = apps/client
-	url = https://github.com/instinctual/plank-client.git
+	url = https://github.com/thedepartmentofexternalservices/teraguchi-client.git
 [submodule "third_party/kyber-kymux"]
 	path = third_party/kyber-kymux
 	url = https://github.com/instinctual/plank-kymux.git
