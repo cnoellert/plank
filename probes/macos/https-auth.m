@@ -92,7 +92,6 @@ int main(int argc, const char *argv[]) {
         NSString *recoveryMode = NSProcessInfo.processInfo.environment[@"PLANK_TEST_RECOVERY"];
         __block BOOL topologyReady = recoveryMode == nil;
         __block NSTimeInterval topologyReadyAt = 0;
-        __block unsigned recoveryAttempts = 0;
         NSDictionary *(^topology)(void) = ^{
             if (!topologyReady || NSProcessInfo.processInfo.systemUptime < topologyReadyAt) return (NSDictionary *)nil;
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
@@ -144,6 +143,7 @@ int main(int argc, const char *argv[]) {
         PLANKMacHTTPSAuthServer *server = [[PLANKMacHTTPSAuthServer alloc] initWithIdentity:identity
             sessions:sessions information:information topology:topology launch:nil];
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
+        __block unsigned recoveryAttempts = 0;
         if (recoveryMode) server.recoverTopology = ^BOOL(BOOL (^valid)(void)) {
             if (!valid()) abort();
             puts("macos_recovery_called"); fflush(stdout);
