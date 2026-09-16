@@ -10,10 +10,8 @@ build=$2
 : "${PLANK_CARGO_ROOT:?}"
 : "${PLANK_BUILD_BRANCH:?Detached builds require an explicit branch}"
 [[ $(uname -s) == Darwin && $(uname -m) == arm64 ]] || exit 2
-export MACOSX_DEPLOYMENT_TARGET=27.0
-export SDKROOT
-SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
-[[ $(xcrun --sdk macosx --show-sdk-version) == 27* ]] || exit 2
+source "$source_root/scripts/build/macos-client-target.sh"
+plank_macos_client_target
 export CARGO_HOME="$PLANK_CARGO_ROOT" RUSTUP_HOME="$PLANK_RUSTUP_ROOT"
 export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C strip=none" # SDK27 proc-macro guard.
 source "$source_root/scripts/build/build-paths.sh"
@@ -35,13 +33,20 @@ printf '%s  %s\n' 059cc9c0d585d71e292cd7421a43f239b1e7ce94e8598d0a7427dfe48e5584
 patch --batch --reverse --dry-run -d "$PLANK_MAC_CLIENT_DEPS/src/ffmpeg-9.0.1" -p1 < "$patch_file"
 pkg-config --modversion sdl3 sdl3-ttf openssl opus libavcodec libavutil
 mkdir -p "$build"
+python3 "$source_root/scripts/test/check-macos-client-target.py" \
+    "$PLANK_MAC_CLIENT_DEPS/install/lib" --target "$PLANK_MAC_CLIENT_MIN_MACOS" \
+    > "$build/dependency-targets.json"
 cd "$build"
+# qmake preserves an existing bundle plist. Regenerate it from the current
+# source and deployment target before restoring the visible package version.
+rm -f "$build/app/plank-client.app/Contents/Info.plist"
 # Recursive generation is mandatory when retaining a build: otherwise existing
 # subproject Makefiles may silently retain the previous source/version/flags.
 qmake -r "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     CONFIG+=plank-transport CONFIG+=disable-libplacebo CONFIG+=disable-wayland \
     CONFIG+=disable-x11 CONFIG+=disable-libva CONFIG+=disable-libdrm \
-    QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
+    PLANK_MAC_CLIENT_MIN_MACOS="$PLANK_MAC_CLIENT_MIN_MACOS" \
+    QMAKE_MACOSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" QMAKE_APPLE_DEVICE_ARCHS=arm64 \
     PLANK_VERSION="$version" \
     "QMAKE_CFLAGS+=$PLANK_C_FILE_FLAGS" "QMAKE_CXXFLAGS+=$PLANK_C_FILE_FLAGS"
 make -j"${PLANK_BUILD_JOBS:-8}" release
@@ -51,7 +56,7 @@ mkdir -p "$build/tests/$suite"
 (
     cd "$build/tests/$suite"
     qmake "$client/tests/$suite/$suite.pro" CONFIG+=release CONFIG-=app_bundle \
-        QMAKE_MACOSX_DEPLOYMENT_TARGET=27.0 QMAKE_APPLE_DEVICE_ARCHS=arm64 \
+        QMAKE_MACOSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" QMAKE_APPLE_DEVICE_ARCHS=arm64 \
         "QMAKE_CXXFLAGS+=-include arm_acle.h"
     make -j"${PLANK_BUILD_JOBS:-8}"
     PLANK_REPO_ROOT="$source_root" QT_QPA_PLATFORM=offscreen "./$suite"
@@ -66,3 +71,6 @@ if /usr/libexec/PlistBuddy -c 'Print :PLANKVersion' "$plist" >/dev/null 2>&1; th
 else
     /usr/libexec/PlistBuddy -c "Add :PLANKVersion string $version" "$plist"
 fi
+python3 "$source_root/scripts/test/check-macos-client-target.py" \
+    "$build/app/plank-client.app" --target "$PLANK_MAC_CLIENT_MIN_MACOS" \
+    > "$build/client-targets.json"

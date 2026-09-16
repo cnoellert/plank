@@ -14,7 +14,7 @@ test -f "$archive"
 mkdir "$output"
 trap 'rm -f "$output/key.pem" "$output/cert.pem" "$output/cert.der"' EXIT
 if [[ $(uname -s) = Darwin ]]; then
-  compiler=(xcrun clang -mmacosx-version-min=27.0)
+  compiler=(xcrun clang -mmacosx-version-min="${MACOSX_DEPLOYMENT_TARGET:-27.0}")
   libraries=(-framework Security -framework SystemConfiguration -framework CoreFoundation -lpthread -lm)
   digest=(shasum -a 256)
 else

@@ -1,5 +1,9 @@
 # macOS Client build inputs and procedure
 
+For this fork's explicitly selected macOS 15 Client target, apply
+[the macOS 15 build notes](../macos15-client.md) to the procedure below.
+The default upstream deployment target remains 27.0.
+
 Experimental Apple Silicon/macOS27 only. Read the canonical release runbook
 first. Linux builder/test roles remain unchanged. Use clean Git worktrees and
 verified Git bundles imported dependency-first, with recursive fetch disabled.

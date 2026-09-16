@@ -13,6 +13,8 @@ if(BUILD_TESTING)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   add_test(NAME package-build-paths
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-build-paths.py")
+  add_test(NAME macos-client-target
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-macos-client-target.py")
   add_test(NAME package-collection
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-package-collection.py")
   add_test(NAME repository-layout

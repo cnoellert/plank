@@ -1,5 +1,9 @@
 # PLANK
 
+This fork develops an experimental Apple Silicon macOS 15 **Client**. See
+[the fork build and acceptance notes](docs/development/macos15-client.md).
+Upstream platform status below describes the upstream releases.
+
 This is a fork of Sunshine/Moonlight with deep changes relevant to secure VFX Remote Desktop workflows. 
 
 ## Status:

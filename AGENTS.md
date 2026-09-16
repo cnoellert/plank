@@ -1,5 +1,15 @@
 # Repository Guidelines
 
+## Fork scope
+
+This fork explicitly supports work on an experimental Apple Silicon macOS 15
+Client. Set `PLANK_MAC_CLIENT_MIN_MACOS=15.0` for its dependency bootstrap,
+application build and packaging. The operator authorized development and local
+Client testing on that target. This supersedes the older-OS Client prohibition
+below for this fork; the macOS Host and Linux host qualification rules remain.
+Keep dependency and application builds isolated by deployment target. Do not
+claim streaming, audio, input or tablet acceptance from compilation alone.
+
 ## Project Structure & Module Organization
 
 This repository is in late integration and production hardening. It has a
