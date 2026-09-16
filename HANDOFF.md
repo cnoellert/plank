@@ -13,17 +13,23 @@ notes' README before machine-specific work; deployment information stays outside
   inputs, never application/transport objects or credentials. Installed Linux
   package/compiler versions and dependency scripts/pins/patches invalidate keys.
   Pull requests cannot save caches; clean bootstrap bypasses restore and save.
-  Local 37 CI tests and all five root CTest suites pass. Hosted all-product
-  cold-save run `35144970937` at `478edad0ee302c22c713df1cb67b4c4c185340a5`
-  passed both Mac jobs and Ubuntu Client; Linux Host is pending. Mac Host warm-restore run
-  `35145530809` passed at the same source: restore four seconds, verified
-  bootstrap two seconds (versus eleven cold), followed by a fresh application
-  build/tests. Mac Client warm run `35145993419` passed. Ubuntu warm run
-  `35146202369` restored/verified its cache but the independent pristine-source
-  audit correctly rejected the omitted original FFmpeg archive. Cache paths and
-  completeness tests now include it; corrected cold/warm validation is pending.
-  This does not affect the separately published, cold-built 1.0.120 release.
-  No runtime changes, version bump, deployment or release publication requested.
+  Local 37 CI tests and all five root CTest suites pass. Hosted cold/warm
+  qualification passed for all four products; exact runs and phase timings are
+  in `docs/development/build/github-builds.md`. Linux Host cold/warm used
+  `35144970937` attempts 1/2 at `478edad0ee302c22c713df1cb67b4c4c185340a5`.
+  The Ubuntu-specific archive correction is `64f368a4fdb58cc0de267bc8f59ec108a8f43be8`;
+  its cold/warm runs `35146540028` / `35147537196` both passed. Initial warm
+  run `35146202369` was correctly stopped by the source audit because the cache
+  omitted the pristine FFmpeg archive. The archive is now cached and required
+  by completeness tests; no source/patch gate was weakened. Mac Host warm run
+  `35145530809`, Mac Client warm run `35145993419`, and an additional Mac Host
+  cold build at the corrected source (`35146543166`) passed.
+  The Ubuntu correction changes cache keys but not the qualified Host cache
+  contents/logic. Application and transport source revisions remain identical
+  to the 1.0.120 release below. No runtime change, version bump or deployment.
+  Branch is pushed, not merged. Next: merge the CI-only branch when requested;
+  the first main build must populate its own branch-scoped caches. Do not
+  relabel the CI test packages or replace the published 1.0.120 assets.
 
 - Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
   push, merge and a full rebuild. Root merge `53c7c3988f88a440f1cffeda0ce61ed526de6c43`

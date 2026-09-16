@@ -110,8 +110,8 @@ standard runner is insufficient; record the resource limitation first.
 ### Exact-input dependency caches
 
 All four products support dependency caching (including unsigned and signed
-Mac jobs). The new Linux/Host caches require cold-save/warm-restore hosted
-qualification; local policy tests alone do not prove a hosted speedup.
+Mac jobs). Cold-save/warm-restore qualification is recorded below; local policy
+tests alone do not prove a hosted speedup.
 
 | Product | Cached inputs |
 | --- | --- |
@@ -139,6 +139,36 @@ the selected key, required outputs must exist, and Linux FFmpeg patches are
 checked independently before bootstrap. Existing package/source gates still
 run. A mismatched/incomplete cache fails closed rather than silently using
 unverified dependencies. Use a clean-bootstrap build to diagnose such a failure.
+
+#### Four-product qualification
+
+All listed runs passed full application build/tests after dependency bootstrap;
+Linux jobs also passed package gates. Mac runs here were unsigned, not deployment
+or signing qualification. Existing signed release gates remain unchanged.
+
+| Product | Cold run | Warm run | Bootstrap cold / warm | Warm restore |
+| --- | --- | --- | --- | --- |
+| Linux Host | 35144970937, attempt 1 | 35144970937, attempt 2 (Host job only) | 4m29s / 23s | 12s |
+| Ubuntu Client | 35146540028 | 35147537196 | 5m06s / 3s | 4s |
+| macOS Host | 35144970937, attempt 1 | 35145530809 | 11s / 2s | 4s |
+| macOS Client | 35144970937, attempt 1 | 35145993419 | 6m26s / 16s | 14s |
+
+These are dependency-phase times, not total-job benchmarks. OS package
+installation, source checkout/key selection, fresh application builds/tests
+and packaging still take time. Linux Host dependency-source checkout was about
+4m19s in both runs, outside the bootstrap times shown.
+
+Host and initial Mac runs used `478edad0ee302c22c713df1cb67b4c4c185340a5`;
+the Mac Client warm run used docs-only successor `265fba442d690a18f85e7d232dae36241947c789`.
+Ubuntu used `64f368a4fdb58cc0de267bc8f59ec108a8f43be8`, which adds its original
+FFmpeg archive to the cache and required-file checks. That Ubuntu-only content
+correction invalidates new cache keys without changing Host cache logic or
+paths; Mac Host also passed cold run 35146543166 at that source.
+
+The first Ubuntu warm experiment (35146202369) correctly failed the pristine-
+source audit: patched sources and libraries alone are insufficient. Always
+retain the original checksum-verified FFmpeg archive, which packaging extracts
+for its full-source comparison. Do not disable that audit to accept a cache hit.
 
 #### Existing Mac Client qualification
 
