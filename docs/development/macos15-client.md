@@ -80,11 +80,32 @@ Tested on an M4 Max running macOS 15.7.4 with Command Line Tools/SDK 26.2:
   H.264 hardware probe did not succeed. These are FFmpeg fixture checks, not
   full Client Metal presentation or throughput tests.
 
-No live Host session has been qualified. Audio, keyboard/mouse delivery,
+## First Linux Host installation — 2026-09-16
+
+The operator authorized installing the published Linux Host `1.0.105` on the
+hardware test workstation. Its Rocky 9.5 installation satisfies the RPM's
+actual dependencies (including backported glibc symbols); the RPM transaction
+test and installation succeeded without an OS upgrade. This is an experimental
+compatibility result, not a change to upstream's Rocky 9.7 qualification baseline.
+
+- The Host, PAM broker and display preparation services are enabled and active.
+  The existing HP Anyware service remains active, and the X11 session remains
+  active. Both startup and the Client bookmark select physical displays.
+- The NVIDIA RTX 5000 Ada startup probe reports direct NVENC support for
+  H.264 8-bit 4:4:4 and HEVC 8/10-bit 4:4:4. NvFBC provides an 8-bit source;
+  a 10-bit encoding profile does not prove 10-bit source capture.
+- The Mac reaches the HTTPS control service with TLS 1.3 and certificate
+  verification against the Host's public certificate retrieved through SSH.
+  Server metadata advertises the expected authentication and topology protocol.
+- The packaged Client's command-line discovery reports the Host online and
+  correctly requires workstation credentials. No password was supplied to that
+  diagnostic. The graphical launcher showed an offline bookmark during automated
+  interaction; foreground/manual sign-in and the cause of that discrepancy
+  remain to be checked.
+
+No authenticated live Host session has been qualified. Audio, keyboard/mouse delivery,
 streamed color/pixel equality, sustained frame pacing, Retina/fullscreen
-mapping and reconnect remain live gates. The upstream Linux Host qualification
-baseline remains Rocky 9.7; installation on older Rocky releases requires a
-separate compatibility review. Mac Client tablet capture is not implemented.
+mapping and reconnect remain live gates. Mac Client tablet capture is not implemented.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

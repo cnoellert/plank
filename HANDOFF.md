@@ -8,8 +8,15 @@ the operator's local `private-notes/macos15-client.env` before continuing.
 The self-contained development Client builds and opens on macOS 15.7.4.
 Client tests, minimum-OS/dependency checks, real transport loopback and the
 portable root qualification suites pass. Live host streaming is not qualified.
-Next: first authorized Linux Host connection, then video/audio/input/reconnect
-acceptance. Mac Client Wacom capture remains separate implementation work.
+Published Linux Host 1.0.105 is now installed on the operator-authorized hardware
+test Host. Its RPM dependencies and transaction pass on the installed Rocky 9.5;
+Host/PAM/display services are active, with physical display policy and the
+existing HP Anyware service still active. HTTPS certificate verification and
+Client command-line discovery pass. The graphical launcher has an offline-state
+discrepancy pending foreground/manual checking; workstation sign-in and a live
+stream remain untested. Next: resolve that discrepancy and complete first sign-in,
+then video/audio/input/reconnect acceptance. Credentials must be entered directly
+in the Client. Mac Client Wacom capture remains separate implementation work.
 The upstream operational record below is retained as source context; its
 installation and signing authorizations do not describe this fork's machines.
 
