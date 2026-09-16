@@ -499,6 +499,20 @@ Full-display cursor alignment, pen buttons, eraser, forwarded tilt/pad/touch
 behavior and focus/reconnect recovery remain unqualified. No implementation
 change was made in response to the empty captures.
 
+### Raw tablet fullscreen focus follow-up
+
+The operator reports the tablet has the fullscreen focus-following problem
+previously fixed for the mouse. The mouse handoff runs only on SDL mouse
+motion/button events; the raw tablet path updates the passive cursor from Host
+positions and did not call it. Client `b2837fb` now uses a fresh Host tablet
+position to select the presentation window for the same focus handoff. Raw
+forwarding does not move the Mac's pointer, so its position cannot validate the
+tablet's target. Both paths still require active capture and existing focus in
+a presentation window, reject hidden/minimized/non-fullscreen targets, and
+preserve native mouse drags. Stale tablet positions after mouse takeover or
+capture/connection epoch reset are rejected. Build and live acceptance remain
+pending; this does not yet accept pen buttons or cross-output tablet drags.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

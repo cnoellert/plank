@@ -163,6 +163,12 @@ established, so they remain inconclusive. The private recording is the acceptanc
 evidence. Full-display cursor/mapping, buttons/eraser/tilt/pad/touch behavior and
 focus/reconnect recovery still need live qualification. The Client remains
 connected for operator testing.
+The operator reports the tablet also needs fullscreen focus handoff. Client
+`b2837fb` now routes fresh Host tablet positions through the existing presentation
+focus helper, without comparing them to the stationary Mac mouse pointer.
+Mouse drag guards and the requirement for existing presentation-window focus
+remain in place. A regression covers stale positions after mouse takeover and
+cursor epoch reset. Candidate build and live pen/button/drag acceptance are pending.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
