@@ -5,7 +5,8 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Dependency-cache follow-up is on `dependency-cache`, based on main `4001161`.
+- Dependency-cache follow-up is merged and pushed to main at
+  `4bd87fbcf5c96d177006ac0ea0c99b532396d5b5` (based on main `4001161`).
   All four hosted products are wired for exact-input caches; the previously
   qualified Mac Client cache format is unchanged. New Linux Host/Client caches
   retain prepared FFmpeg and patch-verification sources; Host also retains
@@ -27,9 +28,16 @@ notes' README before machine-specific work; deployment information stays outside
   The Ubuntu correction changes cache keys but not the qualified Host cache
   contents/logic. Application and transport source revisions remain identical
   to the 1.0.120 release below. No runtime change, version bump or deployment.
-  Branch is pushed, not merged. Next: merge the CI-only branch when requested;
-  the first main build must populate its own branch-scoped caches. Do not
-  relabel the CI test packages or replace the published 1.0.120 assets.
+  Post-merge hosted run `35148481593` is in progress at that exact merge SHA;
+  it populates main's branch-scoped caches. Do not relabel the CI test packages
+  or replace the published 1.0.120 assets. No additional deployment requested.
+  Completed root branches `dependency-cache`, `macos-auth-recovery`,
+  `macos-fullscreen` and `reconnect-lifecycle`, plus the Client's three matching
+  macOS/reconnect branches, were deleted locally and remotely after ancestry
+  checks against pushed main. Their commits remain in main. Root, Client,
+  Linux Host and Kymux remotes now have only main. Preserve the local
+  `rk3576-client` research branch and its dirty primary worktree; it is not
+  disposable merely because its committed starting point is an ancestor of main.
 
 - Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
   push, merge and a full rebuild. Root merge `53c7c3988f88a440f1cffeda0ce61ed526de6c43`
@@ -264,7 +272,7 @@ notes' README before machine-specific work; deployment information stays outside
 ## Release evidence
 
 Latest published release is **v1.0.120**, all four products, recorded above.
-The `dependency-cache` branch extends hosted caches without runtime changes;
+The merged dependency-cache work extends hosted caches without runtime changes;
 qualification runs are separate from the published package source.
 
 Historical Host-only release: [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106),
@@ -372,8 +380,9 @@ not imply missing release dependencies.
 
 Mainline macOS Host 1.0.106 is published, collected and checksum-verified.
 Its completed `macos-media-recovery` branch was deleted. The subsequently
-accepted `macos-auth-recovery` work is merged; `reconnect-lifecycle` and
-unrelated research remain separate.
+accepted authentication, reconnect, fullscreen and dependency-cache work is
+merged, and its completed feature branches are deleted. Unrelated local
+RK3576 research remains separate.
 Volume/mute is operator-validated. Longer app/alert audio, device changes,
 sleep/reconnect/topology and login/logout remain follow-up coverage, not
 blockers invented beyond the operator's merge approval. Inspect the new audio
