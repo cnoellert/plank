@@ -277,6 +277,19 @@ in both directions, exact seams, offset origins and out-of-window positions.
 This is a code-level correction with live acceptance pending, not proof that
 the reported window-drag failure is resolved.
 
+The operator clarified that closing a remote desktop window also failed.
+Click coordinates/delivery therefore need testing independently of seam
+dragging. The restored Host input devices have identity coordinate transforms;
+that offline observation does not prove the live click path. The new candidate
+is packaged from clean root `af6de59` under
+`artifacts/development/macos15-multimonitor-drag/`, with 106 passing Mach-O
+target checks, dependency closure and ad-hoc signatures. Its executable SHA-256
+is `618562d1c3e71b934709e69961093416974f71d6d4a1e4ce94a686473a9e2ec9`.
+It opens successfully in the native desktop. Windowed mode is selected for a
+baseline click/drag check against the restored single-display Host, with the
+operator entering credentials directly. The temporary Mac refresh setting
+has also been restored. Live input acceptance remains pending.
+
 The next controlled test must check within-screen dragging, movement across
 both directions of the seam, button release and Client disconnect. Compare
 windowed presentation of the whole Host desktop with the two-window fullscreen

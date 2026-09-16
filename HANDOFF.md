@@ -58,9 +58,15 @@ been restored and independently verified in XRandR and GNOME. Do not assume the
 two-output test layout is active. Client `a78f7bd` resolves captured drag
 coordinates through the target Mac window before applying its DPI mapping;
 all 62 Client tests pass. This correction is not yet live-accepted and the exact
-cause of the reported drag failure remains unconfirmed. Restore the temporary
-Mac refresh setting after testing; machine-specific details and logs remain
-in private notes/audit.
+cause of the reported drag failure remains unconfirmed. The operator clarified
+that a remote window also would not close, so click positioning/delivery must
+be checked before attributing the failure only to drag capture. The candidate
+from clean root `af6de59` is packaged at
+`artifacts/development/macos15-multimonitor-drag/`; 106 target checks, dependency
+closure and signatures pass. It is open at native sign-in in Windowed mode for
+a single-display input check. Credentials and operator result are pending.
+The temporary Mac refresh change has been restored to its original setting.
+Machine-specific details and logs remain in private notes/audit.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
