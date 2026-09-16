@@ -145,6 +145,24 @@ multi-monitor operation and outage recovery still need acceptance checks.
 Mac Client tablet capture is not implemented. Packet delivery and decoder logs
 do not establish those subjective or semantic results.
 
+## Multi-monitor implementation blocker
+
+Source inspection after the single-monitor test establishes that separate
+presentation on two Mac displays is not implemented in this fork yet.
+`Session::snapshotClientDisplays()` enables multiple presentation windows only
+for the SDL Wayland driver, and `VTMetalRenderer` owns one window/Metal layer.
+Enabling the bookmark's dual layout alone does not add a second Mac surface.
+The next Client slice needs Cocoa window placement, per-display Metal rendering,
+input/cursor transforms and cleanup/reconnect tests, preserving exact decoding.
+
+Linux Host layout and Client presentation are separate requirements. The
+physical startup policy permits temporary single/dual bookmark layouts when
+usable physical scanouts are available; virtual startup is a separate boot-time
+deployment choice. Verify the live Host has two usable outputs before testing.
+`Match client displays` also accepts only listed native resolution presets;
+3456×2234 is not currently included. Begin with an explicit supported dual
+horizontal Host layout, then qualify mixed-resolution/Retina matching.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

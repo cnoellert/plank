@@ -22,6 +22,11 @@ The operator confirms login and reports working basic keyboard/mouse input and
 audible audio playback. Channel placement, sync and sustained audio remain unchecked.
 The operator also confirms normal disconnect/reconnect works. All operator
 testing so far uses one monitor; multi-monitor behavior is untested.
+Source inspection now identifies a prerequisite: separate two-display Mac
+presentation is not implemented. Session window creation is gated to Wayland,
+and the Mac Metal renderer has one output layer. Implement Cocoa/Metal multiple
+outputs before attempting full two-monitor acceptance; bookmark changes alone
+cannot supply it. Linux display matching also rejects unlisted native presets.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
