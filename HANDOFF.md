@@ -7,16 +7,22 @@ Read [the fork build/evidence notes](docs/development/macos15-client.md) and
 the operator's local `private-notes/macos15-client.env` before continuing.
 The self-contained development Client builds and opens on macOS 15.7.4.
 Client tests, minimum-OS/dependency checks, real transport loopback and the
-portable root qualification suites pass. Live host streaming is not qualified.
+portable root qualification suites pass. Full live-session acceptance is pending.
 Published Linux Host 1.0.105 is now installed on the operator-authorized hardware
 test Host. Its RPM dependencies and transaction pass on the installed Rocky 9.5;
 Host/PAM/display services are active, with physical display policy and the
 existing HP Anyware service still active. HTTPS certificate verification and
-Client command-line discovery pass. The graphical launcher has an offline-state
-discrepancy pending foreground/manual checking; workstation sign-in and a live
-stream remain untested. Next: resolve that discrepancy and complete first sign-in,
-then video/audio/input/reconnect acceptance. Credentials must be entered directly
-in the Client. Mac Client Wacom capture remains separate implementation work.
+Client command-line discovery pass. A subsequent authenticated graphical session
+completed a 45-second smoke test over LAN IPv4: 2560×1440@60, HEVC 10-bit 4:4:4
+identity with VideoToolbox/Metal, stereo audio packets and input delivery. Logs
+agree on 2,684 video frames, 8,595 audio packets and 1,875 input events, with zero
+transport receive drops. Render rate was 59.67 FPS with 15 pacer drops (0.57%).
+Toolbar disconnect completed and services remain active without restarts.
+Next: subjective video/audio/input acceptance, longer pacing and reconnect tests;
+investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
+hostname/offline discrepancy is not root-caused. See the fork evidence notes;
+this smoke test is not full live qualification. Credentials must be entered
+directly in the Client. Mac Client Wacom capture remains separate implementation work.
 The upstream operational record below is retained as source context; its
 installation and signing authorizations do not describe this fork's machines.
 

@@ -100,12 +100,40 @@ compatibility result, not a change to upstream's Rocky 9.7 qualification baselin
 - The packaged Client's command-line discovery reports the Host online and
   correctly requires workstation credentials. No password was supplied to that
   diagnostic. The graphical launcher showed an offline bookmark during automated
-  interaction; foreground/manual sign-in and the cause of that discrepancy
-  remain to be checked.
+  interaction. A subsequent graphical session connected using the Host's LAN IPv4
+  address. The original hostname/offline discrepancy has not been root-caused.
 
-No authenticated live Host session has been qualified. Audio, keyboard/mouse delivery,
-streamed color/pixel equality, sustained frame pacing, Retina/fullscreen
-mapping and reconnect remain live gates. Mac Client tablet capture is not implemented.
+## First authenticated session — 2026-09-16
+
+Matching Host and Client logs establish an approximately 45-second native QUIC
+session at 2560×1440, 60 FPS, with a 50 Mbps encoder target. The Mac validated
+the selected HEVC 10-bit 4:4:4 identity profile using VideoToolbox hardware
+decoding into `p410le` and selected Metal presentation on the M4 Max. The Host
+used NVENC and an 8-bit NvFBC source up-converted into the selected encoding.
+
+| Measurement | Observed result |
+| --- | --- |
+| Network / decode / render rate | 60.01 / 60.01 / 59.67 FPS |
+| Video frames received | 2,684 |
+| Audio packets received | 8,595; stereo CoreAudio initialized |
+| Input sent / received | 1,875 / 1,875 |
+| Video / audio receive drops | 0 / 0 |
+| QUIC packet loss | 0 |
+| Client frame queue drops | 15 (0.57%); no overflow |
+| Frame queue latency p95 / p99 / max | 20 / 41 / 59 ms |
+
+The toolbar requested disconnection and the Client cleaned up its streams.
+The Host stayed active with zero systemd restarts; HP Anyware and the X11
+session also remained active. The Host emitted NvFBC context-release and
+endpoint-ended errors during teardown, and the Client logged transient invalid
+window IDs during renderer recreation. Retain these as follow-up findings;
+service survival alone does not prove repeated-session cleanup is correct.
+
+This completes the first connection smoke test. Audible sound, keyboard/mouse
+behavior, visual/color accuracy, sustained frame pacing, Retina/fullscreen
+mapping and reconnect still need acceptance checks. Mac Client tablet capture
+is not implemented. Packet delivery and decoder logs do not establish those
+subjective or semantic results.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
