@@ -201,6 +201,11 @@ package build and live acceptance are pending. The operator has authorized
 using the available Rocky 9.5 hardware Host for this fix's build; its Podman
 runtime can isolate the pinned Rocky 9.7 build environment. No new Host package
 has been installed. Machine-specific build details stay in private notes.
+Next backlog item: review the upstream macOS 26 Client's Retina/HiDPI fixes
+reported by the operator as committed on the morning of September 16, and
+backport applicable changes into this macOS 15 fork. Identify exact commits,
+avoid duplicating fixes already present, and requalify mixed-display rendering
+and input. See the [fork backlog](docs/development/macos15-client.md#backlog--upstream-retina-fixes).
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

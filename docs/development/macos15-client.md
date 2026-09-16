@@ -565,6 +565,24 @@ candidate RPM have not yet run; live Flame acceptance remains pending. The
 operator authorizes a Rocky 9.7 build container on the available Rocky 9.5 test
 machine for this fix. This does not qualify that environment as a release builder.
 
+## Backlog — upstream Retina fixes
+
+Requested September 16, 2026: review and bring applicable Retina/HiDPI fixes
+from the upstream macOS 26 Client into this macOS 15 fork. The operator reports
+that the repository owner committed several relevant changes that morning;
+the exact branch and commits still need to be identified.
+
+- Compare those commits with this fork and record what is already present,
+  what needs backporting and any required dependencies.
+- Preserve macOS 15 compatibility and the accepted multi-display input,
+  fullscreen focus and tablet behavior.
+- Verify client-monitor matching, logical versus backing-pixel dimensions,
+  scaling, cropping and pointer alignment on mixed Retina/non-Retina displays,
+  including Windowed/fullscreen transitions and connected-display selection.
+- Record upstream commit IDs and live acceptance for each incorporated fix.
+
+Queue this review after the current Pause-key correction.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
