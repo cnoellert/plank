@@ -5,6 +5,31 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Follow-up macOS secure-unlock diagnosis: nine rejected attempts logged
+  `The user did not become active for authentication. Fail the auth` before
+  the misleading incorrect-password UI, with a five-second activity wait.
+  Account verification through the separate authentication path succeeded.
+  Shift versus Caps Lock did not resolve it. A temporary `caffeinate -u -t 180`
+  changed UserIsActive from 0 to 1; the operator then unlocked successfully
+  with normal typing, confirmed by LoginWindow `checkAuth result: 1` and
+  unlock-success logs. No keyboard, password, TCC or persistent power setting
+  was changed. This establishes the activity-state cause for these attempts,
+  not when it was introduced. Proposed next step: bounded authenticated-session
+  user-activity reporting, including already-active virtual displays, with
+  lifecycle cleanup and lock/reconnect tests. The temporary assertion was
+  explicitly stopped after successful unlock; no persistent policy was set.
+  Candidate 1.0.112 implements activity on authorized real input, throttled to
+  once per second with a ten-second OS timeout and immediate teardown release.
+  No wake on media/discovery, synthetic key repeat or teardown events. Hosted
+  non-waking activity and real-QUIC authorization tests are pending; not yet
+  built or installed. Linux and Client are unchanged by this fix.
+
+- Requested follow-up discussion: Mac Match Client currently matches native
+  pixels but sets hiDPI=0. Mirror logical desktop size AND Retina backing pixels
+  so UI size follows the laptop (for example 1710x1107 points at 3420x2214
+  pixels). Keep manual modes and Linux EDID separate. Not implemented as part
+  of the secure-unlock fix.
+
 - 1.0.111 candidate source is committed/pushed at
   `02ec80f456d4d242c9101a7b00120726673feda1`; Client gitlink
   `a5ad0e9436f1ccaee6a0e5b54702a74b8d805ef8`. Not merged.

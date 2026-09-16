@@ -56,7 +56,7 @@ int main(int argc, const char **argv) {
                 bounds:CGRectMake(-1920, 0, 1920, 1080) pixels:CGSizeMake(3840, 2160)
                 initialPosition:CGPointMake(-1920, 0) doubleClickInterval:0.5]; CHECK(events != nil);
             events.keyRepeatTiming = ^PLANKMacKeyRepeatTiming { return (PLANKMacKeyRepeatTiming){0.25, 0.05}; };
-            __block unsigned delivered = 0, validityCalls = 0;
+            __block unsigned delivered = 0, activity = 0, validityCalls = 0;
             __block BOOL topology = YES, permission = YES;
             PLANKMacNativeInput *input = [[PLANKMacNativeInput alloc] initWithEndpoint:server
                 sessions:sessions lease:lease events:events validity:^BOOL {
@@ -66,9 +66,18 @@ int main(int argc, const char **argv) {
                     if (scenario == 6 && validityCalls == 2) { [sessions revokeAll]; return NO; }
                     if (scenario == 7 && validityCalls == 4) { [sessions revokeAll]; return NO; }
                     return topology && permission;
-                } deliver:^(CGEventRef event) {
+                } deliver:^(CGEventRef event, BOOL userActivity) {
+                    if (userActivity) ++activity;
                     CHECK(event != NULL); ++delivered; // NEVER CGEventPost
                 }]; CHECK(input != nil);
+            if (scenario == 0) {
+                CHECK([input consumeType:5 payload:[NSData dataWithBytes:"x" length:1]
+                    time:1] == PLANKMacInputMalformed);
+                uint8_t unsupported[] = {0x80, 0xff, 1, 0, 0};
+                CHECK([input consumeType:5 payload:[NSData dataWithBytes:unsupported length:sizeof(unsupported)]
+                    time:2] == PLANKMacInputUnsupported);
+                CHECK(activity == 0 && delivered == 0);
+            }
             uint8_t p[] = {0x80, 0x41, 1, 0, 0}; // normalized A down
             CHECK(plank_transport_native_input_send(client, 5, p, sizeof(p)) == PLANK_TRANSPORT_OK);
             uint8_t type = 0, payload[8192]; size_t size = 0;
@@ -80,15 +89,18 @@ int main(int argc, const char **argv) {
                 if (scenario == 1) CHECK([sessions activateStreamLease:lease]);
                 CHECK([input consumeType:type payload:[NSData dataWithBytes:p length:sizeof(p)] time:1000000001] == PLANKMacInputStopped);
                 CHECK([input stop] == 0 && [input stop] == 0 && delivered == 0);
+                CHECK(activity == 0);
             } else if (scenario == 7) {
                 CHECK(result == PLANKMacInputEvent && delivered == 1);
                 CHECK([input repeatAtTime:1250000000] == PLANKMacInputDenied);
                 CHECK(delivered == 1 && input.nextRepeatTime == 0);
                 CHECK([input stop] == 0);
+                CHECK(activity == 1);
             } else {
                 CHECK(result == PLANKMacInputEvent && delivered == 1);
                 CHECK(input.nextRepeatTime == 1250000000);
                 CHECK([input repeatAtTime:1250000000] == PLANKMacInputEvent && delivered == 2);
+                CHECK(activity == 1); // synthetic repeat is not fresh user activity
                 uint8_t pen[32];
                 plank_transport_input_encode_pen(pen, 1, 1, 0, 255, 65535, .5, .5, .75, 0, 0);
                 CHECK(plank_transport_native_input_send(client, 7, pen, sizeof(pen)) == PLANK_TRANSPORT_OK);
@@ -113,6 +125,7 @@ int main(int argc, const char **argv) {
                     CHECK([input consumeType:type payload:[NSData dataWithBytes:p length:sizeof(p)] time:1000000002] == PLANKMacInputStopped);
                 }
                 CHECK([input stop] == 0);
+                CHECK(activity == 3); // key down + pen proximity/tip; no teardown wake
             }
             [sessions revokeAll]; input = nil; events = nil;
             plank_transport_native_endpoint_stop(client); plank_transport_native_endpoint_stop(server);

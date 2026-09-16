@@ -22,7 +22,7 @@ common=(-mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror
     -framework Foundation -framework Security -framework SystemConfiguration -framework CoreFoundation
     -framework CoreGraphics -framework AppKit -framework Network -framework CoreMedia
     -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox -framework AudioToolbox -framework CoreAudio
-    -framework Carbon -framework ApplicationServices -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null)
+    -framework Carbon -framework ApplicationServices -framework IOKit -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null)
 sources=(apps/host/macos/auth/authentication-session.m apps/host/macos/auth/graphical-authority.m
     apps/host/macos/session/host-runtime.m
     apps/host/macos/control/http-request.m apps/host/macos/control/server-information.m

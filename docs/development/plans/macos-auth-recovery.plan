@@ -83,6 +83,27 @@ Dynamic Match Client follow-up
   delayed output readiness and Linux preset rejection. Hosted checks do not
   replace real laptop/encoder acceptance. Build matching Host and Mac Client.
 
+Secure-unlock user activity
+- Observed LoginWindow waits five seconds for user activity, then reports an
+  incorrect password without the user becoming active. Separate account
+  verification succeeds. A bounded caffeinate -u test restores normal unlock;
+  this is not evidence of a Shift/keymap or credential failure.
+- Report console UserIsActive using public IOKit APIs only after a validated
+  client input event passes the existing lease, topology and permission checks.
+  This intentionally wakes the console for interactive use, including an
+  already-active virtual display; remote/network-only activity is not enough.
+- Rate-limit to one request per second and set a ten-second timeout. Idle
+  connections, discovery, media frames, server key repeats and teardown
+  releases must not renew activity. Stop releases the session-owned assertion;
+  deallocation is a cleanup fallback. No global sleep policy, new service,
+  permission prompt, credential logging or authentication bypass.
+- Test using non-waking IOKit replacements: rate limit, expiry/re-arm, terminal
+  stop, deallocation, assertion/property failures. Exercise native input with
+  real loopback QUIC and a non-posting sink for revoked ownership, permissions,
+  invalid events, synthetic repeats and disconnect. Run in Host package builds.
+- Live acceptance: idle locked Host, normal typing unlock, disconnect/reconnect,
+  and assertion release. Synthetic tests are not proof of live secure unlock.
+
 Validation result
 - Hosted signed run 35057106376 passed from b7407097fef78f10952f9969d6711d92ed454890.
   Authentication fixture: 504 checks; repeated real-TLS topology failures:

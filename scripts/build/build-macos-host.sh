@@ -14,6 +14,7 @@ plank_build_path_flags "$source_root" "$output"
 mkdir "$output"
 cd "$source_root"
 bash "$source_root/scripts/test/build-macos-display-recovery.sh" "$source_root" "$output/display-recovery-tests"
+bash "$source_root/scripts/test/build-macos-input.sh" "$source_root" "$output/input-tests" "$archive"
 python3 "$source_root/tests/packaging/test-macos-host-permissions.py"
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Iapps/host/macos/input -Iprotocol/plank-transport/include \

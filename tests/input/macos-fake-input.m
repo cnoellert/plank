@@ -18,10 +18,12 @@
     };
     CFRelease(source); return events;
 }
-- (void)postEvent:(CGEventRef)event {
+- (void)postEvent:(CGEventRef)event userActivity:(BOOL)userActivity {
+    (void)userActivity;
     self.delivered++;
     CGEventType type = CGEventGetType(event);
     if (type == kCGEventKeyUp || type == kCGEventLeftMouseUp) self.releases++;
     // No CGEventPost, recorded user input, or real device state.
 }
+- (void)stopUserActivity {}
 @end

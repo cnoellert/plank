@@ -2,6 +2,7 @@
 #import "quartz-input.h"
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
+#import <IOKit/pwr_mgt/IOPMLib.h>
 #include <math.h>
 #include <time.h>
 
@@ -62,7 +63,46 @@ double PLANKMacScrollLinesForPreference(CFTypeRef value) {
 }
 @end
 
-@implementation PLANKMacQuartzInput
+@implementation PLANKMacUserActivity {
+    IOPMAssertionID _assertion;
+    uint64_t _lastAttempt;
+    BOOL _attempted, _stopped, _reportedFailure;
+}
+- (void)noteAtTime:(uint64_t)time {
+    if (_stopped || (_attempted && (time < _lastAttempt || time - _lastAttempt < NSEC_PER_SEC))) return;
+    _attempted = YES; _lastAttempt = time;
+    // An interactive console needs UserIsActive, even if a virtual display is
+    // already active. Remote/network-only activity does not establish that
+    // console state. This does not unlock, authenticate, or bypass screen lock.
+    IOReturn result = IOPMAssertionDeclareUserActivity(CFSTR("PLANK remote console input"),
+        kIOPMUserActiveLocal, &_assertion);
+    if (result == kIOReturnSuccess) {
+        // Retain the ID when idle, but turn the assertion OFF after ten seconds.
+        // The next real input re-arms it. No background tick renews activity.
+        result = IOPMAssertionSetProperty(_assertion, kIOPMAssertionTimeoutActionKey,
+                                         kIOPMAssertionTimeoutActionTurnOff);
+        if (result == kIOReturnSuccess)
+            result = IOPMAssertionSetProperty(_assertion, kIOPMAssertionTimeoutKey,
+                                             (__bridge CFNumberRef)@10);
+    }
+    if (result != kIOReturnSuccess) {
+        if (_assertion != kIOPMNullAssertionID) IOPMAssertionRelease(_assertion);
+        _assertion = kIOPMNullAssertionID;
+        if (!_reportedFailure) NSLog(@"PLANK console activity request failed: %d", result);
+        _reportedFailure = YES;
+    } else _reportedFailure = NO;
+}
+- (void)stop {
+    _stopped = YES;
+    if (_assertion != kIOPMNullAssertionID) IOPMAssertionRelease(_assertion);
+    _assertion = kIOPMNullAssertionID;
+}
+- (void)dealloc { [self stop]; }
+@end
+
+@implementation PLANKMacQuartzInput {
+    PLANKMacUserActivity *_activity;
+}
 - (BOOL)available { return CGPreflightPostEventAccess() && AXIsProcessTrusted(); }
 - (PLANKMacInputEvents *)eventsForTopology:(NSDictionary *)topology {
     if (![self available]) {
@@ -91,5 +131,12 @@ double PLANKMacScrollLinesForPreference(CFTypeRef value) {
     CFRelease(current); CFRelease(source);
     return events;
 }
-- (void)postEvent:(CGEventRef)event { CGEventPost(kCGHIDEventTap, event); }
+- (void)postEvent:(CGEventRef)event userActivity:(BOOL)userActivity {
+    if (userActivity) {
+        if (!_activity) _activity = [PLANKMacUserActivity new];
+        [_activity noteAtTime:clock_gettime_nsec_np(CLOCK_MONOTONIC)];
+    }
+    CGEventPost(kCGHIDEventTap, event);
+}
+- (void)stopUserActivity { [_activity stop]; }
 @end

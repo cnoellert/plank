@@ -19,11 +19,17 @@ if lsof -nP -iUDP:47494 >/dev/null 2>&1; then
 fi
 mkdir "$output"
 cd "$source_root"
+xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Iapps/host/macos/input -Iprotocol/plank-transport/include \
+    apps/host/macos/input/input-events.m apps/host/macos/input/quartz-input.m tests/input/macos-user-activity.m \
+    -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit -framework ApplicationServices -framework IOKit \
+    -o "$output/user-activity"
+"$output/user-activity"
 shasum -a 256 apps/host/macos/input/input-events.{h,m} tests/input/macos-input-events.m
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Iapps/host/macos/input -Iprotocol/plank-transport/include \
     apps/host/macos/input/input-events.m apps/host/macos/input/quartz-input.m tests/input/macos-input-events.m \
-    -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit -framework ApplicationServices \
+    -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit -framework ApplicationServices -framework IOKit \
     -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null -o "$output/input-events"
 "$output/input-events"
 xcrun --sdk macosx clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \

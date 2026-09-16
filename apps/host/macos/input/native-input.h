@@ -14,10 +14,12 @@
                            lease:(PLANKMacStreamLease *)lease
                           events:(PLANKMacInputEvents *)events
                         validity:(BOOL (^)(void))validity
-                         deliver:(void (^)(CGEventRef))deliver;
+                         deliver:(void (^)(CGEventRef, BOOL userActivity))deliver;
 // deliver is an internal, bounded/nonblocking sink (event posting, not a UI
 // callback). Only it executes under lease revocation serialization. Never log
 // event contents. time is the local monotonic clock, not untrusted packet data.
+// userActivity is true only for validated, authorized client input, never for
+// server-generated key repeats or teardown releases.
 - (PLANKMacInputResult)consumeType:(uint8_t)type payload:(NSData *)payload time:(uint64_t)time;
 @property(nonatomic, readonly) uint64_t nextRepeatTime;
 - (PLANKMacInputResult)repeatAtTime:(uint64_t)time;

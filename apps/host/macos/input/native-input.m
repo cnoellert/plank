@@ -7,7 +7,7 @@
     PLANKMacStreamLease *_lease;
     PLANKMacInputEvents *_events;
     BOOL (^_validity)(void);
-    void (^_deliver)(CGEventRef);
+    void (^_deliver)(CGEventRef, BOOL);
     BOOL _stopped;
 }
 - (instancetype)init { return nil; }
@@ -16,7 +16,7 @@
                            lease:(PLANKMacStreamLease *)lease
                           events:(PLANKMacInputEvents *)events
                         validity:(BOOL (^)(void))validity
-                         deliver:(void (^)(CGEventRef))deliver {
+                         deliver:(void (^)(CGEventRef, BOOL))deliver {
     if (!endpoint || !sessions || !lease || !events || !validity || !deliver) return nil;
     self = [super init];
     if (self) {
@@ -35,16 +35,16 @@
     // Event construction is outside the auth lock. Recheck authority immediately
     // before bounded delivery, linearized with end/revoke. No event queue/retry.
     PLANKMacInputResult result = [_events consumeType:type payload:payload time:time accept:^BOOL(CGEventRef event) {
-        return [self deliverAuthorized:event];
+        return [self deliverAuthorized:event userActivity:YES];
     }];
     if (result == PLANKMacInputDenied || result == PLANKMacInputStopped) _stopped = YES;
     return result;
 }
-- (BOOL)deliverAuthorized:(CGEventRef)event {
+- (BOOL)deliverAuthorized:(CGEventRef)event userActivity:(BOOL)userActivity {
     __block BOOL delivered = NO;
     [_sessions performWithStreamLease:_lease action:^{
         if (self->_validity() && plank_transport_native_endpoint_state(self->_endpoint) == PLANK_TRANSPORT_STATE_READY) {
-            self->_deliver(event); delivered = YES;
+            self->_deliver(event, userActivity); delivered = YES;
         }
     }];
     return delivered;
@@ -58,7 +58,7 @@
         _stopped = YES; return PLANKMacInputDenied;
     }
     PLANKMacInputResult result = [_events repeatAtTime:time accept:^BOOL(CGEventRef event) {
-        return [self deliverAuthorized:event];
+        return [self deliverAuthorized:event userActivity:NO];
     }];
     if (result == PLANKMacInputDenied || result == PLANKMacInputStopped) _stopped = YES;
     return result;
@@ -72,7 +72,7 @@
         // in a new session merely because it was held in a previous session.
         if (![_sessions performWithStreamLease:_lease action:^{
             if (self->_validity()) {
-                self->_deliver((__bridge CGEventRef)event); ++count;
+                self->_deliver((__bridge CGEventRef)event, NO); ++count;
             }
         }]) break;
     }

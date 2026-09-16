@@ -50,7 +50,7 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -framework Foundation -framework Security -framework SystemConfiguration \
     -framework CoreFoundation -framework CoreMedia -framework CoreGraphics \
     -framework CoreVideo -framework VideoToolbox -framework ScreenCaptureKit -framework AudioToolbox -framework CoreAudio \
-    -framework AppKit -framework Carbon -framework ApplicationServices \
+    -framework AppKit -framework Carbon -framework ApplicationServices -framework IOKit \
     -Wl,-sectcreate,__CGPreLoginApp,__cgpreloginapp,/dev/null -lpthread -lm -o "$video_build/preview-session"
 umask 077
 certificate_dir=$(mktemp -d "$video_build/tls.XXXXXX")

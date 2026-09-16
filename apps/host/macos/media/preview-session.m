@@ -160,7 +160,9 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                 events:events validity:^BOOL {
                     typeof(self) owner = weakSelf;
                     return owner && [owner->_selected isEqual:owner->_topology()] && [device available];
-                } deliver:^(CGEventRef event) { [device postEvent:event]; }];
+                } deliver:^(CGEventRef event, BOOL userActivity) {
+                    [device postEvent:event userActivity:userActivity];
+                }];
             if (!_video || !_audio || !_input) { [self stopOnQueue]; return; }
             _captureStarted = YES;
             _captureDeadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 5 * NSEC_PER_SEC;
@@ -322,6 +324,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     self.state = PLANKMacPreviewStopping;
     if (_repeatWatch) { dispatch_source_cancel(_repeatWatch); _repeatWatch = nil; }
     [_input stop]; // authorized releases first; never release into a replacement desktop
+    [_inputDevice stopUserActivity]; // release even if capture/input startup failed
     [_sessions endStreamLease:_lease]; // revoke before any asynchronous drain
     if (_watch) { dispatch_source_cancel(_watch); _watch = nil; }
     // Close the network even if a framework stop callback stalls. Keep the
