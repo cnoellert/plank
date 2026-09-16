@@ -14,7 +14,7 @@ typedef NS_ENUM(unsigned int, PLANKMacAuthenticationResult) {
 typedef NS_ENUM(unsigned int, PLANKMacAuthenticationStage) {
     PLANKMacAuthInput,
     PLANKMacAuthDirectory,
-    PLANKMacAuthRecord,
+    PLANKMacAuthDirectoryRecord,
     PLANKMacAuthIdentity,
     PLANKMacAuthPassword,
     PLANKMacAuthIdentityRecheck,

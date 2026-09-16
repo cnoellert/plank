@@ -52,7 +52,7 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccount(
             ODNode *node = [ODNode nodeWithSession:ODSession.defaultSession
                 type:kODNodeTypeAuthentication error:NULL];
             if (!node) return PLANKMacAuthenticationUnavailable;
-            *stage = PLANKMacAuthRecord;
+            *stage = PLANKMacAuthDirectoryRecord;
             ODRecord *record = [node recordWithRecordType:kODRecordTypeUsers name:name
                 attributes:@[kODAttributeTypeUniqueID, kODAttributeTypeGUID] error:NULL];
             PLANKMacAccountIdentity identity = {0};
