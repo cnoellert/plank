@@ -168,7 +168,19 @@ The operator reports the tablet also needs fullscreen focus handoff. Client
 focus helper, without comparing them to the stationary Mac mouse pointer.
 Mouse drag guards and the requirement for existing presentation-window focus
 remain in place. A regression covers stale positions after mouse takeover and
-cursor epoch reset. Candidate build and live pen/button/drag acceptance are pending.
+cursor epoch reset. Live pen/button/drag acceptance remains pending.
+The clean root `f0d9558` focus candidate is now packaged at
+`artifacts/development/macos15-tablet-focus/`: all 77 Client checks, native input
+ordering, 106 target checks, dependency closure and signatures pass. It connects
+with two fullscreen outputs, but macOS rejects its Input Monitoring grant because
+the previous ad-hoc code requirement does not match the new build. The correct
+app is selected in the normal privacy file picker for the operator to approve;
+raw attachment and live focus acceptance await that grant/relaunch.
+The operator also reports reduced side-button hover distance compared with macOS.
+The Host already enables hover clicks and uses absolute mode. Its X driver 1.0.0
+applies the configurable proximity cutoff only in relative mode. No Host tablet
+settings were changed. A read-only distance/proximity/button observation is
+prepared privately; exact failure behavior and cause remain unconfirmed.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

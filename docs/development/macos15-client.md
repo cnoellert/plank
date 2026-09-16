@@ -510,8 +510,26 @@ forwarding does not move the Mac's pointer, so its position cannot validate the
 tablet's target. Both paths still require active capture and existing focus in
 a presentation window, reject hidden/minimized/non-fullscreen targets, and
 preserve native mouse drags. Stale tablet positions after mouse takeover or
-capture/connection epoch reset are rejected. Build and live acceptance remain
-pending; this does not yet accept pen buttons or cross-output tablet drags.
+capture/connection epoch reset are rejected. Live acceptance remains pending;
+this does not yet accept pen buttons or cross-output tablet drags.
+
+Clean root `f0d9558` is packaged under
+`artifacts/development/macos15-tablet-focus/`. All 77 Client checks, native
+input ordering, 106 target checks, dependency closure and signatures pass.
+Executable SHA-256:
+`c87083eaa4d12066b2f2cef3f42d4fbd5f2ad286e7180c9ac2fe31555399793e`.
+The app connects in two-output fullscreen. Its changed ad-hoc signature fails
+the existing macOS Input Monitoring code requirement, so tablet validation is
+pending the operator's grant through normal System Settings and relaunch.
+
+The operator separately reports that side-button clicks require a lower hover
+height than with the macOS Wacom driver. Read-only inspection finds hover
+clicking enabled and the Host stylus in absolute mode. The matching
+[X driver source](https://github.com/linuxwacom/xf86-input-wacom/blob/xf86-input-wacom-1.0.0/src/wcmCommon.c#L1392)
+limits its configurable proximity cutoff to relative mode, so changing that
+property is not a supported explanation or fix here. Pressure and proximity
+settings remain unchanged. A coordinated event observation is still needed to
+locate the loss between proximity, button delivery and application behavior.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
