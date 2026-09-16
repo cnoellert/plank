@@ -10,6 +10,18 @@ notes' README before machine-specific work; deployment information stays outside
   remain untouched. Published mainline remains Host 1.0.106, other products
   1.0.105. Do not select an old candidate paragraph as the current source.
 
+- New Mac Client candidate 1.0.114: root
+  `ba91a32413b6d94e611bb48a873746e182209fea`, Client
+  `060e6424ee9323f02ce53ce4e00e47427c0b6de8`. Signed hosted run 35071410245
+  passed 18 topology/request cases and 21 toolbar-logic cases, dependency and
+  version gates, signing, notarization, Gatekeeper, and credential cleanup.
+  DMG SHA256 `0a986e97a2932b8e94f49ba95172d65f00df44245e13030a45252c97669d326e`.
+  Size 86,349,889 bytes; hash-verified and collected under
+  `artifacts/packages/candidates/1.0.114-macos-auth-recovery/macos/`.
+  Not installed by the agent; manual Client testing requested.
+  Pair with Host 1.0.113; no Host code/protocol change or Linux package required.
+  Full-panel fullscreen and beside-notch toolbar placement need operator testing.
+
 - Candidate 1.0.113 adds Retina-aware Mac Match Client: current logical desktop
   size AND current compositor backing pixels, for example 1710x1107 points at
   3420x2214 pixels. Display preparation is schema 3 with explicit integer 1x/2x
@@ -77,7 +89,9 @@ notes' README before machine-specific work; deployment information stays outside
   safe-area handling needs investigation, including keeping toolbar controls
   reachable around the camera housing. Candidate 1.0.114 implements SDL
   borderless desktop fullscreen without modesetting/Spaces and dynamically
-  places the toolbar beside the camera housing. Build/live gates pending.
+  places the toolbar beside the camera housing. Hosted build passed; live gates
+  remain pending. Mac fullscreen now uses the current desktop rather than a
+  separate AppKit Space or an exclusive mode; test minimize and teardown too.
   Raw screenshots/logs remain outside Git.
 
 - Next: correct/qualify notched fullscreen geometry, then operator acceptance:
@@ -88,8 +102,12 @@ notes' README before machine-specific work; deployment information stays outside
 
 - Exact-input Mac Client dependency/Qt caching is committed as `8730581`;
   22 local CI tests pass. Hosted cold run 35070457888 passed and saved its
-  dependency cache; Client 1.0.114 will validate reuse across an app-only change.
-  Do not claim a speed improvement until that run passes. Never cache application
+  dependency cache; signed Client 1.0.114 run 35071410245 restored the exact same
+  key across the application change and independently verified its patch/receipt.
+  Dependency bootstrap fell from 6m32s to 19s, plus 29s cache restore. The cold
+  run was unsigned and the warm run signed, so their total job durations are
+  not like-for-like benchmarks. Application/Rust compilation and all signing/
+  notary gates still run fresh. Never cache application
   builds or signing material; `--clean-bootstrap` bypasses restore/save. This
   CI-only follow-up does not change the application version or authorize merging
   the unaccepted Retina candidate.

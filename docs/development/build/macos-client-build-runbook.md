@@ -4,6 +4,11 @@ Experimental Apple Silicon/macOS27 only. Read the canonical release runbook
 first. Linux builder/test roles remain unchanged. Use clean Git worktrees and
 verified Git bundles imported dependency-first, with recursive fetch disabled.
 
+For hosted candidates use [GitHub builds](github-builds.md), including the
+exact-input dependency cache and explicit clean-bootstrap option. The local
+recipe below is for separately authorized/self-managed builders, not a silent
+fallback from a failed hosted run.
+
 Install Xcode/SDK27 and accept its license before bootstrap. Required tools are
 Apple clang/make/git, Python3 with `venv`/pip, curl, tar, patch and CMake. The
 bootstrap finds the official CMake app in `/Applications/CMake.app/Contents/bin`
@@ -57,8 +62,9 @@ Candidate builds must independently reverse-dry-run that patch and verify its
 hash. Private dylibs must be bundled with relocatable install names, licensed,
 signed and closure-checked before any package is offered to a user.
 
-Implementation/qualification is in progress; there is no accepted macOS Client
-package yet. Do not use the old upstream setup-deps/prebuilts workflow.
+The current packaging path is qualified; each new candidate still requires its
+affected live acceptance gates. Do not use the old upstream setup-deps/prebuilts
+workflow.
 
 ## Build and package
 

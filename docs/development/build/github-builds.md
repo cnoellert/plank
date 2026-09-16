@@ -133,6 +133,12 @@ This bypasses both cache restore and save. Omitting the option enables caching;
 the first run for a new key is naturally cold. Cache availability and retention
 are optimizations, not build requirements.
 
+Qualification: cold unsigned run 35070457888 saved the cache after passing;
+signed run 35071410245 restored the identical key after a Client-only change,
+verified the required patch and completed all build/package gates. Bootstrap
+took 6m32s cold versus 19s warm plus 29s restore. Do not compare total durations
+as equivalent workloads: the second job additionally signed and notarized.
+
 ## Diagnosing a hosted build
 
 Manual dispatch accepts `product=all`, `linux-host`, `linux-client`,
