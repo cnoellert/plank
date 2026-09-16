@@ -290,6 +290,16 @@ baseline click/drag check against the restored single-display Host, with the
 operator entering credentials directly. The temporary Mac refresh setting
 has also been restored. Live input acceptance remains pending.
 
+The operator then confirmed that moving and closing remote windows both work
+with this candidate against the restored single-output Host. The 78-second
+baseline session delivered 4,648 frames and 1,984 input events with zero video,
+audio or QUIC receive losses. After disconnect, the two-output Host layout was
+prepared again with explicit panning rectangles matching each output's position.
+Both XRandR and Mutter report the intended non-overlapping rectangles. The next
+check presents both Host monitors inside one Client window; that result remains
+pending. The Host is currently prepared for this test and needs explicit
+restoration afterward. The original Mac refresh setting remains restored.
+
 The next controlled test must check within-screen dragging, movement across
 both directions of the seam, button release and Client disconnect. Compare
 windowed presentation of the whole Host desktop with the two-window fullscreen

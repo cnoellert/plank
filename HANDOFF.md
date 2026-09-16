@@ -63,9 +63,13 @@ that a remote window also would not close, so click positioning/delivery must
 be checked before attributing the failure only to drag capture. The candidate
 from clean root `af6de59` is packaged at
 `artifacts/development/macos15-multimonitor-drag/`; 106 target checks, dependency
-closure and signatures pass. It is open at native sign-in in Windowed mode for
-a single-display input check. Credentials and operator result are pending.
-The temporary Mac refresh change has been restored to its original setting.
+closure and signatures pass. The operator confirms moving and closing remote
+windows both work in Windowed mode against the restored single-display Host.
+After disconnect, the two-output Host layout was prepared again and independently
+verified in XRandR and Mutter. Current state: two Host monitors, Client Windowed
+mode at native sign-in, awaiting the same click/drag test inside one Client
+window. Restore the saved Host MetaMode after this controlled test. The
+temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
