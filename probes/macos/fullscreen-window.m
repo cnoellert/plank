@@ -314,7 +314,9 @@ int main(int argc, const char *argv[])
         clockFormat.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ";
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-        ProbeController *controller = [ProbeController new];
+        // NSApplication does not own its delegate. Keep it alive through run(),
+        // including optimized builds where the last assignment precedes run().
+        __attribute__((objc_precise_lifetime)) ProbeController *controller = [ProbeController new];
         controller.logPath = path;
         NSApp.delegate = controller;
         [NSApp run];
