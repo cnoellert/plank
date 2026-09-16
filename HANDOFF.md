@@ -188,7 +188,19 @@ The Host already enables hover clicks and uses absolute mode. Its X driver 1.0.0
 applies the configurable proximity cutoff only in relative mode. No Host tablet
 settings were changed. The recording shows button events at several raw distance
 values; these are not physical height measurements and do not establish parity
-with macOS. The operator's current hover-distance comparison remains pending.
+with macOS. The operator subsequently reports that hover works better.
+
+F15/Pause investigation: SDL 3.4.2 maps Mac native key 113 (F15) to Pause,
+and the Client correctly forwards portable key `0x13`. Installed Host 1.0.105
+uses libvirtualhid `93d57db`, whose Linux uinput and XTest tables omit Pause.
+The running keyboard has no `KEY_PAUSE` capability and Host logs report
+unsupported-key submissions. libvirtualhid `b0cc3c8` adds Pause to both paths
+and tests key translation, press/release output, advertised capability and
+separation from F15. Host `03a59815` selects that dependency. Linux tests,
+package build and live acceptance are pending. The operator has authorized
+using the available Rocky 9.5 hardware Host for this fix's build; its Podman
+runtime can isolate the pinned Rocky 9.7 build environment. No new Host package
+has been installed. Machine-specific build details stay in private notes.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

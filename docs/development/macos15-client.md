@@ -544,8 +544,26 @@ settings remain unchanged. The coordinated observation above receives distance
 values spanning 0–63 and hovering button events at several values. Button
 samples retain the last observed distance, pressure and proximity; they may
 precede the current input frame and are not physical height measurements.
-The operator's current comparison is still needed to determine whether the
-reported height difference persists and whether movement stops with the button.
+The operator subsequently reports improved hover behavior. No pressure or
+proximity setting was changed; physical-height parity remains unmeasured.
+
+### F15 / Pause forwarding
+
+The operator reports F15/Pause is not recognized. The pinned SDL 3.4.2 Cocoa
+backend maps Mac native key 113 (F15) to `SDL_SCANCODE_PAUSE`; the Client sends
+portable Pause (`0x13`). Host 1.0.105's exact dependency `93d57db` lacks that
+key in both Linux input translation tables. Read-only inspection confirms the
+running virtual keyboard lacks `KEY_PAUSE`, while Host logs record unsupported
+keyboard submissions. Both 1.0.105 and the published 1.0.120 manifest select
+the same Host source, so upgrading to that release does not include a fix.
+
+libvirtualhid `b0cc3c8` adds `KEY_PAUSE` for uinput and `XK_Pause` for XTest;
+the existing portable F15 (`0x7E`) mapping stays separate. Tests cover translation,
+advertised keyboard capability, press/release output with synchronization and
+the XTest mapping. Host `03a59815` selects the correction. Linux tests and the
+candidate RPM have not yet run; live Flame acceptance remains pending. The
+operator authorizes a Rocky 9.7 build container on the available Rocky 9.5 test
+machine for this fix. This does not qualify that environment as a release builder.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
