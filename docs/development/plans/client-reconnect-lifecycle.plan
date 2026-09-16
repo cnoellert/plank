@@ -42,6 +42,7 @@ hashes, gates and the earlier cancellation-test finding are recorded in HANDOFF.
 An expired request is revoked by its monotonic deadline as well as the network
 cancellation flag. A password challenge paused behind Ask is restarted after
 Keep Waiting; a transport completed after the deadline is torn down before
-waiting. Local source/unit/CI checks and root CTest pass. No live installations
-or recovery acceptance have been performed for this candidate; keep it separate
-from main until operator testing.
+waiting. Local source/unit/CI checks and root CTest pass. The operator reports
+manually installing Host 1.0.116 and explicitly authorized merging this work
+into main. Live recovery acceptance is still pending; installation alone is
+not a functional test pass. Existing packages retain their candidate qualifier.

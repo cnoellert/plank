@@ -5,9 +5,11 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- The accepted fixes are merged and pushed to main: root `d34a110`, Client
-  `060e6424`. Current work is `reconnect-lifecycle` in the existing separate
-  worktree (its directory name still says macos-auth-recovery).
+- The operator authorized merging the reconnect follow-up into main after
+  manually installing Host 1.0.116. Reconnect implementation root `4173138`
+  and Client `e8fc0cc0` extend the previously accepted root `d34a110` / Client
+  `060e6424`. The separate worktree (directory still named macos-auth-recovery)
+  is now the mainline continuation point; preserve unrelated primary-worktree research.
   Host and Client candidates 1.0.116 retain valid setup authorization across readiness retries,
   stop rejected authentication/TLS/permission failures, and gate new requests
   on the configured Ask/Disconnect deadline. Keep Waiting explicitly resumes.
@@ -16,8 +18,11 @@ notes' README before machine-specific work; deployment information stays outside
   Linux Host is unchanged. See `docs/development/plans/client-reconnect-lifecycle.plan`.
   Local executable deadline/status checks, 14 reconnect source guards and 22
   CI tests and all five root CTest suites pass. Hosted compile/package gates
-  now pass; live recovery acceptance remains pending. No packages installed by
-  the agent, no release published, and this follow-up is not merged to main.
+  now pass; live recovery acceptance remains pending. Host installation was
+  operator-reported, not agent-verified; the agent only transferred and checked
+  the package signature/notarization/hash. No release was published. Existing
+  branch-qualified artifacts remain candidates; mainline packages require a
+  fresh build and must not be relabeled.
   Host run 35074146670 at root f34ca0f passed same-token readiness/recovery
   tests but failed the cancellation gate: a deadline could expire before the
   network queue set its cancellation flag. Explicit monotonic deadline checks
