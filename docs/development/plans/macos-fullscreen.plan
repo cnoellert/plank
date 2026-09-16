@@ -5,6 +5,23 @@ presentation, protocol, Retina Match Client and exact-format decode paths.
 
 ## Finding and approach
 
+Current decision (Client 1.0.119): the operator tested all standalone probe
+modes. They had no side borders but retained the same native top notch strip.
+The operator accepts that system-owned strip, including its protection for
+remote menus. Stop pursuing full-panel overrides. Keep native Spaces/swipes;
+fullscreen Match Client now subtracts NSScreen.safeAreaInsets.top from logical
+and backing heights at the existing Retina scale. Zero inset means the entire
+display; do not subtract Dock/menu visibleFrame or hardcode a laptop size.
+Authentication and session/reconnect validation share this geometry. Preserve
+the full display bounds separately for screen identity/window placement.
+Manual resolutions and windowed startup retain existing aspect/sizing policy;
+toggling window mode does not renegotiate the active Host resolution.
+Remove the ineffective SDL patch/helper/hint and invalidate dependency cache.
+No Host/Linux behavior change. Candidate still needs notched and non-notched
+live checks; compiled geometry tests and source guards are not visual proof.
+
+The following investigation is retained as evidence, not an active build policy.
+
 Client 1.0.114 disabled SDL's native fullscreen Spaces while also opting out
 of display safe-area compatibility. This fixed full-panel coverage but removed
 normal fullscreen Space participation. SDL 3.4.2's Cocoa delegate accepts

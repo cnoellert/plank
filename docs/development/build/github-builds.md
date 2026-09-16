@@ -111,7 +111,7 @@ standard runner is insufficient; record the resource limitation first.
 
 After successful cold-build qualification, Mac Client jobs may reuse prepared
 libraries, their sources (needed for licenses and patch verification), downloads,
-and Qt. The exact key includes dependency bootstrap scripts, the Mac SDL fullscreen patch, all Client FFmpeg
+and Qt. The exact key includes dependency bootstrap scripts and all Client FFmpeg
 patches, source/dependency paths, architecture, runner image, OS, SDK, compiler,
 and build-tool versions. Application-only changes do not invalidate it.
 There are no fallback restore keys. A restored receipt must match the exact key;

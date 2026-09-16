@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fullscreen wiring and required SDL patch gates; not live notch acceptance."""
+"""Native fullscreen geometry and wiring; not live notch acceptance."""
 from pathlib import Path
 import plistlib
 import subprocess
@@ -10,25 +10,65 @@ import unittest
 root = Path(sys.argv.pop(1)).resolve()
 client = root / 'apps/client'
 session = (client / 'app/streaming/session.cpp').read_text()
-patch_file = client / 'app/deploy/macos/sdl-patches/0001-cocoa-opt-in-full-display-content-size.patch'
 
 
 class NativeFullscreenTests(unittest.TestCase):
-    def test_native_spaces_and_full_panel_opt_in(self):
+    def test_native_spaces_without_sdl_override(self):
         self.assertIn('SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, "1")', session)
         self.assertNotIn('SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, "0")', session)
-        self.assertIn('SDL_SetHint("PLANK_MAC_FULLSCREEN_FULL_DISPLAY", "1")', session)
+        self.assertNotIn('PLANK_MAC_FULLSCREEN_FULL_DISPLAY', session)
+        self.assertFalse((root / 'scripts/build/prepare-macos-sdl.sh').exists())
+        self.assertFalse((client / 'app/deploy/macos/sdl-patches/0001-cocoa-opt-in-full-display-content-size.patch').exists())
         info = plistlib.loads((client / 'app/Info.plist').read_bytes())
         self.assertIs(info['NSPrefersDisplaySafeAreaCompatibilityMode'], False)
 
-    def test_dynamic_appkit_size_and_upstream_fallback(self):
-        patch = patch_file.read_text()
-        self.assertIn('willUseFullScreenContentSize:(NSSize)proposedSize', patch)
-        self.assertIn('SDL_GetHintBoolean("PLANK_MAC_FULLSCREEN_FULL_DISPLAY", false)', patch)
-        self.assertIn('window.screen.frame.size', patch)
-        self.assertIn('return proposedSize;', patch)
-        self.assertNotIn('visibleFrame', patch)
-        self.assertNotIn('setFrame:', patch)
+    def test_authentication_and_reconnect_share_viewport(self):
+        manager = (client / 'app/backend/computermanager.cpp').read_text()
+        self.assertIn('m_Prefs->windowMode != StreamingPreferences::WM_WINDOWED', manager)
+        self.assertIn('&currentMode, &matchedBounds, m_IsFullScreen)', session)
+        self.assertEqual(session.count('display.macMatchedBounds.isValid() ? display.macMatchedBounds'), 2)
+        utils = (client / 'app/streaming/streamutils.cpp').read_text()
+        self.assertIn('getMacCurrentDisplayMode(selected, mode, matchedBounds, fullscreen)', utils)
+        self.assertIn('MacDisplayGeometry::insetTop', utils)
+        mac = (client / 'app/streaming/macwindow.mm').read_text()
+        self.assertIn('std::ceil(screen.safeAreaInsets.top)', mac)
+        self.assertNotIn('screen.visibleFrame', mac)
+
+    def test_geometry_executable(self):
+        code = r'''
+#include "macdisplaygeometry.h"
+#include <cassert>
+#include <initializer_list>
+int main() {
+    for (int scale : {1, 2}) {
+        for (int top : {0, 24, 34, 38}) {
+            int h = 1200, pixels = h * scale;
+            assert(MacDisplayGeometry::insetTop(1900, h, 1900 * scale, pixels, top));
+            assert(h == 1200 - top && pixels == h * scale);
+        }
+    }
+    int h = 1107, pixels = 2214;
+    assert(MacDisplayGeometry::insetTop(1710, h, 3420, pixels, 34));
+    assert(h == 1073 && pixels == 2146);
+    for (int top : {-1, 1200, 1201}) {
+        h = 1200; pixels = 2400;
+        assert(!MacDisplayGeometry::insetTop(1920, h, 3840, pixels, top));
+        assert(h == 1200 && pixels == 2400);
+    }
+    h = 1200; pixels = 2400;
+    assert(!MacDisplayGeometry::insetTop(0, h, 0, pixels, 0));
+    assert(!MacDisplayGeometry::insetTop(1920, h, 3000, pixels, 34));
+    assert(!MacDisplayGeometry::insetTop(1920, h, 1920, pixels, 34));
+    assert(!MacDisplayGeometry::insetTop(1920, h, 5760, pixels, 34));
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='plank-fullscreen-') as tmp:
+            source = Path(tmp) / 'geometry.cpp'
+            source.write_text(code)
+            binary = Path(tmp) / 'geometry'
+            subprocess.run(['c++', '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                            '-I', str(client / 'app/streaming'), str(source), '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True)
 
     def test_focus_loss_keeps_release_and_toolbar_cleanup(self):
         focus = session.rsplit('case SDL_EVENT_WINDOW_FOCUS_LOST:', 1)[1].split('case SDL_EVENT_WINDOW_FOCUS_GAINED:', 1)[0]
@@ -47,40 +87,6 @@ class NativeFullscreenTests(unittest.TestCase):
         self.assertIn('SDL_GetWindowSizeInPixels', mac)
         self.assertIn('screen.auxiliaryTopLeftArea', mac)
         self.assertIn('screen.auxiliaryTopRightArea', mac)
-
-    def test_bootstrap_and_build_require_patch(self):
-        for name, operation in [('bootstrap-macos-client-deps.sh', 'apply'),
-                                ('build-macos-client.sh', 'verify')]:
-            script = (root / 'scripts/build' / name).read_text()
-            self.assertIn('prepare-macos-sdl.sh" ' + operation, script)
-
-    def test_patch_apply_is_idempotent_and_verify_fails_closed(self):
-        with tempfile.TemporaryDirectory(prefix='plank-sdl-gate-') as tmp:
-            deps = Path(tmp)
-            source = deps / 'src/SDL3-3.4.2/src/video/cocoa/SDL_cocoawindow.m'
-            source.parent.mkdir(parents=True)
-            # The exact old-side hunk is sufficient to test the patch gate,
-            # without downloading an SDK or representing it as a native build.
-            hunk = patch_file.read_text().split('@@', 2)[2].splitlines()[1:]
-            source.write_text(''.join(line[1:] + '\n' for line in hunk if line.startswith((' ', '-'))))
-            binary = deps / 'install/lib/libSDL3.dylib'
-            binary.parent.mkdir(parents=True)
-            binary.write_bytes(b'old library')
-            def run(operation):
-                return subprocess.run(['bash', str(root / 'scripts/build/prepare-macos-sdl.sh'),
-                                       operation, str(root), str(deps)],
-                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode
-            self.assertNotEqual(run('verify'), 0)  # Unpatched source.
-            self.assertEqual(run('apply'), 0)
-            applied = source.read_bytes()
-            self.assertEqual(run('apply'), 0)
-            self.assertEqual(source.read_bytes(), applied)
-            self.assertNotEqual(run('verify'), 0)  # Stale installed library.
-            binary.write_bytes(b'PLANK native fullscreen content:')
-            self.assertEqual(run('verify'), 0)
-            source.write_text('unrelated source version\n')
-            self.assertNotEqual(run('apply'), 0)
-            self.assertNotEqual(run('verify'), 0)
 
 
 unittest.main()

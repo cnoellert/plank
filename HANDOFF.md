@@ -5,6 +5,23 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Client 1.0.119-macos-fullscreen is being prepared on `macos-fullscreen`.
+  Operator tested all five standalone AppKit modes: no side borders, same
+  system-owned top notch strip. Operator accepts that strip and native Spaces.
+  New policy: Mac-to-Mac fullscreen Match Client uses NSScreen's dynamic top
+  camera inset and preserves compositor backing density. Zero inset leaves
+  non-notched displays unchanged. Windowed/manual sizing stays unchanged.
+  Authentication, startup validation and reconnect use the same viewport;
+  original display bounds remain separate for window placement/identity.
+  Removed ineffective SDL content-size patch/hint/helper. Bootstrap/cache inputs
+  changed, forcing fresh upstream SDL dependencies; FFmpeg patch gates remain.
+  Local five fullscreen tests (including compiled geometry), 26 CI tests and
+  14 reconnect guards pass. Native compile/package and live acceptance pending.
+  No Host change, installation or merge. Next: signed hosted Mac Client build,
+  then operator checks Match Client side borders, swipes, Retina text, mouse/pen,
+  toolbar, window toggles and a non-notched display. Historical hypotheses below
+  are superseded by this explicitly accepted notch-safe policy.
+
 - Standalone fullscreen diagnostic is ready as
   `1.0.118-macos-fullscreen` on the existing branch. No Host/Client source or
   dependency changed. `probes/macos/fullscreen-window.m` offers five explicit

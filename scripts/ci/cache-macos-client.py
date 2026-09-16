@@ -13,18 +13,16 @@ INPUTS = (
     'scripts/ci/cache-macos-client.py',
     'scripts/ci/bootstrap.sh',
     'scripts/build/bootstrap-macos-client-deps.sh',
-    'scripts/build/prepare-macos-sdl.sh',
     'scripts/build/build-paths.sh',
     'scripts/build/relocate-openssl-pc.py',
     'scripts/build/sanitize-ffmpeg-build-info.py',
 )
 PATCH = 'apps/client/app/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch'
-SDL_PATCH = 'apps/client/app/deploy/macos/sdl-patches/0001-cocoa-opt-in-full-display-content-size.patch'
 KEY_PREFIX = 'plank-macos-client-deps-v1-'
 
 
 def fingerprint(root, dependency_root, toolchain):
-    paths = set(INPUTS) | {PATCH, SDL_PATCH}
+    paths = set(INPUTS) | {PATCH}
     paths.update(str(p.relative_to(root)) for p in (root / Path(PATCH).parent).glob('*.patch'))
     hashes = {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in sorted(paths)}
     # Prepared .pc/CMake/dylib metadata has absolute build prefixes. Never reuse
@@ -57,8 +55,6 @@ def check_prepared(root, deps):
     for relative in ('macos-client/install/lib/libavcodec.dylib', 'qt/6.10.2/macos/bin/qmake'):
         if not (deps / relative).is_file():
             raise ValueError('Incomplete prepared dependency cache')
-    subprocess.run(['bash', str(root / 'scripts/build/prepare-macos-sdl.sh'),
-                    'verify', str(root), str(deps / 'macos-client')], check=True)
     # Check the required source patch independently of a cache-hit claim.
     with (root / PATCH).open('rb') as patch:
         subprocess.run(['patch', '--batch', '--reverse', '--dry-run', '-p1',
