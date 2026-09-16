@@ -425,6 +425,24 @@ pass. Executable SHA-256:
 The previous Client disconnected cleanly; the replacement is connected and left
 open for ongoing operator testing. The temporary Host layout remains prepared.
 
+### USB Wacom Client feasibility
+
+The operator selected tablet forwarding as the next target. Linux Client raw
+Wacom capture already feeds the grouped HID protocol; the Mac Client has no
+capture backend yet. A standalone [read probe](../../probes/wacom/macos-client-hid.md)
+now inventories USB interfaces, watches bounded input-report activity and can
+perform one declared feature GET without exclusive ownership or report writes.
+Its ARM64/macOS 15 build and ad-hoc signature checks pass.
+
+Initial live read checks pass for two USB tablet interfaces: exact descriptors
+are available, nonexclusive opens and closes succeed, and feature GET succeeds
+with the Wacom driver running. One vendor response is 15 bytes despite an
+advertised maximum feature size of two bytes, so the probe uses the protocol's
+4096-byte response cap. The first activity window received periodic unchanged
+status reports only, without operator confirmation of pen/touch use during
+capture. Active input, ownership, feature SET/output, Host recreation and target
+application acceptance remain open. The current streaming Client is unchanged.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

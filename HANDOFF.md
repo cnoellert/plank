@@ -129,7 +129,16 @@ restore the saved baseline when testing finishes.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
-Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
+The next operator-selected target is USB Wacom forwarding. A standalone
+[Mac Client read probe](probes/wacom/macos-client-hid.md) builds and passes target
+and signature checks. Two USB tablet interfaces expose exact descriptors and
+allow nonexclusive open/close and feature GET with the Wacom driver running.
+The initial activity capture contains only periodic unchanged status reports;
+operator-confirmed pen/touch activity during capture is still needed. No Client
+capture backend, exclusive ownership, SET/output or Host injection was added.
+Next tablet step: coordinate a bounded activity capture, then assess ownership
+and feature exchanges before implementing the Mac backend.
+Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
 hostname/offline discrepancy is not root-caused. See the fork evidence notes;
