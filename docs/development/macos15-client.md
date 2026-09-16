@@ -412,15 +412,18 @@ current global pointer must be inside the visible destination window, so stale
 queued motion cannot activate an old output. Captured dragging retains its
 original focus until release; a release can hand off without another move.
 Normal windowed behavior and other applications' focus are excluded. Compilation
-and existing input checks pass; live first-right-click and retained-drag
-acceptance are still required.
+and existing input checks pass. The operator confirms that the first right-click
+on either fullscreen output now works without an activation click, and window
+dragging still crosses both directions. These two live checks are accepted;
+background-application focus isolation remains code-reviewed rather than
+independently live-qualified.
 Client `e2d4792` is packaged from clean root `a1cc07e` under
 `artifacts/development/macos15-fullscreen-focus/`. All 71 Client checks, the
 native input worker regression, 106 target checks and package/signature gates
 pass. Executable SHA-256:
 `f9801560eba0d791f28a5d61d26591ec7941c31847ed8eacaf1fae34cbd90eeb`.
-The previous Client disconnected cleanly; the replacement is open for direct
-sign-in. Live focus and retained-drag acceptance remain pending.
+The previous Client disconnected cleanly; the replacement is connected and left
+open for ongoing operator testing. The temporary Host layout remains prepared.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

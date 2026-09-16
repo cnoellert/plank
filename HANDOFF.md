@@ -117,13 +117,15 @@ Client `e2d4792` adds a focus handoff: while a presentation window already
 owns keyboard focus, unpressed pointer movement may raise the fullscreen output
 under the current desktop pointer. Held drags retain their starting window;
 a final button release can hand focus to the destination afterward. Hidden,
-minimized, windowed and non-presentation focus states are excluded. Live first
-right-click and drag-regression acceptance remain pending.
+minimized, windowed and non-presentation focus states are excluded. The operator
+confirms that the first right-click now works on either fullscreen output and
+cross-display dragging still works in both directions.
 The clean root `a1cc07e` package is under
 `artifacts/development/macos15-fullscreen-focus/`; 71 Client checks, native
 input ordering, 106 target checks, dependency closure and ad-hoc signatures
-pass. The previous Client disconnected cleanly; the replacement is open for
-direct sign-in and live focus acceptance. Host layout remains prepared.
+pass. The previous Client disconnected cleanly. The replacement is connected
+and left open for continued operator testing. Host layout remains prepared;
+restore the saved baseline when testing finishes.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
