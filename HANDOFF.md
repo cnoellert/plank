@@ -40,8 +40,10 @@ the fixed Host resolutions did not match the intended Client screens.
 The next live connection uses a manually prepared physical Host layout matching
 the Client's two native resolutions, with both client screens at 60 Hz by explicit
 operator approval. Host, stream and Client canvas agree at 6016×2234; both Metal
-outputs and exact HEVC10/P410 hardware decode initialize. Visual and pointer
-acceptance is pending. Automatic Retina matching remains blocked by the mode
+outputs and exact HEVC10/P410 hardware decode initialize. The 24-second test
+rendered at 59.63 FPS, delivered 1,449 frames and 1,251 input events with zero
+transport receive drops, and disconnected cleanly; nine pacer drops (0.65%).
+Operator visual and pointer acceptance is pending. Automatic Retina matching remains blocked by the mode
 allowlist. Restore the saved Host baseline and temporary Mac refresh setting
 after testing; machine-specific details and logs are in private notes/audit.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,

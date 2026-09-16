@@ -215,8 +215,13 @@ right output primary. This uses the existing scanout timings and NVIDIA
 uses Physical displays/Scaled-Span. Both Client screens are at 60 Hz for this
 operator-approved test. Host, stream and Client canvas now agree at
 6016×2234@60, with two fullscreen Metal outputs and exact HEVC 10-bit 4:4:4
-VideoToolbox/P410 decoding. The repeated roughly 12 FPS pacing deficit stops;
-sustained performance and visual/pointer acceptance still need grading.
+VideoToolbox/P410 decoding. The 24-second session rendered at 59.63 FPS
+(60.06 FPS received/decoded), with 1,449 video frames, 4,467 audio packets and
+1,251 input events. Video/audio receive drops and QUIC loss were zero; the
+client pacer dropped nine frames (0.65%). Queue latency p95/p99/max was
+24/32/34 ms. Toolbar disconnect completed and the Host services remained
+active. The repeated roughly 12 FPS pacing deficit stopped; sustained
+performance and operator visual/pointer acceptance still need grading.
 
 This manual preparation does not implement automatic Retina resolution matching
 or per-output independent scaling. The preset allowlist remains unchanged.
