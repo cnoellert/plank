@@ -22,11 +22,15 @@ The operator confirms login and reports working basic keyboard/mouse input and
 audible audio playback. Channel placement, sync and sustained audio remain unchecked.
 The operator also confirms normal disconnect/reconnect works. All operator
 testing so far uses one monitor; multi-monitor behavior is untested.
-Source inspection now identifies a prerequisite: separate two-display Mac
-presentation is not implemented. Session window creation is gated to Wayland,
-and the Mac Metal renderer has one output layer. Implement Cocoa/Metal multiple
-outputs before attempting full two-monitor acceptance; bookmark changes alone
-cannot supply it. Linux display matching also rejects unlisted native presets.
+The next candidate implements two-display Cocoa/Metal presentation at Client
+`31f6081`. One decode feeds two cropped Metal surfaces using the shared input
+geometry; the toolbar stays on the primary output. All 58 Client test cases pass.
+Native GPU pixel readback passes eight windowed and eight fullscreen cases on
+two physical Mac displays, covering software GBR10 and VideoToolbox P410 surfaces,
+V-sync on/off and repeated single/dual renderer lifetimes. Full live two-monitor
+acceptance is pending. The Host's second scanout has been enabled for that test;
+the exact previous layout and restoration instructions are in private notes.
+Linux display matching still rejects unlisted native presets.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

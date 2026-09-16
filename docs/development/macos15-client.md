@@ -145,15 +145,41 @@ multi-monitor operation and outage recovery still need acceptance checks.
 Mac Client tablet capture is not implemented. Packet delivery and decoder logs
 do not establish those subjective or semantic results.
 
-## Multi-monitor implementation blocker
+## Two-monitor candidate — 2026-09-16
 
-Source inspection after the single-monitor test establishes that separate
-presentation on two Mac displays is not implemented in this fork yet.
-`Session::snapshotClientDisplays()` enables multiple presentation windows only
-for the SDL Wayland driver, and `VTMetalRenderer` owns one window/Metal layer.
-Enabling the bookmark's dual layout alone does not add a second Mac surface.
-The next Client slice needs Cocoa window placement, per-display Metal rendering,
-input/cursor transforms and cleanup/reconnect tests, preserving exact decoding.
+Client `31f6081` adds Cocoa to the existing two-output session window path and
+changes the Metal renderer to present one decoded frame on two display layers.
+Each layer uses the shared canvas slice and backing-pixel conversion, while
+input and remote cursors use the same canvas in logical window coordinates.
+The toolbar/statistics remain on the primary output. Frame texture references
+survive both render passes; presentation callbacks retain independent pacing
+state instead of referencing a destroyed renderer. Windowed mode still presents
+the full desktop on one window.
+
+All 58 Client test cases pass, including Retina mapping and letterbox checks.
+The standalone native GPU probe tests the production Metal renderer with exact
+10-bit software GBR and VideoToolbox P410 fixture surfaces, one/two outputs,
+V-sync off/on, repeated renderer lifetimes and per-output pixel readback.
+All eight cases pass in windowed mode and all eight pass with two distinct
+physical fullscreen outputs, with Metal API validation enabled. These are
+renderer fixture tests, not live multi-monitor session acceptance or another
+hardware decoder qualification.
+
+Run the native probe explicitly on an authorized Mac desktop (it briefly shows
+colored windows). It is not part of an unattended headless package build:
+
+```bash
+bash scripts/test/run-macos-metal-presentation.sh "$PLANK_SOURCE_ROOT" \
+  "$PLANK_WORK_ROOT/metal-presentation-test" --fullscreen
+```
+
+For the live test, use two extended Mac displays arranged left to right and
+Plank's **Borderless windowed** mode. Choose **Two virtual displays (horizontal)**
+in the Host bookmark, initially 1920×1080 per output with **Scaled-Span**. This
+preserves the existing composite-canvas presentation semantics; differently
+sized client panels may divide that canvas at a different point than the Host's
+logical monitor boundary. Verify placement, pointer alignment, toolbar actions,
+windowed/fullscreen transitions, disconnect/reconnect and display restoration.
 
 Linux Host layout and Client presentation are separate requirements. The
 physical startup policy permits temporary single/dual bookmark layouts when
