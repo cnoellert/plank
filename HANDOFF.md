@@ -47,9 +47,10 @@ The operator's screenshots show an incomplete desktop on the Retina output.
 Host investigation found two XRandR monitors but only one Mutter logical monitor:
 the second output's duplicate-name mode selection was not recognized by Mutter.
 Selecting its other existing timing preserved native geometry and made Mutter
-recognize both outputs; visual retest is pending. Framebuffer/stream agreement
-alone is insufficient acceptance. See the fork notes and private diagnosis.
-Operator visual and pointer acceptance is pending. Automatic Retina matching remains blocked by the mode
+recognize both outputs. The operator confirms resolution and screen fill now
+work; the 53-second retest rendered at 59.82 FPS and disconnected cleanly.
+Framebuffer/stream agreement alone is insufficient acceptance. See the fork
+notes and private diagnosis. Pointer acceptance is pending. Automatic Retina matching remains blocked by the mode
 allowlist. Restore the saved Host baseline and temporary Mac refresh setting
 after testing; machine-specific details and logs are in private notes/audit.
 Next: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,

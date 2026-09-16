@@ -247,9 +247,15 @@ and 2560×1440 at the right. Mode IDs are session-specific and must not be
 hardcoded into a product fix.
 
 No Client renderer change was needed for this host configuration correction.
-Visual retesting remains required before claiming the screenshot defect is
-resolved. Future display qualification must compare the compositor's logical
-monitor inventory and CRTC geometry with XRandR and the streaming topology.
+The operator subsequently confirmed that resolution and screen fill work.
+The 53-second retest rendered at 59.82 FPS (60.03 received/decoded), delivered
+3,197 video frames and 2,579 input events, and disconnected cleanly. Video
+receive drops and QUIC loss were zero; 46 audio receive drops were logged.
+This confirms the reported partial-desktop symptom is resolved for the prepared
+layout. Pointer alignment, sustained audio and automatic Retina matching remain
+separate acceptance items. Future display qualification must compare the
+compositor's logical monitor inventory and CRTC geometry with XRandR and the
+streaming topology.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
