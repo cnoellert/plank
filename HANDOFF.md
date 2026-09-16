@@ -5,7 +5,14 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Client 1.0.119-macos-fullscreen is ready for testing on `macos-fullscreen`.
+- Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
+  push, merge and a full rebuild. Preparing all four Host/Client packages as
+  1.0.120 from main on disposable GitHub-hosted builders; no installs or GitHub
+  release publication requested. Preserve unrelated primary-worktree research.
+  Candidate packages below remain unchanged; mainline packages are rebuilt,
+  never relabeled. Record final source, hosted runs and checksums here.
+
+- Accepted Client 1.0.119-macos-fullscreen evidence:
   Operator tested all five standalone AppKit modes: no side borders, same
   system-owned top notch strip. Operator accepts that strip and native Spaces.
   New policy: Mac-to-Mac fullscreen Match Client uses NSScreen's dynamic top
@@ -22,10 +29,10 @@ notes' README before machine-specific work; deployment information stays outside
   SDK27 native compile, 19 topology / 21 toolbar / seven desktop-stage tests,
   package/version/dependency gates, Developer ID signing, notarization, staple,
   Gatekeeper and signing-material cleanup. New dependency cache sealed.
-  No Host change, installation or merge. Next: operator checks Match Client side
-  borders, swipes, Retina text, mouse/pen, toolbar, window toggles and a non-notched
-  display. Start a fresh fullscreen connection; toggling window mode alone does
-  not renegotiate an existing Host resolution. Live acceptance remains pending.
+  Operator reports the fix works and accepts it. This is not a claim that every
+  display/input combination was individually tested. No Host behavior change.
+  Start a fresh fullscreen connection; toggling window mode alone does not
+  renegotiate an existing Host resolution.
   Hash-verified DMG (85,582,956 bytes):
   `artifacts/packages/candidates/1.0.119-macos-fullscreen/macos/plank-client_1.0.119-macos-fullscreen_arm64.dmg`.
   SHA256: `58f8d4b56b6f68e3490e5c54b066030525e7ebee074ababcaccba96eaba709c9`.

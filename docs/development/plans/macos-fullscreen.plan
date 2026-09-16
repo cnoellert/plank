@@ -27,7 +27,9 @@ Candidate 1.0.119 passed signed hosted run 35131997746 from root
 6f0c25269c5a8bf1051814317440f2cd57fda005. Cold bootstrap, compiled geometry,
 19 topology / 21 toolbar / seven desktop-stage tests, native compilation and
 distribution gates passed. HANDOFF records the verified DMG checksum/location.
-Operator acceptance is pending; no merge or Host update.
+The operator accepted 1.0.119 and authorized merging and a full mainline rebuild
+as 1.0.120. No Host behavior change. Acceptance is operator-reported; do not
+infer separate coverage of every monitor/input combination.
 
 Client 1.0.114 disabled SDL's native fullscreen Spaces while also opting out
 of display safe-area compatibility. This fixed full-panel coverage but removed
