@@ -9,13 +9,15 @@ notes' README before machine-specific work; deployment information stays outside
   `060e6424`. Current work is `reconnect-lifecycle` in the existing separate
   worktree (its directory name still says macos-auth-recovery).
   Host and Client candidates 1.0.116 retain valid setup authorization across readiness retries,
-  stops rejected authentication/TLS/permission failures, and gates new requests
+  stop rejected authentication/TLS/permission failures, and gate new requests
   on the configured Ask/Disconnect deadline. Keep Waiting explicitly resumes.
   Mac Host retains authorized topology/display HTTP503 contexts within their
   unchanged original expiry; cancellation/rejection/failed launch still revoke.
-  Linux Host is unchanged. See `client-reconnect-lifecycle.plan`.
+  Linux Host is unchanged. See `docs/development/plans/client-reconnect-lifecycle.plan`.
   Local executable deadline/status checks, 14 reconnect source guards and 22
-  CI tests pass. Hosted compile/package and live recovery tests remain pending.
+  CI tests and all five root CTest suites pass. Hosted compile/package gates
+  now pass; live recovery acceptance remains pending. No packages installed by
+  the agent, no release published, and this follow-up is not merged to main.
   Host run 35074146670 at root f34ca0f passed same-token readiness/recovery
   tests but failed the cancellation gate: a deadline could expire before the
   network queue set its cancellation flag. Explicit monotonic deadline checks
@@ -24,11 +26,38 @@ notes' README before machine-specific work; deployment information stays outside
   restart an authentication conversation paused behind Ask (its challenge can
   expire), and discard a transport completing after the deadline rather than
   keeping it hidden behind the unanswered prompt.
+  Run 35074552628 passed the corrected cancellation gate but caught an unused
+  synthetic-fixture counter; final Host run below includes that test-only fix.
   The primary worktree's `rk3576-client` research branch and uncommitted notes
   remain untouched. Published mainline remains Host 1.0.106, other products
   1.0.105. Do not select an old candidate paragraph as the current source.
 
-- New Mac Client candidate 1.0.114: root
+- Current test packages are hash-verified under
+  `artifacts/packages/candidates/1.0.116-reconnect-lifecycle/`:
+
+  | Product | Source root | Hosted run | SHA256 |
+  | --- | --- | --- | --- |
+  | macOS Host PKG (6,611,153 bytes) | `4173138223c1d0b0a57ddac1977255ee6ea92b6a` | 35074853150 | `e443bc305bf3e03e3386378031d1cb40bce0de803bdba41bf77dfaa3c83a7717` |
+  | macOS Client DMG (86,380,741 bytes) | `3a99c4489ddf40e6ab1557f88f012f711f7141bc` | 35074420641 | `92531ccd820e178245f91b532e0f4d208ac01ea2600a0d277176be08ebbac1d7` |
+  | Ubuntu Client DEB (15,447,236 bytes) | `3a99c4489ddf40e6ab1557f88f012f711f7141bc` | 35074423798 | `e4873cfe03d8760ab4855c13429bd91bfcc7cddf359b0a799e6ea280382b1657` |
+
+  Both roots use Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`;
+  Linux Host, Kymux and recursive dependency revisions remain unchanged from
+  the accepted work. The catalog records per-package source provenance.
+  Mac Host passed seven real-TLS synthetic recovery scenarios (including 32
+  repeated readiness requests using one authorization, ready-after-retry,
+  cancellation and ownership revocation), 29 display cases, 128 permission-
+  denial cleanup cycles, native input/audio/installer gates. Mac Client passed
+  18 topology, 21 toolbar and seven desktop-stage/reconnect-policy cases.
+  Ubuntu passed its desktop-stage/reconnect guards, exact dependencies, private
+  FFmpeg, visible version and no-autostart gates. Both Mac packages passed
+  Developer ID/notarization/Gatekeeper and signing-keychain cleanup.
+  Next operator test: normal login/logout, temporary outage through Ask timeout,
+  Keep Waiting followed by recovery, and Disconnect while paused. Definitive
+  authentication/TLS/permission rejection must stop, not resubmit credentials.
+  Do not induce production account lockouts for a test.
+
+- Previously accepted Mac Client 1.0.114: root
   `ba91a32413b6d94e611bb48a873746e182209fea`, Client
   `060e6424ee9323f02ce53ce4e00e47427c0b6de8`. Signed hosted run 35071410245
   passed 18 topology/request cases and 21 toolbar-logic cases, dependency and
@@ -96,23 +125,22 @@ notes' README before machine-specific work; deployment information stays outside
   dimensions. See the auth/media/display recovery plans and Git history.
   Before the operator's upgrade, Host 1.0.111 real authenticated display preparation
   passed 3024x1964, 3456x2234, 2880x1864 and 5120x2160, then restored 1920x1080.
-  These are geometry checks, not full streamed acceptance. Client endless-retry
-  lifecycle simplification remains outstanding; do not claim Host fixes solved it.
+  These are geometry checks, not full streamed acceptance. Client retry
+  lifecycle changes are now in the separate 1.0.116 candidate above.
 
 - Supplied Retina screenshot/logs confirm Match Client negotiates and receives
   3420x2214, but a notched laptop's settled fullscreen drawable is 3420x2146
   (logical 1710x1073 instead of 1710x1107). This explains the top strip and
   aspect-preserving side borders; do not change Host Retina negotiation or
-  stretch the stream to conceal the mismatch. Current AppKit/SDL fullscreen
-  safe-area handling needs investigation, including keeping toolbar controls
-  reachable around the camera housing. Candidate 1.0.114 implements SDL
+  stretch the stream to conceal the mismatch. The accepted correction keeps
+  toolbar controls reachable around the camera housing. Candidate 1.0.114 implements SDL
   borderless desktop fullscreen without modesetting/Spaces and dynamically
   places the toolbar beside the camera housing. Hosted build passed and the
   operator accepted the correction. Mac fullscreen now uses the current desktop rather than a
   separate AppKit Space or an exclusive mode; test minimize and teardown too.
   Raw screenshots/logs remain outside Git.
 
-- Next: build and qualify the separate reconnect candidate. Broad acceptance
+- Next: operator qualification of the separate reconnect candidate. Broad acceptance
   of 1.0.114 is not a claim that every sleep,
   ownership, manual-mode and secure-unlock scenario was tested. Private deployment
   details and captures remain outside Git.

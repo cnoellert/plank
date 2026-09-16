@@ -117,6 +117,12 @@ There are no fallback restore keys. A restored receipt must match the exact key;
 the mandatory FFmpeg patch is independently verified before use. Normal build
 and package dependency checks still run. Missing or mismatched inputs fail.
 
+GitHub also scopes cache access by branch. A cache saved only on one feature
+branch is not available to a sibling feature branch, even with an identical
+input key. Build main to populate the default-branch cache for future branches;
+otherwise the first build on a new branch is cold. Do not weaken key matching
+or change dependency pins to work around a normal scope miss.
+
 PLANK and its tests build fresh. Application build trees, packages, Cargo objects,
 signing material and credentials are not cached. Public pull requests may read
 dependency caches but cannot save them through this workflow. Trusted jobs save
