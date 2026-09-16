@@ -95,9 +95,13 @@ A separate two-window SDL probe records held drags across both screens in both
 directions. Source inspection found startup explicitly disables automatic
 mouse capture while the SDL3 input handler relies on it. Client `67564e5`
 enables automatic capture; all 71 Client checks and the native input worker
-regression pass. The corrected candidate is being packaged for live validation.
-Current state: Client disconnected, local probe closed, two native-resolution
-Host monitors prepared; original layout restoration still due.
+regression pass. The clean root `aeb7279` candidate is packaged under
+`artifacts/development/macos15-fullscreen-capture/`; 106 target checks,
+dependency closure and ad-hoc signatures pass. Executable SHA-256 is recorded
+in its adjacent manifest. Current state: replacement Client open for direct
+sign-in, local probe closed, two native-resolution Host monitors prepared;
+fullscreen correction awaits live validation and original layout restoration
+is still due.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.

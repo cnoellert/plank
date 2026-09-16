@@ -380,6 +380,10 @@ starting window before the Client's cross-output coordinate mapping can run.
 Client `67564e5` enables automatic capture. All 71 Client checks and the native
 input worker regression pass; the corrected build still requires live
 fullscreen drag acceptance. No protocol or Host display change is needed.
+The clean root `aeb7279` candidate is packaged in
+`artifacts/development/macos15-fullscreen-capture/`. All 106 Mach-O target
+checks, dependency closure and ad-hoc signatures pass. Executable SHA-256:
+`def8065f98fea522b3d7f8bda67fee0668d4f4dff895641b061a5932443144d7`.
 The prepared Host layout remains temporary and requires the saved restoration
 procedure after testing.
 
