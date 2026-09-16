@@ -145,7 +145,8 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
             assert launch(mode, token, "/plank/display")[0] == 401
             token, _ = authenticate(tls, port, "synthetic", "test")
         assert launch(dict(mode, width=1922), token, "/plank/display")[0] == 503
-        token, _ = authenticate(tls, port, "synthetic", "test")
+        # A transient display failure retains this authorization, without a
+        # second password exchange. Invalid requests above still consume it.
         status, resized = launch(mode, token, "/plank/display")
         assert status == 200 and resized["capture"]["width"] == 1920
         assert resized["capture"]["logical_bounds"]["width"] == 1920

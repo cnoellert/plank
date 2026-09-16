@@ -92,6 +92,7 @@ int main(int argc, const char *argv[]) {
         NSString *recoveryMode = NSProcessInfo.processInfo.environment[@"PLANK_TEST_RECOVERY"];
         __block BOOL topologyReady = recoveryMode == nil;
         __block NSTimeInterval topologyReadyAt = 0;
+        __block unsigned recoveryAttempts = 0;
         NSDictionary *(^topology)(void) = ^{
             if (!topologyReady || NSProcessInfo.processInfo.systemUptime < topologyReadyAt) return (NSDictionary *)nil;
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
@@ -146,6 +147,7 @@ int main(int argc, const char *argv[]) {
         if (recoveryMode) server.recoverTopology = ^BOOL(BOOL (^valid)(void)) {
             if (!valid()) abort();
             puts("macos_recovery_called"); fflush(stdout);
+            recoveryAttempts++;
             if ([recoveryMode isEqual:@"revoked"]) scopeActive = NO;
             if ([recoveryMode isEqual:@"timeout"]) {
                 // Test-only stalled provider: the real request deadline must
@@ -154,6 +156,7 @@ int main(int argc, const char *argv[]) {
                 puts("macos_recovery_cancelled"); fflush(stdout);
             }
             topologyReady = [@[@"success", @"settling", @"unsettled"] containsObject:recoveryMode];
+            if ([recoveryMode isEqual:@"retry"]) topologyReady = recoveryAttempts > 1;
             if ([recoveryMode isEqual:@"settling"]) topologyReadyAt = NSProcessInfo.processInfo.systemUptime + .2;
             if ([recoveryMode isEqual:@"unsettled"]) topologyReadyAt = NSProcessInfo.processInfo.systemUptime + 60;
             return topologyReady && valid();

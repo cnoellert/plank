@@ -141,10 +141,14 @@
                             reply = _launch(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
                             if (status == 200) claimedToken = token;
                         }
-                        // A failed setup attempt is finished. Do not retain its
-                        // login token until expiry while the Client signs in again.
-                        // Only revoke after peer-bound authorization succeeded.
-                        if (status != 200) [_sessions revokeToken:token];
+                        // An authorized display which is not ready yet may be
+                        // polled with the same setup context. Do not extend its
+                        // expiry. Launch remains one-shot and all other failures
+                        // revoke only after peer-bound authorization succeeded.
+                        BOOL readinessPending = [path isEqual:@"/plank/display"] && status == 503;
+                        if (status != 200 && !readinessPending) [_sessions revokeToken:token];
+                        if ([path isEqual:@"/plank/display"] && (status == 200 || readinessPending))
+                            claimedToken = token; // revoke if delivery fails/cancels
                     }
                 }
             }
@@ -242,10 +246,12 @@
                                 } @catch (NSException *exception) {
                                     (void)exception; authorized = NO; topology = nil; status = 503;
                                 } @finally {
-                                    // Topology is part of setup, before display/launch.
-                                    // Failed or cancelled recovery must not occupy a
-                                    // login slot until expiry while the Client retries.
-                                    if (setupToken && (status != 200 || atomic_load(&request->cancelled)))
+                                    // Retry readiness without repeating OS auth.
+                                    // Identity/peer checks and the original expiry
+                                    // remain authoritative; cancellation and actual
+                                    // rejection still finish this setup context.
+                                    if (setupToken && ((status != 200 && !(status == 503 && authorized)) ||
+                                                      atomic_load(&request->cancelled)))
                                         [owner->_sessions revokeToken:setupToken];
                                 }
                                 dispatch_async(owner->_networkQueue, ^{

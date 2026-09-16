@@ -1,0 +1,35 @@
+# Bounded reconnect lifecycle
+
+The accepted authentication, Retina/full-panel and dependency-cache work is
+merged into main (root d34a110, Client 060e6424). Implement this follow-up on
+reconnect-lifecycle, independently of unrelated platform research.
+
+## Contract
+
+- Automatic recovery remains available across Linux login/logout and Mac
+  login/logout, worker replacement and temporary network outages.
+- Authenticate once per setup context. Retry topology/display readiness using
+  that context, not another password conversation. A consumed launch token or
+  an explicitly expired/replaced context needs fresh authorization.
+- Invalid credentials, permission/ownership denial and TLS rejection are
+  terminal; never repeatedly submit a known-rejected password.
+- Every reconnect control request checks the configured wait deadline. At
+  Ask timeout, no new requests begin until Keep Waiting. An already in-flight
+  bounded request may finish; it cannot start another request or complete the
+  reconnect behind the unanswered prompt. Disconnect/quit cancels the gate.
+- Mac HTTP 503 topology/display readiness retains an authorized setup token
+  only within its original expiry, peer and identity binding. Invalid requests,
+  permission denial, ownership changes, failed launch, cancellation and failed
+  response delivery still revoke it. No larger token pool or prolonged expiry.
+- No protocol fields, credentials storage, bookmark polling, capture, codec,
+  transport or input behavior changes. Linux Host is unchanged.
+
+## Verification
+
+Run executable fake-clock retry-policy tests, reconnect integration/source
+guards, HTTP status classification checks, Mac real TLS synthetic readiness
+retry tests and existing authorization/replay/permission cleanup tests.
+Build on hosted builders using the canonical runbooks. Record builds separately
+from live acceptance: user should test login/logout, unavailable Host Ask/Wait/
+Disconnect, and terminal authentication failure. Do not induce a production
+account lockout or interrupt a live session for automated testing.

@@ -58,7 +58,7 @@ def run(executable, config, mode):
                     pending.kill(); pending.communicate(timeout=3)
             else:
                 status, reply = auth.request(tls, port, {}, raw=get("/plank/topology", token))
-                assert status == {"success": 200, "settling": 200, "unsettled": 503, "failure": 503, "revoked": 401}[mode]
+                assert status == {"success": 200, "settling": 200, "retry": 503, "unsettled": 503, "failure": 503, "revoked": 401}[mode]
                 assert select.select([process.stdout], [], [], 2)[0]
                 assert process.stdout.readline() == "macos_recovery_called\n"
                 if mode in ("success", "settling"):
@@ -67,30 +67,29 @@ def run(executable, config, mode):
                     assert not select.select([process.stdout], [], [], .1)[0], "healthy topology repeated recovery"
                 else:
                     assert reply == {"state": "denied"}
-            if mode not in ("success", "settling"):
-                # Failure, timeout and scope revocation all finish this setup.
+            if mode in ("revoked", "timeout"):
+                # Cancellation and scope revocation still finish this setup.
                 assert auth.request(tls, port, {}, raw=get("/plank/topology", token))[0] == 401
-            if mode == "failure":
-                # Exercise the real HTTPS path beyond both the old 16-slot
-                # capacity and the new four-peer setup bound, without expiry.
-                for _ in range(32):
-                    status, challenge = auth.request(tls, port, {"username": "synthetic"})
-                    assert status == 200 and challenge["state"] == "challenge"
-                    status, result = auth.request(tls, port, {
-                        "conversation_id": challenge["conversation_id"], "responses": ["test"]},
-                        "/plank/auth/respond")
-                    assert status == 200 and result["state"] == "authenticated"
-                    token = result["session_token"]
+            if mode in ("failure", "unsettled"):
+                # Readiness retries never require a second password verification
+                # or allocate another setup token. Its original expiry is fixed.
+                for _ in range(32 if mode == "failure" else 3):
                     assert auth.request(tls, port, {}, raw=get("/plank/topology", token))[0] == 503
                     assert select.select([process.stdout], [], [], 2)[0]
                     assert process.stdout.readline() == "macos_recovery_called\n"
-                    assert auth.request(tls, port, {}, raw=get("/plank/topology", token))[0] == 401
-                print("macos_topology_failed_setup_cleanup=pass attempts=32", flush=True)
+                print("macos_topology_same_authorization_retry=pass", flush=True)
+            if mode == "retry":
+                status, reply = auth.request(tls, port, {}, raw=get("/plank/topology", token))
+                assert status == 200 and reply["capture"]["width"] == 3840
+                assert select.select([process.stdout], [], [], 2)[0]
+                assert process.stdout.readline() == "macos_recovery_called\n"
+                assert auth.request(tls, port, {}, raw=get("/plank/topology", token)) == (200, reply)
+                assert not select.select([process.stdout], [], [], .1)[0], "ready topology retried recovery"
             print(f"macos_topology_recovery={mode}:pass", flush=True)
         finally:
             process.terminate(); process.communicate(timeout=5)
 
 
 if __name__ == "__main__":
-    for scenario in ("success", "settling", "unsettled", "failure", "revoked", "timeout"):
+    for scenario in ("success", "settling", "retry", "unsettled", "failure", "revoked", "timeout"):
         run(Path(sys.argv[1]), Path(sys.argv[2]), scenario)

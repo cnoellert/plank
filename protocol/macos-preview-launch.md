@@ -19,9 +19,11 @@ or creating a transport lease. Missing permission returns HTTP 403 with exactly
 extension, not a change to the schema-2 success manifest or transport ABI.
 Unauthenticated callers still receive 401 without permission details. The Client
 maps only this fixed code to local instructions; arbitrary Host text is not
-displayed. Permission denial does not alter display topology. Any failed
-authenticated display/launch attempt revokes that attempt's HTTP token (and
-any claimed lease); retry requires fresh authentication. Unauthenticated or
+displayed. Permission denial does not alter display topology. Failed launch
+and rejected display requests revoke that attempt's HTTP token (and any
+claimed lease); retry requires fresh authentication. A display-readiness
+HTTP503 retains the still-authorized setup context for another readiness
+request, without extending its expiry. Unauthenticated or
 wrong-peer requests cannot revoke another attempt. Successful display
 preparation retains its token for launch. The Client stops automatic reconnect
 on HTTP403, since operator consent cannot be recovered by repeated logins.
@@ -37,11 +39,21 @@ not prevent that verification/replacement. Account UUID and UID, not an
 unverified username, define identity. Different accounts sharing a relay/NAT
 remain independent. Active stream leases are separate and are never replaced
 by a login attempt. Failed passwords cannot invalidate setup or stream access.
-Failed/cancelled topology retrieval and failed topology reply delivery revoke
-the authorized setup token, just as failed display/launch already does.
+An authorized topology-readiness HTTP503 likewise retains the setup context.
+Rejected/cancelled topology retrieval and failed topology/display reply delivery
+revoke it. This avoids repeating password verification merely to wait for a
+display. Ownership/peer checks and the original five-minute expiry still apply
+to every request; no keepalive or poll renews that expiry.
 Unobserved client abandonment remains bounded by replacement and the five-minute
 setup expiry. No account details or secrets enter errors. The wire format is
-unchanged; existing Clients need no update.
+unchanged. Matching Client recovery retains this context until explicit
+invalidation or launch consumption. It stops on rejected authentication,
+permission denial or TLS failure; an expired readiness token may be refreshed.
+The configured Host Timeout bounds each automatic recovery window. In Ask mode,
+the local prompt pauses new control requests until Keep Waiting; an in-flight
+bounded request may finish but cannot trigger more work behind that prompt.
+Disconnect cancels the paused worker. Login/logout recovery otherwise remains
+automatic. These rules do not apply credentials to bookmark discovery polls.
 
 The body has exactly the nine fields in
 `tests/protocol/macos-preview-launch-v2.json`:

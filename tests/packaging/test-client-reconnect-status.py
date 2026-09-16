@@ -16,6 +16,32 @@ def between(text, start, end):
 
 
 class ReconnectPresentation(unittest.TestCase):
+    def test_retry_gate_covers_all_http_entry_points(self):
+        for signature in ("QJsonObject NvHTTP::postPlankJson", "QJsonObject NvHTTP::postPinnedMacJson",
+                          "NvHTTP::openConnection(QUrl"):
+            body = http.split(signature, 1)[1].split("{", 1)[1]
+            self.assertTrue(body.lstrip().startswith("waitForRequestPermission();"))
+        gate = between(session, "bool Session::waitForPlankReconnectRequest", "bool Session::runPlankReconnect")
+        self.assertIn("m_ReconnectCancelled.load()", gate)
+        self.assertIn("m_ConnectionStartCancelled.load()", gate)
+        self.assertIn("m_ReconnectPolicy.allowsRequest(SDL_GetTicks())", gate)
+
+    def test_readiness_retry_retains_authorization(self):
+        retry = between(session, "bool Session::runPlankReconnect", "bool Session::finishPlankReconnect")
+        self.assertEqual(retry.count("http.authenticate("), 1)
+        self.assertIn("if (token.isEmpty())", retry)
+        failure = retry.split("stopPlankTransportDataPlane();", 1)[1]
+        self.assertNotIn("sessionToken.clear()", failure)
+        self.assertIn("terminalStatus(error.getStatusCode(), authenticating)", retry)
+        self.assertIn("SslHandshakeFailedError", retry)
+
+    def test_wait_is_explicit_and_completion_is_gated(self):
+        self.assertEqual(session.count("m_ReconnectPolicy.allowUntil(reconnectDecisionDeadline)"), 2)
+        begin = between(session, "case SDL_CODE_PLANK_RECONNECT:", "case SDL_CODE_PLANK_REPLANK_COMPLETE:")
+        self.assertLess(begin.index("m_ReconnectPolicy.allowUntil"), begin.index("reconnectThread->start()"))
+        retry = between(session, "bool Session::runPlankReconnect", "bool Session::finishPlankReconnect")
+        self.assertIn("startConnectionAsync(true) &&\n                    waitForPlankReconnectRequest()", retry)
+
     def test_control_queries_have_only_operation_parameters(self):
         request = between(http, "NvHTTP::openConnection(QUrl", "QNetworkRequest request(url);")
         self.assertIn("url.setQuery(arguments);", request)

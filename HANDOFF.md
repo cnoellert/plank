@@ -5,10 +5,17 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- The operator accepted Client 1.0.114 full-panel/Retina behavior and authorized
-  merging `macos-auth-recovery`. Next work is a separate reconnect-lifecycle
-  cleanup: preserve login/logout recovery, avoid repeated password verification
-  while waiting for desktop readiness, and pause when asking whether to wait.
+- The accepted fixes are merged and pushed to main: root `d34a110`, Client
+  `060e6424`. Current work is `reconnect-lifecycle` in the existing separate
+  worktree (its directory name still says macos-auth-recovery).
+  Candidate 1.0.115 retains valid setup authorization across readiness retries,
+  stops rejected authentication/TLS/permission failures, and gates new requests
+  on the configured Ask/Disconnect deadline. Keep Waiting explicitly resumes.
+  Mac Host retains authorized topology/display HTTP503 contexts within their
+  unchanged original expiry; cancellation/rejection/failed launch still revoke.
+  Linux Host is unchanged. See `client-reconnect-lifecycle.plan`.
+  Local executable deadline/status checks, 14 reconnect source guards and 22
+  CI tests pass. Hosted compile/package and live recovery tests remain pending.
   The primary worktree's `rk3576-client` research branch and uncommitted notes
   remain untouched. Published mainline remains Host 1.0.106, other products
   1.0.105. Do not select an old candidate paragraph as the current source.
@@ -97,8 +104,8 @@ notes' README before machine-specific work; deployment information stays outside
   separate AppKit Space or an exclusive mode; test minimize and teardown too.
   Raw screenshots/logs remain outside Git.
 
-- Next: merge the accepted work, then address Client authentication/reconnect
-  retries separately. Broad acceptance is not a claim that every sleep,
+- Next: build and qualify the separate reconnect candidate. Broad acceptance
+  of 1.0.114 is not a claim that every sleep,
   ownership, manual-mode and secure-unlock scenario was tested. Private deployment
   details and captures remain outside Git.
 
@@ -189,7 +196,7 @@ Signing is an explicitly dispatched direct job in `build.yml`, selected with
 `signed=true`; ordinary push/PR builds never receive signing credentials.
 At the operator's request, `macos-signing` has no reviewers or wait timer.
 Custom branch restrictions are `main`, `macos-display-recovery` and the explicit
-`macos-media-recovery` and `macos-auth-recovery` candidates, not a
+`macos-media-recovery`, `macos-auth-recovery` and `reconnect-lifecycle` candidates, not a
 wildcard. Certificate exports, passwords and notarization credentials remain
 environment secrets. Temporary runner keychains are removed on success/failure.
 
@@ -219,8 +226,9 @@ not imply missing release dependencies.
 ## Remaining gates and publication boundaries
 
 Mainline macOS Host 1.0.106 is published, collected and checksum-verified.
-Its completed `macos-media-recovery` branch was deleted; current
-`macos-auth-recovery` and unrelated research work are still separate.
+Its completed `macos-media-recovery` branch was deleted. The subsequently
+accepted `macos-auth-recovery` work is merged; `reconnect-lifecycle` and
+unrelated research remain separate.
 Volume/mute is operator-validated. Longer app/alert audio, device changes,
 sleep/reconnect/topology and login/logout remain follow-up coverage, not
 blockers invented beyond the operator's merge approval. Inspect the new audio
