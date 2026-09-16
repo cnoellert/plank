@@ -5,14 +5,25 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Standalone fullscreen diagnostic is being prepared as
+- Standalone fullscreen diagnostic is ready as
   `1.0.118-macos-fullscreen` on the existing branch. No Host/Client source or
   dependency changed. `probes/macos/fullscreen-window.m` offers five explicit
   AppKit cases with geometry-only private logs and visible edge markers.
   Hosted signing reuses the protected environment and isolated keychain;
   probe compilation runs credential-free without product dependency bootstrap.
-  Read `probes/macos/fullscreen-window.md`. Native compile/sign/notarization and
-  laptop execution are pending; do not treat source guards as a geometry pass.
+  Read `probes/macos/fullscreen-window.md`. Signed hosted run `35129303592`
+  passed from root `21c295446892c6d0a6bb57c326040e94763871c1`: 26 CI tests,
+  strict SDK27/arm64 native compile, version/path checks, Developer ID signing,
+  notarization, staple, Gatekeeper and temporary keychain cleanup.
+  Hash-verified diagnostic DMG (58,471 bytes):
+  `artifacts/diagnostics/1.0.118-macos-fullscreen/macos/plank-fullscreen-probe_1.0.118-macos-fullscreen_arm64.dmg`.
+  SHA256: `8e391cf9c07ed7df9faaad1964f5319626e84a3f521c6527d8bec360600f06a9`.
+  This is NOT Client 1.0.118; the Client candidate remains 1.0.117.
+  Initial compile caught Objective-C warnings-as-errors, corrected before the
+  final build; superseded intermediate run was canceled. No gate bypassed.
+  Next: operator launches probe on a notched Mac, compares modes and shares
+  geometry logs plus coverage/swipe observations. No live execution or merge;
+  package validation does not prove fullscreen geometry or gesture behavior.
 
 - Current work is `macos-fullscreen` in the separate worktree (directory still
   named macos-auth-recovery), based on main root `15e6000`, Client `e8fc0cc0`.

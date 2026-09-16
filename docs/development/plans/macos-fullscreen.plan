@@ -103,6 +103,21 @@ adds focus/input/cleanup complexity and must not enter PLANK without a proof.
 No notched-Mac execution was available in this research turn; a hosted compile
 alone cannot close the live geometry/gesture gate.
 
+## Standalone probe delivery
+
+`probes/macos/fullscreen-window.m` now implements five single-window modes.
+All enter native Spaces. It has private geometry-only logs, visual edge markers,
+an explicit mode selector and normal Quit/Escape controls, no product/network
+dependency and no system setting writes. Full test instructions are alongside
+the source in `fullscreen-window.md`.
+
+The 1.0.118-macos-fullscreen diagnostic passed signed hosted run 35129303592,
+root 21c295446892c6d0a6bb57c326040e94763871c1. Strict native compilation and
+distribution gates passed; the downloaded hash matches the runner. HANDOFF
+records the separate `artifacts/diagnostics/` path/checksum. No new Client or
+Host package was produced. Live notched-Mac coverage and swipe tests remain
+pending; do not integrate an experimental policy based on this build alone.
+
 Additional references (implementation references, no code copied):
 - https://bugzilla.mozilla.org/show_bug.cgi?id=1737953#c18
 - https://github.com/vvitovec/helium-macos/blob/notch-fullscreen-demo-v0.3/patches/helium/macos/notch-aware-fullscreen-toolbar.patch
