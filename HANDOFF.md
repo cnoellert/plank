@@ -137,11 +137,15 @@ A coordinated 60-second capture now receives 5,548 ID 16 reports (27 bytes) and
 seven ID 17 reports (nine bytes), with changing payloads, intact report ID
 prefixes and no callback errors. Both interfaces close successfully. The separate
 touch interface is quiet; exact controls exercised await operator confirmation.
-Active raw-report access works alongside the installed Wacom driver, but report
-semantics and touch delivery are unverified. No Client capture backend, exclusive
-ownership, SET/output or Host injection was added. Next tablet step: assess
-ownership and feature exchanges before implementing the Mac backend, then verify
-native pressure and mapping on the Host.
+The follow-up adds selected HID value callbacks and confirms local pressure
+0–7707 of 8191, changing tilt on both axes, tip/proximity transitions, both pen
+barrel buttons and 2527 intact 44-byte reports on the touch interface. Both
+interfaces open/close cleanly with no raw/value callback errors or out-of-range
+values. Eraser, pad keys and ring remain unverified. Active raw input and core
+pen fields are accessible alongside the installed Wacom driver. No Client capture
+backend, exclusive ownership, SET/output or Host injection was added. Next tablet
+step: assess ownership and feature exchanges before implementing the Mac backend,
+then verify native pressure and mapping on the Host.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

@@ -448,6 +448,19 @@ exercised is pending. Pressure/tilt/button semantics, touch delivery, ownership,
 feature SET/output, Host recreation and target application acceptance remain
 open. The current streaming Client is unchanged.
 
+The follow-up probe adds a narrow allowlist of HID control-value callbacks,
+using descriptor fields and the Linux Wacom driver's usage aliases. It records
+only ranges and counts, omitting coordinates and pen identifiers. Its ARM64/
+macOS15 build and signature checks pass. A coordinated 60-second test now
+observes pressure 0–7707 within the declared 0–8191 range, tilt changes on both
+axes, tip/proximity transitions and both pen barrel buttons. The touch interface
+delivers 2527 intact 44-byte ID 33 reports. Both interfaces open/close cleanly;
+raw and value callback errors and out-of-range values are zero. Eraser, inversion,
+pad keys and ring show no events in this window and remain unverified. The
+probe confirms local pressure/tilt/button access and raw touch delivery, with
+the Wacom driver running. Host forwarding and remote application acceptance
+remain separate gates.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are

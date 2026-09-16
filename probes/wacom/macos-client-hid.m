@@ -4,6 +4,7 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <IOKit/hid/IOHIDManager.h>
 #import <IOKit/hid/IOHIDKeys.h>
+#import <IOKit/hid/IOHIDUsageTables.h>
 #import <IOKit/hidsystem/IOHIDLib.h>
 #import <mach/mach_error.h>
 #include <signal.h>
@@ -110,16 +111,98 @@ static NSDictionary *reportInventory(IOHIDDeviceRef device)
     return reports;
 }
 
+// Only named control fields are observed; no serials, tool IDs or stroke paths.
+// Wacom aliases follow wacom_equivalent_usage() in Linux drivers/hid/wacom_wac.c.
+// The HID parser supplies field values, so this does not guess packet offsets.
+static NSString *controlName(uint32_t page, uint32_t usage)
+{
+    if (page == 0xff0d) {
+        if (usage == 0x0138) return @"ring";
+        if (usage == 0x0139) return @"ring_active";
+        if (usage == 0x0454) return @"touch_enabled";
+        if (usage == 0x0995) return @"pad_center";
+        if (usage >= 0x0910 && usage <= 0x092f)
+            return [NSString stringWithFormat:@"express_key_%u", usage - 0x0910];
+        if (usage > 0xff) return nil;
+        page = kHIDPage_Digitizer;
+    }
+    if (page != kHIDPage_Digitizer) return nil;
+    switch (usage) {
+        case kHIDUsage_Dig_TipPressure: return @"pressure";
+        case kHIDUsage_Dig_InRange: return @"in_range";
+        case kHIDUsage_Dig_Invert: return @"inverted";
+        case kHIDUsage_Dig_XTilt: return @"tilt_x";
+        case kHIDUsage_Dig_YTilt: return @"tilt_y";
+        case kHIDUsage_Dig_TipSwitch: return @"tip_down";
+        case kHIDUsage_Dig_BarrelSwitch: return @"barrel_button_1";
+        case kHIDUsage_Dig_Eraser: return @"eraser";
+        case 0x5a: return @"barrel_button_2";
+        default: return nil;
+    }
+}
+
+static NSMutableDictionary *controlInventory(IOHIDDeviceRef device)
+{
+    NSMutableDictionary *controls = [NSMutableDictionary dictionary];
+    NSArray *elements = CFBridgingRelease(IOHIDDeviceCopyMatchingElements(device, NULL, 0));
+    for (id item in elements) {
+        IOHIDElementRef element = (__bridge IOHIDElementRef)item;
+        IOHIDElementType type = IOHIDElementGetType(element);
+        if (type < kIOHIDElementTypeInput_Misc || type > kIOHIDElementTypeInput_ScanCodes ||
+                IOHIDElementGetReportSize(element) > 32 || IOHIDElementGetReportCount(element) != 1) continue;
+        uint32_t page = IOHIDElementGetUsagePage(element), usage = IOHIDElementGetUsage(element);
+        NSString *name = controlName(page, usage);
+        if (!name) continue;
+        NSString *key = [NSString stringWithFormat:@"%u", IOHIDElementGetCookie(element)];
+        controls[key] = [@{ @"name": name, @"usage_page": @(page), @"usage": @(usage),
+            @"report_id": @(IOHIDElementGetReportID(element)),
+            @"logical_minimum": @(IOHIDElementGetLogicalMin(element)),
+            @"logical_maximum": @(IOHIDElementGetLogicalMax(element)),
+            @"value_events": @0, @"value_changes": @0, @"zero_events": @0,
+            @"nonzero_events": @0, @"out_of_range_events": @0 } mutableCopy];
+    }
+    return controls;
+}
+
 @interface ProbeDevice : NSObject
 @property(nonatomic, assign) IOHIDDeviceRef device;
 @property(nonatomic) NSMutableDictionary *record;
 @property(nonatomic) NSMutableDictionary<NSString *, NSMutableDictionary *> *reports;
 @property(nonatomic) NSMutableDictionary<NSString *, NSData *> *previous;
+@property(nonatomic) NSMutableDictionary<NSString *, NSNumber *> *previousValues;
 @property(nonatomic) NSMutableData *buffer;
 @property(nonatomic) BOOL opened;
 @end
 @implementation ProbeDevice
 @end
+
+static void inputValue(void *context, IOReturn result, void *sender, IOHIDValueRef value)
+{
+    (void)sender;
+    ProbeDevice *probe = (__bridge ProbeDevice *)context;
+    if (result != kIOReturnSuccess || !value) {
+        probe.record[@"value_callback_errors"] = @([probe.record[@"value_callback_errors"] unsignedIntValue] + 1);
+        return;
+    }
+    IOHIDElementRef element = IOHIDValueGetElement(value);
+    NSString *key = [NSString stringWithFormat:@"%u", IOHIDElementGetCookie(element)];
+    NSMutableDictionary *stats = probe.record[@"control_values"][key];
+    if (!stats || IOHIDValueGetLength(value) <= 0 || IOHIDValueGetLength(value) > (CFIndex)sizeof(CFIndex)) return;
+    CFIndex number = IOHIDValueGetIntegerValue(value);
+    if (number < IOHIDElementGetLogicalMin(element) || number > IOHIDElementGetLogicalMax(element)) {
+        stats[@"out_of_range_events"] = @([stats[@"out_of_range_events"] unsignedLongLongValue] + 1);
+        return;
+    }
+    unsigned long long count = [stats[@"value_events"] unsignedLongLongValue];
+    stats[@"minimum"] = count ? @(MIN(number, [stats[@"minimum"] longLongValue])) : @(number);
+    stats[@"maximum"] = count ? @(MAX(number, [stats[@"maximum"] longLongValue])) : @(number);
+    stats[@"value_events"] = @(count + 1);
+    NSString *state = number == 0 ? @"zero_events" : @"nonzero_events";
+    stats[state] = @([stats[state] unsignedLongLongValue] + 1);
+    if (probe.previousValues[key] && [probe.previousValues[key] longLongValue] != number)
+        stats[@"value_changes"] = @([stats[@"value_changes"] unsignedLongLongValue] + 1);
+    probe.previousValues[key] = @(number);
+}
 
 static void inputReport(void *context, IOReturn result, void *sender,
                         IOHIDReportType type, uint32_t reportID,
@@ -193,8 +276,10 @@ int main(int argc, const char **argv)
             probe.device = device;
             probe.reports = [NSMutableDictionary dictionary];
             probe.previous = [NSMutableDictionary dictionary];
+            probe.previousValues = [NSMutableDictionary dictionary];
             probe.record = [@{ @"index": @(probes.count), @"registry_id": @(registryID(device)),
                               @"usb_group": usbGroup(device), @"callback_errors": @0,
+                              @"value_callback_errors": @0, @"control_values": controlInventory(device),
                               @"report_inventory": reportInventory(device) } mutableCopy];
             for (NSString *key in @[@kIOHIDProductKey, @kIOHIDVendorIDKey, @kIOHIDProductIDKey,
                                     @kIOHIDVersionNumberKey, @kIOHIDTransportKey,
@@ -219,6 +304,7 @@ int main(int argc, const char **argv)
                     probe.opened = YES;
                     probe.buffer = [NSMutableData dataWithLength:4096];
                     if (seconds) {
+                        IOHIDDeviceRegisterInputValueCallback(device, inputValue, (__bridge void *)probe);
                         IOHIDDeviceRegisterInputReportCallback(device, probe.buffer.mutableBytes,
                             (CFIndex)probe.buffer.length, inputReport, (__bridge void *)probe);
                         IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
@@ -267,6 +353,7 @@ int main(int argc, const char **argv)
         for (ProbeDevice *probe in probes) {
             if (probe.opened) {
                 if (seconds) {
+                    IOHIDDeviceRegisterInputValueCallback(probe.device, NULL, NULL);
                     IOHIDDeviceRegisterInputReportCallback(probe.device, probe.buffer.mutableBytes,
                         (CFIndex)probe.buffer.length, NULL, NULL);
                     IOHIDDeviceUnscheduleFromRunLoop(probe.device, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
@@ -275,6 +362,7 @@ int main(int argc, const char **argv)
             }
             probe.record[@"observed_reports"] = probe.reports;
             [probe.previous removeAllObjects];
+            [probe.previousValues removeAllObjects];
         }
         if (seconds || featureIndex >= 0) {
             summary[@"event"] = seconds ? @"capture_end" : @"feature_end";

@@ -56,9 +56,20 @@ A watchdog termination produces no `feature_end` record and is not a pass.
   contain report IDs, counts, lengths and change counts. A previous input
   report is retained in memory only to compare successive values. Serial
   numbers and device paths are not collected; registry IDs are ephemeral.
-- A report's change count proves byte variation only. It does not decode
-  pressure, tilt, eraser or touch semantics. A successful feature GET does not
-  prove feature SET or Host driver initialization.
+- Named control values use IOKit's HID element parser and a narrow usage
+  allowlist: pressure, tilt, proximity, tip/eraser/buttons, pad keys, ring and
+  touch-enabled state. Wacom usage aliases follow the upstream Linux driver's
+  [`wacom_equivalent_usage()` and usage definitions](https://github.com/torvalds/linux/tree/master/drivers/hid).
+  `control_values` records descriptor ranges, observed minima/maxima and
+  value/change/zero/nonzero event counts. It omits coordinates, timestamps,
+  serials, tool identifiers and unknown vendor fields. Values outside the
+  declared logical range are counted separately and excluded from extrema.
+  Scalar fields over 32 bits or with multiple report items are excluded.
+- `value_events` counts HID value callbacks, which need not occur on every raw
+  report. Unobserved fields have no minimum/maximum. A raw report's change count
+  alone proves byte variation only. A successful feature GET does not prove
+  feature SET or Host driver initialization; local decoded values do not prove
+  forwarding or acceptance by a remote application.
 - Descriptor and report buffers use the protocol's 4096-byte cap; interface
   count is capped at 16 for opening. Do not size vendor feature response
   buffers solely from `MaxFeatureReportSize`: a live interface advertising
@@ -82,14 +93,31 @@ A later coordinated 60-second watch receives 5,548 input reports on ID 16
 Every report retains its ID prefix; both interfaces open and close successfully,
 with no callback errors. Thirty unchanged ID 19 status reports are also seen.
 This establishes active raw-report access alongside the installed Wacom driver.
-The separate touch interface receives no reports. The exact controls exercised
-still await operator confirmation; pressure/tilt/button semantics are not decoded
-by this probe, and touch delivery remains unverified.
+The separate touch interface receives no reports in that capture. That initial
+version does not decode controls.
+
+A subsequent 60-second test with HID control-value callbacks observes:
+
+| Field | Observation |
+| --- | --- |
+| Pressure | 731 value events; range 0–7707 within declared 0–8191 |
+| Tilt X / Y | 309 / 499 events; ranges −33–0 / −25–18 |
+| Tip / proximity | Press/release and in/out transitions |
+| Pen barrel buttons | Both buttons reach 0 and 1 |
+| Touch interface | 2527 ID 33 reports, 44 bytes each, 2526 changed |
+| Eraser, inversion, pad keys, ring | No value events; still unverified |
+
+Both interfaces open and close successfully, every raw report ID prefix matches,
+and report/value callback error counts and out-of-range value counts are zero.
+Pressure, tilt and pen buttons are now observed locally without stopping the
+Wacom driver. Touch raw-report delivery is also observed, but its contact
+semantics are not decoded. None of these measurements prove Host forwarding or
+remote application behavior.
 
 Before integrating a Mac capture backend, establish:
 
-1. Real pen/touch activity reaches the expected interfaces with intact report
-   IDs and lengths, including any needed native device mode.
+1. Extend the successful pen and touch capture checks to eraser/pad/ring and
+   repeat under the packaged Client's permissions and lifecycle.
 2. A deliberate ownership policy can support feature SET/output exchanges and
    avoid competing with the local Wacom driver; nonexclusive GET alone does
    not establish this.
