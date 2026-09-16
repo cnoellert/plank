@@ -146,10 +146,18 @@ pen fields are accessible alongside the installed Wacom driver. A subsequent
 three-second exclusive ownership probe succeeds for both interfaces and releases
 both cleanly. Client `285d58b` now implements Mac raw HID forwarding and passive
 host-position cursor display through the existing authenticated protocol. Five
-wire tests and strict syntax checks pass; product build/live feature exchanges
-are next. Focus/reconnect and pressure-sensitive strokes inside Autodesk Flame
-remain required acceptance gates. No live Host tablet has yet been attached by
-the new backend.
+wire tests and strict syntax checks pass. The clean root `eab6d64` candidate is
+packaged at `artifacts/development/macos15-tablet/`; all 76 Client checks,
+native input ordering, 106 target checks, dependency closure and ad-hoc signatures
+pass. After the operator grants Input Monitoring and the Client is relaunched,
+both physical interfaces attach successfully. The Linux Host now exposes native
+Intuos Pro M Pen, Pad and Finger nodes, with pressure maximum 8191 and two tilt
+axes. The Client reports exclusive raw forwarding active with no report I/O
+failure logged. This accepts initial attachment, not application pressure.
+The replacement is connected; the remote Flame launch is in progress and the
+operator has been asked to prepare a safe Paint test. Host pressure observation,
+visible cursor/mapping, focus/reconnect and pressure-sensitive strokes inside
+Autodesk Flame remain required acceptance gates.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

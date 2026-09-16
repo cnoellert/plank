@@ -473,6 +473,18 @@ wire-validation tests and strict backend/Cocoa syntax checks pass. Product build
 feature exchanges, lifecycle and pressure inside Autodesk Flame remain pending;
 local capture alone is not end-to-end acceptance.
 
+The clean root `eab6d64` candidate is packaged under
+`artifacts/development/macos15-tablet/`. All 76 Client checks, native input
+ordering, 106 ARM64/macOS15 checks, dependency closure and ad-hoc signatures
+pass. Executable SHA-256:
+`dbb17e4acd787ae77a91849e80448ee5d92c95db6338e541947ee7d68c2b6acb`.
+The operator grants the normal macOS Input Monitoring permission; after a
+Client relaunch, the first authenticated attachment succeeds for both interfaces.
+The Linux Host independently exposes Intuos Pro M Pen, Pad and Finger nodes,
+including pressure 0–8191 and both tilt axes. The Client reports exclusive raw
+forwarding active without an I/O error. Initial attachment is verified; actual
+pressure delivery and visible behavior inside Flame are still pending.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
