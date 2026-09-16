@@ -378,8 +378,12 @@ startup hint disabling `SDL_MOUSE_AUTO_CAPTURE`, despite the SDL3 input handler
 explicitly relying on automatic capture. SDL then constrains drag motion to the
 starting window before the Client's cross-output coordinate mapping can run.
 Client `67564e5` enables automatic capture. All 71 Client checks and the native
-input worker regression pass; the corrected build still requires live
-fullscreen drag acceptance. No protocol or Host display change is needed.
+input worker regression pass. The operator confirms fullscreen remote window
+dragging now works in both directions. A concurrent read-only Host trace
+records nine seam crossings with the button continuously held, in both
+directions, and changing remote window geometry. This accepts the fullscreen
+drag correction; longer-duration input, color and pacing checks remain separate.
+No protocol or Host display change is needed.
 The clean root `aeb7279` candidate is packaged in
 `artifacts/development/macos15-fullscreen-capture/`. All 106 Mach-O target
 checks, dependency closure and ad-hoc signatures pass. Executable SHA-256:

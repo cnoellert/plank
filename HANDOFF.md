@@ -98,10 +98,13 @@ enables automatic capture; all 71 Client checks and the native input worker
 regression pass. The clean root `aeb7279` candidate is packaged under
 `artifacts/development/macos15-fullscreen-capture/`; 106 target checks,
 dependency closure and ad-hoc signatures pass. Executable SHA-256 is recorded
-in its adjacent manifest. Current state: replacement Client open for direct
-sign-in, local probe closed, two native-resolution Host monitors prepared;
-fullscreen correction awaits live validation and original layout restoration
-is still due.
+in its adjacent manifest. The operator now confirms fullscreen window dragging
+works in both directions. An independent Host trace records nine held-button
+seam crossings in both directions, with remote window geometry changing.
+Current state: corrected Client left connected for continued operator testing,
+local probe closed, two native-resolution Host monitors prepared; original
+layout restoration remains due when the operator finishes testing. This accepts
+the fullscreen drag correction, not all multi-monitor/color/pacing gates.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.
