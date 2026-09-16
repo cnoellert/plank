@@ -53,6 +53,11 @@ Follow-up: precise failures before lifecycle simplification
   Target authenticate once -> prepare desktop -> stream; readiness retry must
   not repeatedly verify credentials or accumulate setup tokens. Authority
   changes, cancellation and takeover still need explicit state/ownership tests.
+- Live diagnostics identified retry-cooldown during ongoing reconnect attempts,
+  not a directory rejection. Clear backoff after verified credentials, retain
+  it after failures; test immediate success/success and denied/backoff sequences.
+  This avoids penalizing successful authentication without permitting parallel
+  directory work or removing failed-password throttling.
 
 Validation result
 - Hosted signed run 35057106376 passed from b7407097fef78f10952f9969d6711d92ed454890.

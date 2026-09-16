@@ -91,12 +91,13 @@ int main(int argc, const char *argv[]) {
         close(unrelated);
         assert(!setenv("PLANK_AUTH_SYNTHETIC_SECRET", "not-a-real-secret", 1));
         isolated(@"synthetic", PLANKMacAuthenticationVerified);
-        isolated(@"synthetic", PLANKMacAuthenticationUnavailable); // Rate limit.
+        isolated(@"synthetic", PLANKMacAuthenticationVerified); // Success never consumes retry backoff.
         assert(!pthread_mutex_lock(&attemptLock));
         isolated(@"synthetic", PLANKMacAuthenticationUnavailable); // Concurrent attempt.
         pthread_mutex_unlock(&attemptLock);
         nextAttempt = 0; // Tests access internals, not a product bypass switch.
         isolated(@"denied", PLANKMacAuthenticationDenied);
+        isolated(@"synthetic", PLANKMacAuthenticationUnavailable); // Failed verification retains backoff.
         nextAttempt = 0;
         isolated(@"unavailable", PLANKMacAuthenticationUnavailable);
         nextAttempt = 0;
@@ -118,7 +119,7 @@ int main(int argc, const char *argv[]) {
         int status;
         assert(waitpid(-1, &status, WNOHANG) == -1 && errno == ECHILD);
         close(77);
-        puts("macos_account_channel=pass cases=18 synthetic_only=1 children_reaped=1");
+        puts("macos_account_channel=pass cases=19 synthetic_only=1 children_reaped=1");
     }
     return 0;
 }

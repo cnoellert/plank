@@ -308,7 +308,13 @@ PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(
         if (sockets[0] >= 0) close(sockets[0]);
         if (sockets[1] >= 0) close(sockets[1]);
         if (child > 0) { kill(child, SIGKILL); reap(child, nowNS()); }
-        if (locked) pthread_mutex_unlock(&attemptLock);
+        if (locked) {
+            // A verified account must not be punished for retrying desktop
+            // preparation or for another successful login. Retain the backoff
+            // after rejected/unavailable verification and serialize all work.
+            if (outcome == PLANKMacAuthenticationVerified) nextAttempt = 0;
+            pthread_mutex_unlock(&attemptLock);
+        }
         if (outcome != PLANKMacAuthenticationVerified) reportFailure(stage, outcome, started);
     }
 }

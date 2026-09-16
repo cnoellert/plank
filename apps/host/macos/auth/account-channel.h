@@ -7,7 +7,8 @@
 int PLANKMacAccountWorkerMain(void);
 
 // Run on a background authentication queue, never the GUI/event thread.
-// One process-wide attempt at a time, with a two-second minimum start interval.
+// One process-wide attempt at a time. Rejected/unavailable attempts impose a
+// two-second minimum start interval; successful verification clears backoff.
 // Re-execs this signed executable; its main must dispatch the argument above.
 // Returns no desktop authority. Wipes password and zeroes output on failure.
 PLANKMacAuthenticationResult PLANKMacVerifyAccountIsolated(

@@ -5,7 +5,7 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Follow-up candidate 1.0.108 is being prepared on `macos-auth-recovery`.
+- Follow-up candidate 1.0.108 is built and installed on `macos-auth-recovery`.
   After the token-capacity correction, native directory verification passed
   but PLANK still returned denied on the affected Mac. The precise rejection
   remains unproven. Helper unavailability now maps to busy, not bad credentials;
@@ -14,6 +14,21 @@ notes' README before machine-specific work; deployment information stays outside
   Full isolated-helper tests join the hosted Host package gates. No security
   check was removed; no Client/Linux or display-power change. Do not describe
   this diagnostic candidate as an accepted login fix before live testing.
+  Hosted run 35059051412 passed from e7fa9cec2d44af880ec55c9e5fc5d52d477928fa:
+  509 session checks, 18 isolated-channel cases, 27 account-policy cases,
+  seven negative verifier cases, 32 topology failure/relogin cycles, existing
+  package gates and signing/notarization. Initial run 35058870303 failed on a
+  new enum/class name collision; corrected before successful build/install.
+  Package SHA256 `7f78c8e7547bd1dc1e23b15820046e3aee13ce7448b0e129402438c6aa3a9235`,
+  size 6,608,276; catalog `candidates/1.0.108-macos-auth-recovery/macos/`.
+  Installed executable matches payload SHA256
+  `9529409b8d338292e4e99a38d190004a04b5399f5dd0a51dfac52be99ee97b28`.
+  Live failures now identify retry-cooldown, without observed directory rejection.
+  Operator requested to quit the reconnecting Client for an isolated test.
+  Candidate 1.0.109 clears cooldown after successful verification only; failed
+  attempts retain backoff and all verification remains serialized/bounded.
+  This fixes legitimate logins competing with successful reconnect attempts,
+  not the separate inactive-display issue or full reconnect lifecycle yet.
 
 - Active fix: `macos-auth-recovery`, isolated worktree, candidate 1.0.107.
   Fixes abandoned macOS setup-token capacity exhaustion; see
