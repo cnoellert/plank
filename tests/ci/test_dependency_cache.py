@@ -18,7 +18,7 @@ class DependencyCacheTests(unittest.TestCase):
         self.root = Path(self.tmp.name) / 'source'
         self.deps = Path(self.tmp.name) / 'deps'
         self.tools = {'arch': 'arm64', 'sdk': '27', 'compiler': 'fixture'}
-        for name in (*cache.INPUTS, cache.PATCH):
+        for name in (*cache.INPUTS, cache.PATCH, cache.SDL_PATCH):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('fixture')
@@ -35,7 +35,7 @@ class DependencyCacheTests(unittest.TestCase):
 
     def test_every_required_input_invalidates_cache(self):
         key = self.key()
-        for name in (*cache.INPUTS, cache.PATCH):
+        for name in (*cache.INPUTS, cache.PATCH, cache.SDL_PATCH):
             path = self.root / name
             path.write_text('changed')
             self.assertNotEqual(key, self.key(), name)
@@ -84,6 +84,8 @@ class DependencyCacheTests(unittest.TestCase):
             path.touch()
         with patch.object(cache.subprocess, 'run') as run:
             cache.check_prepared(self.root, self.deps)
+            self.assertIn('prepare-macos-sdl.sh', run.call_args_list[0].args[0][1])
+            self.assertEqual(run.call_args_list[0].args[0][2], 'verify')
             self.assertIn('--reverse', run.call_args.args[0])
             self.assertIn('--dry-run', run.call_args.args[0])
             self.assertTrue(run.call_args.kwargs['check'])

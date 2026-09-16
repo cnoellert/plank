@@ -1,0 +1,43 @@
+# Native macOS fullscreen Spaces
+
+Work on macos-fullscreen; Client only. Preserve the accepted Host and Linux
+presentation, protocol, Retina Match Client and exact-format decode paths.
+
+## Finding and approach
+
+Client 1.0.114 disabled SDL's native fullscreen Spaces while also opting out
+of display safe-area compatibility. This fixed full-panel coverage but removed
+normal fullscreen Space participation. SDL 3.4.2's Cocoa delegate accepts
+AppKit's proposed fullscreen content size without an application override.
+
+Restore Spaces and request the actual NSScreen frame size through AppKit's
+documented window:willUseFullScreenContentSize: delegate callback. Implement
+that narrow opt-in inside the pinned SDL Cocoa delegate, not a replacement
+delegate, runtime swizzle, gesture interceptor or manual window-movement loop.
+Do not switch display modes, stretch/crop video or hardcode a notch dimension.
+Keep the safe-area compatibility opt-out and existing dynamic toolbar placement.
+
+The SDL patch is a required build input: apply-or-prove-applied at bootstrap,
+independently verify before every build, and include it in dependency cache
+fingerprints. An unpatched prepared tree must fail. Other SDL users retain
+upstream behavior unless the PLANK-specific hint is enabled.
+
+## Validation
+
+Check patch application/reverse verification and source wiring, native build,
+shared toolbar/topology/reconnect tests and signed/notarized package gates.
+Log the proposed/fullscreen screen size and settled native content/drawable
+geometry to distinguish an AppKit restriction from renderer letterboxing.
+The AppKit sizing override is a candidate, not proof of notch behavior: the
+hosted builder has no operator laptop/notch/trackpad acceptance coverage.
+
+Operator checks before merge: swipe between fullscreen apps and back; verify
+full-panel Retina Match Client, sharp text, accurate mouse/pen positions,
+toolbar reveal/drag, held-key release on focus loss, window/fullscreen toggle,
+minimize/restore and disconnect. Also check a non-notched display/manual mode.
+No new Host package is required. Do not merge without operator acceptance.
+
+References:
+- https://wiki.libsdl.org/SDL3/SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES
+- https://github.com/libsdl-org/SDL/blob/release-3.4.2/src/video/cocoa/SDL_cocoawindow.m
+- https://developer.apple.com/documentation/appkit/nswindowdelegate/window(_:willusefullscreencontentsize:)

@@ -5,11 +5,22 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Current work is `macos-fullscreen` in the separate worktree (directory still
+  named macos-auth-recovery), based on main root `15e6000`, Client `e8fc0cc0`.
+  Candidate 1.0.117 restores native macOS fullscreen Spaces and opts into a
+  narrow required SDL3.4.2 Cocoa content-size callback using the full NSScreen
+  frame. Retina sizing, no-modeset policy and dynamic notch-safe toolbar remain.
+  Source/installed-SDL preflight and dependency cache fingerprint include the
+  patch. Six fullscreen wiring/patch-gate tests and 22 CI policy tests pass;
+  native compile/signing and laptop gesture/notch acceptance remain pending.
+  This is Client-only: no Host update, automatic install or merge is planned.
+  See `docs/development/plans/macos-fullscreen.plan`.
+
 - The operator authorized merging the reconnect follow-up into main after
   manually installing Host 1.0.116. Reconnect implementation root `4173138`
   and Client `e8fc0cc0` extend the previously accepted root `d34a110` / Client
   `060e6424`. The separate worktree (directory still named macos-auth-recovery)
-  is now the mainline continuation point; preserve unrelated primary-worktree research.
+  contains the continuation work; preserve unrelated primary-worktree research.
   Host and Client candidates 1.0.116 retain valid setup authorization across readiness retries,
   stop rejected authentication/TLS/permission failures, and gate new requests
   on the configured Ask/Disconnect deadline. Keep Waiting explicitly resumes.

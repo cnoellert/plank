@@ -42,7 +42,8 @@ product. The job requires manual dispatch and directly names the protected
 required reviewers or wait timer: an explicitly dispatched signed build on an
 allowed branch proceeds automatically. Keep custom deployment branch policies
 enabled (currently `main`, `macos-display-recovery` and
-`macos-media-recovery`, `macos-auth-recovery` and `reconnect-lifecycle`); do not replace them with
+`macos-media-recovery`, `macos-auth-recovery`, `reconnect-lifecycle` and
+`macos-fullscreen`); do not replace them with
 an all-branches wildcard. Review source, workflow and dependency changes before
 dispatching or adding a candidate branch. Public push/PR jobs have no signing
 authority. This removes the approval gate itself, not through a bot/token that
@@ -110,7 +111,7 @@ standard runner is insufficient; record the resource limitation first.
 
 After successful cold-build qualification, Mac Client jobs may reuse prepared
 libraries, their sources (needed for licenses and patch verification), downloads,
-and Qt. The exact key includes dependency bootstrap scripts, all Client FFmpeg
+and Qt. The exact key includes dependency bootstrap scripts, the Mac SDL fullscreen patch, all Client FFmpeg
 patches, source/dependency paths, architecture, runner image, OS, SDK, compiler,
 and build-tool versions. Application-only changes do not invalidate it.
 There are no fallback restore keys. A restored receipt must match the exact key;

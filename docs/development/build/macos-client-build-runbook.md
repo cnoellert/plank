@@ -62,6 +62,14 @@ Candidate builds must independently reverse-dry-run that patch and verify its
 hash. Private dylibs must be bundled with relocatable install names, licensed,
 signed and closure-checked before any package is offered to a user.
 
+SDL3.4.2 also requires the tracked Cocoa fullscreen-content-size patch under
+`apps/client/app/deploy/macos/sdl-patches/`. `prepare-macos-sdl.sh` applies it
+or proves it already applied, with zero fuzz. Every candidate preflight checks
+the patched source and installed SDL marker; the exact dependency-cache key
+includes both the patch and helper. A newly patched source beside an old SDL
+library is invalid: rebuild SDL, never bypass the gate. Native Spaces remain
+enabled; only PLANK opts into full-display content sizing through the hint.
+
 The current packaging path is qualified; each new candidate still requires its
 affected live acceptance gates. Do not use the old upstream setup-deps/prebuilts
 workflow.
