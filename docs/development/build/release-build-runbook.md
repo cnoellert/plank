@@ -7,6 +7,12 @@ to bypass both cache restore and save when qualifying a fresh bootstrap.
 Those workflows establish the same OS, dependency, clean-source and package
 contracts through `scripts/ci/`; they do not deploy or replace hardware gates.
 
+A full application rebuild still permits reuse of verified, exact-input
+dependencies. Reserve `--clean-bootstrap` for an explicit dependency-bootstrap
+qualification, not ordinary rebuilds after a merge. Hosted dependency caching
+currently exists only for the macOS Client; the other three hosted products
+still bootstrap their dependencies on each disposable runner.
+
 This is the canonical, repeatable procedure for producing PLANK host
 and client candidate packages. Read it before changing or running a release
 build. `AGENTS.md` defines machine policy; this runbook supplies the exact

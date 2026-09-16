@@ -8,14 +8,32 @@ notes' README before machine-specific work; deployment information stays outside
 - Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
   push, merge and a full rebuild. Root merge `53c7c3988f88a440f1cffeda0ce61ed526de6c43`
   and Client merge `95060dee8fa63e0da98dfa83e7ddd8185731a837` are pushed to main.
-  Preparing all four Host/Client packages as 1.0.120 from that exact root on
-  disposable GitHub-hosted builders with `clean_bootstrap=true`; no installs or
-  GitHub release publication requested. Preserve unrelated primary-worktree research.
-  Candidate packages below remain unchanged; mainline packages are rebuilt,
-  never relabeled. Active runs: Linux Host `35137573043`, Ubuntu Client
-  `35137572752`, signed Mac Host `35137572797`, signed Mac Client `35137572549`.
-  All dispatched SHAs match the root merge. Build/package results are pending;
-  collect exact artifacts/checksums under `artifacts/packages/releases/1.0.120/`.
+  All four Host/Client packages rebuilt successfully as 1.0.120 from that exact
+  root on disposable GitHub-hosted builders with `clean_bootstrap=true`.
+  Successful runs: Linux Host `35137573043`, Ubuntu Client `35137572752`,
+  signed Mac Host `35137572797`, signed Mac Client `35137572549`.
+  Package, dependency, version and platform regression gates passed; both Mac
+  packages passed Developer ID signing, notarization, stapling and Gatekeeper.
+  All four downloaded packages passed SHA256 verification and collection with
+  exact source provenance under `artifacts/packages/releases/1.0.120/`.
+  No installation, new hardware acceptance, or GitHub release publication was
+  performed. Preserve unrelated primary-worktree research. Earlier candidate
+  packages below are historical evidence, not the current mainline artifacts.
+  Normal full application rebuilds may reuse verified dependency caches;
+  reserve cold bootstrap for explicit qualification. Hosted caching currently
+  exists only for the macOS Client, not the other three products.
+
+  | Package (relative to the 1.0.120 catalog) | SHA256 |
+  | --- | --- |
+  | `linux/plank-host-1.0.120-1.el9.x86_64.rpm` | `b74fd2486ab5864fb332d77d594b03c24ce76355c7651d24c3de3c05f49aa046` |
+  | `linux/plank-client_1.0.120_amd64.deb` | `dea73b7f9ac840010ce02f15154b4ae2d4020ef61e925bc787ad0fb821074b53` |
+  | `macos/plank-host_1.0.120_arm64.pkg` | `0fc01ce11172d075d864841d26a997c8bb5f5911032afff8536f43d98e244b35` |
+  | `macos/plank-client_1.0.120_arm64.dmg` | `618a42f6ff8c86765f3a692b918c852ab7557a79e1733e0294999a219466765e` |
+
+  Root and Client merge SHAs above pin the complete source tree; unchanged
+  gitlinks are listed with the accepted evidence below. Linux Host common-c
+  is `775943b5ac5e5100a3c2b1b89d9e21151dea4f29` and build-deps is
+  `caf0495d5e6baff94f349853d4a59e3779a451a0`.
 
 - Accepted Client 1.0.119-macos-fullscreen evidence:
   Operator tested all five standalone AppKit modes: no side borders, same
