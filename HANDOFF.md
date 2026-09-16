@@ -21,14 +21,21 @@ notes' README before machine-specific work; deployment information stays outside
   Candidate 1.0.112 implements activity on authorized real input, throttled to
   once per second with a ten-second OS timeout and immediate teardown release.
   No wake on media/discovery, synthetic key repeat or teardown events. Hosted
-  non-waking activity and real-QUIC authorization tests are pending; not yet
-  built or installed. Linux and Client are unchanged by this fix.
+  non-waking activity and real-QUIC authorization tests passed in signed hosted
+  run 35066026592 at `8a60ee3`; signing/notarization passed. Not installed.
+  Linux and Client are unchanged by this fix.
 
-- Requested follow-up discussion: Mac Match Client currently matches native
-  pixels but sets hiDPI=0. Mirror logical desktop size AND Retina backing pixels
-  so UI size follows the laptop (for example 1710x1107 points at 3420x2214
-  pixels). Keep manual modes and Linux EDID separate. Not implemented as part
-  of the secure-unlock fix.
+- Candidate 1.0.113 adds Retina-aware Mac Match Client: current logical desktop
+  size AND current compositor backing pixels, for example 1710x1107 points at
+  3420x2214 pixels. Display preparation is schema 3 with an explicit 1x/2x scale;
+  matching Host/Client builds are required. Manual modes and Linux Client remain
+  1x; Linux Host/EDID are unchanged. Mixed-scale dual displays fail explicitly.
+  See `docs/development/plans/macos-retina-match-client.plan` for scope/gates.
+  Hosted Mac Host/Client compilation and live acceptance are pending. Local
+  Python CI policy checks (14), Python syntax and shell/diff checks passed.
+  An attempted standalone topology test with this machine's Qt5 is not a valid
+  Qt6 product test and did not compile; no Qt5 compatibility was added. The
+  candidate's required Qt6.10.2 runner test remains the actual compile gate.
 
 - 1.0.111 candidate source is committed/pushed at
   `02ec80f456d4d242c9101a7b00120726673feda1`; Client gitlink

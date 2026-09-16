@@ -135,10 +135,12 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
         return request(tls, port, {}, raw=raw)
 
     if not media:  # Synthetic display adapter; never changes a real desktop.
-        mode = {"schema_version": 2, "width": 1920, "height": 1080, "encoding_mode": "hevc-10-420-videotoolbox"}
+        mode = {"schema_version": 3, "width": 1920, "height": 1080, "scale": 1, "encoding_mode": "hevc-10-420-videotoolbox"}
         assert launch(mode, "x" * 44, "/plank/display")[0] == 401
         for invalid in [dict(mode, width=True), dict(mode, width=1920.5),
-                        dict(mode, width=-1), dict(mode, extra=0), dict(mode, schema_version=1), dict(mode, encoding_mode="invalid")]:
+                        dict(mode, width=-1), dict(mode, extra=0), dict(mode, schema_version=2), dict(mode, encoding_mode="invalid"),
+                        dict(mode, scale=True), dict(mode, scale=1.5), dict(mode, scale=0), dict(mode, scale=3),
+                        {k: v for k, v in mode.items() if k != "scale"}]:
             assert launch(invalid, token, "/plank/display")[0] == 400
             assert launch(mode, token, "/plank/display")[0] == 401
             token, _ = authenticate(tls, port, "synthetic", "test")
@@ -146,7 +148,12 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
         token, _ = authenticate(tls, port, "synthetic", "test")
         status, resized = launch(mode, token, "/plank/display")
         assert status == 200 and resized["capture"]["width"] == 1920
-        status, restored = launch(dict(mode, width=3840, height=2160), token, "/plank/display")
+        assert resized["capture"]["logical_bounds"]["width"] == 1920
+        retina = json.loads((Path(__file__).resolve().parents[1] / "protocol/macos-display-v3.json").read_text())
+        status, matched = launch(retina, token, "/plank/display")
+        assert status == 200 and matched["capture"]["width"] == 3420
+        assert matched["capture"]["logical_bounds"] == {"x": -1920, "y": 0, "width": 1710, "height": 1107}
+        status, restored = launch(dict(mode, width=3840, height=2160, scale=2), token, "/plank/display")
         assert status == 200 and restored == topology
         status, full = launch(dict(mode, width=3840, height=2160,
                                    encoding_mode="hevc-10-444-videotoolbox"), token, "/plank/display")
@@ -154,7 +161,7 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
         assert full["capture"]["encoding_profile"]["chroma"] == "4:4:4"
         assert launch(body, token)[0] == 400  # no silent switch back to Main10
         token, _ = authenticate(tls, port, "synthetic", "test", "hevc-10-444-videotoolbox")
-        status, restored = launch(dict(mode, width=3840, height=2160), token, "/plank/display")
+        status, restored = launch(dict(mode, width=3840, height=2160, scale=2), token, "/plank/display")
         assert status == 200 and restored == topology
 
     assert launch(body, "x" * 44)[0] == 401
@@ -170,7 +177,7 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
     assert reply["capture"] == capture and reply["transport_token"] != token
     assert reply["services"] == {"audio": True, "input": True, "pen": "normalized", "cursor": "embedded"}
     assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
-    assert launch({"schema_version": 2, "width": 1920, "height": 1080, "encoding_mode": "hevc-10-420-videotoolbox"}, token, "/plank/display")[0] == 401
+    assert launch({"schema_version": 3, "width": 1920, "height": 1080, "scale": 1, "encoding_mode": "hevc-10-420-videotoolbox"}, token, "/plank/display")[0] == 401
     fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()
     command = [str(receiver), fingerprint] + (["--seconds", str(seconds)] if media else ["--no-media"])
     # No launch/transport credential in argv, environment, files or diagnostics.

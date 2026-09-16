@@ -12,6 +12,8 @@
 @property(nonatomic, readonly) CGDirectDisplayID displayID;
 - (void)prepareWidth:(unsigned)width height:(unsigned)height
               valid:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion;
+- (void)prepareWidth:(unsigned)width height:(unsigned)height scale:(unsigned)scale
+              valid:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion;
 // Authenticated recovery only. Before first preparation, wake the current
 // desktop without changing its mode. Otherwise reuse our display and last
 // successful mode; never create another output or change a physical mode.

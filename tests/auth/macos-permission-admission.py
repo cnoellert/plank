@@ -30,7 +30,7 @@ def main():
                     token, topology = fixture.authenticate(cert, port, "synthetic", "test")
                     capture = topology["capture"]
                     requests = {
-                        "/plank/display": {"schema_version": 2, "width": 1920, "height": 1080,
+                        "/plank/display": {"schema_version": 3, "width": 1920, "height": 1080, "scale": 1,
                             "encoding_mode": "hevc-10-420-videotoolbox"},
                         "/plank/launch": {"schema_version": 2, "capture_generation": topology["generation"],
                             "capture_id": capture["id"], "width": capture["width"], "height": capture["height"],

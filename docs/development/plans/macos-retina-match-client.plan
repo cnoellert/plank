@@ -1,0 +1,32 @@
+# Retina-aware Match Client
+
+Approved scope: macOS Client to macOS Host matches current logical desktop
+dimensions and backing pixels. A 1710x1107-point desktop at 2x requests
+3420x2214 encoded pixels, not a 3420x2214-point desktop or blurry 1710x1107
+video. Read the current display mode, not its panel-native maximum: scaled
+"Looks like" settings can have different compositor and panel resolutions.
+
+Display preparation schema 3 carries explicit integer scale 1 or 2. The Host
+registers logical virtual modes with hiDPI enabled for 2x and confirms both
+CGDisplayMode backing pixels and logical bounds. Reconnect/recovery retain the
+same scale. The existing topology already represents both coordinate systems;
+input mapping and capture continue to use it. Launch schema remains 2.
+
+Manual modes and Linux Client Match Client remain 1x. Linux Host, EDID, codec,
+transport and permission policies are unchanged. One or two horizontal client
+displays must share a scale; mixed-scale layouts fail with manual-mode guidance
+rather than approximating one display. Matching candidate Host/Client versions
+are required; no old-schema fallback or silent geometry substitution.
+
+The virtual-display mode convention was cross-checked against Chromium's
+[macOS virtual-display test utility](https://chromium.googlesource.com/chromium/src/+/HEAD/ui/display/mac/test/virtual_display_util_mac.mm).
+It uses logical mode dimensions with HiDPI and a backing-pixel descriptor.
+This is a reference, not proof of live behavior on the target OS.
+
+Gates: shared Client topology/request-vector tests, synthetic Host 1x/2x mode
+selection and recovery, authenticated loopback display preparation, malformed
+schema/scale and permission-denial cases, signed hosted Host/Client builds.
+Live acceptance still requires the laptop's Default/Scaled settings, readable
+UI with sharp text, pointer/click alignment, reconnect, and manual-mode 1x
+restoration. Package compilation alone cannot qualify the undocumented virtual
+display API. No production session interruption without operator coordination.

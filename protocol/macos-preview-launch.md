@@ -108,15 +108,26 @@ instead of sending a Linux setup exchange. Capture pixels remain host-native;
 Scaled-Span fits them at presentation. A changed topology requires fresh
 authentication/geometry instead of silently reusing stale dimensions.
 
-Mac display preparation accepts exact even dimensions from 2 through 8192 per
-axis under the existing schema-2 numeric contract. Match Client supplies native
-pixel dimensions, not a member of the Linux EDID preset list or the Retina
-logical/backing size. One display or two horizontally arranged displays form
-one canvas (sum of widths, maximum height). Manual presets remain available.
+Mac display preparation uses `POST /plank/display` schema **3**, with exactly
+five fields: `schema_version`, `width`, `height`, `scale`, `encoding_mode`.
+See `tests/protocol/macos-display-v3.json`. Width and height are even backing
+pixel counts from 2 through 8192; scale is integer 1 or 2. Logical desktop
+dimensions are pixels divided by scale and may be odd. Booleans, fractional
+values, missing/extra fields and prior schemas are rejected. Matching Host and
+Client builds are required; no silent 1x downgrade. Launch remains schema 2
+and fixed-capture topology remains schema 13 (already carrying both geometries).
+
+For macOS Clients, Match Client reads the current CoreGraphics mode's backing
+pixels and logical bounds, preserving the user's current "Looks like" setting
+rather than guessing from panel-native pixels. One display or two horizontally
+arranged displays at the same 1x/2x scale form one canvas. Mixed-scale layouts
+fail explicitly and can use a manual mode instead. Manual modes and Linux
+Client Match Client remain 1x; Linux Host EDID policy is unchanged.
+
 The Host registers at most one additional custom 60 Hz mode alongside its
-presets, only applying changed settings while an existing output is online.
-Preparation and launch must confirm the exact geometry and selected encoder
-profile; these bounds are not a promise of encoder support for every size.
-There is no nearest-preset substitution, Linux EDID change, new request field
-or wire-version change. Matching Host/Client builds are required for this
-expanded implementation of the existing dimensions contract.
+presets, with logical dimensions for HiDPI, only applying changed settings
+while an existing output is online. Preparation confirms exact backing pixels,
+logical bounds and selected encoder profile; launch validates the resulting
+topology. Recovery retains the successful scale. Size bounds are not a promise
+of encoder support for every size. No nearest-preset substitution or global
+display preference is used.

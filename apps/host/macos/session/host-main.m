@@ -261,12 +261,12 @@ static int graphical(const char *service, NSString *role, NSString *directory, B
             return [[PLANKMacScreenCapture alloc] initWithDesktopAudioTap:phase == PLANKMacScopeDesktop];
         }
         input:^id<PLANKMacInputDevice> { return [PLANKMacQuartzInput new]; }];
-    runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, NSString *encodingMode, BOOL (^valid)(void)) {
+    runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, unsigned scale, NSString *encodingMode, BOOL (^valid)(void)) {
         if (!PLANKMacDesktopModeSupported(width, height)) return NO;
         dispatch_semaphore_t finished = dispatch_semaphore_create(0);
         __block atomic_bool cancelled = false, ready = false;
         dispatch_async(dispatch_get_main_queue(), ^{
-            [desktopDisplay prepareWidth:width height:height
+            [desktopDisplay prepareWidth:width height:height scale:scale
                 valid:^BOOL { return !atomic_load(&cancelled) && valid(); }
                 completion:^(BOOL success) {
                     if (success && !atomic_load(&cancelled) && valid()) {

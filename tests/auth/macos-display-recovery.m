@@ -15,6 +15,7 @@ static BOOL online = YES, active = YES, authorized = YES, refuseMode, revokeOnWa
 static BOOL bootstrapActive = YES, failWake;
 static CGDirectDisplayID bootstrapID = 43;
 static unsigned pixelWidth = 3840, pixelHeight = 2160;
+static unsigned currentScale = 1, configuredScale = 1;
 static NSArray *registeredModes;
 
 @interface FakeDescriptor : NSObject
@@ -27,11 +28,12 @@ static NSArray *registeredModes;
 @end
 @interface FakeMode : NSObject
 @property unsigned width, height;
+@property unsigned scale;
 - (instancetype)initWithWidth:(unsigned)width height:(unsigned)height refreshRate:(double)rate;
 @end
 @implementation FakeMode
 - (instancetype)initWithWidth:(unsigned)width height:(unsigned)height refreshRate:(double)rate {
-    self = [super init]; if (self) { assert(rate == 60); _width = width; _height = height; } return self;
+    self = [super init]; if (self) { assert(rate == 60); _width = width; _height = height; _scale = 1; } return self;
 }
 @end
 @interface FakeSettings : NSObject
@@ -53,8 +55,10 @@ static NSArray *registeredModes;
     } return self;
 }
 - (BOOL)applySettings:(id)settings {
-    assert(settings && [settings hiDPI] == 0);
+    assert(settings && [settings hiDPI] <= 1);
+    configuredScale = [settings hiDPI] ? 2 : 1;
     registeredModes = [settings modes];
+    for (FakeMode *mode in registeredModes) mode.scale = configuredScale;
     assert(registeredModes.count >= 12 && registeredModes.count <= 13);
     applications++; online = YES; return YES;
 }
@@ -77,21 +81,29 @@ boolean_t CGDisplayIsOnline(CGDirectDisplayID display) { assert(display == 42); 
 boolean_t CGDisplayIsInMirrorSet(CGDirectDisplayID display) { assert(display == 42); return NO; }
 size_t CGDisplayPixelsWide(CGDirectDisplayID display) { assert(display == 42); return pixelWidth; }
 size_t CGDisplayPixelsHigh(CGDirectDisplayID display) { assert(display == 42); return pixelHeight; }
-CGRect CGDisplayBounds(CGDirectDisplayID display) { assert(display == 42); return CGRectMake(0, 0, pixelWidth, pixelHeight); }
+CGRect CGDisplayBounds(CGDirectDisplayID display) { assert(display == 42); return CGRectMake(0, 0, pixelWidth / currentScale, pixelHeight / currentScale); }
 CFArrayRef CGDisplayCopyAllDisplayModes(CGDirectDisplayID display, CFDictionaryRef options) {
-    assert(display == 42 && !options);
+    assert(display == 42 && CFDictionaryGetValue(options, kCGDisplayShowDuplicateLowResolutionModes) == kCFBooleanTrue);
     return CFBridgingRetain(registeredModes);
 }
-size_t CGDisplayModeGetPixelWidth(CGDisplayModeRef mode) { return [(__bridge FakeMode *)mode width]; }
-size_t CGDisplayModeGetPixelHeight(CGDisplayModeRef mode) { return [(__bridge FakeMode *)mode height]; }
-size_t CGDisplayModeGetWidth(CGDisplayModeRef mode) { return CGDisplayModeGetPixelWidth(mode); }
-size_t CGDisplayModeGetHeight(CGDisplayModeRef mode) { return CGDisplayModeGetPixelHeight(mode); }
+CGDisplayModeRef CGDisplayCopyDisplayMode(CGDirectDisplayID display) {
+    assert(display == 42);
+    FakeMode *mode = [[FakeMode alloc] initWithWidth:pixelWidth / currentScale height:pixelHeight / currentScale refreshRate:60];
+    mode.scale = currentScale;
+    return (CGDisplayModeRef)CFBridgingRetain(mode);
+}
+void CGDisplayModeRelease(CGDisplayModeRef mode) { CFRelease(mode); }
+size_t CGDisplayModeGetPixelWidth(CGDisplayModeRef mode) { FakeMode *m = (__bridge FakeMode *)mode; return m.width * m.scale; }
+size_t CGDisplayModeGetPixelHeight(CGDisplayModeRef mode) { FakeMode *m = (__bridge FakeMode *)mode; return m.height * m.scale; }
+size_t CGDisplayModeGetWidth(CGDisplayModeRef mode) { return [(__bridge FakeMode *)mode width]; }
+size_t CGDisplayModeGetHeight(CGDisplayModeRef mode) { return [(__bridge FakeMode *)mode height]; }
 double CGDisplayModeGetRefreshRate(CGDisplayModeRef mode) { assert(mode); return 60; }
 CGError CGDisplaySetDisplayMode(CGDirectDisplayID display, CGDisplayModeRef mode, CFDictionaryRef options) {
     assert(display == 42 && !options); selections++;
     if (refuseMode) return kCGErrorFailure;
     pixelWidth = (unsigned)CGDisplayModeGetPixelWidth(mode);
     pixelHeight = (unsigned)CGDisplayModeGetPixelHeight(mode);
+    currentScale = [(__bridge FakeMode *)mode scale];
     active = YES; return kCGErrorSuccess;
 }
 IOReturn IOPMAssertionDeclareUserActivity(CFStringRef name, IOPMUserActiveType type, IOPMAssertionID *result) {
@@ -265,7 +277,47 @@ static void step(PLANKMacDesktopDisplay *display, unsigned index) {
     case 22: {
         [[PLANKMacDesktopDisplay new] prepareWidth:2880 height:1864 valid:valid completion:^(BOOL ok) {
             assert(ok && pixelWidth == 2880 && pixelHeight == 1864 && applications == 4);
-            puts("macos_display_recovery=pass checks=23 synthetic_only=1"); exit(0);
+            next();
+        }]; break;
+    }
+    case 23: {
+        [display prepareWidth:3420 height:2214 scale:2 valid:valid completion:^(BOOL ok) {
+            assert(ok && pixelWidth == 3420 && pixelHeight == 2214 && currentScale == 2);
+            assert(CGDisplayBounds(42).size.height == 1107); next();
+        }]; break;
+    }
+    case 24: {
+        unsigned before = applications;
+        active = online = NO;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100*NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            assert(applications == before); online = YES;
+        });
+        [display recoverWithValidity:valid completion:^(BOOL ok) {
+            assert(ok && currentScale == 2 && pixelWidth == 3420 && applications == before); next();
+        }]; break;
+    }
+    case 25: {
+        // Same pixel dimensions, different logical mode: must not accept 2x.
+        [display prepareWidth:3420 height:2214 valid:valid completion:^(BOOL ok) {
+            assert(ok && currentScale == 1 && CGDisplayBounds(42).size.height == 2214); next();
+        }]; break;
+    }
+    case 26: {
+        unsigned before = applications;
+        [display prepareWidth:3420 height:2214 scale:3 valid:valid completion:^(BOOL ok) {
+            assert(!ok && applications == before); next();
+        }]; break;
+    }
+    case 27: {
+        [display prepareWidth:5120 height:2160 scale:2 valid:valid completion:^(BOOL ok) {
+            assert(ok && currentScale == 2 && pixelWidth == 5120 && CGDisplayBounds(42).size.width == 2560);
+            next();
+        }]; break;
+    }
+    case 28: {
+        [display prepareWidth:1920 height:1080 valid:valid completion:^(BOOL ok) {
+            assert(ok && currentScale == 1 && pixelWidth == 1920);
+            puts("macos_display_recovery=pass checks=29 synthetic_only=1"); exit(0);
         }]; break;
     }
     default: abort();

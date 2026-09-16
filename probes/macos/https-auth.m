@@ -87,6 +87,7 @@ int main(int argc, const char *argv[]) {
 #endif
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
         __block unsigned desktopWidth = 3840, desktopHeight = 2160;
+        __block unsigned desktopScale = 2;
         __block NSString *encodingMode = @"hevc-10-420-videotoolbox";
         NSString *recoveryMode = NSProcessInfo.processInfo.environment[@"PLANK_TEST_RECOVERY"];
         __block BOOL topologyReady = recoveryMode == nil;
@@ -94,7 +95,7 @@ int main(int argc, const char *argv[]) {
         NSDictionary *(^topology)(void) = ^{
             if (!topologyReady || NSProcessInfo.processInfo.systemUptime < topologyReadyAt) return (NSDictionary *)nil;
             return PLANKMacFixedCaptureDescription(@"98454815-80ab-4a88-b187-92f59353afca", @"cgdisplay:42",
-                desktopWidth, desktopHeight, CGRectMake(-1920, 0, 1920, 1080), encodingMode);
+                desktopWidth, desktopHeight, CGRectMake(-1920, 0, desktopWidth / desktopScale, desktopHeight / desktopScale), encodingMode);
         };
 #else
         PLANKMacFixedCapture *capture = [PLANKMacFixedCapture new];
@@ -129,9 +130,10 @@ int main(int argc, const char *argv[]) {
 #endif
             }];
 #ifdef PLANK_SYNTHETIC_AUTH_TEST
-        runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, NSString *mode, BOOL (^valid)(void)) {
-            if (!valid() || !((width == 1920 && height == 1080) || (width == 3840 && height == 2160))) return NO;
-            desktopWidth = width; desktopHeight = height;
+        runtime.prepareDisplay = ^BOOL(unsigned width, unsigned height, unsigned scale, NSString *mode, BOOL (^valid)(void)) {
+            if (!valid() || !((width == 1920 && height == 1080) || (width == 3840 && height == 2160) ||
+                              (width == 3420 && height == 2214))) return NO;
+            desktopWidth = width; desktopHeight = height; desktopScale = scale;
             encodingMode = mode;
             return valid();
         };
