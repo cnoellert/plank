@@ -71,7 +71,11 @@ when starting windowed and prepares its second surface hidden; all 62 Client
 tests pass, but live transition/drag/order acceptance is pending. The Host now
 uses a temporary real 3456×2234 mode instead of scaling a 1024×768 scanout.
 XRandR and Mutter agree on actual current modes and adjacent monitor rectangles.
-Current state: two native-resolution Host monitors; Client disconnected.
+The clean `b05ccdc` candidate is packaged under
+`artifacts/development/macos15-windowed-transition/`; 106 target checks,
+dependency closure and ad-hoc signatures pass. The new native Client is open
+for live input/order/transition retesting. Current state: two native-resolution
+Host monitors; user sign-in/results pending.
 Restore the saved Host MetaMode and remove the temporary mode after testing.
 The temporary Mac refresh change has been restored to its original setting.
 Machine-specific details and logs remain in private notes/audit.

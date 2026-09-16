@@ -329,6 +329,14 @@ fullscreen hides the secondary again. The Client build and all 62 existing
 tests pass. Actual transition behavior, the reported reversed display order,
 and cross-display click/drag acceptance remain live test requirements.
 
+The clean root `b05ccdc` / Client `74402df` candidate is packaged in
+`artifacts/development/macos15-windowed-transition/` and opens in the native
+desktop. All 106 ARM64/macOS-target checks, dependency closure, build-path checks
+and ad-hoc signatures pass. Main executable SHA-256:
+`d2f82d7e0a2ce1236c3a188e3b54d8b5677bb0e3d8f80d7a92b6f0d289a5fbdf`.
+The candidate remains unsigned for distribution/not notarized and is not yet
+live-accepted.
+
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
