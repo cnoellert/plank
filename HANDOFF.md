@@ -5,7 +5,10 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Active work: `macos-auth-recovery` in a separate worktree. It is not merged.
+- The operator accepted Client 1.0.114 full-panel/Retina behavior and authorized
+  merging `macos-auth-recovery`. Next work is a separate reconnect-lifecycle
+  cleanup: preserve login/logout recovery, avoid repeated password verification
+  while waiting for desktop readiness, and pause when asking whether to wait.
   The primary worktree's `rk3576-client` research branch and uncommitted notes
   remain untouched. Published mainline remains Host 1.0.106, other products
   1.0.105. Do not select an old candidate paragraph as the current source.
@@ -18,9 +21,9 @@ notes' README before machine-specific work; deployment information stays outside
   DMG SHA256 `0a986e97a2932b8e94f49ba95172d65f00df44245e13030a45252c97669d326e`.
   Size 86,349,889 bytes; hash-verified and collected under
   `artifacts/packages/candidates/1.0.114-macos-auth-recovery/macos/`.
-  Not installed by the agent; manual Client testing requested.
+  Manually installed and accepted by the operator; not installed by the agent.
   Pair with Host 1.0.113; no Host code/protocol change or Linux package required.
-  Full-panel fullscreen and beside-notch toolbar placement need operator testing.
+  Full-panel fullscreen correction is operator-accepted.
 
 - Candidate 1.0.113 adds Retina-aware Mac Match Client: current logical desktop
   size AND current compositor backing pixels, for example 1710x1107 points at
@@ -41,7 +44,7 @@ notes' README before machine-specific work; deployment information stays outside
   PKG size 6,611,113; SHA256
   `2d40969bb830ae761f2f5581ed3db0f97404a2b3b440f7bf1ec55f465ed7f496`.
   Operator-installed Host/Client 1.0.113 are now observed in supplied logs;
-  full live Retina acceptance remains pending (fullscreen finding below).
+  the subsequent Client 1.0.114 fullscreen correction is operator-accepted.
 
 - Client 1.0.113 source is `ec17fc4`, Client gitlink
   `eb2d5ac1cc00630bd448b16976a15f93443ee15e`.
@@ -89,15 +92,14 @@ notes' README before machine-specific work; deployment information stays outside
   safe-area handling needs investigation, including keeping toolbar controls
   reachable around the camera housing. Candidate 1.0.114 implements SDL
   borderless desktop fullscreen without modesetting/Spaces and dynamically
-  places the toolbar beside the camera housing. Hosted build passed; live gates
-  remain pending. Mac fullscreen now uses the current desktop rather than a
+  places the toolbar beside the camera housing. Hosted build passed and the
+  operator accepted the correction. Mac fullscreen now uses the current desktop rather than a
   separate AppKit Space or an exclusive mode; test minimize and teardown too.
   Raw screenshots/logs remain outside Git.
 
-- Next: correct/qualify notched fullscreen geometry, then operator acceptance:
-  readable/sharp Retina desktop, pointer alignment, disconnect/reconnect,
-  manual 1x restoration and secure unlock without temporary caffeinate.
-  No merge or release publication before acceptance. Private deployment
+- Next: merge the accepted work, then address Client authentication/reconnect
+  retries separately. Broad acceptance is not a claim that every sleep,
+  ownership, manual-mode and secure-unlock scenario was tested. Private deployment
   details and captures remain outside Git.
 
 - Exact-input Mac Client dependency/Qt caching is committed as `8730581`;
@@ -109,8 +111,7 @@ notes' README before machine-specific work; deployment information stays outside
   not like-for-like benchmarks. Application/Rust compilation and all signing/
   notary gates still run fresh. Never cache application
   builds or signing material; `--clean-bootstrap` bypasses restore/save. This
-  CI-only follow-up does not change the application version or authorize merging
-  the unaccepted Retina candidate.
+  CI-only follow-up does not change the application version.
 
 ## Release evidence
 
@@ -195,8 +196,8 @@ environment secrets. Temporary runner keychains are removed on success/failure.
 Do not restore the initial reusable-workflow wrapper: it received empty
 environment secret values; the direct protected job is qualified. Missing
 secrets fail before bootstrap. No per-run human approval is needed.
-Exact-input dependency caching remains optional, unimplemented future work,
-not an outstanding release blocker or an automatically authorized task.
+Exact-input Mac Client dependency caching is qualified as described above;
+clean-bootstrap builds remain available to bypass it.
 
 ## Maintained inputs (unchanged from 1.0.105 through 1.0.106)
 
