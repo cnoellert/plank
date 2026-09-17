@@ -574,8 +574,10 @@ Candidate `1.0.116-macos15-client` is collected under
   `b655eaf71b88d3fd9f1dd0febc2c42b0bef6a256e007729afaf5229bee4d3967`.
 - Host/PAM/display services are active; existing remote-access service remains
   active. Configuration, certificate and exact display MetaMode are preserved.
-- Live virtual keyboard advertises Pause and F15. Physical key delivery and
-  Flame's intended action remain unverified. The accepted Client is unchanged.
+- Live virtual keyboard advertises Pause and F15. A bounded 120-second recorder
+  observed 23 complete Pause press/release pairs during the operator's test,
+  with no errors or unmatched presses. Host delivery passes; Flame's intended
+  action still awaits operator confirmation. The accepted Client is unchanged.
 
 During the subsequent session, the operator reports mouse movement without
 clicks. XInput shows `libvirtualhid Mouse` as a floating slave. This explains

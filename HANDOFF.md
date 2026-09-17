@@ -200,8 +200,10 @@ and tests key translation, press/release output, advertised capability and
 separation from F15. Host `03a59815` selects that dependency. All six focused
 Linux backend tests and the canonical Host build/package gates pass. Root
 `66ec56e` produced candidate `1.0.116-macos15-client`, installed with verified
-RPM/payload hashes. The live keyboard now advertises both Pause and F15;
-physical-key and Flame acceptance remain pending. Services, configuration,
+RPM/payload hashes. The live keyboard now advertises both Pause and F15.
+During the operator's test, a bounded recorder observed 23 complete Pause
+press/release pairs without errors. Host delivery passes; Flame's intended
+action still awaits operator confirmation. Services, configuration,
 certificate and exact display MetaMode match the pre-update snapshot. The
 operator authorized an isolated, pinned Rocky 9.7 Podman builder on the available
 Rocky 9.5 hardware Host for this fix; it is stopped after the build. This does not
