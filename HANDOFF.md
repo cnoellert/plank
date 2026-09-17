@@ -5,6 +5,12 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
+  and release. Preparing mainline 1.0.124 for all four Host/Client packages on
+  GitHub-hosted builders, with verified dependency caching and signed Mac
+  packages. Do not relabel candidate artifacts. Clipboard PRs and unrelated
+  RK3576 research remain excluded. Publication/build results are pending.
+
 - Current root/Client branch is `macos-quit-lifecycle`, candidate
   `1.0.123-macos-quit-lifecycle`. The operator accepted 1.0.122's behavior but
   requested a fresh implementation without the contributed Quit bridge.
@@ -31,7 +37,8 @@ notes' README before machine-specific work; deployment information stays outside
   `plank-client_1.0.123-macos-quit-lifecycle_arm64.dmg`; SHA256:
   `58847e6616f240a98eb0a8180edefadaf1106ad19653e6f53f854e819f719a8c`.
   Host/Kymux and recursive Client pins remain those recorded below. Live
-  acceptance of the rewrite remains pending. No merge or deployment. Preserve the
+  acceptance of the rewrite was given by the operator; mainline rebuild and
+  release are now authorized. No agent deployment. Preserve the
   original checkpoint branch and unrelated primary-worktree research.
 
 - Accepted behavioral checkpoint: `1.0.122-macos-command-q`. Client commit

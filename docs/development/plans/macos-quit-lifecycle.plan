@@ -44,7 +44,8 @@ Signed hosted run 35185783350 passed at root
 `be8a1e06cba05299f939cea2bc4f440bef1a9196`. All seven native shortcut and six
 application-lifetime cases passed, alongside existing suites. Dependency cache
 restored and verified; signing, notarization and Gatekeeper passed. Exact
-package/hash are in HANDOFF. No deployment or live acceptance yet.
+package/hash are in HANDOFF. The operator accepted the candidate and authorized
+merge, mainline rebuild and publication as 1.0.124. No agent deployment.
 
 The initial run 35185516514 compiled the application but caught a test relying
 on the deleted bridge's transitive SDL include. The test now includes SDL
