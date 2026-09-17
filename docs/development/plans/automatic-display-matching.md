@@ -20,6 +20,14 @@ the active desktop owner, verify XRandR and Mutter geometry, and restore the
 pre-session layout after failure or disconnect. Never restart the display
 manager to match an active physical desktop.
 
+Optional feature `0x800000` carries the Client OS primary display as a bounded
+left-to-right index. Verify primary in both XRandR and Mutter; save and restore
+the original XRandR primary property alongside the MetaMode. Read restoration
+back instead of trusting NVIDIA's exit status. The experimental macOS 15 Client
+includes the measured five-point native-fullscreen margin below the camera,
+qualified against the settled drawable. Newer OS versions retain their existing
+geometry until independently measured.
+
 Qualification: parser and mode-boundary tests on both products; transaction
 failure/rollback/cleanup tests; clean pinned builds; live logical and backing
 matching, input mapping across both displays, and exact disconnect restoration.

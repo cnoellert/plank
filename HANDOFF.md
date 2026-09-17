@@ -7,13 +7,35 @@ copies the Client OS primary display into the temporary Linux layout. It
 verifies the result in XRandR and Mutter and saves/restores the previous
 primary property separately from the NVIDIA MetaMode. Restoration now requires
 readback, covering NVIDIA's zero-exit-status assignment failures. Sixteen
-helper tests pass; product builds and live acceptance are pending.
+helper tests and 19 focused Host tests pass. Two older session-context tests
+were corrected to use invalid odd dimensions; their previous dimensions became
+valid with bounded matching. Test commit `d96eb476` changes no product source
+relative to the packaged Host `376462a4`.
+
+Both products built from clean root `2e111e0b` as `1.0.124-macos15-client`.
+Client `b6d5e12` is staged under `artifacts/development/macos15-primary-retina/`;
+83 Qt cases, native input ordering, five fullscreen checks, 106 Mach-O checks,
+dependency closure and ad-hoc signature verification pass. Client executable
+SHA256 `da56e1e1ac1f7a86df6ddd3aa59e91f68a0a59cd2b3fa4215e09a7b1fe77f1ee`.
+The installed Host RPM passes package and installed-file verification; SHA256
+`a92bc61be92e965ae577ab84bc4e71ba653f9feaf0e3dd9e891600994df29f6f`.
+Configuration/certificate hashes are unchanged, all Host services remain active,
+and the isolated builder is stopped.
+
+Four independent live helper trials pass: logical/backing sizes, each with the
+left/right output primary. XRandR and Mutter agree on geometry and primary;
+exact MetaMode/primary restoration and temporary-mode cleanup pass each time.
+The authenticated Retina-pixel session now binds primary index 1 and the Host
+reports 4112x2572 at 0,0 plus primary 2560x1440 at 4112,0, with no panning.
+Operator visual/drag acceptance and full-session disconnect restoration remain
+pending. The new client is connected for that test.
 
 The experimental macOS 15 Client also includes the measured five-point AppKit
 margin below a camera inset, correcting the predicted fullscreen viewport to
 2056x1286 logical / 4112x2572 backing pixels for the observed scaled mode.
-Newer macOS geometry is unchanged. Five fullscreen checks pass; live equality
-with settled Metal drawable size remains a required acceptance check.
+Newer macOS geometry is unchanged. The live Client log confirms its requested
+4112x2572 viewport equals the settled native fullscreen Metal drawable exactly;
+the standard-density output remains 2560x1440.
 
 ## Matching layout correction accepted in desktop-size mode
 
