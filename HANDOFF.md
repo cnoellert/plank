@@ -18,9 +18,14 @@ disconnect retained a same-size `PLANK-Match` mode: GNOME reselected it during
 logical-monitor recovery. The original NVIDIA mode, primary, and GNOME logical
 monitor were restored manually. Follow-up source now removes only the lease's
 temporary modes before GNOME recovery, with 28 no-display helper tests passing.
-This correction is not yet packaged or live-qualified. Interruption recovery
-and multi-output restoration remain open gates. The separate macOS 15 Wacom
-review has since passed normal reconnect, hotplug, and abrupt-exit input tests;
+The corrected RPM passed hosted Rocky 9.7 run `35285840457` and was installed
+on the Rocky 9.5 hardware-test Host. A matching signed macOS 15 Client
+connected with two 2560×1440 outputs and the right-hand primary. After normal
+disconnect, independent NVIDIA, XRandR and GNOME readback found the exact
+original single-output mode and primary, no lease mode and no active lease;
+the Host remained active. Interruption recovery and restoration of a Host that
+started with multiple physical outputs remain open gates. The separate macOS 15
+Wacom review has since passed normal reconnect, hotplug, and abrupt-exit input tests;
 see its integration review for the exact evidence and limits.
 
 ## Experimental Mac Client review branch — 2026-09-17

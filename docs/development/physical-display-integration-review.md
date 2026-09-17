@@ -4,7 +4,8 @@ This draft series is stacked after the [Mac Client contribution](https://github.
 Its root and Client branches contain only the physical-display changes when
 compared with `codex/macos15-pr-review`. The Host changes are in
 [Host PR #2](https://github.com/instinctual/plank-host-linux/pull/2).
-No installed Host or Client was changed while preparing this split.
+The split branch was subsequently built and installed for the live restoration
+test described below.
 
 ## Purpose and boundaries
 
@@ -53,11 +54,15 @@ See the [implementation plan](plans/automatic-display-matching.md) and
 A local Apple Silicon/macOS 15 Client build passed 102 Qt results, the native
 input-worker fixture and fullscreen/Quit guards with the new capability bit
 and the bounded Wacom report path inherited from the Mac Client base.
-Twenty fake-command helper tests pass, covering bounds, command injection,
+Twenty-eight fake-command helper tests pass, covering bounds, command injection,
 output selection, real modes, panning, primary identity, compositor mismatch,
 NVIDIA zero-exit errors, restoration readback and generated-mode cleanup. The
 Host topology header also compiles with the distinct bit and a unit expectation
-has been updated; a final Rocky 9.7 package build remains required.
+has been updated. Hosted Rocky 9.7 run `35285840457` passed the Linux Host,
+Linux Client, macOS Client, macOS Host compile and policy jobs for root
+`f8b532d`, Host `87821ef`, and Client `d193690`. Private-information run
+`35285840575` passed. The finished Host RPM and installed helper/supervisor
+were checksum-verified before the live retest.
 
 Earlier installed candidates were tested on a physical-startup X11 desktop
 created by remote desktop software. With the laptop closed and two external 5K
@@ -88,26 +93,33 @@ temporary layout.
 
 The follow-up source change passes the supervisor-owned mode token to the
 helper and removes only that lease's modes after the NVIDIA assignment but
-before GNOME recovery. Twenty-eight no-display helper tests pass, including
-the same-size mode ordering and an unattached-mode apply failure. This source
-change requires a new qualified RPM and another live disconnect test; the
-installed package above is the failing build.
+before GNOME recovery. The no-display helper tests include the same-size mode
+ordering and an unattached-mode apply failure. The qualified replacement RPM
+from run `35285840457` was installed on the Rocky 9.5 hardware-test Host with
+`--replacepkgs` after its dependency preflight passed. The signed matching
+macOS 15 Client connected twice with two 2560×1440 outputs and the right-hand
+primary. On the first normal disconnect, the Host logged exact MetaMode
+restoration and briefly showed one output before the operator reconnected. On
+the second normal disconnect, independent readback confirmed the original
+single-output NVIDIA mode, one primary XRandR output at 2560×1440+0+0, one
+primary GNOME logical monitor at (0,0), no `PLANK-Match` modes, no display
+lease, and an active Host service. The supervisor logged exact restoration with
+no new restoration error. This qualifies normal disconnect restoration for the
+tested physical-startup configuration; interruption and failure recovery remain
+open.
 
 ## Remaining gates
 
-1. Rebuild the restoration fix with the paired Host and root commits on a
-   qualified Rocky 9.7 builder; verify package content and repeat the normal
-   disconnect/restoration test on the installed candidate.
-2. Test monitor-mode rejection, helper timeout and forced termination, failed
+1. Test monitor-mode rejection, helper timeout and forced termination, failed
    restoration, abrupt Client exit and transport loss. Verify the original
    physical desktop remains usable, primary is correct and no lease-owned mode
    remains. The existing fake helper tests do not cover all supervisor failures.
-3. Compare virtual startup on a headless Flame Host before choosing a deployment
+2. Compare virtual startup on a headless Flame Host before choosing a deployment
    default. Keep its qualified EDID presets and existing workflows intact.
-4. Qualify the final Client on Ubuntu and supported newer macOS, then repeat
+3. Qualify the final Client on Ubuntu and supported newer macOS, then repeat
    Mac logical/backing-size, single/dual, primary, Flame launch and normal
    restoration tests with exact build hashes.
-5. Merge or make canonical upstream submodule commits reachable before treating
+4. Merge or make canonical upstream submodule commits reachable before treating
    the root branch as a reproducible build input.
 
 Keep the PRs draft until these gates pass. Physical display mode changes can

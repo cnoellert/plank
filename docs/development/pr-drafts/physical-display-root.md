@@ -26,11 +26,14 @@ two screens. The first normal disconnect then exposed a restoration bug:
 GNOME selected a same-size temporary mode instead of the original physical
 mode. The original Host layout was restored manually. A follow-up change now
 removes the session's temporary modes before GNOME recovery; 28 no-display
-helper tests pass. It still needs a fresh qualified Host package and a repeat
-live disconnect test. Forced-failure recovery tests, including helper
-termination and abrupt Client exit, also remain. Virtual startup should be
-compared for headless Flame Hosts.
+helper tests pass. The corrected Host RPM passed Rocky 9.7 hosted run
+`35285840457` and was installed on the Rocky 9.5 hardware-test Host. Two
+normal disconnects logged exact restoration; the second was independently
+checked against NVIDIA, XRandR and GNOME. The original single-output mode and
+primary returned, no temporary mode or lease remained, and the Host stayed
+active. Forced-failure recovery tests, including helper termination and abrupt
+Client exit, remain. Virtual startup should be compared for headless Flame Hosts.
 
 See the [display review](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md)
 for the full behavior, evidence and remaining gates. Keep this PR draft until
-those gates pass; no release or installed-binary change is part of this review.
+those gates pass; no release is part of this review.
