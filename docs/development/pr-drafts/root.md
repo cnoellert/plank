@@ -1,65 +1,29 @@
-# integration: experimental macOS 15 Client and matched Linux display workflow
+# macOS 15 Client integration
 
-**Draft: dependent PRs and platform/recovery gates must pass before merge.**
+**Draft: dependency and qualification gates remain open.**
 
-## Summary
+This root PR pins the Mac Client contribution and its common-C input-ordering
+dependency, adds the explicit macOS 15 build option, and runs focused input,
+fullscreen, target and packaging checks. It preserves the default macOS 27
+build target and current upstream Quit/build behavior.
 
-Coordinate the Client presentation/input/Wacom work, bounded Linux display
-matching, primary-output preservation, Pause support, explicit Mac target
-selection, tests and sanitized documentation. The full change inventory,
-upstream comparison, architecture boundaries and acceptance matrix are in
-[integration review](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).
+The Client adds two-screen Metal presentation, native fullscreen cleanup,
+mouse/pen focus transfer and allowlisted USB Wacom forwarding. The common-C
+change also prevents a burst of queued mouse positions from excluding mouse
+and key releases. A deterministic worker test reproduces that failure on the
+prior common-C PR head and passes on the fix.
 
-## Dependency PRs
+Linux physical-monitor matching is not part of this PR. Its Host changes,
+display helper, mode/primary negotiation, protocol vectors and packaging will
+be reviewed together in a separate display integration PR. The independent
+Pause-key library PR can be reviewed on its own.
 
-1. [common-C #3](https://github.com/instinctual/plank-common-c/pull/3): ordered absolute input (`0c82257`, base `plank/client`).
-2. [libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1): separate Pause/F15 mappings (`b0cc3c8`, base `plank/main`).
-3. [Client #3](https://github.com/instinctual/plank-client/pull/3): review Client `d9ad2b1`, incorporating upstream `86682b5`.
-4. [Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2): `d96eb476` plus the libvirtualhid pin.
+The split Mac Client built on Apple Silicon/macOS 15 with 97 passing Qt results
+and the native input-worker test. Earlier exact candidates passed live Mac
+fullscreen drag/focus and Flame Wacom pressure/focus. Remaining gates include
+bounded Wacom shutdown, intermittent left-click diagnosis, Ubuntu and macOS 27
+qualification, reconnection/hotplug recovery, and final hosted builds. No
+upstream merge or release has been performed.
 
-Merge/fetch dependencies before
-advancing canonical root gitlinks; fork-only object reachability is not a build
-contract. Host source and the root display helper are one deployment unit.
-
-## Preserving working upstream behavior
-
-- Current root main `cb01cfe` is merged, retaining build cache, workflow, release
-  and signing work. Client `86682b5` replaces the earlier Quit bridge with
-  explicit application-exit ownership and captured Command-Q handling; both
-  native suites remain mandatory alongside the tablet/display tests.
-- Mac-specific capture/fullscreen policies are scoped to macOS. Shared input
-  ordering and Host layout changes remain explicit regression-review surfaces.
-- Default Client target stays 27.0; experimental 15.0 is opt-in. Cache identity
-  includes deployment target and target-policy source. macOS Host is unchanged.
-- Existing Native/Scaled-Span settings keep their meaning. Headless Host mode
-  presets, authentication, TLS and exact profile negotiation remain enforced.
-
-## Verification
-
-Seven portable root suites, 38 CI tests, seven fullscreen/platform guards and
-new-commit privacy checks across all five repositories pass. Exact candidate
-build/package and earlier live evidence are listed in the integration review
-and HANDOFF; build success is not a cross-platform hardware pass.
-
-
-Publication-time upstream refresh: fresh candidate 1.0.128 from root `9b495ee`
-/ Client `d9ad2b1` passes 101 Qt results, native input ordering, seven fullscreen
-and three Quit lifecycle guards, seven portable suites, 38 CI tests, 106 Mach-O
-checks, dependency closure and ad-hoc signatures. It has not been deployed.
-GitHub hosted-build/privacy runs report `action_required` with no jobs executed;
-maintainer action and hosted CI remain pending.
-
-## Open gates
-
-Ubuntu Client and supported newer-Mac build/hardware coverage; combined recovery
-matrix; physical single-output live check; Retina-detail session acceptance;
-Wacom permission continuity and latest-candidate pressure; sustained playback
-and visual/color tests. Intermittent left-click loss remains unresolved.
-
-No production release, permanent Xorg/global-DPI change, generic USB redirection
-or older macOS Host support is included. Keep this draft unmergeable until the
-required dependency, platform, restoration and maintainer-review gates pass.
-
-## Contribution set
-
-[change inventory and verification record](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).
+See the [integration review](../macos15-integration-review.md) for the full
+scope and evidence.

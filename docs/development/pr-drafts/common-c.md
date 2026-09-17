@@ -9,7 +9,7 @@ position, which previously broke rapid window dragging.
 
 ## Scope and dependencies
 
-- Contribution: `0c82257`; target branch: `plank/client`.
+- Contribution: `b2b2b29` (following `0c82257`); target branch: `plank/client`.
 - Relative mouse, keyboard encoding and transport framing are unchanged.
 - This intentionally affects every Client using this shared input worker.
 - The linked Client/root drafts consume this commit. Regression fixture:
@@ -18,9 +18,12 @@ position, which previously broke rapid window dragging.
 ## Verification
 
 The native worker test checks queued press/move/release ordering, coordinates,
-buttons, modifiers and scroll delivery. Live Mac-to-Linux cross-display dragging
-works in both directions. Linux Client build/hardware regression and high-rate
-motion saturation remain review gates; there is no blanket cross-platform pass.
+buttons, modifiers and scroll delivery. It also stalls the sender and queues
+150 absolute moves before mouse/key releases. That case fails on `0c82257`
+and passes with enqueue-time tail coalescing in `b2b2b29`, including 50
+repeated runs and AddressSanitizer. Live Mac-to-Linux cross-display dragging
+works in both directions. Linux Client build/hardware regression remains open;
+the queue fix has not been established as the cause of every live click loss.
 
 ## Review focus
 

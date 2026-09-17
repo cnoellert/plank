@@ -1,25 +1,20 @@
-# Published draft PR package
+# Draft contribution set
 
-Five linked draft PRs are published. The files here retain their review bodies.
-See the [integration review](../macos15-integration-review.md) for the full
-change inventory, upstream reconciliation, evidence and remaining gates.
+The Mac Client review is three coordinated draft PRs:
 
-| Order | Target | Base | Published draft | Body |
-| --- | --- | --- | --- | --- |
-| 1 | instinctual/plank-common-c | plank/client | [#3](https://github.com/instinctual/plank-common-c/pull/3) | [Ordered input](common-c.md) |
-| 2 | instinctual/plank-libvirtualhid | plank/main | [#1](https://github.com/instinctual/plank-libvirtualhid/pull/1) | [Pause](libvirtualhid.md) |
-| 3 | instinctual/plank-client | main | [#3](https://github.com/instinctual/plank-client/pull/3) | [Mac Client](client.md) |
-| 4 | instinctual/plank-host-linux | main | [#2](https://github.com/instinctual/plank-host-linux/pull/2) | [Host display matching](host.md) |
-| 5 | instinctual/plank | main | [#4](https://github.com/instinctual/plank/pull/4) | [Integration](root.md) |
+| Order | Repository | Draft | Purpose |
+| --- | --- | --- | --- |
+| 1 | common-C | [#3](https://github.com/instinctual/plank-common-c/pull/3) | Keep mouse positions ordered and deliver releases under position bursts |
+| 2 | Client | [#3](https://github.com/instinctual/plank-client/pull/3) | macOS 15 target, two-screen presentation, input and USB Wacom |
+| 3 | root | [#4](https://github.com/instinctual/plank/pull/4) | Pin the Client and its common-C dependency; build gates and evidence |
 
-Branches were published to contributor forks in dependency order after checking
-all five upstream bases. Parent drafts remain blocked until the pinned commits
-are available from canonical upstream URLs and the documented qualification
-gates pass. Refresh bases before final merge. No upstream merge or release was
-performed; the accepted installed binaries remain separate from the review
-candidate. GitHub reporting a conflict-free merge is not test acceptance.
+[libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
+is an independent approved Pause-key fix. The physical-display work in
+[Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2) needs
+a separate Client/root integration PR. The complete local source snapshot is
+on `codex/display-stack-snapshot`; it is not a dependency of the Mac Client
+review. The display series remains draft pending feature-bit correction and
+recovery qualification.
 
-The generic launch/connection screenshots from the development record are
-private captures. Do not attach them. Capture only sanitized bookmark controls
-with a reserved example workstation before adding UI screenshots to the Client
-or root PR. Distribution/signing material is not a PR attachment.
+The [integration review](../macos15-integration-review.md) has the current
+scope, evidence and gates. No upstream merge or release has occurred.

@@ -20,7 +20,6 @@ Requires:       libXext
 Requires:       logrotate
 Requires:       xorg-x11-server-Xorg
 Requires:       xorg-x11-server-utils
-Requires:       python3-gobject-base
 Requires(post): systemd systemd-udev kmod
 Requires(post): openssl
 Requires(post): hostname
@@ -91,7 +90,6 @@ fi
 /usr/libexec/plank/plank-host-certificate
 /usr/libexec/plank/plank-host-state
 /usr/libexec/plank/plank-display-prepare
-/usr/libexec/plank/plank-display-match
 /usr/lib/systemd/system/plank-pam-broker.service
 /usr/lib/systemd/system/plank-display-prepare.service
 /usr/lib/systemd/system/plank-host.service

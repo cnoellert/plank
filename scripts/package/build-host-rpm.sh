@@ -52,8 +52,6 @@ install -D -m 0755 "$repo_dir/packaging/host/linux/bin/plank-host-certificate" \
   "$payload_dir/usr/libexec/plank/plank-host-certificate"
 install -D -m 0755 "$repo_dir/packaging/host/linux/bin/plank-host-state" \
   "$payload_dir/usr/libexec/plank/plank-host-state"
-install -D -m 0755 "$repo_dir/packaging/host/linux/bin/plank-display-match" \
-  "$payload_dir/usr/libexec/plank/plank-display-match"
 install -D -m 0755 "$repo_dir/packaging/host/linux/bin/plank-display-prepare" \
   "$payload_dir/usr/libexec/plank/plank-display-prepare"
 install -D -m 0644 "$repo_dir/packaging/host/linux/systemd/plank-host.service" \
