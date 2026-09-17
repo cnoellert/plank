@@ -337,14 +337,26 @@ int main(int argc, char **argv) {
     memset(&received_audio_info, 0, sizeof(received_audio_info));
     received_audio_info.struct_size = sizeof(received_audio_info);
     received_size = 0;
-    if (plank_transport_native_audio_receive(
+    int audio_receive_result = plank_transport_native_audio_receive(
             client, &received_audio_info, audio_received,
-            sizeof(audio_received), &received_size, 5000) != PLANK_TRANSPORT_OK ||
+            sizeof(audio_received), &received_size, 5000);
+    if (audio_receive_result != PLANK_TRANSPORT_OK ||
         received_size != sizeof(audio) ||
         memcmp(audio, audio_received, sizeof(audio)) != 0 ||
         received_audio_info.frame_samples != audio_info.frame_samples ||
         received_audio_info.pts != audio_info.pts) {
-        fprintf(stderr, "native audio packet or metadata mismatch\n");
+        fprintf(stderr,
+                "native audio mismatch: result=%d size=%zu/%zu bytes_equal=%d "
+                "frame_samples=%u/%u pts=%llu/%llu missing_samples=%u\n",
+                audio_receive_result, received_size, sizeof(audio),
+                received_size == sizeof(audio) &&
+                    memcmp(audio, audio_received, sizeof(audio)) == 0,
+                received_audio_info.frame_samples, audio_info.frame_samples,
+                (unsigned long long)received_audio_info.pts,
+                (unsigned long long)audio_info.pts,
+                received_audio_info.missing_samples);
+        print_error("native audio client", client);
+        print_error("native audio server", server);
         goto failure;
     }
 
