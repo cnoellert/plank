@@ -1,5 +1,21 @@
 # PLANK handoff
 
+## Secondary fullscreen window lifecycle candidate
+
+Client candidate 1.0.126 explicitly leaves and synchronizes a secondary native
+fullscreen Space before hiding its window. Reentry shows the window before
+requesting fullscreen. Primary Cocoa transitions are synchronized as well.
+Two connected Client screens now provide capability only: a physical/fixed Host
+uses its authenticated output count, while a requested single/dual layout uses
+its resolved count during Host transitions. A single-output session therefore
+does not allocate a second presentation window.
+
+The native Metal probe now uses product-native Spaces and checks three repeated
+exit/hide/reentry cycles against AppKit visibility/fullscreen state, SDL state,
+display identity and real Metal readback. Topology coverage includes single to
+dual and dual to single transitions. Build and live acceptance are pending.
+Host 1.0.125 is unchanged.
+
 ## Preserve primary output identity for application monitor selection
 
 A single-output to matched-output transition reassigned the original active
