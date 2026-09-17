@@ -5,13 +5,28 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Mainline 1.0.121 package rebuild requested. Client PR #1 is approved and
+- Mainline 1.0.121 package rebuild completed from pushed root
+  `41961fb5e9ef8329711e04d1adf75cc4b2968ce3`. Client PR #1 is approved and
   merged at `b9e4be6b374001bef08ac4753764bc12edcb8357`; the root Client pin
   now includes the macOS native application Quit bridge. Linux Host and Kymux
   pins are unchanged. Clipboard PRs are not included: their reviews requested
-  changes. Build all four products on hosted runners using verified dependency
-  caches, with protected signing/notarization for both Mac packages. No
-  installation or GitHub Release publication requested in this step.
+  changes. All four hosted builds and package gates passed: Linux Host
+  `35166761486`, Ubuntu Client `35166763396`, signed Mac Host `35166765361`,
+  signed Mac Client `35166767426`. Both Mac packages passed notarization,
+  stapling and Gatekeeper. All downloaded packages passed SHA256 verification
+  and are collected under `artifacts/packages/releases/1.0.121/`, with manifest
+  and checksums. Both Clients and Mac Host restored verified dependency caches.
+  Linux Host had a cold miss because NVIDIA's two CUDA config-common RPMs
+  advanced from 13.4.49 to 13.4.92; its successful build saved the new cache.
+  Local CI tests (37) and package-collection tests (6) passed. See
+  `docs/releases/1.0.121.md` for build links and validation scope. No
+  installation, native hardware acceptance or GitHub Release publication was
+  performed. Unchanged Linux Host is
+  `9329784ac41f50cbec0c9d76badfd22227ec5e5f`; Kymux is
+  `912ece5c64787997f978673ca60d313898a3548c`. Client common-c is
+  `b9650552f98d97f6e30c9f007115c6246f0809e5`; qmdnsengine is
+  `b7a5a9f225d5e14b39f9fd1f905c4f505cf2ee99`. Host recursive pins remain
+  as recorded below.
   Source review found no actionable defect in the Quit bridge, but native
   menu/Dock Quit during streaming/reconnect and physical Command-Q ownership
   remain live validation follow-ups. The author's reported eight lifecycle
@@ -41,8 +56,8 @@ notes' README before machine-specific work; deployment information stays outside
   The Ubuntu correction changes cache keys but not the qualified Host cache
   contents/logic. Application and transport source revisions remain identical
   to the 1.0.120 release below. No runtime change, version bump or deployment.
-  Post-merge hosted run `35148481593` is in progress at that exact merge SHA;
-  it populates main's branch-scoped caches. Do not relabel the CI test packages
+  Post-merge hosted run `35148481593` passed all four products at that exact
+  merge SHA and populated main's branch-scoped caches. Do not relabel the CI test packages
   or replace the published 1.0.120 assets. No additional deployment requested.
   Completed root branches `dependency-cache`, `macos-auth-recovery`,
   `macos-fullscreen` and `reconnect-lifecycle`, plus the Client's three matching
