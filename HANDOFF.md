@@ -220,11 +220,16 @@ recreated an attached mouse with every button up, preserving the exact display
 MetaMode. The operator confirms clicks work again after reconnecting. The
 source of the detach/stale state remains
 unconfirmed; no permanent code fix is claimed.
-Next backlog item: review the upstream macOS 26 Client's Retina/HiDPI fixes
-reported by the operator as committed on the morning of September 16, and
-backport applicable changes into this macOS 15 fork. Identify exact commits,
-avoid duplicating fixes already present, and requalify mixed-display rendering
-and input. See the [fork backlog](docs/development/macos15-client.md#backlog--upstream-retina-fixes).
+Retina backport now underway: upstream morning Client `509f2fc` and `6f0c252`
+are cherry-picked as `29ddc66` / `33898c4`. Earlier logical/backing-pixel Retina
+matching is already in the fork. Client `10eeb75` preserves coordinated desktop
+fullscreen for multiple connected displays; a single display uses upstream
+native Spaces and its measured camera-safe Match Client viewport. Shared policy
+keeps authentication, startup and reconnect geometry consistent. Input/tablet
+and Metal rendering corrections remain intact; stock SDL is retained. Five
+fullscreen source/compiled-geometry gates pass. Preparing a clean
+`1.0.120-macos15-client` development candidate; build and live acceptance are
+pending. See the [backport record](docs/development/macos15-client.md#backlog--upstream-retina-fixes).
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

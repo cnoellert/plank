@@ -597,23 +597,36 @@ No display, tablet or Client settings were changed for this recovery.
 
 ## Backlog — upstream Retina fixes
 
-Requested September 16, 2026: review and bring applicable Retina/HiDPI fixes
-from the upstream macOS 26 Client into this macOS 15 fork. The operator reports
-that the repository owner committed several relevant changes that morning;
-the exact branch and commits still need to be identified.
+Requested September 16, 2026; implementation now underway after Pause acceptance.
+Compared upstream root `4135947` / Client `95060de` with this fork's original
+upstream base `15e6000` / Client `e8fc0cc`.
 
-- Compare those commits with this fork and record what is already present,
-  what needs backporting and any required dependencies.
-- Preserve macOS 15 compatibility and the accepted multi-display input,
-  fullscreen focus and tablet behavior.
-- Verify client-monitor matching, logical versus backing-pixel dimensions,
-  scaling, cropping and pointer alignment on mixed Retina/non-Retina displays,
-  including Windowed/fullscreen transitions and connected-display selection.
-- Record upstream commit IDs and live acceptance for each incorporated fix.
+| Upstream change | Fork treatment |
+| --- | --- |
+| Retina logical/backing-pixel matching, schema 3, toolbar camera avoidance and desktop-mode preservation (through Client `e8fc0cc`) | Already included; retained. |
+| Client `509f2fc73718b3dffdb9fd9ad9c03065bc14b6c2`: native fullscreen and geometry diagnostics | Cherry-picked as `29ddc66`, retaining the fork's tablet cursor view. |
+| Client `6f0c25269c5a8bf1051814317440f2cd57fda005`: dynamic camera-inset Match Client viewport | Cherry-picked as `33898c4`; includes removal of the earlier ineffective SDL patch. |
+| Root fullscreen validation/build gate from `aea1ab3` and `9167fd8` | Included with the fork's display-count policy checks. Unrelated hosted cache changes are outside this backport. |
 
-This review is next after the accepted Pause-key correction.
+Client `10eeb75` adapts the upstream single-window policy: one connected display
+uses native fullscreen Spaces, while multiple connected displays keep the
+accepted coordinated desktop fullscreen. Authentication, initial geometry and
+reconnect use the same decision; only native fullscreen subtracts the measured
+camera inset while preserving backing-pixel density. Complete display bounds
+remain the identity/placement key. Windowed sizing and Linux Host matching are
+unchanged. Mac-to-Mac mixed-scale matching remains explicitly unsupported by
+the existing protocol; no Linux Host or schema change is introduced.
 
-The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
+The fork's accepted mouse capture/focus, input ordering, raw Wacom forwarding,
+tablet cursor/focus and Metal renderer are retained. Existing pinned SDL is
+unmodified. The five upstream-derived fullscreen checks pass locally, including
+compiled 1x/2x geometry and single/multiple-display policy. Candidate
+`1.0.120-macos15-client` still needs its clean application/package build and
+live mixed-display transition/input retest. Single-display native Spaces and
+Mac-host Match Client require their own live acceptance; the Linux session
+cannot establish Mac-host behavior.
+
+The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
 retained outside the repository in the operator's private notes/audit storage.
