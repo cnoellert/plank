@@ -43,7 +43,7 @@ required reviewers or wait timer: an explicitly dispatched signed build on an
 allowed branch proceeds automatically. Keep custom deployment branch policies
 enabled (currently `main`, `macos-display-recovery` and
 `macos-media-recovery`, `macos-auth-recovery`, `reconnect-lifecycle` and
-`macos-fullscreen`); do not replace them with
+`macos-fullscreen`, `macos-command-q`, `macos-quit-lifecycle`); do not replace them with
 an all-branches wildcard. Review source, workflow and dependency changes before
 dispatching or adding a candidate branch. Public push/PR jobs have no signing
 authority. This removes the approval gate itself, not through a bot/token that
