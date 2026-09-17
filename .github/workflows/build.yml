@@ -80,7 +80,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -101,7 +101,7 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product linux-host --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -137,7 +137,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -158,7 +158,7 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product linux-client --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -203,7 +203,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -224,7 +224,7 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product macos-${{ matrix.product }} --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -262,7 +262,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -294,7 +294,7 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product "$PLANK_CI_PRODUCT" --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ success() && inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
