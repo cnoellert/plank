@@ -40,6 +40,7 @@ class BootstrapInputs(unittest.TestCase):
             for name, content in {
                 'curl': '#!/bin/sh\nexit 99\n',
                 'nasm': '#!/bin/sh\nexit 99\n',
+                'pkg-config': '#!/bin/sh\nexit 99\n',
                 # The Linux command syntax is part of the fixture; macOS's
                 # system realpath does not implement GNU -m.
                 'realpath': '#!/usr/bin/env python3\nfrom pathlib import Path\nimport sys\n'
