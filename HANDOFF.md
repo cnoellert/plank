@@ -6,12 +6,34 @@ notes' README before machine-specific work; deployment information stays outside
 ## Current state
 
 - The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
-  and release. Preparing mainline 1.0.124 for all four Host/Client packages on
-  GitHub-hosted builders, with verified dependency caching and signed Mac
-  packages. Do not relabel candidate artifacts. Clipboard PRs and unrelated
-  RK3576 research remain excluded. Publication/build results are pending.
+  and release. Root and Client are on pushed main: package-source root
+  `cb01cfe84504d7a74dfa78c5b79d701c8277bf6e`, Client merge
+  `86682b5b596e5c31b81a6e2a4b238bb62dc6e42c`. Mainline 1.0.124 rebuilds all
+  four Host/Client packages on GitHub-hosted builders with dependency caching:
+  Linux Host 35186794247, Ubuntu Client 35186794278, signed Mac Host 35186794535,
+  signed Mac Client 35186794688. All four passed, restored independently
+  verified dependency caches, and produced fresh mainline packages. Both Mac
+  packages passed signing/notarization/stapling/Gatekeeper; Client native suite
+  totals were 19/21/7/9/8. Local 37 CI tests, five fullscreen and three lifecycle
+  guards, plus all five root CTest suites passed. All downloads were
+  SHA256-verified and collected under `artifacts/packages/releases/1.0.124/`.
+  Published [v1.0.124](https://github.com/instinctual/plank/releases/tag/v1.0.124)
+  as latest with four packages, manifest and checksums. All six GitHub asset
+  digests match local files. The annotated tag pins the exact package-source
+  root above, not subsequent documentation commits. No deployment performed.
+  See `docs/releases/1.0.124.md`. Client
+  merge contents match the accepted candidate exactly; Host/Kymux and recursive
+  pins are unchanged. Do not relabel candidate artifacts. Clipboard PRs and
+  unrelated primary-worktree RK3576 research remain excluded.
 
-- Current root/Client branch is `macos-quit-lifecycle`, candidate
+  | Package | SHA256 |
+  | --- | --- |
+  | Linux Host RPM | `fafd9624125738f688cb0336efba754088f78e56ecccadfe67be7da21d205c43` |
+  | Ubuntu Client DEB | `855e9fbb1f66980d02aad5e1860f947940a17c26c08819e380be631f89e58308` |
+  | macOS Host PKG | `fa05b6c8414728f49a768d2eff3784157a18d5d5e7a6de5d36e2db9f5d4bf748` |
+  | macOS Client DMG | `a0c8564f3cfca02733e86b41d1dc7755a110b47778e83121f222a51f933919bf` |
+
+- Accepted root/Client candidate branch is `macos-quit-lifecycle`, candidate
   `1.0.123-macos-quit-lifecycle`. The operator accepted 1.0.122's behavior but
   requested a fresh implementation without the contributed Quit bridge.
   That bridge is deleted, not layered over. MacApplication explicitly owns
@@ -355,7 +377,7 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Release evidence
 
-Latest published release is **v1.0.121**, all four products, recorded above.
+Latest published release is **v1.0.124**, all four products, recorded above.
 The merged dependency-cache work extends hosted caches without runtime changes;
 qualification runs are separate from the published package source.
 
