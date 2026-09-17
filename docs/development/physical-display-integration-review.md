@@ -1,0 +1,93 @@
+# Linux physical display matching: separate review
+
+This draft series is stacked after the [Mac Client contribution](https://github.com/instinctual/plank/pull/4).
+Its root and Client branches contain only the physical-display changes when
+compared with `codex/macos15-pr-review`. The Host changes are in
+[Host PR #2](https://github.com/instinctual/plank-host-linux/pull/2).
+No installed Host or Client was changed while preparing this split.
+
+## Purpose and boundaries
+
+**Match client displays** already exists. On a physical NVIDIA/X11 startup,
+the earlier Host could select a client-sized viewport while the real scanout
+remained a different mode. In the observed Flame workflow, GNOME geometry and
+that viewport diverged: windows overlapped, aspect ratios appeared wrong, and
+Flame chose the other connector. This series optionally uses temporary real
+modes on the active physical outputs, verifies XRandR and Mutter agree, and
+restores the original NVIDIA MetaMode and primary property when the lease ends.
+
+The existing **Physical displays** bookmark choice and headless virtual EDID
+preset policy retain their behavior. A headless Flame Host may be better served
+by virtual startup; this series does not establish physical matching as the
+recommended headless configuration. It does not permanently edit Xorg or global
+DPI settings. Native/Scaled-Span keeps its existing meaning. A separate Retina
+size control chooses macOS logical workspace size or current backing pixels
+only when using **Match client displays** with a capable physical-startup Host.
+
+The Host advertises matched modes as `0x1000000` and optional primary binding as
+`0x800000`. `0x400000` belongs to clipboard synchronization. Client parsing and
+Host constants now keep those capabilities distinct; a Client test proves that
+a clipboard-only flag cannot validate a non-preset matched mode.
+
+## Implementation
+
+- The Client validates canonical even dimensions, one or two horizontal
+  outputs, an 8192-pixel-wide canvas and the negotiated Host policy. It sends
+  the Mac primary display index only when that capability is present.
+- The Host supervisor owns a session-scoped display lease. It invokes the
+  packaged helper as the attested X11 desktop owner, and applies/restores
+  through one internal display request version. Generated modes are unique to
+  the lease; cleanup must leave unrelated modes alone.
+- The helper selects connected outputs, keeps the original active connector
+  assigned to the Client primary, constrains each panning domain, and checks
+  exact geometry and primary in XRandR and Mutter. Restoration reads back
+  both MetaMode and primary instead of trusting process exit status.
+- The RPM owns the helper and its Python GObject dependency. Host source and
+  this root packaging change must be deployed together.
+
+See the [implementation plan](plans/automatic-display-matching.md) and
+[protocol contract](../../protocol/output-topology.md#bounded-physical-display-matching-optional-0x1000000).
+
+## Evidence
+
+A local Apple Silicon/macOS 15 Client build passed 101 Qt results, the native
+input-worker fixture and fullscreen/Quit guards with the new capability bit.
+Twenty fake-command helper tests pass, covering bounds, command injection,
+output selection, real modes, panning, primary identity, compositor mismatch,
+NVIDIA zero-exit errors, restoration readback and generated-mode cleanup. The
+Host topology header also compiles with the distinct bit and a unit expectation
+has been updated; a final Rocky 9.7 package build remains required.
+
+Earlier installed candidates were tested on a physical-startup X11 desktop
+created by remote desktop software. With the laptop closed and two external 5K
+panels, each Mac workspace was 2560×1440 at 60 Hz while each backing surface
+was 5120×2880. The 10240-pixel Retina-detail canvas was correctly rejected by
+the 8192 limit. Desktop-size mode connected with two real 2560×1440 Host
+outputs and the right-hand Client primary. The operator moved a window across
+the boundary and confirmed Flame opened on the primary display. Normal
+disconnect restored the exact original single-output MetaMode and primary,
+removed generated modes and cleared the lease. A separate Client retry fix
+passed the 8192-rejection-to-valid-connection sequence without another sign-in
+on the same Host worker. That retry behavior is part of this display series.
+These are normal-flow observations on earlier exact packages, not qualification
+of the newly split branch or standalone operation without remote desktop.
+
+## Remaining gates
+
+1. Rebuild the exact Host source with this root helper/RPM on a qualified Rocky
+   9.7 builder; verify package content and then test the installed candidate.
+2. Test monitor-mode rejection, helper timeout and forced termination, failed
+   restoration, abrupt Client exit and transport loss. Verify the original
+   physical desktop remains usable, primary is correct and no lease-owned mode
+   remains. The existing fake helper tests do not cover all supervisor failures.
+3. Compare virtual startup on a headless Flame Host before choosing a deployment
+   default. Keep its qualified EDID presets and existing workflows intact.
+4. Qualify the final Client on Ubuntu and supported newer macOS, then repeat
+   Mac logical/backing-size, single/dual, primary, Flame launch and normal
+   restoration tests with exact build hashes.
+5. Merge or make canonical upstream submodule commits reachable before treating
+   the root branch as a reproducible build input.
+
+Keep the PRs draft until these gates pass. Physical display mode changes can
+interrupt an active desktop, so live failure tests require an operator-approved
+window with work saved.
