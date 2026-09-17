@@ -5,6 +5,25 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Candidate work is on root/Client branch `macos-command-q`, based on
+  published 1.0.121 plus documentation. The operator reports Command-Q both
+  reaches the Host and immediately quits the Mac Client. Keep the accepted
+  Qt-to-SDL Quit bridge (explicit Quit previously failed during streaming),
+  but give the remote session exclusive ownership of captured Command-Q.
+  The candidate scopes a native Quit-key-equivalent guard to the input handler:
+  native key dispatch rechecks capture and actual AppKit focus, removes only
+  the menu shortcut while captured, and restores it on release/teardown.
+  Menu/Dock Quit remains enabled; no remote key injection, Host/protocol change,
+  SDL dependency patch or Linux runtime change is intended.
+  Version is `1.0.122-macos-command-q`. New native `macquitshortcut` tests are
+  wired into every Mac Client build; native compile/execution and signed DMG
+  are pending. Local CI tests (37), fullscreen tests (5), shell syntax and
+  whitespace checks pass. Live acceptance must cover remote-only Command-Q,
+  explicit menu/Dock Quit during streaming/reconnect, capture off, windowed
+  versus fullscreen-only capture, focus changes and shortcut restoration.
+  Do not claim success from source review or mocked input alone. No merge,
+  release publication or deployment yet. Preserve primary-worktree research.
+
 - Mainline 1.0.121 package rebuild completed from pushed root
   `41961fb5e9ef8329711e04d1adf75cc4b2968ce3`. Client PR #1 is approved and
   merged at `b9e4be6b374001bef08ac4753764bc12edcb8357`; the root Client pin
