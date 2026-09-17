@@ -14,8 +14,10 @@ session = (client / 'app/streaming/session.cpp').read_text()
 
 class NativeFullscreenTests(unittest.TestCase):
     def test_native_spaces_without_sdl_override(self):
-        self.assertIn('MacDisplayGeometry::useNativeFullscreen(m_ClientDisplays.size()) ? \"1\" : \"0\"', session)
-        self.assertLess(session.index('SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES'), session.index('SDL_Window* testWindow = SDL_CreateWindow'))
+        self.assertIn('MacDisplayGeometry::useNativeFullscreen(macDisplayCount) ? \"1\" : \"0\"', session)
+        self.assertLess(session.index('SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES'), session.index('if (!SDL_InitSubSystem(SDL_INIT_VIDEO))'))
+        self.assertIn('MacWindow::activeDisplayCount()', session)
+        self.assertIn('m_ClientDisplays.size() != macDisplayCount', session)
         self.assertNotIn('PLANK_MAC_FULLSCREEN_FULL_DISPLAY', session)
         self.assertFalse((root / 'scripts/build/prepare-macos-sdl.sh').exists())
         self.assertFalse((client / 'app/deploy/macos/sdl-patches/0001-cocoa-opt-in-full-display-content-size.patch').exists())

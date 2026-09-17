@@ -620,11 +620,23 @@ the existing protocol; no Linux Host or schema change is introduced.
 The fork's accepted mouse capture/focus, input ordering, raw Wacom forwarding,
 tablet cursor/focus and Metal renderer are retained. Existing pinned SDL is
 unmodified. The five upstream-derived fullscreen checks pass locally, including
-compiled 1x/2x geometry and single/multiple-display policy. Candidate
-`1.0.120-macos15-client` still needs its clean application/package build and
-live mixed-display transition/input retest. Single-display native Spaces and
-Mac-host Match Client require their own live acceptance; the Linux session
-cannot establish Mac-host behavior.
+compiled 1x/2x geometry and single/multiple-display policy. Clean root `6323ec7`
+produces candidate `1.0.120-macos15-client` under
+`artifacts/development/macos15-retina/`: 79 Client checks, the native input-order
+regression, all 106 ARM64/macOS 15 target checks, dependency closure, build-path
+and ad-hoc signature gates pass. Executable SHA256 is
+`6e79dd12e4c9d3725a53926751e83304f0ad365541ab5b671283fb272c422e57`.
+The prior Client disconnected/quit cleanly and this candidate opens at version
+1.0.120. It is a development app, not a notarized release. Live logging rejected
+this initial candidate: both windows entered native Spaces despite the requested
+desktop policy. SDL 3.4.2 caches `allow_spaces` in `Cocoa_VideoInit`; setting the
+hint after the display snapshot was too late. Client `2d93285` queries active
+CoreGraphics displays and sets the hint before SDL video initialization. Setup
+fails explicitly if SDL discovers a different display count. The regression
+gate now checks this ordering, and the initial candidate was disconnected.
+Corrected build and live retest are pending. Single-display native Spaces and Mac-host
+Match Client require their own live acceptance; the Linux session cannot
+establish Mac-host behavior.
 
 The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

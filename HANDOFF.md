@@ -227,9 +227,19 @@ fullscreen for multiple connected displays; a single display uses upstream
 native Spaces and its measured camera-safe Match Client viewport. Shared policy
 keeps authentication, startup and reconnect geometry consistent. Input/tablet
 and Metal rendering corrections remain intact; stock SDL is retained. Five
-fullscreen source/compiled-geometry gates pass. Preparing a clean
-`1.0.120-macos15-client` development candidate; build and live acceptance are
-pending. See the [backport record](docs/development/macos15-client.md#backlog--upstream-retina-fixes).
+fullscreen source/compiled-geometry gates pass. Clean root `6323ec7` built
+`1.0.120-macos15-client` under `artifacts/development/macos15-retina/`; 79 Client
+checks, native input ordering, 106 minimum-OS/architecture checks and package
+closure/build-path/signature gates pass. Executable SHA256:
+`6e79dd12e4c9d3725a53926751e83304f0ad365541ab5b671283fb272c422e57`.
+Live diagnostics rejected this initial candidate: the two-output session entered
+native Spaces because SDL 3.4.2 caches the policy during video initialization.
+Client `2d93285` now queries active CoreGraphics displays and sets the hint before
+SDL video initialization; a topology-count change during setup fails explicitly.
+The fullscreen regression gate now enforces this ordering. Initial candidate
+disconnected; corrected build/live acceptance pending. Single-display native
+Spaces and Mac-host matching are separate live gates. See the
+[backport record](docs/development/macos15-client.md#backlog--upstream-retina-fixes).
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
