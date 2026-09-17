@@ -15,7 +15,8 @@ prior common-C PR head and passes on the fix.
 
 Linux physical-monitor matching is not part of this PR. Its Host changes,
 display helper, mode/primary negotiation, protocol vectors and packaging will
-be reviewed together in a separate display integration PR. The independent
+be reviewed together in separate draft [Client #4](https://github.com/instinctual/plank-client/pull/4)
+and [root #7](https://github.com/instinctual/plank/pull/7) PRs. The independent
 Pause-key library PR can be reviewed on its own.
 
 The split Mac Client built on Apple Silicon/macOS 15 with 97 passing Qt results

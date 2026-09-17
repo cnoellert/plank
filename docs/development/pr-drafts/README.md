@@ -9,12 +9,12 @@ The Mac Client review is three coordinated draft PRs:
 | 3 | root | [#4](https://github.com/instinctual/plank/pull/4) | Pin the Client and its common-C dependency; build gates and evidence |
 
 [libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
-is an independent approved Pause-key fix. The physical-display work in
-[Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2) needs
-a separate Client/root integration PR. The complete local source snapshot is
-on `codex/display-stack-snapshot`; it is not a dependency of the Mac Client
-review. The display series remains draft pending feature-bit correction and
-recovery qualification.
+is an independent approved Pause-key fix. The physical-display work is in
+[Client #4](https://github.com/instinctual/plank-client/pull/4),
+[root #7](https://github.com/instinctual/plank/pull/7) and
+[Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2).
+It is not a dependency of the Mac Client review. The display series remains
+draft pending recovery and final Host-package qualification.
 
 The [integration review](../macos15-integration-review.md) has the current
 scope, evidence and gates. No upstream merge or release has occurred.

@@ -5,8 +5,10 @@
 Root and Client `codex/macos15-pr-review` are draft contributions for the
 macOS 15 Client. The default macOS 27 target remains. The accepted local Client
 and Linux Host installations are separate from this source branch. The Linux
-physical-display matching feature is saved on `codex/display-stack-snapshot`
-and is being separated into its own review. The Mac review branch pins the
+physical-display matching feature is in separate draft Client
+[#4](https://github.com/instinctual/plank-client/pull/4) and root
+[#7](https://github.com/instinctual/plank/pull/7) PRs, paired with Host
+[#2](https://github.com/instinctual/plank-host-linux/pull/2). The Mac review branch pins the
 maintained Host base, so it does not package the display helper or alter Host
 physical-monitor behavior.
 
