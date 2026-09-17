@@ -5,6 +5,19 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Rustls security update follows root PR #9 (Dependabot source
+  `3293a13994a4d90515e5381a6ee95aae0965e122`). Both production and standalone
+  probe locks now select 0.23.45, addressing upstream GHSA-2mjx-qc3c-rqvc.
+  A CI guard requires the two Rustls identities to remain synchronized.
+  Quinn's repaired path override, RaptorQ, all product gitlinks and media
+  behavior are unchanged. Package base advances to 1.0.125 for new build bytes;
+  no release or deployment is authorized by this dependency change alone.
+  Local validation: 21 transport unit tests pass (two network tests require
+  their separate runner), and 42 CI policy tests pass. Hosted validation and
+  the initial macOS audio-loopback failure investigation are in progress.
+  The loopback now reports result, sizes, metadata and endpoint errors instead
+  of a generic mismatch; its assertions and five-second deadline are unchanged.
+
 - Dependency maintenance setup adds weekly Dependabot proposals to the root,
   Host, Client, Kymux, build-deps and libvirtualhid repositories. Common-C's
   maintained branches have no dependency manifests; do not resurrect its
