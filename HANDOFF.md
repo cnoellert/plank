@@ -15,10 +15,19 @@ notes' README before machine-specific work; deployment information stays outside
   the menu shortcut while captured, and restores it on release/teardown.
   Menu/Dock Quit remains enabled; no remote key injection, Host/protocol change,
   SDL dependency patch or Linux runtime change is intended.
-  Version is `1.0.122-macos-command-q`. New native `macquitshortcut` tests are
-  wired into every Mac Client build; native compile/execution and signed DMG
-  are pending. Local CI tests (37), fullscreen tests (5), shell syntax and
-  whitespace checks pass. Live acceptance must cover remote-only Command-Q,
+  Version is `1.0.122-macos-command-q`. Client commit
+  `aaaa6b2ba17fa6e3b212b61a0eb8d938046b8f58` and package source root
+  `70928380313edd7ab129bef10524384dd0ce3f39` are pushed. Signed hosted run
+  `35183839235` passed with a verified dependency-cache hit, all existing Mac
+  suites and eight new `macquitshortcut` test cases (10 Qt results including
+  init/cleanup). These native tests run in every Mac Client build. Signing,
+  notarization, stapling and Gatekeeper passed. The verified 86,124,020-byte DMG
+  is collected at `artifacts/packages/candidates/1.0.122-macos-command-q/macos/`
+  as `plank-client_1.0.122-macos-command-q_arm64.dmg`; SHA256:
+  `252b4f25ed05aa164b041fe48597d98bb4d2b894ef738cb38c1c356972b0bdbf`.
+  Unchanged Host, Kymux and recursive Client dependencies are recorded below.
+  Local CI tests (37), fullscreen tests (5), shell syntax and whitespace checks
+  pass. Live acceptance remains pending and must cover remote-only Command-Q,
   explicit menu/Dock Quit during streaming/reconnect, capture off, windowed
   versus fullscreen-only capture, focus changes and shortcut restoration.
   Do not claim success from source review or mocked input alone. No merge,
