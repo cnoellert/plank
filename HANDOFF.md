@@ -16,9 +16,21 @@ matched layout. If the primary property names an inactive connector, it uses
 the first active output. The remaining outputs keep desktop order; omitted
 primary negotiation keeps the previous selection behavior. Twenty helper tests
 pass, including single/matched transitions, right-hand primary, alternate
-connector names, inactive primary and rollback after reassignment. The Client
-is unchanged. Package build, installation and authenticated repeat testing
-remain pending; the live session currently uses the successful temporary swap.
+connectors, inactive primary and rollback after reassignment. The Client
+is unchanged. Clean root `7c63f4bd` and Host `d96eb476` produced the installed
+Host RPM, SHA256
+`243025b6f79ee1b7577047bfdc668f88a59f4668edd041a60d33a7752eac3ac2`.
+Package gates, installed-file verification and helper/source byte comparison
+pass. Configuration/certificate hashes are unchanged and services remain active.
+The isolated builder is stopped.
+
+The previous authenticated session restored the exact single-output baseline
+and saved primary property, with all lease modes removed despite their extra
+test attachments. Three live trials of the installed helper pass: single
+primary, matched desktop-size and matched Retina-size. Each retains the original
+active connector for the Client primary, verifies XRandR/Mutter geometry, then
+restores the exact baseline and removes owned modes. The corrected Host is at
+direct Client sign-in for authenticated repeat testing; this remains pending.
 
 ## Primary matching and fullscreen-height candidate
 
