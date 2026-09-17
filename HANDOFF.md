@@ -1,5 +1,29 @@
 # PLANK handoff
 
+## Two external 5K display check and Client transition retry
+
+On 2026-09-17 the macOS 15 Client ran with the laptop closed and two external
+5K panels. Each panel's macOS workspace was 2560×1440 at 60 Hz, with a
+5120×2880 backing surface. Retina pixel detail for both exceeded PLANK's
+8192-pixel canvas limit; macOS desktop size requested two 2560×1440 Host
+outputs. The installed review Client 1.0.127 and Host 1.0.125 connected over
+the authenticated native stream. The physical-startup Host's active desktop
+was created by PCoIP. XRandR showed two separate outputs and the correct
+right-hand primary; the operator confirmed cross-screen window movement and
+Flame on the primary screen. Normal disconnect restored the exact single-output
+MetaMode and primary property, removed temporary modes, and cleared the lease.
+
+The first retry after the canvas rejection surfaced Host 425 instead of waiting
+for the display transition. Its previous failed setup had consumed the Client's
+one-session credential handoff while leaving a valid token. Client `4accda4`
+removes that early credential requirement and requests a new sign-in only if
+the Host replaces the worker and rejects the token. The local macOS 15 build
+and existing Client checks pass in `work/pr-review-client-build`; this patched
+binary has not been deployed or live-accepted. Next, reproduce the
+early-failure/425 sequence against this candidate, then fold the fix into the
+Mac Client-only PR split. Keep the owner-requested feature-bit collision,
+bounded Wacom shutdown, left-click regression, and non-PCoIP Host tests open.
+
 ## Publication-time upstream refresh
 
 Upstream advanced during draft publication: Client `86682b5` and root

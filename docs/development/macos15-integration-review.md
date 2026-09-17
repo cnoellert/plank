@@ -24,6 +24,33 @@ No macOS Host support for macOS 15 was added. The default Client target remains
 USB redirection, arbitrary monitor arrangements and per-monitor Linux desktop
 scaling are outside this contribution.
 
+## Two external 5K displays — 2026-09-17
+
+With the laptop closed, two external 5K panels each presented a 2560×1440
+macOS workspace at 60 Hz and a 5120×2880 Retina backing surface. Selecting
+Retina pixel detail for both made a 10240-pixel-wide canvas, which the Client
+correctly rejected at its 8192-pixel limit. The separate macOS desktop size
+choice requested two 2560×1440 Host outputs and a 5120×1440 canvas.
+
+The physical-startup Host was running in a PCoIP-created X11 desktop. Before
+connection it had one active 2560×1440 output. A fresh authenticated PLANK
+connection created two side-by-side 2560×1440 outputs with the Client's
+right-hand primary screen primary on Linux. XRandR and the desktop geometry
+reported 5120×1440; the operator moved a window across the seam and confirmed
+that Flame opened on the primary screen. Normal disconnect restored the exact
+pre-session NVIDIA MetaMode and XRandR primary property, removed the temporary
+modes and cleared the display lease. This qualifies the PCoIP-backed desktop
+case; standalone operation without PCoIP and interrupted-session recovery
+remain separate gates.
+
+After the rejected 10240-pixel attempt, a subsequent authorized launch showed
+Host status 425 as an error even though the Host completed the transition. The
+failed local setup had consumed the Client's one-session credential handoff, so
+the Client's transition wait did not run. Client `4accda4` now waits with the
+valid session token and asks for a new sign-in only if a replacement worker
+rejects that token. The macOS 15 build and existing focused checks pass; this
+new Client change has not yet received a live regression test or been pushed.
+
 ## Upstream reconciliation
 
 Review bases were fetched directly from the maintained repositories:
