@@ -668,6 +668,10 @@ All 79 Client tests, five fullscreen checks, the native input-order regression,
 106 Mach-O target checks, dependency closure, build-path and ad-hoc signature
 gates pass. The previous app is closed; this candidate is at direct sign-in.
 Live menu-bar, input, tablet and transition acceptance remains pending.
+The connected session now logs native fullscreen on both outputs: final
+drawable sizes are 2560x1440 and 4112x2572 at 1x/2x respectively. This is geometry
+evidence, not operator acceptance. Launch-time TCC diagnostics again reject the
+old Input Monitoring code requirement; raw tablet attachment remains unverified.
 
 The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

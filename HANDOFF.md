@@ -263,6 +263,11 @@ Executable SHA256: `ccee56e81b68b8e20484eaa09578d7f07f43622c22fa0e5ad037cabcadcc
 The previous app is closed and the new app is at direct sign-in for live
 menu-bar, drag and focus checks. Tablet permission/pressure remains to be
 verified with this exact app. No release or performance acceptance is claimed.
+The subsequent live session confirms two `native-fullscreen=1` windows with
+settled drawables 2560x1440 at 1x and 4112x2572 at 2x below the camera area.
+Operator menu-bar/drag/focus acceptance is pending. Launch-time TCC diagnostics
+reject the previous Input Monitoring signature; raw tablet attachment and
+permission renewal have not yet been confirmed for this candidate.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier
