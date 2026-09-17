@@ -255,6 +255,14 @@ The fullscreen geometry gates are updated; a new clean build and live two-displa
 drag, focus, tablet and transition checks are pending. Perceived performance is
 operator feedback, not a measured benchmark. This supersedes the display-count
 policy above; the prior accepted input code and Linux Host remain unchanged.
+Clean root `3f267d4` builds the new native-Spaces candidate under
+`artifacts/development/macos15-native-spaces/`. All 79 Client checks, five
+fullscreen checks, native input-order regression and 106 Mach-O target checks
+pass, along with dependency closure, build-path and ad-hoc signature gates.
+Executable SHA256: `ccee56e81b68b8e20484eaa09578d7f07f43622c22fa0e5ad037cabcadcc966f`.
+The previous app is closed and the new app is at direct sign-in for live
+menu-bar, drag and focus checks. Tablet permission/pressure remains to be
+verified with this exact app. No release or performance acceptance is claimed.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

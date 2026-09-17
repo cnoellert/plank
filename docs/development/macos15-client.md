@@ -661,6 +661,14 @@ live mixed-display test are pending. Menu-bar behavior, both-direction drags,
 first-click focus, tablet pressure and fullscreen exit/reentry require live
 evidence. The reported performance difference is not a measured benchmark.
 
+Clean root `3f267d4` / Client `5b12882` produces
+`artifacts/development/macos15-native-spaces/PLANK Client Development.app`,
+executable SHA256 `ccee56e81b68b8e20484eaa09578d7f07f43622c22fa0e5ad037cabcadcc966f`.
+All 79 Client tests, five fullscreen checks, the native input-order regression,
+106 Mach-O target checks, dependency closure, build-path and ad-hoc signature
+gates pass. The previous app is closed; this candidate is at direct sign-in.
+Live menu-bar, input, tablet and transition acceptance remains pending.
+
 The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
