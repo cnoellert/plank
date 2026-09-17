@@ -5,6 +5,59 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
+  and release. Preparing mainline 1.0.124 for all four Host/Client packages on
+  GitHub-hosted builders, with verified dependency caching and signed Mac
+  packages. Do not relabel candidate artifacts. Clipboard PRs and unrelated
+  RK3576 research remain excluded. Publication/build results are pending.
+
+- Current root/Client branch is `macos-quit-lifecycle`, candidate
+  `1.0.123-macos-quit-lifecycle`. The operator accepted 1.0.122's behavior but
+  requested a fresh implementation without the contributed Quit bridge.
+  That bridge is deleted, not layered over. MacApplication explicitly owns
+  application exit: cancel active/startup/reconnecting sessions once, retain
+  Qt until queued readyForDeletion completes, then perform normal Qt Quit.
+  The SDL loop observes explicit exit state, not an injected SDL Quit event.
+  Ordinary disconnect remains independent. The tested native Command-Q guard
+  is unchanged. Linux, Host, transport and protocol behavior are unchanged.
+  See `docs/development/plans/macos-quit-lifecycle.plan`. Local 37 CI, five
+  fullscreen and three lifecycle source guards plus five root CTest suites
+  pass. Hosted run 35185516514 compiled the application and passed existing
+  topology/toolbar/desktop-stage tests, then caught a missing direct SDL include
+  in the retained shortcut test after bridge removal. That test dependency is
+  corrected; no package was produced by that failed run. Corrected signed run
+  `35185783350` passed from root `be387875a3fde8dd87c5a3b4c046d368f1a58457`,
+  Client `be8a1e06cba05299f939cea2bc4f440bef1a9196`. Dependency cache restored
+  and independently verified. Native suite totals: topology 19, toolbar 21,
+  desktop-stage 7, shortcut 9, application lifecycle 8 (totals include suite
+  init/cleanup; the latter two have seven and six actual cases). All passed.
+  Signing/notarization/stapling/Gatekeeper and signing cleanup passed. Verified
+  86,548,985-byte DMG is collected under
+  `artifacts/packages/candidates/1.0.123-macos-quit-lifecycle/macos/` as
+  `plank-client_1.0.123-macos-quit-lifecycle_arm64.dmg`; SHA256:
+  `58847e6616f240a98eb0a8180edefadaf1106ad19653e6f53f854e819f719a8c`.
+  Host/Kymux and recursive Client pins remain those recorded below. Live
+  acceptance of the rewrite was given by the operator; mainline rebuild and
+  release are now authorized. No agent deployment. Preserve the
+  original checkpoint branch and unrelated primary-worktree research.
+
+- Accepted behavioral checkpoint: `1.0.122-macos-command-q`. Client commit
+  `aaaa6b2ba17fa6e3b212b61a0eb8d938046b8f58` and package source root
+  `70928380313edd7ab129bef10524384dd0ce3f39` are pushed. Signed hosted run
+  `35183839235` passed with a verified dependency-cache hit, all existing Mac
+  suites and eight new `macquitshortcut` test cases (10 Qt results including
+  init/cleanup). These native tests run in every Mac Client build. Signing,
+  notarization, stapling and Gatekeeper passed. The verified 86,124,020-byte DMG
+  is collected at `artifacts/packages/candidates/1.0.122-macos-command-q/macos/`
+  as `plank-client_1.0.122-macos-command-q_arm64.dmg`; SHA256:
+  `252b4f25ed05aa164b041fe48597d98bb4d2b894ef738cb38c1c356972b0bdbf`.
+  Unchanged Host, Kymux and recursive Client dependencies are recorded below.
+  Local CI tests (37), fullscreen tests (5), shell syntax and whitespace checks
+  pass. The operator reports this works as intended. That broad acceptance
+  does not prove every lifecycle scenario; the rewritten candidate needs fresh
+  menu/Dock, captured Command-Q and disconnect acceptance. No merge or release
+  publication of this checkpoint.
+
 - Mainline 1.0.121 package rebuild completed from pushed root
   `41961fb5e9ef8329711e04d1adf75cc4b2968ce3`. Client PR #1 is approved and
   merged at `b9e4be6b374001bef08ac4753764bc12edcb8357`; the root Client pin
@@ -302,7 +355,7 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Release evidence
 
-Latest published release is **v1.0.120**, all four products, recorded above.
+Latest published release is **v1.0.121**, all four products, recorded above.
 The merged dependency-cache work extends hosted caches without runtime changes;
 qualification runs are separate from the published package source.
 

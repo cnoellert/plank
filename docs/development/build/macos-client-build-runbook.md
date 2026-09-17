@@ -106,6 +106,18 @@ the app to Trash. Host installation/permissions are separate and unchanged.
 
 ## Known failure signatures
 
+- Command-Q reaching the Host and also quitting PLANK is duplicate native
+  shortcut handling, not a transport disconnect. SDL queues the key before
+  AppKit can activate the local Quit menu. The shortcut guard prevents local
+  activation while captured. Explicit menu/Dock shutdown is owned by
+  MacApplication, which waits for Session readyForDeletion before Qt exits;
+  do not restore the removed Qt-to-SDL Quit bridge or treat sessionFinished
+  as completed cleanup.
+  The `macquitshortcut` native suite runs in every Mac Client build and checks
+  native menu dispatch, capture transitions, restoration and queued SDL input.
+  The macapplication suite checks real Qt application lifetimes separately.
+  Shortcut tests use a harmless Quit target rather than an active remote app;
+  a live captured Command-Q/menu/Dock test is still required for acceptance.
 - Rust1.89 proc macros fail under SDK27 stripping: retain `RUSTFLAGS=-C
   strip=none`, as for the Host. Missing macros here need not mean missing Cargo
   inputs; do not redownload them blindly.
