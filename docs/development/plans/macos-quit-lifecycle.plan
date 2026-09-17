@@ -1,0 +1,38 @@
+# macOS application Quit ownership
+
+Branch: `macos-quit-lifecycle`; candidate: `1.0.123-macos-quit-lifecycle`.
+
+The operator accepted 1.0.122's Command-Q behavior, then requested removal of
+the contributed Quit bridge. Preserve that candidate/branch as a checkpoint.
+Remove only the bridge introduced after 1.0.120; do not reset the repository,
+discard dependency-cache work, or remove the tested shortcut-ownership guard.
+
+## Contract
+
+- Captured Command-Q belongs exclusively to the remote session. Retain the
+  native Quit-key-equivalent guard and its focus/capture restoration tests.
+- Explicit menu/Dock Quit is application exit, not a synthetic SDL disconnect.
+  A macOS QGuiApplication subclass handles the normal Qt Quit event, requests
+  session cancellation once, and defers normal Qt exit until cleanup completes.
+- Register ownership before session initialization. Release it on queued
+  readyForDeletion, not sessionFinished (which precedes transport cleanup).
+  Account for a new session overlapping an old deferred cleanup.
+- The session cancels startup/takeover/reconnect through existing cancellation
+  flags. Its explicit application-exit flag terminates the SDL loop, even if
+  the Host sends no events. No new SDL Quit injection or process-global filter.
+- Toolbar/window disconnect still returns to the host list. Application Quit
+  suppresses that intermediate navigation and exits only after resources stop.
+- Linux application ownership, Host, transport and protocol are unchanged.
+
+## Validation
+
+Every Mac build runs the existing native shortcut tests plus isolated real-Qt
+application lifetimes: idle Quit, active cancellation, repeated Quit, ordinary
+disconnect, failed startup and overlapping deferred cleanup. Root source guards
+check platform scope and completion-signal wiring. These do not simulate a live
+network or prove menu/Dock behavior in an active desktop session.
+
+Build/sign/notarize on GitHub-hosted macOS27, retaining exact source and hashes.
+Operator gate: captured Command-Q quits only the remote app; menu and Dock Quit
+close PLANK while streaming and during reconnect; disconnect keeps PLANK open;
+idle/capture-disabled Command-Q quits locally. Do not merge before acceptance.

@@ -5,17 +5,21 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Candidate work is on root/Client branch `macos-command-q`, based on
-  published 1.0.121 plus documentation. The operator reports Command-Q both
-  reaches the Host and immediately quits the Mac Client. Keep the accepted
-  Qt-to-SDL Quit bridge (explicit Quit previously failed during streaming),
-  but give the remote session exclusive ownership of captured Command-Q.
-  The candidate scopes a native Quit-key-equivalent guard to the input handler:
-  native key dispatch rechecks capture and actual AppKit focus, removes only
-  the menu shortcut while captured, and restores it on release/teardown.
-  Menu/Dock Quit remains enabled; no remote key injection, Host/protocol change,
-  SDL dependency patch or Linux runtime change is intended.
-  Version is `1.0.122-macos-command-q`. Client commit
+- Current root/Client branch is `macos-quit-lifecycle`, candidate
+  `1.0.123-macos-quit-lifecycle`. The operator accepted 1.0.122's behavior but
+  requested a fresh implementation without the contributed Quit bridge.
+  That bridge is deleted, not layered over. MacApplication explicitly owns
+  application exit: cancel active/startup/reconnecting sessions once, retain
+  Qt until queued readyForDeletion completes, then perform normal Qt Quit.
+  The SDL loop observes explicit exit state, not an injected SDL Quit event.
+  Ordinary disconnect remains independent. The tested native Command-Q guard
+  is unchanged. Linux, Host, transport and protocol behavior are unchanged.
+  See `docs/development/plans/macos-quit-lifecycle.plan`. Local 37 CI, five
+  fullscreen and three lifecycle source guards pass; native Qt/AppKit tests
+  and signed hosted build are pending. No merge or deployment. Preserve the
+  original checkpoint branch and unrelated primary-worktree research.
+
+- Accepted behavioral checkpoint: `1.0.122-macos-command-q`. Client commit
   `aaaa6b2ba17fa6e3b212b61a0eb8d938046b8f58` and package source root
   `70928380313edd7ab129bef10524384dd0ce3f39` are pushed. Signed hosted run
   `35183839235` passed with a verified dependency-cache hit, all existing Mac
@@ -27,11 +31,10 @@ notes' README before machine-specific work; deployment information stays outside
   `252b4f25ed05aa164b041fe48597d98bb4d2b894ef738cb38c1c356972b0bdbf`.
   Unchanged Host, Kymux and recursive Client dependencies are recorded below.
   Local CI tests (37), fullscreen tests (5), shell syntax and whitespace checks
-  pass. Live acceptance remains pending and must cover remote-only Command-Q,
-  explicit menu/Dock Quit during streaming/reconnect, capture off, windowed
-  versus fullscreen-only capture, focus changes and shortcut restoration.
-  Do not claim success from source review or mocked input alone. No merge,
-  release publication or deployment yet. Preserve primary-worktree research.
+  pass. The operator reports this works as intended. That broad acceptance
+  does not prove every lifecycle scenario; the rewritten candidate needs fresh
+  menu/Dock, captured Command-Q and disconnect acceptance. No merge or release
+  publication of this checkpoint.
 
 - Mainline 1.0.121 package rebuild completed from pushed root
   `41961fb5e9ef8329711e04d1adf75cc4b2968ce3`. Client PR #1 is approved and
@@ -330,7 +333,7 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Release evidence
 
-Latest published release is **v1.0.120**, all four products, recorded above.
+Latest published release is **v1.0.121**, all four products, recorded above.
 The merged dependency-cache work extends hosted caches without runtime changes;
 qualification runs are separate from the published package source.
 
