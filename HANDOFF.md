@@ -8,8 +8,9 @@ the operator's local `private-notes/macos15-client.env` before continuing.
 The self-contained development Client builds and opens on macOS 15.7.4.
 Client tests, minimum-OS/dependency checks, real transport loopback and the
 portable root qualification suites pass. Full live-session acceptance is pending.
-Published Linux Host 1.0.105 is now installed on the operator-authorized hardware
-test Host. Its RPM dependencies and transaction pass on the installed Rocky 9.5;
+Published Linux Host 1.0.105 was initially installed on the operator-authorized
+hardware test Host; the Pause correction below now supersedes it. Its original
+RPM dependencies and transaction passed on the installed Rocky 9.5;
 Host/PAM/display services are active, with physical display policy and the
 existing HP Anyware service still active. HTTPS certificate verification and
 Client command-line discovery pass. A subsequent authenticated graphical session
@@ -191,16 +192,31 @@ values; these are not physical height measurements and do not establish parity
 with macOS. The operator subsequently reports that hover works better.
 
 F15/Pause investigation: SDL 3.4.2 maps Mac native key 113 (F15) to Pause,
-and the Client correctly forwards portable key `0x13`. Installed Host 1.0.105
+and the Client correctly forwards portable key `0x13`. Original Host 1.0.105
 uses libvirtualhid `93d57db`, whose Linux uinput and XTest tables omit Pause.
-The running keyboard has no `KEY_PAUSE` capability and Host logs report
+That keyboard had no `KEY_PAUSE` capability and Host logs recorded
 unsupported-key submissions. libvirtualhid `b0cc3c8` adds Pause to both paths
 and tests key translation, press/release output, advertised capability and
-separation from F15. Host `03a59815` selects that dependency. Linux tests,
-package build and live acceptance are pending. The operator has authorized
-using the available Rocky 9.5 hardware Host for this fix's build; its Podman
-runtime can isolate the pinned Rocky 9.7 build environment. No new Host package
-has been installed. Machine-specific build details stay in private notes.
+separation from F15. Host `03a59815` selects that dependency. All six focused
+Linux backend tests and the canonical Host build/package gates pass. Root
+`66ec56e` produced candidate `1.0.116-macos15-client`, installed with verified
+RPM/payload hashes. The live keyboard now advertises both Pause and F15;
+physical-key and Flame acceptance remain pending. Services, configuration,
+certificate and exact display MetaMode match the pre-update snapshot. The
+operator authorized an isolated, pinned Rocky 9.7 Podman builder on the available
+Rocky 9.5 hardware Host for this fix; it is stopped after the build. This does not
+qualify the hardware Host as a release builder. Machine details stay private.
+
+Post-update mouse check: the operator reports movement without working clicks.
+Read-only XInput inspection finds `libvirtualhid Mouse` as a floating slave.
+Absolute motion uses XTest, while buttons use uinput, explaining that symptom.
+Reattaching only the named mouse restored right-click. Left-click from both
+mouse and pen still failed: complete mouse press/release pairs reached evdev,
+but XInput retained left-button-down with the kernel button released. A scoped
+disable/enable did not clear it. Clean disconnect and Host-service restart
+recreated an attached mouse with every button up, preserving the exact display
+MetaMode. The Client is at sign-in for live recovery confirmation. The source of
+the detach/stale state remains unconfirmed; no permanent code fix is claimed.
 Next backlog item: review the upstream macOS 26 Client's Retina/HiDPI fixes
 reported by the operator as committed on the morning of September 16, and
 backport applicable changes into this macOS 15 fork. Identify exact commits,

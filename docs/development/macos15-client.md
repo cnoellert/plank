@@ -560,10 +560,36 @@ the same Host source, so upgrading to that release does not include a fix.
 libvirtualhid `b0cc3c8` adds `KEY_PAUSE` for uinput and `XK_Pause` for XTest;
 the existing portable F15 (`0x7E`) mapping stays separate. Tests cover translation,
 advertised keyboard capability, press/release output with synchronization and
-the XTest mapping. Host `03a59815` selects the correction. Linux tests and the
-candidate RPM have not yet run; live Flame acceptance remains pending. The
-operator authorizes a Rocky 9.7 build container on the available Rocky 9.5 test
-machine for this fix. This does not qualify that environment as a release builder.
+the XTest mapping. Host `03a59815` selects the correction. All six focused Linux
+backend tests pass. The canonical build and RPM gates pass from clean root
+`66ec56eee0fd4cd1e8fe4f4ef72956a4e3460071`, using an operator-authorized pinned
+Rocky 9.7 container on the available Rocky 9.5 hardware test machine. This does
+not qualify that environment as a release builder; the container is stopped.
+
+Candidate `1.0.116-macos15-client` is collected under
+`artifacts/packages/candidates/1.0.116-macos15-client/linux/` and installed:
+
+- RPM SHA256: `7229860ab3d4663850eb90335d5405e74734d5fb04615dc819c0a0debe78a741`.
+- Installed executable SHA256, independently matched to the RPM payload:
+  `b655eaf71b88d3fd9f1dd0febc2c42b0bef6a256e007729afaf5229bee4d3967`.
+- Host/PAM/display services are active; existing remote-access service remains
+  active. Configuration, certificate and exact display MetaMode are preserved.
+- Live virtual keyboard advertises Pause and F15. Physical key delivery and
+  Flame's intended action remain unverified. The accepted Client is unchanged.
+
+During the subsequent session, the operator reports mouse movement without
+clicks. XInput shows `libvirtualhid Mouse` as a floating slave. This explains
+movement without desktop button delivery: the backend uses XTest for absolute
+motion and uinput for buttons. Reattaching only that device to the core pointer
+restored right-click, as reported by the operator. Left-click still failed on
+mouse and pen: the bounded kernel recorder captured complete mouse press/release
+pairs, while XInput retained button 1 down despite the kernel reporting it up.
+Disabling/enabling the named mouse did not clear this stale state. A clean
+disconnect and Host-service restart recreated the mouse attached to the core
+pointer, all buttons released, with the exact display MetaMode preserved.
+Live recovery confirmation is pending. The source of the detach/stale state
+remains unconfirmed; this is a recovery action, not a permanent code correction.
+No display, tablet or Client settings were changed for this recovery.
 
 ## Backlog — upstream Retina fixes
 
