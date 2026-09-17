@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## Matching layout correction in progress
+## Matching layout correction accepted in desktop-size mode
 
 The first authenticated automatic-matching trial exposed a retained NVIDIA
 panning domain larger than the requested Mac logical-size output. Pointer
@@ -8,16 +8,29 @@ movement shifted that viewport into the adjacent display despite an initially
 correct CRTC position. The helper now sets each panning domain to its exact
 output rectangle and verifies that it cannot move. Ten helper tests pass,
 including rejection of a larger domain at an otherwise correct position and
-NVIDIA's zero-exit-status assignment error. Candidate 1.0.123 is not yet
-packaged or live-accepted. The current stream needs a fresh capture after the
-live geometry correction; visible overlap has not yet been cleared.
+NVIDIA's zero-exit-status assignment error. Clean root `68cb3f6a`, unchanged
+Host `d5ead767`, produced Host `1.0.123-macos15-client`; package gates and
+installed RPM verification pass. RPM SHA256
+`3f3ccd8874467cbb2e1e67e78cec68bf6dcd0e08f5613c3c7b754a1bc68b0638`.
+Configuration/certificate hashes are unchanged. All packaged Host services and
+the existing remote-desktop service remain active; isolated builder stopped.
+
+With the unchanged Client `efce3aa`, the operator now confirms both screens
+look correct after reconnecting, entering fullscreen and crossing the pointer
+between outputs. Active geometry was independently observed as 2056x1290 at
+0,0 and 2560x1440 at 2056,0. This accepts the overlap/aspect correction for
+**macOS desktop size**. Retina pixel detail still needs its own live acceptance.
+The earlier single-output MetaMode at origin 0,0 was restored before this
+connection; the operator subsequently disconnected, and exact restoration of
+that baseline plus removal of this lease's generated modes is verified.
+The older manually generated test mode remains inactive for later cleanup.
 
 Separately, the Mac camera-safe size estimate differs from the settled native
 fullscreen content height by a few logical pixels; investigate before claiming
 exact Retina matching. The supervisor's legacy MetaMode assignment path still
 needs readback verification for zero-exit-status driver errors.
 
-## Current work — automatic matching candidate
+## Automatic matching implementation and earlier qualification
 
 The operator selected automatic display matching including Retina and requested
 that existing bookmark layout/scaling controls be retained. A separate **Retina
@@ -43,10 +56,11 @@ size** choice now selects **macOS desktop size** or **Retina pixel detail** unde
   Mutter agree; exact initial MetaMode restoration and owned-mode cleanup pass
   after both tests. The initial restricted-path probe exposed inaccessible
   desktop-bus sockets; the final Host uses a read-only attested runtime bind.
-- New Client opened and the separate Retina control inspected. Current bookmark:
-  Match client displays, macOS desktop size, Native scaling. Client is at direct
-  sign-in; authenticated end-to-end matching, drag and UI-size acceptance are
-  pending. No persistent system DPI or Xorg configuration change was made.
+- New Client opened and the separate Retina control inspected. Initial bookmark:
+  Match client displays, macOS desktop size, Native scaling. Authenticated
+  geometry acceptance is recorded above; automatic-matching drag and the
+  alternative Retina-size choice remain unchecked. No persistent system DPI
+  or Xorg configuration change was made.
 
 The accepted native-Spaces Client and Pause Host below remain rollback artifacts.
 Intermittent left-click recurrence is parked at the operator's request; its cause
