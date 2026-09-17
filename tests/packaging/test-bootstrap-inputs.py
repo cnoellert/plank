@@ -40,6 +40,11 @@ class BootstrapInputs(unittest.TestCase):
             for name, content in {
                 'curl': '#!/bin/sh\nexit 99\n',
                 'nasm': '#!/bin/sh\nexit 99\n',
+                # The Linux command syntax is part of the fixture; macOS's
+                # system realpath does not implement GNU -m.
+                'realpath': '#!/usr/bin/env python3\nfrom pathlib import Path\nimport sys\n'
+                    'assert sys.argv[1:3] == ["-m", "--"] and len(sys.argv) == 4\n'
+                    'print(Path(sys.argv[3]).resolve())\n',
                 'patch': '#!/bin/sh\ncat >/dev/null\nexit 0\n',
                 'sha256sum': '#!/usr/bin/env python3\nimport subprocess,sys\ns=sys.stdin.read()\n'
                     'if "ffmpeg-9.0.1.tar.xz" not in s:\n'
