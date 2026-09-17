@@ -50,8 +50,9 @@ See the [implementation plan](plans/automatic-display-matching.md) and
 
 ## Evidence
 
-A local Apple Silicon/macOS 15 Client build passed 101 Qt results, the native
-input-worker fixture and fullscreen/Quit guards with the new capability bit.
+A local Apple Silicon/macOS 15 Client build passed 102 Qt results, the native
+input-worker fixture and fullscreen/Quit guards with the new capability bit
+and the bounded Wacom report path inherited from the Mac Client base.
 Twenty fake-command helper tests pass, covering bounds, command injection,
 output selection, real modes, panning, primary identity, compositor mismatch,
 NVIDIA zero-exit errors, restoration readback and generated-mode cleanup. The

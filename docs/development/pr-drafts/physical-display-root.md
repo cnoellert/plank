@@ -22,9 +22,10 @@ The GitHub PR diff also contains its unmerged Mac base until that PR lands.
 
 Earlier exact packages connected two 2560×1440 outputs, preserved the intended
 primary for Flame, and restored the original one-screen Host layout after a
-normal disconnect. Twenty helper tests and a local Client build pass. This
-split branch still needs a fresh qualified Host package and forced-failure
-recovery tests, including helper termination, failed restoration and abrupt
+normal disconnect. Twenty helper tests and a local Client build with 102 Qt
+results pass. This split branch still needs a fresh qualified Host package and
+forced-failure recovery tests, including helper termination, failed
+restoration and abrupt
 Client exit. Virtual startup should be compared for headless Flame Hosts.
 
 See the [display review](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md)

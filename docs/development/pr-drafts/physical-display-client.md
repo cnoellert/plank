@@ -18,8 +18,9 @@ The Host and protocol changes are in the separate display series.
 The current GitHub PR diff also includes the unmerged Mac Client base until
 that PR lands. No Linux physical mode change is part of the base Mac PR.
 
-The local Apple Silicon/macOS 15 build passed 101 Qt results, including the
-new negotiation test, plus the native input-worker and fullscreen/Quit guards.
+The local Apple Silicon/macOS 15 build passed 102 Qt results, including the
+new negotiation test and the inherited Wacom delayed-callback test, plus the
+native input-worker and fullscreen/Quit guards.
 The paired helper passed 20 fake-command tests. Earlier exact installed
 packages completed normal two-screen matching and restoration; this stacked
 source has not been installed. Ubuntu, macOS 27, headless virtual workflow and
