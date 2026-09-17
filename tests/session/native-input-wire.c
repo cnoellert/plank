@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "line %d failed\n", __LINE__); exit(1); } } while (0)
-static struct { uint8_t type; size_t size; uint8_t payload[32]; } records[16];
+static struct { uint8_t type; size_t size; uint8_t payload[32]; } records[32];
 static atomic_uint count;
 static atomic_bool holdSender, senderBlocked;
 static int sendNative(void* context, uint8_t type, const uint8_t* data, size_t size) {
@@ -17,7 +17,7 @@ static int sendNative(void* context, uint8_t type, const uint8_t* data, size_t s
         while (atomic_load(&holdSender)) PltSleepMs(1);
     }
     unsigned index = atomic_load(&count);
-    CHECK(index < 16 && size <= 32);
+    CHECK(index < 32 && size <= 32);
     records[index].type = type; records[index].size = size;
     memcpy(records[index].payload, data, size);
     atomic_store(&count, index + 1);
@@ -79,6 +79,28 @@ int main(void) {
     CHECK(records[11].type == PLANK_TRANSPORT_INPUT_MOUSE_BUTTON && records[11].payload[1] == 0);
     CHECK(records[12].type == PLANK_TRANSPORT_INPUT_ABSOLUTE_MOUSE);
     CHECK(plank_transport_input_read_u16(records[12].payload) == 800);
+
+    // The sender is blocked after the press and key-down have reached the
+    // host. A burst of 150 positions must leave room for both releases.
+    CHECK(LiSendMouseButtonEvent(BUTTON_ACTION_PRESS, BUTTON_LEFT) == 0); waitFor(14);
+    CHECK(LiSendKeyboardEvent2(0x41, KEY_ACTION_DOWN, 0, 0) == 0); waitFor(15);
+    atomic_store(&senderBlocked, false);
+    atomic_store(&holdSender, true);
+    CHECK(LiSendHighResScrollEvent(15) == 0);
+    for (unsigned i = 0; !atomic_load(&senderBlocked) && i < 200; ++i) PltSleepMs(5);
+    CHECK(atomic_load(&senderBlocked));
+    for (short x = 0; x < 150; ++x) {
+        CHECK(LiSendMousePositionEvent(x, 200, 1920, 1080) == 0);
+    }
+    CHECK(LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, BUTTON_LEFT) == 0);
+    CHECK(LiSendKeyboardEvent2(0x41, KEY_ACTION_UP, 0, 0) == 0);
+    atomic_store(&holdSender, false);
+    waitFor(19);
+    CHECK(records[15].type == PLANK_TRANSPORT_INPUT_VERTICAL_SCROLL);
+    CHECK(records[16].type == PLANK_TRANSPORT_INPUT_ABSOLUTE_MOUSE);
+    CHECK(plank_transport_input_read_u16(records[16].payload) == 149);
+    CHECK(records[17].type == PLANK_TRANSPORT_INPUT_MOUSE_BUTTON && records[17].payload[1] == 0);
+    CHECK(records[18].type == PLANK_TRANSPORT_INPUT_KEYBOARD && records[18].payload[2] == 0);
     CHECK(stopInputStream() == 0); destroyInputStream(); cleanupPlatform();
-    puts("native_input_wire=pass absolute_geometry=1 buttons=1 modifiers=1 scrolling=1 queued_drag_order=1 appversion_required=0");
+    puts("native_input_wire=pass absolute_geometry=1 buttons=1 modifiers=1 scrolling=1 queued_drag_order=1 queue_pressure_releases=1 appversion_required=0");
 }
