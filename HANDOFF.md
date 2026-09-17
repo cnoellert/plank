@@ -5,14 +5,25 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- GitHub Actions update is in root PR #8, based on current main including the
-  merged Rustls update. Checkout and artifact upload move to 7.0.1; cache
-  restore/save move to 6.1.0. All use Node24 and full commit-SHA pins. Update
-  the two existing policy tests' reviewed hashes and stale cache comments;
-  keep read-only permissions, credential persistence off, exact cache checks,
-  PR cache-write exclusion and signing isolation unchanged. Hosted four-product
-  validation is pending. No product code, dependency gitlink or package version
-  changes in this CI-only update; no release or deployment is requested.
+- GitHub Actions update is approved and merged through root PR #8: merge
+  `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
+  `2be3d797046df177589cb0c1b97e3cb5d109ade1`, including the merged Rustls
+  update. Checkout and artifact upload move to 7.0.1; cache restore/save move
+  to 6.1.0. All use Node24 and verified upstream full commit-SHA pins. The two
+  existing policy tests' reviewed hashes and stale cache comments are updated;
+  read-only permissions, credential persistence off, exact cache checks, PR
+  cache-write exclusion and signing isolation are unchanged. Local validation:
+  42 policy tests and eight negative controls pass. Hosted runs `35274932266`
+  and `35274938316` both passed all four platforms plus policy/privacy checks.
+  Existing Mac Host cache restore/verification and new Mac Client/Linux Client/
+  Linux Host cache saves succeeded. Client cache misses preceded publication
+  of their identical new mainline cache keys; they were not an Action format
+  incompatibility. Downloaded DEB/RPM catalogs passed checksum, exact-source,
+  gitlink and branch-qualified version checks. Mac jobs were unsigned; no
+  signing, release publication, deployment or hardware qualification performed.
+  No product code, dependency gitlink or package version changes in this
+  CI-only update. The automatic post-merge mainline build is separate from
+  these completed PR checks; do not relabel the candidate packages.
 
 - Rustls security update is approved and merged through root PR #9: merge
   `8f1ad75bede2fc6948315cb61d7ef380d29ff4df`, reviewed head
@@ -23,7 +34,8 @@ notes' README before machine-specific work; deployment information stays outside
   behavior are unchanged. Package base advances to 1.0.125 for new build bytes;
   no release or deployment is authorized by this dependency change alone.
   Hosted runs `35272691429` and `35272698006` both passed all four platform
-  builds plus policy/privacy checks. Mac signing is deliberately skipped for
+  builds plus policy/privacy checks. Post-merge main run `35274307903` also
+  passed all four platforms. Mac signing is deliberately skipped for
   these candidate checks. Local Rust 1.89.0 validation passed 21 unit tests,
   the standalone probe locked check, 42 CI policy tests, native C ABI media/
   control/closure checks, 40 repeated peer-close cases, and rejection of a
