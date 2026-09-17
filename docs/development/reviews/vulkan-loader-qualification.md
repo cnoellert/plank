@@ -10,7 +10,7 @@ or driver upgrade. NVIDIA driver qualification remains capped at 595.91.07.
 - Headers: `ee2ec5fd83dafce291024683b50dc89219333076`.
 - Loader: `b8b96a2862bff1eed468e602d43f706beae89cf1`, with the tracked repair.
 - Host candidate: `4d80cf9594cfe58483422449346f46dbcb50f05f` (dependency pin only).
-- Root verifier correction: `e2a66abb32acbdb7a3ae695bd6530edb276239d5`,
+- Root package source: `bf72318baaedcbff1d93edaf87bebd73010e4cc5`,
   `1.0.126-vulkan-loader-repair`.
 - Client and transport pins are unchanged.
 
@@ -30,7 +30,8 @@ specific regression coverage. Rerun `35279985121` found a quoted emoji test
 filename still counted as a production change. The verifier now consumes
 NUL-delimited paths and the test fixture includes a non-ASCII name. Reproduction
 with the exact upstream source and actual CMake copy exclusion passes all nine
-required patches, repeatedly. A replacement cache-bypassed run is pending.
+required patches, repeatedly. Replacement cache-bypassed run `35281178139`
+passes the complete fresh dependency bootstrap, Host compile and RPM gates.
 
 ## Completed isolated Loader checks
 
@@ -78,7 +79,31 @@ complete root suite is **not** recorded as passing. Repair these qualification
 harness issues separately rather than restoring retired Client behavior or
 raising the NVIDIA SDK requirement.
 
-Package build, exact-RPM installation and post-install startup results are
-pending. No interactive Client, Wacom-event, audio/WAN or long-soak acceptance
-is implied by these checks. Deployment endpoints, account details and raw
-hardware reports remain outside public Git.
+## Package and installed-state checks
+
+Hosted run [35281178139](https://github.com/instinctual/plank/actions/runs/35281178139)
+passes on a fresh Rocky Linux 9.7 container with both dependency cache restore
+and cache save bypassed. Bootstrap and package preflight each prove all nine
+required dependency patches. The application build uses `BUILD_TESTS=OFF`,
+as required for normal candidate package construction.
+
+The 8,569,293-byte RPM is collected under
+`artifacts/packages/candidates/1.0.126-vulkan-loader-repair/linux/`:
+`plank-host-1.0.126-0.vulkan_loader_repair.1.el9.x86_64.rpm`.
+SHA256: `91ee34acda624b723fc116d48fdbc1e41e438e60d31e01e5748d306e6f7677e7`.
+Source/branch/version, payload paths, runtime closure, required log-directory
+ownership, manifest, privacy-path and absence gates pass. The private Loader
+is not included in this RPM and is not a new ELF dependency.
+
+The exact hash-verified RPM was installed on the authorized hardware test Host
+after confirming no active PLANK transport socket. Media, supervisor and broker
+binary hashes match the extracted RPM. Both services are active; discovery
+reports `1.0.126-vulkan-loader-repair` and all seven expected encoding modes.
+The service restart count is zero, systemd verification succeeds, and the
+administrator configuration checksum is unchanged. NVIDIA remains 595.91.07.
+No desktop-manager/display-prepare restart or reboot was performed.
+
+No interactive Client, Wacom-event, audio/WAN or long-soak acceptance is implied
+by these checks. The full root qualification blockers above remain open.
+No PR merge or release was performed. Deployment endpoints, account details
+and raw hardware reports remain outside public Git.

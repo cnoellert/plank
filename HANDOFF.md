@@ -23,10 +23,31 @@ notes' README before machine-specific work; deployment information stays outside
   The verifier now consumes NUL-delimited Git paths. A local reproduction using
   the exact upstream source and the real CMake copy exclusion passes all nine
   required patches; the unit fixture also includes a non-ASCII filename.
-  Clean hosted Host bootstrap/package build and hardware qualification are
-  pending. No PR merge, release, or installation yet. NVIDIA headers/driver
-  remain unchanged; driver ceiling 595.91.07. Client and transport pins are
-  unchanged. Preserve the primary worktree's unrelated RK3576 research.
+  Final clean hosted run `35281178139` passes from package source
+  `bf72318baaedcbff1d93edaf87bebd73010e4cc5`, with cache restore/save bypassed.
+  All nine dependency patch gates and the Host binary/RPM gates pass. Exact RPM:
+  `artifacts/packages/candidates/1.0.126-vulkan-loader-repair/linux/plank-host-1.0.126-0.vulkan_loader_repair.1.el9.x86_64.rpm`;
+  SHA256 `91ee34acda624b723fc116d48fdbc1e41e438e60d31e01e5748d306e6f7677e7`,
+  8,569,293 bytes. Collected with exact provenance and installed on the authorized
+  hardware test Host. Media ELF SHA256:
+  `718a6ecb2a9b84c81a5017e5d8e986ba6ed9dc0b040143d85364b8b36e28458d`.
+  All three service-binary hashes match the extracted RPM. Both services are
+  active, HTTPS discovery advertises the exact version and seven encoding modes,
+  administrator configuration is unchanged, and the service restart count is
+  zero. No desktop-manager restart or reboot.
+
+  Isolated repaired Loader hardware checks pass: filtered device/group
+  enumeration, 100 instance cycles, byte-identical RGBA and XR30 GPU transfers.
+  NvFBC 5120x2160/60 capture and actual 2160p60 HEVC Rext 10-bit 4:4:4 encoding
+  pass; NVIDIA headers/driver remain unchanged, ceiling 595.91.07. Root hardware
+  qualification is not fully green: 28/30 CTest entries pass, one stale source
+  guard expects the retired unbounded reconnect loop, and an advanced CUDA
+  probe fails to compile against the current unmodified header structure.
+  Standalone NVENC probe also lacks a direct cstdint include. Keep these
+  follow-ups separate; no interactive/WAN/audio/Wacom-event soak was performed.
+  See `docs/development/reviews/vulkan-loader-qualification.md` for evidence and
+  boundaries. No PR merge or release. Client and transport pins are unchanged.
+  Preserve the primary worktree's unrelated RK3576 research.
 
 - GitHub Actions update is approved and merged through root PR #8: merge
   `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
