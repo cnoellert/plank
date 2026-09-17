@@ -47,7 +47,7 @@ class DisplayMatchTest(unittest.TestCase):
         self.assertEqual(run.call_args.args[0], [match.CVT, "-r", "3424", "2214", "60"])
         self.assertEqual(line[1:5], ["3420", "3472", "3504", "3584"])
 
-    def transaction(self, fail=False):
+    def transaction(self, fail=False, primary=-1):
         commands = []
 
         def run(argv):
@@ -64,10 +64,10 @@ class DisplayMatchTest(unittest.TestCase):
              patch.object(match, "verify", side_effect=ValueError("mismatch") if fail else None) as verify:
             if fail:
                 with self.assertRaisesRegex(ValueError, "mismatch"):
-                    match.apply("123-456", ["2056x1286", "2560x1440"])
+                    match.apply("123-456", ["2056x1286", "2560x1440"], primary)
             else:
-                match.apply("123-456", ["2056x1286", "2560x1440"])
-                verify.assert_called_once_with({"DP-0": (2056, 1286, 0, 0), "DP-2": (2560, 1440, 2056, 0)})
+                match.apply("123-456", ["2056x1286", "2560x1440"], primary)
+                verify.assert_called_once_with({"DP-0": (2056, 1286, 0, 0), "DP-2": (2560, 1440, 2056, 0)}, None if primary == -1 else ["DP-0", "DP-2"][primary])
         return commands
 
     def test_activates_real_modes_not_viewport_scaling(self):
@@ -102,6 +102,49 @@ class DisplayMatchTest(unittest.TestCase):
         with patch.object(match.subprocess, "run", return_value=result):
             with self.assertRaisesRegex(ValueError, "NVIDIA rejected"):
                 match.command([match.NVIDIA, "--assign", "CurrentMetaMode=" + BASELINE])
+
+    def test_matches_either_primary_in_desktop_order(self):
+        for index, name in enumerate(["DP-0", "DP-2"]):
+            commands = self.transaction(primary=index)
+            apply = next(argv for argv in commands if "--fb" in argv)
+            self.assertEqual(apply[-3:], ["--output", name, "--primary"])
+
+    def test_primary_must_agree_with_compositor(self):
+        expected = {"DP-0": (2560, 1440, 0, 0)}
+        for primary, succeeds in [(True, True), (False, False)]:
+            with patch.object(match, "command", return_value=QUERY), \
+                 patch.object(match, "mutter_geometry", return_value={"DP-0": (2560, 1440, 0, 0, 1.0, 0, primary)}), \
+                 patch.object(match.time, "monotonic", side_effect=[0, 7]):
+                if succeeds:
+                    match.verify(expected, "DP-0")
+                else:
+                    with self.assertRaises(ValueError):
+                        match.verify(expected, "DP-0")
+
+    def test_restore_does_not_claim_success_on_unchanged_metamode(self):
+        with patch.object(match, "command", side_effect=["", "id=1 :: unchanged"]) as run:
+            with self.assertRaisesRegex(ValueError, "did not take effect"):
+                match.restore(BASELINE, "DP-0")
+            self.assertEqual(run.call_count, 2)
+
+    def test_restore_preserves_primary_and_verifies_it(self):
+        with patch.object(match, "command", side_effect=["", "id=1 :: " + BASELINE, "", QUERY]) as run:
+            match.restore(BASELINE, "DP-0")
+            self.assertEqual(run.call_args_list[2].args[0], [match.XRANDR, "--output", "DP-0", "--primary"])
+
+    def test_restore_can_clear_an_absent_primary(self):
+        with patch.object(match, "command", side_effect=["", "id=1 :: " + BASELINE, "", QUERY.replace(" primary", "")]) as run:
+            match.restore(BASELINE, "none")
+            self.assertEqual(run.call_args_list[2].args[0], [match.XRANDR, "--noprimary"])
+
+    def test_primary_index_rejected_before_mutation(self):
+        with patch.object(match, "command") as run:
+            for index in [-2, 2, 100]:
+                with self.assertRaises(ValueError):
+                    match.apply("123-456", ["2056x1286", "2560x1440"], index)
+            with self.assertRaises(ValueError):
+                match.apply("123-456", ["2056x1286"], 1)
+            run.assert_not_called()
 
     def test_compositor_mismatch_restores_baseline_before_cleanup(self):
         commands = self.transaction(fail=True)

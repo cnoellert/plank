@@ -99,14 +99,14 @@ def mutter_geometry():
             if mode[6].get("is-current"):
                 current[spec[0]] = tuple(mode[1:3])
     result = {}
-    for x, y, scale, transform, _primary, specs, _properties in state[2]:
+    for x, y, scale, transform, primary, specs, _properties in state[2]:
         for spec in specs:
             if spec[0] in current:
-                result[spec[0]] = (*current[spec[0]], x, y, scale, transform)
+                result[spec[0]] = (*current[spec[0]], x, y, scale, transform, primary)
     return result
 
 
-def verify(expected):
+def verify(expected, primary=None):
     """Wait briefly for both XRandR and GNOME to acknowledge exact geometry."""
     deadline = time.monotonic() + 6
     while True:
@@ -117,7 +117,12 @@ def verify(expected):
         fixed_viewports = all(item["panning"] is None or item["panning"] == item["rect"]
                               for item in active)
         compositor = mutter_geometry()
-        if fixed_viewports and actual == expected and compositor == {name: (*rect, 1.0, 0) for name, rect in expected.items()}:
+        primary_matches = primary is None or (
+            [item["name"] for item in active if item["primary"]] == [primary] and
+            [name for name, rect in compositor.items() if rect[6]] == [primary])
+        if fixed_viewports and primary_matches and actual == expected and {
+                name: rect[:6] for name, rect in compositor.items()
+        } == {name: (*rect, 1.0, 0) for name, rect in expected.items()}:
             return
         if time.monotonic() >= deadline:
             raise ValueError("XRandR and GNOME did not agree on the matched display geometry")
@@ -156,12 +161,14 @@ def cleanup(token):
         command([XRANDR, "--rmmode", name])
 
 
-def apply(token, modes):
+def apply(token, modes, primary_index=-1):
     """Apply transactionally; restore the exact initial MetaMode on any failure."""
     names = mode_names(token)
     sizes = [dimensions(mode) for mode in modes]
     if len(sizes) not in (1, 2) or sum(size[0] for size in sizes) > 8192:
         raise ValueError("Matched canvas exceeds supported bounds")
+    if primary_index not in range(-1, len(sizes)):
+        raise ValueError("Invalid primary display index")
     before = command([XRANDR, "--query"])
     if any(name in before for name in names):
         raise ValueError("Display lease mode identity already exists")
@@ -193,13 +200,13 @@ def apply(token, modes):
         for item in items:
             if item not in selected:
                 args += ["--output", item["name"], "--off"]
-        # Leave the primary property unchanged, including when its output is off.
+        matched_primary = selected[primary_index]["name"] if primary_index >= 0 else None
+        if matched_primary:
+            args += ["--output", matched_primary, "--primary"]
         command(args)
-        verify(expected)
+        verify(expected, matched_primary)
     except Exception:
-        command([NVIDIA, "--assign", "CurrentMetaMode=" + baseline])
-        if primary:
-            command([XRANDR, "--output", primary, "--primary"])
+        restore(baseline, primary or "none")
         for output, name in reversed(attached):
             command([XRANDR, "--delmode", output, name])
         for name in reversed(created):
@@ -207,16 +214,43 @@ def apply(token, modes):
         raise
 
 
+def current_primary():
+    """Return the XRandR primary property, even for an inactive output."""
+    return next((item["name"] for item in outputs(command([XRANDR, "--query"]))
+                 if item["primary"]), "none")
+
+
+def restore(baseline, primary="keep"):
+    """Restore and read back the MetaMode and separately saved primary property."""
+    if not baseline or len(baseline) > 32768 or any(ord(c) < 32 or ord(c) > 126 for c in baseline):
+        raise ValueError("Invalid baseline MetaMode")
+    if primary not in ("keep", "none") and not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", primary):
+        raise ValueError("Invalid primary output")
+    command([NVIDIA, "--assign", "CurrentMetaMode=" + baseline])
+    actual = command([NVIDIA, "--query", "CurrentMetaMode", "--terse"]).partition("::")[2].strip()
+    if "".join(actual.split()) != "".join(baseline.split()):
+        raise ValueError("Baseline MetaMode restoration did not take effect")
+    if primary != "keep":
+        command([XRANDR, "--noprimary"] if primary == "none" else
+                [XRANDR, "--output", primary, "--primary"])
+        if current_primary() != primary:
+            raise ValueError("Primary output restoration did not take effect")
+
+
 def main(argv):
     """The two privileged-supervisor operations; execution itself is unprivileged."""
     if os.geteuid() == 0:
         raise ValueError("Display matching must run as the desktop owner")
-    if len(argv) in (4, 5) and argv[1] == "apply":
-        apply(argv[2], argv[3:])
+    if len(argv) in (5, 6) and argv[1] == "apply" and argv[3] in ("-1", "0", "1"):
+        apply(argv[2], argv[4:], int(argv[3]))
+    elif len(argv) == 2 and argv[1] == "primary":
+        print(current_primary())
+    elif len(argv) == 4 and argv[1] == "restore":
+        restore(argv[2], argv[3])
     elif len(argv) == 3 and argv[1] == "cleanup":
         cleanup(argv[2])
     else:
-        raise ValueError("Usage: plank-display-match apply TOKEN MODE [MODE] | cleanup TOKEN")
+        raise ValueError("Usage: plank-display-match apply TOKEN PRIMARY MODE [MODE] | cleanup TOKEN | primary | restore METAMODE PRIMARY")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,20 @@
 # PLANK handoff
 
+## Primary matching and fullscreen-height candidate
+
+Candidate 1.0.124 adds optional matched-primary negotiation (`0x800000`) and
+copies the Client OS primary display into the temporary Linux layout. It
+verifies the result in XRandR and Mutter and saves/restores the previous
+primary property separately from the NVIDIA MetaMode. Restoration now requires
+readback, covering NVIDIA's zero-exit-status assignment failures. Sixteen
+helper tests pass; product builds and live acceptance are pending.
+
+The experimental macOS 15 Client also includes the measured five-point AppKit
+margin below a camera inset, correcting the predicted fullscreen viewport to
+2056x1286 logical / 4112x2572 backing pixels for the observed scaled mode.
+Newer macOS geometry is unchanged. Five fullscreen checks pass; live equality
+with settled Metal drawable size remains a required acceptance check.
+
 ## Matching layout correction accepted in desktop-size mode
 
 The first authenticated automatic-matching trial exposed a retained NVIDIA

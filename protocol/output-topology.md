@@ -366,17 +366,38 @@ NVIDIA MetaMode is retained for failure, disconnect and lease expiry restoration
 Only the lease's generated modes are removed afterward. Replacing a lease first
 restores its original baseline; it must never save an earlier temporary layout
 as the new baseline. Display-manager restarts and persistent Xorg edits are not
-part of physical matching. The host primary-output property is preserved.
+part of physical matching. Each panning domain is constrained to its output
+rectangle and verified, so pointer movement cannot shift a viewport into its
+neighbour. Without primary-output negotiation, the host primary is preserved.
+
+### Matching the primary output (optional `0x800000`)
+
+With `0x800000` and `0x400000` negotiated on a physical-startup Host, a matched
+launch may include `plankPrimaryOutput=0` or `1`, indexing the requested modes
+in left-to-right order. A single-output request only accepts `0`. Omission
+preserves the host's primary choice; other values, headless startup, and
+unnegotiated requests are rejected. The Client uses the OS primary display,
+independently of which window starts the stream. Existing output `primary`
+metadata describes the result and participates in launch binding.
+
+The helper sets and verifies the primary output in both XRandR and Mutter.
+The supervisor separately saves the original primary property and restores it
+alongside the baseline MetaMode on disconnect or failure. Restoration reads
+both values back, because NVIDIA can return zero after rejecting a mode change.
+See `output-topology-v13-primary.json` for a right-hand primary example.
 
 For a macOS Client connected to Linux, **Retina size** is a separate bookmark
 choice under **Match client displays**. **macOS desktop size** requests logical
 workspace dimensions, inset to even dimensions if necessary. **Retina pixel
 detail** requests current compositor backing pixels, not panel-native pixels.
-Both use the measured camera-safe native-fullscreen viewport, including sessions
+Both use the camera-safe native-fullscreen viewport, including sessions
 started windowed. Display order and presentation/input tiles use those same
 selected sizes. Existing **Native (1:1 pixels)** and **Scaled-Span** retain their
 stream-resolution semantics. Physical and manually selected virtual layouts
-ignore the Retina size choice. Mac Host matching is unchanged.
+ignore the Retina size choice. On the experimental macOS 15 Client, the inset
+includes AppKit's measured five-point margin below the camera; newer macOS
+versions retain their existing inset until independently measured. Mac Host
+protocol behavior is unchanged.
 
 Linux X11 desktops that require a global scale cannot combine 1x and 2x UI scales
 across these outputs. Desktop-size matching trades Retina sharpness for larger UI;
