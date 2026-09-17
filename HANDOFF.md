@@ -5,6 +5,34 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Dependency maintenance setup adds weekly Dependabot proposals to the root,
+  Host, Client, Kymux, build-deps and libvirtualhid repositories. Common-C's
+  maintained branches have no dependency manifests; do not resurrect its
+  inherited ENet tree to produce update PRs. Security alerts/security-fix PRs
+  are enabled for all seven public repositories; auto-merge stays off and
+  companion build workflows stay disabled. Build-deps/libvirtualhid proposals
+  target `plank/main`, with configuration also on the inherited default branch.
+  Host/Client common-C branch hints now name `plank/host` and `plank/client`.
+  No production gitlinks, library versions, lockfiles or packages change.
+  See `docs/development/dependency-maintenance.md` for manual pin coverage,
+  Quinn/Vulkan exceptions and the next advisory/upgrade review steps.
+  Validation: all six Dependabot configurations pass JSON-schema validation,
+  schedule/allowlist/target-branch checks; 41 root CI tests pass. Privacy and
+  whitespace checks pass. GitHub confirms alerts and security updates enabled,
+  auto-merge disabled, on all seven repositories. Configuration-only commits
+  are pushed (root gitlinks deliberately retain released source):
+
+  | Repository / branch | Maintenance commit |
+  | --- | --- |
+  | Host / main | `6bef0d706a787a36eb456343cb4c6a719947c93c` |
+  | Client / main | `174bc1ff99bf437cd84efa028590ddc481953851` |
+  | Kymux / main | `6f3df8e2c9eac41d4bc0ec9d3f1fc9cbf8d1a804` |
+  | Common-C / atomics (policy only) | `9707808a0a949eaa7713c02811b848ed98064221` |
+  | Build-deps / plank/main | `8956f6425b0e35b4038025be682d2ba1a0225b69` |
+  | Build-deps / master (activation only) | `5490628476568af75fd563ff097ad5d447ccbea3` |
+  | libvirtualhid / plank/main | `a74f9694fe4bec29a4643975ced6da4cdedbf04f` |
+  | libvirtualhid / master (activation only) | `62838758220d594d008d42e0c90e1210c49c1a79` |
+
 - The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
   and release. Root and Client are on pushed main: package-source root
   `cb01cfe84504d7a74dfa78c5b79d701c8277bf6e`, Client merge

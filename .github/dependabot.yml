@@ -1,0 +1,36 @@
+# Proposals only; see docs/development/dependency-maintenance.md for gates.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: deps
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: deps
+  - package-ecosystem: cargo
+    directories:
+      - /protocol/plank-transport
+      - /probes/network/plank-transport
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    # Upgrade the repaired Quinn fork and its callers together, with loss tests.
+    ignore:
+      - dependency-name: quinn
+      - dependency-name: quinn-proto
+    commit-message:
+      prefix: deps
