@@ -5,18 +5,41 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- Rustls security update follows root PR #9 (Dependabot source
-  `3293a13994a4d90515e5381a6ee95aae0965e122`). Both production and standalone
+- Rustls security update is approved and merged through root PR #9: merge
+  `8f1ad75bede2fc6948315cb61d7ef380d29ff4df`, reviewed head
+  `617cecc6990b01967137536a744971cba94411cc`. Both production and standalone
   probe locks now select 0.23.45, addressing upstream GHSA-2mjx-qc3c-rqvc.
   A CI guard requires the two Rustls identities to remain synchronized.
   Quinn's repaired path override, RaptorQ, all product gitlinks and media
   behavior are unchanged. Package base advances to 1.0.125 for new build bytes;
   no release or deployment is authorized by this dependency change alone.
-  Local validation: 21 transport unit tests pass (two network tests require
-  their separate runner), and 42 CI policy tests pass. Hosted validation and
-  the initial macOS audio-loopback failure investigation are in progress.
-  The loopback now reports result, sizes, metadata and endpoint errors instead
-  of a generic mismatch; its assertions and five-second deadline are unchanged.
+  Hosted runs `35272691429` and `35272698006` both passed all four platform
+  builds plus policy/privacy checks. Mac signing is deliberately skipped for
+  these candidate checks. Local Rust 1.89.0 validation passed 21 unit tests,
+  the standalone probe locked check, 42 CI policy tests, native C ABI media/
+  control/closure checks, 40 repeated peer-close cases, and rejection of a
+  mismatched certificate fingerprint. The optimized 150 Mbps loopback loss
+  matrix passed at 0.5%, 1%, 2% and 5%. An initial debug run timed out during
+  concurrent local build activity; the unchanged baseline and an isolated
+  candidate debug rerun passed (about 148/150 seconds), as did the optimized
+  candidate (about four seconds). These are synthetic tests, not fresh
+  hardware/WAN qualification. No packages were deployed or release published.
+  Product pins remain Client `86682b5b596e5c31b81a6e2a4b238bb62dc6e42c`,
+  Host `9329784ac41f50cbec0c9d76badfd22227ec5e5f`, and Kymux
+  `912ece5c64787997f978673ca60d313898a3548c`; recursive pins are unchanged.
+  The operator's NVIDIA driver ceiling remains 595.91.07; this update changes
+  no NVIDIA dependency or requirement.
+
+  Separate follow-up: Kymux's audio UnreliableFec receiver can buffer completed
+  audio received before its configuration, then wait for another inbound
+  message before delivering it. A receiver-only reproduction at the production
+  Kymux pin demonstrates this without TLS/QUIC: config-first delivers audio;
+  datagrams-first delivers config but stalls the ready audio. Inspect
+  `kyproto/src/protocol/driver/av/audio_unreliable_fec.rs` before a separate fix.
+  This is a possible cause of the original intermittent macOS loopback timeout,
+  not proof of that run's ordering. The Rustls PR adds detailed failure output
+  only; assertions and the five-second deadline remain unchanged. Do not mask
+  this with retries or mix its runtime fix into a dependency-only update.
 
 - Dependency maintenance setup adds weekly Dependabot proposals to the root,
   Host, Client, Kymux, build-deps and libvirtualhid repositories. Common-C's
