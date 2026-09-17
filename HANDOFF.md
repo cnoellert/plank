@@ -1,5 +1,17 @@
 # PLANK handoff
 
+## Current work — automatic matching candidate
+
+The operator selected automatic display matching including Retina and requested
+that existing bookmark layout/scaling controls be retained. A separate Retina
+size choice selects logical workspace or compositor backing pixels under Match
+client displays; Native/Scaled-Span semantics stay unchanged. The candidate adds
+negotiated bounded physical modes, real XRandR/Mutter geometry verification and
+transactional rollback. See [the plan](docs/development/plans/automatic-display-matching.md).
+This work is not yet built or live-qualified. The accepted native-Spaces Client
+and Pause Host below remain the rollback artifacts. Intermittent left-click
+recurrence is parked at the operator's request; its cause is not established.
+
 ## Fork continuation — experimental macOS 15 Client
 
 Branch `codex/macos15-client` explicitly adds the macOS 15 Client target.

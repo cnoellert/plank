@@ -11,6 +11,8 @@ option(PLANK_BUILD_LINUX_QUALIFICATION "Build Linux hardware probes and Host hel
 
 if(BUILD_TESTING)
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_test(NAME display-match
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/display/test-display-match.py")
   add_test(NAME package-build-paths
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-build-paths.py")
   add_test(NAME macos-client-target

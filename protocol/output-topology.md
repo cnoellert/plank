@@ -33,6 +33,7 @@ The host returns `schema_version: 13` and a numeric `feature_flags` field from
 - `0x10000` — explicit GDM-to-user desktop handoff notice on the native control channel
 - `0x20000` — authenticated desktop stage for reconnect progress
 - `0x40000` — opaque media-worker instance identity for early replacement detection
+- `0x400000` — bounded real display modes in temporary physical-layout leases
 
 ### Expected desktop handoff status
 
@@ -127,7 +128,7 @@ sent as stable IDs.
 The document contains a monotonically changing `generation`, the bounding
 desktop rectangle, a `layout` object, and an `outputs` array. `layout.kind` is
 `physical`, `single`, or `dual-horizontal`; `layout.virtual_modes` is empty for
-a physical layout, contains one administrator-qualified mode for `single`, and
+a physical layout, contains one mode for `single`, and
 contains the independently ordered primary/secondary modes for
 `dual-horizontal`. `layout.startup_kind` reports the concrete boot topology:
 `physical`, or `single` for the safe 1920x1080 baseline created by the
@@ -338,3 +339,41 @@ the primary fallback. The version-1, version-2, version-4, version-7, and
 version-8 and version-9 vectors remain historical
 evidence only; PLANK has no deployed legacy clients requiring a
 silent version fallback.
+
+## Bounded physical display matching (optional `0x400000`)
+
+Schema 13 retains its existing layout and scaling controls. With this capability
+negotiated, a Host whose `layout.startup_kind` is `physical` accepts canonical
+`WIDTHxHEIGHT` temporary modes beyond the virtual EDID preset list. Dimensions
+must be even, width 320–8192 and height 200–8192; a dual horizontal canvas must
+not exceed 8192 pixels in width. One mode is required for `single`, two for
+`dual-horizontal`. Noncanonical strings, timing data, and unnegotiated dynamic
+modes are rejected. Headless virtual startup remains preset-only, even when the
+Host binary knows this capability. See `output-topology-v13-matched.json` in the
+protocol test vectors.
+
+The supervisor invokes the packaged `plank-display-match` helper as the active
+X11 desktop owner. The helper selects active connected outputs in desktop order,
+then connected spares if needed, creates uniquely named reduced-blanking modes,
+and activates real scanout sizes. It verifies exact rectangles and 1x scale in
+both XRandR and Mutter before the supervisor publishes the lease. The original
+NVIDIA MetaMode is retained for failure, disconnect and lease expiry restoration.
+Only the lease's generated modes are removed afterward. Replacing a lease first
+restores its original baseline; it must never save an earlier temporary layout
+as the new baseline. Display-manager restarts and persistent Xorg edits are not
+part of physical matching. The host primary-output property is preserved.
+
+For a macOS Client connected to Linux, **Retina size** is a separate bookmark
+choice under **Match client displays**. **macOS desktop size** requests logical
+workspace dimensions, inset to even dimensions if necessary. **Retina pixel
+detail** requests current compositor backing pixels, not panel-native pixels.
+Both use the measured camera-safe native-fullscreen viewport, including sessions
+started windowed. Display order and presentation/input tiles use those same
+selected sizes. Existing **Native (1:1 pixels)** and **Scaled-Span** retain their
+stream-resolution semantics. Physical and manually selected virtual layouts
+ignore the Retina size choice. Mac Host matching is unchanged.
+
+Linux X11 desktops that require a global scale cannot combine 1x and 2x UI scales
+across these outputs. Desktop-size matching trades Retina sharpness for larger UI;
+pixel-detail matching retains pixels without promising per-display UI scaling.
+Hardware qualification remains required for dynamically generated modes.

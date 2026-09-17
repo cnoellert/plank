@@ -27,7 +27,7 @@ class NativeFullscreenTests(unittest.TestCase):
     def test_authentication_and_reconnect_share_viewport(self):
         manager = (client / 'app/backend/computermanager.cpp').read_text()
         self.assertIn('m_Prefs->windowMode != StreamingPreferences::WM_WINDOWED', manager)
-        self.assertIn('&currentMode, &matchedBounds, m_IsFullScreen &&', session)
+        self.assertTrue('&currentMode, &matchedBounds, (matchLinuxDesktop || m_IsFullScreen) &&' in session)
         self.assertIn('MacDisplayGeometry::useNativeFullscreen(displayCount)', session)
         self.assertIn('MacDisplayGeometry::useNativeFullscreen(count)', manager)
         self.assertEqual(session.count('display.macMatchedBounds.isValid() ? display.macMatchedBounds'), 2)
