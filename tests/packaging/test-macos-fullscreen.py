@@ -44,8 +44,8 @@ class NativeFullscreenTests(unittest.TestCase):
 #include <cassert>
 #include <initializer_list>
 int main() {
-    assert(MacDisplayGeometry::useNativeFullscreen(1));
-    for (int count : {0, 2, 3}) assert(!MacDisplayGeometry::useNativeFullscreen(count));
+    for (int count : {1, 2, 3}) assert(MacDisplayGeometry::useNativeFullscreen(count));
+    for (int count : {-1, 0}) assert(!MacDisplayGeometry::useNativeFullscreen(count));
     for (int scale : {1, 2}) {
         for (int top : {0, 24, 34, 38}) {
             int h = 1200, pixels = h * scale;

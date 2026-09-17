@@ -246,6 +246,15 @@ reset and normal operator reapproval is pending. Live mixed-display acceptance
 remains pending. Single-display native Spaces and Mac-host matching are separate
 live gates. See the
 [backport record](docs/development/macos15-client.md#backlog--upstream-retina-fixes).
+The operator subsequently identified the intermediate native-Spaces build as
+visually preferable: both menu bars stayed hidden and performance felt better.
+That build had not failed a drag/focus test; it was stopped on a policy mismatch.
+Client `5b12882` now intentionally enables native Spaces on every presentation
+display, retaining the early SDL hint and shared camera-inset calculation.
+The fullscreen geometry gates are updated; a new clean build and live two-display
+drag, focus, tablet and transition checks are pending. Perceived performance is
+operator feedback, not a measured benchmark. This supersedes the display-count
+policy above; the prior accepted input code and Linux Host remain unchanged.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

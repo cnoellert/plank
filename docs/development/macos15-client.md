@@ -645,6 +645,22 @@ pending. Live mixed-display acceptance is pending. Single-display native Spaces
 and Mac-host Match Client require their own live acceptance; the Linux session
 cannot establish Mac-host behavior.
 
+### Native fullscreen on both displays
+
+The operator preferred the intermediate build's native fullscreen on both
+displays: no persistent menu bar on the inactive screen and subjectively better
+performance. No drag/focus failure had been established in that build; its
+early rejection only established a mismatch with the then-intended policy.
+Client `5b12882` supersedes that policy by intentionally using native Spaces for
+each presentation window. The SDL hint remains before video initialization,
+and camera-safe Match Client geometry now applies with multiple displays too.
+The renderer continues to use actual drawable sizes; Linux Host layout and
+the accepted mouse/tablet code are unchanged. Five fullscreen checks pass,
+including compiled geometry for both display counts. A clean candidate and
+live mixed-display test are pending. Menu-bar behavior, both-direction drags,
+first-click focus, tablet pressure and fullscreen exit/reentry require live
+evidence. The reported performance difference is not a measured benchmark.
+
 The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
