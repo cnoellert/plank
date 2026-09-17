@@ -634,9 +634,16 @@ hint after the display snapshot was too late. Client `2d93285` queries active
 CoreGraphics displays and sets the hint before SDL video initialization. Setup
 fails explicitly if SDL discovers a different display count. The regression
 gate now checks this ordering, and the initial candidate was disconnected.
-Corrected build and live retest are pending. Single-display native Spaces and Mac-host
-Match Client require their own live acceptance; the Linux session cannot
-establish Mac-host behavior.
+Corrected clean root `15a60d2` / Client `2d93285` passes the same five fullscreen
+checks, 79 Client checks, input-order regression, 106 binary target checks and
+package gates. The corrected artifact is
+`artifacts/development/macos15-retina-corrected/PLANK Client Development.app`,
+executable SHA256 `38f93a1b6081906d45bf80112961dd530401841630c43acccf4bf7d2558ac856`.
+It is open for retest. macOS rejected the prior Input Monitoring signature;
+after a scoped ListenEvent reset, normal operator approval for the new app is
+pending. Live mixed-display acceptance is pending. Single-display native Spaces
+and Mac-host Match Client require their own live acceptance; the Linux session
+cannot establish Mac-host behavior.
 
 The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency

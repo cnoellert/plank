@@ -236,9 +236,15 @@ Live diagnostics rejected this initial candidate: the two-output session entered
 native Spaces because SDL 3.4.2 caches the policy during video initialization.
 Client `2d93285` now queries active CoreGraphics displays and sets the hint before
 SDL video initialization; a topology-count change during setup fails explicitly.
-The fullscreen regression gate now enforces this ordering. Initial candidate
-disconnected; corrected build/live acceptance pending. Single-display native
-Spaces and Mac-host matching are separate live gates. See the
+The fullscreen regression gate now enforces this ordering. Corrected clean root
+`15a60d2` passes the same build/package gates, staged under
+`artifacts/development/macos15-retina-corrected/`, executable SHA256
+`38f93a1b6081906d45bf80112961dd530401841630c43acccf4bf7d2558ac856`.
+The superseded app is closed; the corrected app is open. macOS rejected the old
+Input Monitoring code requirement, so the app-scoped ListenEvent record was
+reset and normal operator reapproval is pending. Live mixed-display acceptance
+remains pending. Single-display native Spaces and Mac-host matching are separate
+live gates. See the
 [backport record](docs/development/macos15-client.md#backlog--upstream-retina-fixes).
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
