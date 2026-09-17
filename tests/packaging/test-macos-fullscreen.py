@@ -13,6 +13,32 @@ session = (client / 'app/streaming/session.cpp').read_text()
 
 
 class NativeFullscreenTests(unittest.TestCase):
+    def preprocess_platform(self, source, darwin):
+        return subprocess.check_output(
+            ['c++', '-E', '-P', '-x', 'c++', *(['-DQ_OS_DARWIN'] if darwin else []), '-'],
+            input=source, text=True)
+
+    def test_capture_policy_preserves_non_mac_behavior(self):
+        main = (client / 'app/main.cpp').read_text()
+        hint = main.index('SDL_SetHint(SDL_HINT_MOUSE_AUTO_CAPTURE, "1")')
+        start = main.rfind('#ifdef Q_OS_DARWIN', 0, hint)
+        end = main.index('#endif', hint) + len('#endif')
+        for darwin, value in ((True, '1'), (False, '0')):
+            compiled = self.preprocess_platform(main[start:end], darwin)
+            self.assertIn(f'SDL_SetHint(SDL_HINT_MOUSE_AUTO_CAPTURE, "{value}")', compiled)
+            self.assertEqual(compiled.count('SDL_HINT_MOUSE_AUTO_CAPTURE'), 1)
+
+    def test_secondary_spaces_exit_is_mac_only(self):
+        source = (client / 'app/streaming/plankpresentation.cpp').read_text()
+        function = source.split('bool PlankPresentation::setSecondaryFullscreen', 1)[1].split(
+            'QRect PlankPresentation::videoRect', 1)[0]
+        mac = self.preprocess_platform(function, True)
+        linux = self.preprocess_platform(function, False)
+        self.assertLess(mac.index('SDL_SyncWindow'), mac.index('SDL_HideWindow'))
+        self.assertNotIn('SDL_SyncWindow', linux)
+        self.assertIn('if (!fullscreen) return SDL_HideWindow(window)', linux)
+        self.assertLess(linux.index('SDL_ShowWindow'), linux.index('SDL_SetWindowFullscreen'))
+
     def test_native_spaces_without_sdl_override(self):
         self.assertIn('MacDisplayGeometry::useNativeFullscreen(macDisplayCount) ? \"1\" : \"0\"', session)
         self.assertLess(session.index('SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES'), session.index('if (!SDL_InitSubSystem(SDL_INIT_VIDEO))'))
