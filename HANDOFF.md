@@ -5,6 +5,19 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Mainline 1.0.121 package rebuild requested. Client PR #1 is approved and
+  merged at `b9e4be6b374001bef08ac4753764bc12edcb8357`; the root Client pin
+  now includes the macOS native application Quit bridge. Linux Host and Kymux
+  pins are unchanged. Clipboard PRs are not included: their reviews requested
+  changes. Build all four products on hosted runners using verified dependency
+  caches, with protected signing/notarization for both Mac packages. No
+  installation or GitHub Release publication requested in this step.
+  Source review found no actionable defect in the Quit bridge, but native
+  menu/Dock Quit during streaming/reconnect and physical Command-Q ownership
+  remain live validation follow-ups. The author's reported eight lifecycle
+  scenarios are not committed tests and were not independently rerun.
+  Preserve the primary worktree's unrelated RK3576 research.
+
 - Dependency-cache follow-up is merged and pushed to main at
   `4bd87fbcf5c96d177006ac0ea0c99b532396d5b5` (based on main `4001161`).
   All four hosted products are wired for exact-input caches; the previously
