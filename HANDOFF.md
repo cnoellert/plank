@@ -6,8 +6,12 @@ notes' README before machine-specific work; deployment information stays outside
 ## Current state
 
 - Active candidate: `vulkan-loader-repair`, base version 1.0.126. Build-deps
-  PR #1 now includes required Vulkan Loader ID-filter OOM handling and 12
-  upstream-framework regression cases. Exact build-deps commit:
+  PR #1 includes required Vulkan Loader ID-filter OOM handling and 12
+  upstream-framework regression cases. With operator approval it is merged
+  into build-deps `plank/main` at
+  `1078cb1d688397480915ee9904308ed76c9bb3d0`; the merge tree matches the tested
+  PR head exactly. Host/root companion branches are not yet merged into main.
+  Exact tested build-deps commit:
   `9f2ea61423fb1dd1c1b0eda463b3260837630064`; Host gitlink-only candidate:
   `4d80cf9594cfe58483422449346f46dbcb50f05f`.
   Fresh Loader build passed 713/713 tests; fresh/repeated/mismatched patch-helper
@@ -46,7 +50,8 @@ notes' README before machine-specific work; deployment information stays outside
   Standalone NVENC probe also lacks a direct cstdint include. Keep these
   follow-ups separate; no interactive/WAN/audio/Wacom-event soak was performed.
   See `docs/development/reviews/vulkan-loader-qualification.md` for evidence and
-  boundaries. No PR merge or release. Client and transport pins are unchanged.
+  boundaries. Only build-deps PR #1 was merged; no release. Client and transport
+  pins are unchanged. Existing candidate package provenance is unchanged.
   Preserve the primary worktree's unrelated RK3576 research.
 
 - GitHub Actions update is approved and merged through root PR #8: merge

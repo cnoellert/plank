@@ -105,5 +105,9 @@ No desktop-manager/display-prepare restart or reboot was performed.
 
 No interactive Client, Wacom-event, audio/WAN or long-soak acceptance is implied
 by these checks. The full root qualification blockers above remain open.
-No PR merge or release was performed. Deployment endpoints, account details
-and raw hardware reports remain outside public Git.
+After recording these limits, the operator authorized merging build-deps PR #1.
+Its merge into `plank/main` is `1078cb1d688397480915ee9904308ed76c9bb3d0`;
+the merge tree matches the tested PR head exactly. Host/root companion branches
+remain unmerged, and no release was performed. Existing package provenance
+continues to name its exact pre-merge source. Deployment endpoints, account
+details and raw hardware reports remain outside public Git.
