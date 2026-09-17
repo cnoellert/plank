@@ -22,10 +22,12 @@ This affects Linux Clients too and requires their regression qualification.
 
 Linux physical-monitor mode matching, generated XRandR modes, primary-output
 negotiation, the display helper and its RPM packaging are a separate
-contribution. They are saved on `codex/display-stack-snapshot` for a dedicated
-Host/root/Client review. This Mac review uses the maintained Linux Host gitlink
-and its existing display policy. The display series must also change its
-matched-mode feature bit: `0x400000` belongs to clipboard synchronization.
+contribution: [Client #4](https://github.com/instinctual/plank-client/pull/4),
+[root #7](https://github.com/instinctual/plank/pull/7) and
+[Host #2](https://github.com/instinctual/plank-host-linux/pull/2).
+This Mac review uses the maintained Linux Host gitlink and its existing
+display policy. The separate display series uses `0x1000000` for matched modes;
+`0x400000` belongs to clipboard synchronization.
 
 ## Changes and evidence
 

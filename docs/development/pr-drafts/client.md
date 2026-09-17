@@ -15,7 +15,9 @@ combines pending position updates before a burst can crowd out a button or key
 release. The Linux Client must also be checked because this part is shared.
 
 This PR does not change Linux Host physical monitors or add a Retina size
-bookmark choice. Those changes are moving to a separate display series.
+bookmark choice. Those changes are in separate draft
+[Client #4](https://github.com/instinctual/plank-client/pull/4) and
+[root #7](https://github.com/instinctual/plank/pull/7) PRs.
 
 Earlier exact candidates passed live two-screen dragging, right-click focus,
 window cleanup, and Flame pressure/pen focus. The split review branch built on
