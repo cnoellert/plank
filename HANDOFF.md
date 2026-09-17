@@ -202,8 +202,8 @@ Linux backend tests and the canonical Host build/package gates pass. Root
 `66ec56e` produced candidate `1.0.116-macos15-client`, installed with verified
 RPM/payload hashes. The live keyboard now advertises both Pause and F15.
 During the operator's test, a bounded recorder observed 23 complete Pause
-press/release pairs without errors. Host delivery passes; Flame's intended
-action still awaits operator confirmation. Services, configuration,
+press/release pairs without errors. The operator confirms Pause performs its
+expected action in Flame; this correction is live-accepted. Services, configuration,
 certificate and exact display MetaMode match the pre-update snapshot. The
 operator authorized an isolated, pinned Rocky 9.7 Podman builder on the available
 Rocky 9.5 hardware Host for this fix; it is stopped after the build. This does not
@@ -217,8 +217,8 @@ mouse and pen still failed: complete mouse press/release pairs reached evdev,
 but XInput retained left-button-down with the kernel button released. A scoped
 disable/enable did not clear it. Clean disconnect and Host-service restart
 recreated an attached mouse with every button up, preserving the exact display
-MetaMode. The operator confirms clicks work again after reconnecting and is
-now checking Pause in Flame. The source of the detach/stale state remains
+MetaMode. The operator confirms clicks work again after reconnecting. The
+source of the detach/stale state remains
 unconfirmed; no permanent code fix is claimed.
 Next backlog item: review the upstream macOS 26 Client's Retina/HiDPI fixes
 reported by the operator as committed on the morning of September 16, and

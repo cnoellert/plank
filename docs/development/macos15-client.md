@@ -576,8 +576,9 @@ Candidate `1.0.116-macos15-client` is collected under
   active. Configuration, certificate and exact display MetaMode are preserved.
 - Live virtual keyboard advertises Pause and F15. A bounded 120-second recorder
   observed 23 complete Pause press/release pairs during the operator's test,
-  with no errors or unmatched presses. Host delivery passes; Flame's intended
-  action still awaits operator confirmation. The accepted Client is unchanged.
+  with no errors or unmatched presses. The operator confirms Pause performs
+  its expected action in Flame. Host delivery and application behavior are
+  accepted for this correction. The accepted Client is unchanged.
 
 During the subsequent session, the operator reports mouse movement without
 clicks. XInput shows `libvirtualhid Mouse` as a floating slave. This explains
@@ -610,7 +611,7 @@ the exact branch and commits still need to be identified.
   including Windowed/fullscreen transitions and connected-display selection.
 - Record upstream commit IDs and live acceptance for each incorporated fix.
 
-Queue this review after the current Pause-key correction.
+This review is next after the accepted Pause-key correction.
 
 The selected upstream root is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
