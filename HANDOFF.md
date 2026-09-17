@@ -1,5 +1,26 @@
 # PLANK handoff
 
+## Single-output GNOME restoration regression
+
+During the separate macOS 15 Wacom Client review, the Rocky test Host's active
+X11 session had one 2560×1440 NVIDIA/XRandR output but GNOME reported zero
+logical monitors. The Client received the complete 2560×1440 stream, yet its
+sign-in view appeared displaced and the unlocked desktop lacked its wallpaper
+and top bar. Applying a temporary one-output Mutter configuration restored the
+normal desktop without changing the XRandR output geometry. The saved GNOME
+monitor file still described the earlier matched two-screen layout. This
+exposed a restoration gap: the helper checked the MetaMode and XRandR primary
+but did not require a visible GNOME logical monitor.
+
+The draft physical-display PR now waits for GNOME after restoration and, for an
+unambiguous single physical output, recovers its exact advertised mode through
+Mutter's temporary configuration. It rechecks the saved MetaMode and primary
+afterward. Twenty-five no-display helper tests pass, including empty and stale
+GNOME layouts. The updated helper is not installed or live-qualified yet;
+interrupted-session and multi-output restoration remain open gates. The Wacom
+pressure recorder observed no pen events during this diagnostic interval, so
+the separate Client candidate's live pressure acceptance is also pending.
+
 ## Experimental Mac Client review branch — 2026-09-17
 
 Root and Client `codex/macos15-pr-review` are draft contributions for the

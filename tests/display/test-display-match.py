@@ -92,6 +92,7 @@ class DisplayMatchTest(unittest.TestCase):
 
         with patch.object(match, "command", side_effect=run), \
              patch.object(match, "mutter_geometry", return_value={}), \
+             patch.object(match, "ensure_restored_mutter_output"), \
              patch.object(match, "modeline", return_value=["timing"]), \
              patch.object(match, "verify", side_effect=ValueError("mismatch") if fail else None) as verify:
             if fail:
@@ -164,14 +165,70 @@ class DisplayMatchTest(unittest.TestCase):
             self.assertEqual(run.call_count, 2)
 
     def test_restore_preserves_primary_and_verifies_it(self):
-        with patch.object(match, "command", side_effect=["", "id=1 :: " + BASELINE, "", QUERY]) as run:
+        responses = ["", "id=1 :: " + BASELINE, "", QUERY,
+                     "id=1 :: " + BASELINE, QUERY]
+        with patch.object(match, "command", side_effect=responses) as run, \
+             patch.object(match, "ensure_restored_mutter_output") as visible:
             match.restore(BASELINE, "DP-0")
             self.assertEqual(run.call_args_list[2].args[0], [match.XRANDR, "--output", "DP-0", "--primary"])
+            visible.assert_called_once_with("DP-0")
 
     def test_restore_can_clear_an_absent_primary(self):
-        with patch.object(match, "command", side_effect=["", "id=1 :: " + BASELINE, "", QUERY.replace(" primary", "")]) as run:
+        query = QUERY.replace(" primary", "")
+        responses = ["", "id=1 :: " + BASELINE, "", query,
+                     "id=1 :: " + BASELINE, query]
+        with patch.object(match, "command", side_effect=responses) as run, \
+             patch.object(match, "ensure_restored_mutter_output") as visible:
             match.restore(BASELINE, "none")
             self.assertEqual(run.call_args_list[2].args[0], [match.XRANDR, "--noprimary"])
+            visible.assert_called_once_with("none")
+
+    def test_restored_single_output_recovers_empty_gnome_layout(self):
+        restored = {"DP-0": (2560, 1440, 0, 0, 1.0, 0, True)}
+        with patch.object(match, "command", return_value=QUERY), \
+             patch.object(match, "mutter_geometry", side_effect=[{}, restored]), \
+             patch.object(match, "recover_single_mutter_output") as recover, \
+             patch.object(match.time, "monotonic", side_effect=[0, 7]):
+            match.ensure_restored_mutter_output("DP-0")
+            recover.assert_called_once_with(match.outputs(QUERY)[0])
+
+    def test_restored_single_output_recovers_stale_gnome_geometry(self):
+        stale = {"DP-0": (2560, 1440, 2560, 0, 1.0, 0, False)}
+        restored = {"DP-0": (2560, 1440, 0, 0, 1.0, 0, True)}
+        with patch.object(match, "command", return_value=QUERY), \
+             patch.object(match, "mutter_geometry", side_effect=[stale, restored]), \
+             patch.object(match, "recover_single_mutter_output") as recover, \
+             patch.object(match.time, "monotonic", side_effect=[0, 7]):
+            match.ensure_restored_mutter_output("DP-0")
+            recover.assert_called_once()
+
+    def test_restored_multi_output_does_not_guess_gnome_layout(self):
+        dual = QUERY.replace("DP-2 connected (", "DP-2 connected 2560x1440+2560+0 (")
+        with patch.object(match, "command", return_value=dual), \
+             patch.object(match, "mutter_geometry", return_value={}), \
+             patch.object(match, "recover_single_mutter_output") as recover, \
+             patch.object(match.time, "monotonic", side_effect=[0, 7]):
+            with self.assertRaisesRegex(ValueError, "invalid logical monitor layout"):
+                match.ensure_restored_mutter_output("DP-0")
+            recover.assert_not_called()
+
+    def test_single_mutter_request_uses_exact_advertised_mode(self):
+        mode = ("2560x1440@59.950550079345703", 2560, 1440, 59.95, 1.0, [1.0], {})
+        state = (233, [(('DP-0', 'LNX', 'Linux XGA', 'Linux #0'), [mode], {})], [], {})
+        serial, layout = match.single_mutter_request(state, match.outputs(QUERY)[0])
+        self.assertEqual(serial, 233)
+        self.assertEqual(layout, [(0, 0, 1.0, 0, True, [('DP-0', mode[0], {})])])
+        ambiguous = (233, [(state[1][0][0], [mode, ("2560x1440@60", *mode[1:])], {})], [], {})
+        with self.assertRaisesRegex(ValueError, "unambiguous"):
+            match.single_mutter_request(ambiguous, match.outputs(QUERY)[0])
+
+    def test_gnome_recovery_cannot_change_exact_baseline(self):
+        responses = ["", "id=1 :: " + BASELINE, "", QUERY,
+                     "id=2 :: changed", QUERY]
+        with patch.object(match, "command", side_effect=responses), \
+             patch.object(match, "ensure_restored_mutter_output"):
+            with self.assertRaisesRegex(ValueError, "changed the restored"):
+                match.restore(BASELINE, "DP-0")
 
     def test_primary_index_rejected_before_mutation(self):
         with patch.object(match, "command") as run:

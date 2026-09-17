@@ -102,14 +102,20 @@ def modeline(width, height):
     return [fields[0]] + list(map(str, timing)) + fields[-2:]
 
 
-def mutter_geometry():
-    """Return GNOME's actual active mode and logical rectangle per output."""
+def mutter_state():
+    """Read the active desktop owner's GNOME display state."""
     from gi.repository import Gio
     os.environ.setdefault("DBUS_SESSION_BUS_ADDRESS", "unix:path=" + os.environ["XDG_RUNTIME_DIR"] + "/bus")
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     state = bus.call_sync("org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
                           "org.gnome.Mutter.DisplayConfig", "GetCurrentState", None, None,
                           Gio.DBusCallFlags.NONE, 2000, None).unpack()
+    return bus, state
+
+
+def mutter_geometry():
+    """Return GNOME's actual active mode and logical rectangle per output."""
+    _bus, state = mutter_state()
     current = {}
     for spec, modes, _properties in state[1]:
         for mode in modes:
@@ -121,6 +127,62 @@ def mutter_geometry():
             if spec[0] in current:
                 result[spec[0]] = (*current[spec[0]], x, y, scale, transform, primary)
     return result
+
+
+def single_mutter_request(state, output):
+    """Choose the one exact advertised mode for a restored physical output."""
+    width, height, x, y = output["rect"]
+    if (x, y) != (0, 0):
+        raise ValueError("Cannot recover a displaced single physical output")
+    monitor = next((m for m in state[1] if m[0][0] == output["name"]), None)
+    if monitor is None:
+        raise ValueError("Restored physical output is absent from GNOME")
+    candidates = [mode for mode in monitor[1] if mode[1:3] == (width, height)]
+    current = [mode for mode in candidates if mode[6].get("is-current")]
+    selected = current if len(current) == 1 else candidates
+    if len(selected) != 1:
+        raise ValueError("GNOME has no unambiguous restored physical mode")
+    return state[0], [(0, 0, 1.0, 0, True,
+                       [(output["name"], selected[0][0], {})])]
+
+
+def recover_single_mutter_output(output):
+    """Make a restored XRandR output visible when GNOME retained no monitor."""
+    from gi.repository import Gio, GLib
+    bus, state = mutter_state()
+    serial, logical_monitors = single_mutter_request(state, output)
+    parameters = GLib.Variant("(uua(iiduba(ssa{sv}))a{sv})",
+                              (serial, 1, logical_monitors, {}))
+    bus.call_sync("org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
+                  "org.gnome.Mutter.DisplayConfig", "ApplyMonitorsConfig", parameters,
+                  None, Gio.DBusCallFlags.NONE, 3000, None)
+
+
+def ensure_restored_mutter_output(primary):
+    """Require GNOME to expose the restored desktop, not only NVIDIA/XRandR."""
+    active = [item for item in outputs(command([XRANDR, "--query"])) if item["rect"]]
+    if not active:
+        raise ValueError("Restored NVIDIA layout has no active physical output")
+    single = active[0] if len(active) == 1 else None
+    def visible(geometry):
+        if single is None:
+            return bool(geometry)
+        reported = geometry.get(single["name"])
+        return bool(reported and reported[:4] == single["rect"] and
+                    (primary != single["name"] or reported[6]))
+
+    deadline = time.monotonic() + 6
+    while True:
+        if visible(mutter_geometry()):
+            return
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.2)
+    if single is None or primary != single["name"]:
+        raise ValueError("GNOME retained an invalid logical monitor layout after restoration")
+    recover_single_mutter_output(single)
+    if not visible(mutter_geometry()):
+        raise ValueError("GNOME did not activate the restored physical output")
 
 
 def verify(expected, primary=None):
@@ -238,7 +300,7 @@ def current_primary():
 
 
 def restore(baseline, primary="keep"):
-    """Restore and read back the MetaMode and separately saved primary property."""
+    """Restore NVIDIA, XRandR primary, and GNOME's visible desktop."""
     if not baseline or len(baseline) > 32768 or any(ord(c) < 32 or ord(c) > 126 for c in baseline):
         raise ValueError("Invalid baseline MetaMode")
     if primary not in ("keep", "none") and not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", primary):
@@ -252,6 +314,13 @@ def restore(baseline, primary="keep"):
                 [XRANDR, "--output", primary, "--primary"])
         if current_primary() != primary:
             raise ValueError("Primary output restoration did not take effect")
+    ensure_restored_mutter_output(current_primary() if primary == "keep" else primary)
+    # Mutter recovery can itself reconfigure XRandR. Recheck the exact lease
+    # baseline before the supervisor releases the temporary modes.
+    actual = command([NVIDIA, "--query", "CurrentMetaMode", "--terse"]).partition("::")[2].strip()
+    if "".join(actual.split()) != "".join(baseline.split()) or (
+            primary != "keep" and current_primary() != primary):
+        raise ValueError("GNOME recovery changed the restored physical layout")
 
 
 def main(argv):

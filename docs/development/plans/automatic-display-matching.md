@@ -28,6 +28,15 @@ the active desktop owner, verify XRandR and Mutter geometry, and restore the
 pre-session layout after failure or disconnect. Never restart the display
 manager to match an active physical desktop.
 
+Restoration must include GNOME's logical monitor, not only the NVIDIA MetaMode
+and XRandR primary property. GNOME can retain no logical monitor after an
+otherwise exact single-output MetaMode restore, leaving a blank desktop and a
+misplaced sign-in view. Wait for GNOME to settle; if its single physical output
+is still absent or stale, apply a temporary Mutter configuration using the
+exact advertised mode. Recheck the saved MetaMode and primary afterward.
+Report ambiguous multi-output recovery as a failure instead of guessing its
+layout. Do not write the user's persistent `monitors.xml`.
+
 Optional feature `0x800000` carries the Client OS primary display as a bounded
 left-to-right index. Verify primary in both XRandR and Mutter; save and restore
 the original XRandR primary property alongside the MetaMode. Read restoration
