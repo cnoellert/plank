@@ -28,6 +28,14 @@ includes the measured five-point native-fullscreen margin below the camera,
 qualified against the settled drawable. Newer OS versions retain their existing
 geometry until independently measured.
 
+When primary matching is negotiated, preserve the active Host primary output's
+connector identity and assign it to the Client primary's requested position.
+If the saved primary property names an inactive output, retain the first active
+output instead. Select the remaining connected outputs in desktop order. This
+keeps applications with independent physical-output enumeration on the intended
+primary display across single-output and matched-output sessions. The Client's
+left-to-right geometry and the exact pre-session restoration contract remain.
+
 Qualification: parser and mode-boundary tests on both products; transaction
 failure/rollback/cleanup tests; clean pinned builds; live logical and backing
 matching, input mapping across both displays, and exact disconnect restoration.

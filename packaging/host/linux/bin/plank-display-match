@@ -53,12 +53,29 @@ def outputs(query):
     return result
 
 
-def ordered_outputs(items, count):
-    """Prefer existing active screens in desktop order, then connected spares."""
+def ordered_outputs(items, count, primary_index=-1):
+    """Keep the Host primary output's identity when matching Client positions.
+
+    Some applications enumerate physical outputs independently of the XRandR
+    primary flag. Assigning the first active output to the leftmost Client
+    screen can therefore move their main UI to a secondary Client display.
+    Prefer the active Host primary, or its first active output if the primary
+    property names an inactive connector. Place that output at the requested
+    Client primary index; use desktop order for the remaining outputs.
+    """
     ordered = sorted(items, key=lambda item: (item["rect"] is None,
                      item["rect"][2:] if item["rect"] else (0, 0), item["name"]))
     if len(ordered) < count:
         raise ValueError("Not enough connected outputs for matched displays")
+    if primary_index >= 0:
+        active = [item for item in ordered if item["rect"]]
+        primary = next((item for item in active if item["primary"]), None)
+        if primary is None:
+            primary = active[0] if active else next(
+                (item for item in ordered if item["primary"]), ordered[0])
+        selected = [item for item in ordered if item is not primary][:count - 1]
+        selected.insert(primary_index, primary)
+        return selected
     return ordered[:count]
 
 
@@ -173,7 +190,7 @@ def apply(token, modes, primary_index=-1):
     if any(name in before for name in names):
         raise ValueError("Display lease mode identity already exists")
     items = outputs(before)
-    selected = ordered_outputs(items, len(sizes))
+    selected = ordered_outputs(items, len(sizes), primary_index)
     primary = next((item["name"] for item in items if item["primary"]), None)
     baseline = command([NVIDIA, "--query", "CurrentMetaMode", "--terse"]).partition("::")[2].strip()
     if not baseline or len(baseline) > 32768:

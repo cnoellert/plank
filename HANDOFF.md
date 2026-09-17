@@ -1,5 +1,25 @@
 # PLANK handoff
 
+## Preserve primary output identity for application monitor selection
+
+A single-output to matched-output transition reassigned the original active
+Host connector to the secondary Client screen. XRandR, Xinerama and Flame's Qt
+screen list all correctly reported the Client primary, but Flame's independent
+internal screen enumeration still placed its main UI on the other connector.
+A controlled live swap retained both Client screen positions and dimensions
+while assigning the original Host connector to the Client primary. Flame's
+normal launch then selected the intended display, confirmed in its graphics
+log and by the operator. No persistent Flame override was installed.
+
+Candidate 1.0.125 preserves the active Host primary connector when applying a
+matched layout. If the primary property names an inactive connector, it uses
+the first active output. The remaining outputs keep desktop order; omitted
+primary negotiation keeps the previous selection behavior. Twenty helper tests
+pass, including single/matched transitions, right-hand primary, alternate
+connector names, inactive primary and rollback after reassignment. The Client
+is unchanged. Package build, installation and authenticated repeat testing
+remain pending; the live session currently uses the successful temporary swap.
+
 ## Primary matching and fullscreen-height candidate
 
 Candidate 1.0.124 adds optional matched-primary negotiation (`0x800000`) and

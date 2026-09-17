@@ -47,6 +47,38 @@ class DisplayMatchTest(unittest.TestCase):
         self.assertEqual(run.call_args.args[0], [match.CVT, "-r", "3424", "2214", "60"])
         self.assertEqual(line[1:5], ["3420", "3472", "3504", "3584"])
 
+    def test_primary_output_identity_survives_single_to_matched_transition(self):
+        parsed = match.outputs(QUERY)
+        for index, expected in [(0, ["DP-0", "DP-2"]), (1, ["DP-2", "DP-0"])]:
+            self.assertEqual([item["name"] for item in match.ordered_outputs(parsed, 2, index)], expected)
+        # The right-hand primary remains the same connector on a later match.
+        parsed[0]["rect"] = (2560, 1440, 2056, 0)
+        parsed[1]["rect"] = (2056, 1286, 0, 0)
+        self.assertEqual([item["name"] for item in match.ordered_outputs(parsed, 2, 1)], ["DP-2", "DP-0"])
+        self.assertEqual(match.ordered_outputs(parsed, 1, 0)[0]["name"], "DP-0")
+
+    def test_inactive_primary_does_not_replace_the_existing_active_output(self):
+        parsed = match.outputs(QUERY)
+        parsed[0]["primary"] = False
+        parsed[1]["primary"] = True
+        self.assertEqual([item["name"] for item in match.ordered_outputs(parsed, 2, 1)], ["DP-2", "DP-0"])
+
+    def test_primary_connector_is_not_assumed_to_be_first(self):
+        parsed = match.outputs(QUERY)
+        parsed[0]["primary"] = False
+        parsed[1].update(primary=True, rect=(2560, 1440, 2560, 0))
+        self.assertEqual(match.ordered_outputs(parsed, 1, 0)[0]["name"], "DP-2")
+        self.assertEqual([item["name"] for item in match.ordered_outputs(parsed, 2, 0)], ["DP-2", "DP-0"])
+
+    def test_inactive_outputs_use_primary_or_stable_fallback(self):
+        parsed = match.outputs(QUERY)
+        for item in parsed:
+            item["rect"] = None
+            item["primary"] = False
+        self.assertEqual([item["name"] for item in match.ordered_outputs(parsed, 2, 1)], ["DP-2", "DP-0"])
+        parsed[1]["primary"] = True
+        self.assertEqual([item["name"] for item in match.ordered_outputs(parsed, 2, 0)], ["DP-2", "DP-0"])
+
     def transaction(self, fail=False, primary=-1):
         commands = []
 
@@ -67,7 +99,9 @@ class DisplayMatchTest(unittest.TestCase):
                     match.apply("123-456", ["2056x1286", "2560x1440"], primary)
             else:
                 match.apply("123-456", ["2056x1286", "2560x1440"], primary)
-                verify.assert_called_once_with({"DP-0": (2056, 1286, 0, 0), "DP-2": (2560, 1440, 2056, 0)}, None if primary == -1 else ["DP-0", "DP-2"][primary])
+                expected = {"DP-2": (2056, 1286, 0, 0), "DP-0": (2560, 1440, 2056, 0)} if primary == 1 else {
+                    "DP-0": (2056, 1286, 0, 0), "DP-2": (2560, 1440, 2056, 0)}
+                verify.assert_called_once_with(expected, None if primary == -1 else "DP-0")
         return commands
 
     def test_activates_real_modes_not_viewport_scaling(self):
@@ -104,10 +138,12 @@ class DisplayMatchTest(unittest.TestCase):
                 match.command([match.NVIDIA, "--assign", "CurrentMetaMode=" + BASELINE])
 
     def test_matches_either_primary_in_desktop_order(self):
-        for index, name in enumerate(["DP-0", "DP-2"]):
+        for index in (0, 1):
             commands = self.transaction(primary=index)
             apply = next(argv for argv in commands if "--fb" in argv)
-            self.assertEqual(apply[-3:], ["--output", name, "--primary"])
+            self.assertEqual(apply[-3:], ["--output", "DP-0", "--primary"])
+            first_output = apply[apply.index("--output") + 1]
+            self.assertEqual(first_output, "DP-2" if index == 1 else "DP-0")
 
     def test_primary_must_agree_with_compositor(self):
         expected = {"DP-0": (2560, 1440, 0, 0)}
@@ -147,11 +183,12 @@ class DisplayMatchTest(unittest.TestCase):
             run.assert_not_called()
 
     def test_compositor_mismatch_restores_baseline_before_cleanup(self):
-        commands = self.transaction(fail=True)
-        restore = commands.index([match.NVIDIA, "--assign", "CurrentMetaMode=" + BASELINE])
-        removes = [index for index, argv in enumerate(commands) if "--delmode" in argv or "--rmmode" in argv]
-        self.assertEqual(len(removes), 4)
-        self.assertTrue(all(index > restore for index in removes))
+        for primary in (-1, 1):
+            commands = self.transaction(fail=True, primary=primary)
+            restore = commands.index([match.NVIDIA, "--assign", "CurrentMetaMode=" + BASELINE])
+            removes = [index for index, argv in enumerate(commands) if "--delmode" in argv or "--rmmode" in argv]
+            self.assertEqual(len(removes), 4)
+            self.assertTrue(all(index > restore for index in removes))
 
     def test_cleanup_wont_delete_active_modes(self):
         query = QUERY.replace("existing-mode", "PLANK-Match-123-456-0")
