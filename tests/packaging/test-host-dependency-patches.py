@@ -26,6 +26,8 @@ class HostDependencyPatches(unittest.TestCase):
             subprocess.run(['git', 'init', '--quiet', str(source)], check=True)
             (source / 'value.c').write_text('before\n')
             (source / 'other.c').write_text('original\n')
+            (source / 'tests').mkdir()
+            (source / 'tests/upstream.c').write_text('upstream test\n')
             subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
             patch_dir = self.patches / dependency
             patch_dir.mkdir(parents=True)
@@ -67,6 +69,19 @@ class HostDependencyPatches(unittest.TestCase):
         result = self.verify()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('patch group is unavailable', result.stdout)
+
+    def test_intentionally_omitted_loader_tests_are_allowed(self):
+        shutil.rmtree(self.loader / 'tests')
+        result = self.verify()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_modified_loader_tests_are_not_hidden(self):
+        (self.loader / 'tests/upstream.c').write_text('unexpected change\n')
+        self.assertNotEqual(self.verify().returncode, 0)
+
+    def test_missing_loader_production_source_is_rejected(self):
+        (self.loader / 'other.c').unlink()
+        self.assertNotEqual(self.verify().returncode, 0)
 
     def test_patch_reject_residue_is_rejected(self):
         (self.loader / 'value.c.rej').write_text('rejected patch\n')

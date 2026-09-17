@@ -27,9 +27,11 @@ patch_count=0
 verify_patch_group() {
   local generated_repo=$1
   local product_patch_dir=$2
+  local omitted_directory=${3:-}
   local git_dir
   local patch_file
   local patched_path
+  local change_status
   local group_patch_count=0
   local -A expected_paths=()
   local -a actual_paths=()
@@ -64,9 +66,18 @@ verify_patch_group() {
   }
 
   git_dir=$(git -C "$generated_repo" rev-parse --absolute-git-dir)
-  mapfile -t actual_paths < <(
+  while IFS=$'\t' read -r change_status patched_path; do
+    # Dependency preparation intentionally omits the upstream Loader tests.
+    # Permit only deletions there, not modified/added test files or missing
+    # production source. Never exclude the entire path from verification.
+    if [[ -n $omitted_directory && $change_status == D &&
+          $patched_path == "$omitted_directory/"* ]]; then
+      continue
+    fi
+    [[ -n $patched_path ]] && actual_paths+=("$patched_path")
+  done < <(
     git --git-dir="$git_dir" --work-tree="$generated_repo" \
-      diff --name-only | sort -u
+      diff --no-renames --name-status
   )
   ((${#actual_paths[@]} == ${#expected_paths[@]})) || {
     echo "prepared dependency has an unexpected tracked modification count: ${generated_repo}" >&2
@@ -96,7 +107,7 @@ verify_patch_group \
   "${patch_root}/FFmpeg/x265_git"
 verify_patch_group \
   "${build_dir}/FFmpeg/Vulkan-Loader" \
-  "${patch_root}/FFmpeg/Vulkan-Loader"
+  "${patch_root}/FFmpeg/Vulkan-Loader" tests
 
 ((patch_count > 0)) || {
   echo "no active Host dependency patches were verified" >&2

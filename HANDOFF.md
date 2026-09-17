@@ -12,7 +12,13 @@ notes' README before machine-specific work; deployment information stays outside
   `4d80cf9594cfe58483422449346f46dbcb50f05f`.
   Fresh Loader build passed 713/713 tests; fresh/repeated/mismatched patch-helper
   checks pass and a second fresh source reproduces the tested production files.
-  Root adds independent Loader patch verification and seven preflight tests.
+  Root adds independent Loader patch verification and ten preflight tests.
+  First cache-bypassed hosted run `35278812273` compiled/prepared the fresh
+  dependency stack and applied the repair, then the new verification gate
+  rejected upstream's intentionally omitted `Vulkan-Loader/tests/` files.
+  The verifier now permits only those tracked deletions, with regressions for
+  deleted tests, modified tests and deleted production source. It still rejects
+  absent/conflicting patches and unexpected production changes.
   Clean hosted Host bootstrap/package build and hardware qualification are
   pending. No PR merge, release, or installation yet. NVIDIA headers/driver
   remain unchanged; driver ceiling 595.91.07. Client and transport pins are
