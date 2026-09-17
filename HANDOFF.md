@@ -215,8 +215,9 @@ mouse and pen still failed: complete mouse press/release pairs reached evdev,
 but XInput retained left-button-down with the kernel button released. A scoped
 disable/enable did not clear it. Clean disconnect and Host-service restart
 recreated an attached mouse with every button up, preserving the exact display
-MetaMode. The Client is at sign-in for live recovery confirmation. The source of
-the detach/stale state remains unconfirmed; no permanent code fix is claimed.
+MetaMode. The operator confirms clicks work again after reconnecting and is
+now checking Pause in Flame. The source of the detach/stale state remains
+unconfirmed; no permanent code fix is claimed.
 Next backlog item: review the upstream macOS 26 Client's Retina/HiDPI fixes
 reported by the operator as committed on the morning of September 16, and
 backport applicable changes into this macOS 15 fork. Identify exact commits,

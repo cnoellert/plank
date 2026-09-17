@@ -552,8 +552,8 @@ proximity setting was changed; physical-height parity remains unmeasured.
 The operator reports F15/Pause is not recognized. The pinned SDL 3.4.2 Cocoa
 backend maps Mac native key 113 (F15) to `SDL_SCANCODE_PAUSE`; the Client sends
 portable Pause (`0x13`). Host 1.0.105's exact dependency `93d57db` lacks that
-key in both Linux input translation tables. Read-only inspection confirms the
-running virtual keyboard lacks `KEY_PAUSE`, while Host logs record unsupported
+key in both Linux input translation tables. Read-only inspection confirmed that
+virtual keyboard lacked `KEY_PAUSE`, while Host logs recorded unsupported
 keyboard submissions. Both 1.0.105 and the published 1.0.120 manifest select
 the same Host source, so upgrading to that release does not include a fix.
 
@@ -587,8 +587,9 @@ pairs, while XInput retained button 1 down despite the kernel reporting it up.
 Disabling/enabling the named mouse did not clear this stale state. A clean
 disconnect and Host-service restart recreated the mouse attached to the core
 pointer, all buttons released, with the exact display MetaMode preserved.
-Live recovery confirmation is pending. The source of the detach/stale state
-remains unconfirmed; this is a recovery action, not a permanent code correction.
+The operator confirms clicks work again after reconnecting. The source of the
+detach/stale state remains unconfirmed; this is a recovery action, not a
+permanent code correction.
 No display, tablet or Client settings were changed for this recovery.
 
 ## Backlog — upstream Retina fixes
