@@ -7,6 +7,14 @@ On macOS distinguish panel-native pixels, current compositor backing pixels and
 logical workspace size. Use the measured native-fullscreen camera inset even
 when connecting windowed, so entering fullscreen does not change the contract.
 
+Fullscreen presentation uses the selected Host layout's output count. A single
+physical or requested virtual output uses only the target Client display, even
+when two local displays are connected. A requested dual layout retains two-output
+presentation while the Host transitions from its previous single-output layout.
+Returning to windowed presentation explicitly exits and synchronizes each
+secondary native fullscreen Space before hiding that surface. Reentering
+fullscreen restores the same display assignment.
+
 The qualified Linux X11 desktop reports `global-scale-required=true`; mixed
 per-monitor UI scaling is unavailable. Matching logical workspace dimensions can
 preserve familiar UI size with an upscale on Retina. Matching backing pixels

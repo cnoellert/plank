@@ -12,9 +12,18 @@ does not allocate a second presentation window.
 
 The native Metal probe now uses product-native Spaces and checks three repeated
 exit/hide/reentry cycles against AppKit visibility/fullscreen state, SDL state,
-display identity and real Metal readback. Topology coverage includes single to
-dual and dual to single transitions. Build and live acceptance are pending.
-Host 1.0.125 is unchanged.
+display identity and real Metal readback. All three native cycles and 14 Metal
+readback cases pass on the authorized two-display Mac. Topology coverage
+includes single to dual and dual to single transitions. Clean root `b0fb4acd`,
+Client `0f57be38`, produced
+`artifacts/development/macos15-presentation-lifecycle/PLANK Client Development.app`.
+The 84 Qt cases, five fullscreen checks, native input ordering, 106 Mach-O target
+checks, dependency closure and ad-hoc signatures pass. Executable SHA256:
+`f094e779e6ed1f7b390c99fcfd40b70a0d6c159d9c746bff2a4e8d07fdc5db64`.
+The prior client was cleanly disconnected and closed; the replacement is open
+at direct sign-in with Match client displays/macOS desktop size/Native retained.
+Authenticated fullscreen/windowed and physical single-output acceptance remain
+pending. Host 1.0.125 and tablet permissions are unchanged.
 
 ## Preserve primary output identity for application monitor selection
 
