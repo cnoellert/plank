@@ -25,5 +25,5 @@ bounded Wacom shutdown, intermittent left-click diagnosis, Ubuntu and macOS 27
 qualification, reconnection/hotplug recovery, and final hosted builds. No
 upstream merge or release has been performed.
 
-See the [integration review](../macos15-integration-review.md) for the full
+See the [integration review](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md) for the full
 scope and evidence.

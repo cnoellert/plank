@@ -24,5 +24,5 @@ latest source still needs final live acceptance, an Ubuntu Client regression,
 macOS 27 qualification, interruption/hotplug tests, and a bounded asynchronous
 Wacom shutdown path. Intermittent left-click loss remains under investigation.
 
-See the [integration review](../macos15-integration-review.md) for commit and
+See the [integration review](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md) for commit and
 test evidence. Keep this PR draft until those gates pass.
