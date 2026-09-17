@@ -15,8 +15,12 @@ notes' README before machine-specific work; deployment information stays outside
   Ordinary disconnect remains independent. The tested native Command-Q guard
   is unchanged. Linux, Host, transport and protocol behavior are unchanged.
   See `docs/development/plans/macos-quit-lifecycle.plan`. Local 37 CI, five
-  fullscreen and three lifecycle source guards pass; native Qt/AppKit tests
-  and signed hosted build are pending. No merge or deployment. Preserve the
+  fullscreen and three lifecycle source guards plus five root CTest suites
+  pass. Hosted run 35185516514 compiled the application and passed existing
+  topology/toolbar/desktop-stage tests, then caught a missing direct SDL include
+  in the retained shortcut test after bridge removal. That test dependency is
+  corrected; no package was produced. Native Qt/AppKit tests and the corrected
+  signed hosted build remain pending. No merge or deployment. Preserve the
   original checkpoint branch and unrelated primary-worktree research.
 
 - Accepted behavioral checkpoint: `1.0.122-macos-command-q`. Client commit
