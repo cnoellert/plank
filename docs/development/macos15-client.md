@@ -694,3 +694,26 @@ The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
 retained outside the repository in the operator's private notes/audit storage.
+
+## Automatic display matching and Retina size
+
+The existing per-host **Match client displays** setting now has a separate
+**Retina size** choice for Linux hosts. **macOS desktop size** uses the current
+logical workspace; **Retina pixel detail** uses current compositor pixels.
+Both account for the native-fullscreen camera inset. **Native** and
+**Scaled-Span** retain their existing stream-scaling behavior. Physical and
+manual virtual-display layouts are unchanged by this preference.
+
+The Linux physical-layout lease negotiates bounded real modes instead of scaling
+an unchanged scanout. The helper checks XRandR and Mutter before publishing the
+layout and restores the exact initial NVIDIA MetaMode on failure or disconnect.
+The X11 host used for qualification requires a global UI scale, so this does not
+promise independent per-monitor Linux UI scaling. See the
+[protocol contract](../../protocol/output-topology.md#bounded-physical-display-matching-optional-0x400000).
+
+Candidate Client `efce3aa` / root `bfa01708` passes 82 Qt cases and all Mac build
+and packaging gates. Host `d5ead767` / root `3abc08d4` passes eight topology tests,
+seven helper transaction tests and RPM gates. Both logical and backing-pixel
+layouts pass live XRandR/Mutter agreement and exact restoration through the
+restricted helper context. Authenticated streaming and operator acceptance are
+still pending; see HANDOFF for current artifacts.

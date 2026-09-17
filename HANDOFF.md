@@ -3,14 +3,38 @@
 ## Current work — automatic matching candidate
 
 The operator selected automatic display matching including Retina and requested
-that existing bookmark layout/scaling controls be retained. A separate Retina
-size choice selects logical workspace or compositor backing pixels under Match
-client displays; Native/Scaled-Span semantics stay unchanged. The candidate adds
-negotiated bounded physical modes, real XRandR/Mutter geometry verification and
-transactional rollback. See [the plan](docs/development/plans/automatic-display-matching.md).
-This work is not yet built or live-qualified. The accepted native-Spaces Client
-and Pause Host below remain the rollback artifacts. Intermittent left-click
-recurrence is parked at the operator's request; its cause is not established.
+that existing bookmark layout/scaling controls be retained. A separate **Retina
+size** choice now selects **macOS desktop size** or **Retina pixel detail** under
+**Match client displays**; Native/Scaled-Span semantics are unchanged. See
+[the plan](docs/development/plans/automatic-display-matching.md) and
+[protocol contract](protocol/output-topology.md#bounded-physical-display-matching-optional-0x400000).
+
+- Client `efce3aa`, clean root `bfa01708`, version `1.0.121-macos15-client`:
+  `artifacts/development/macos15-automatic-match/PLANK Client Development.app`.
+  82 Qt cases, five fullscreen checks, native input-order check, 106 Mach-O
+  target checks, dependency closure and ad-hoc signatures pass. Executable
+  SHA256 `133d273f44d7c2a790a8a64c6c1ce0e67badd216966f28a826b15e03c1b044b8`.
+- Host `d5ead767`, clean root `3abc08d4`, version `1.0.122-macos15-client`:
+  RPM built in the retained isolated pinned Rocky 9.7 container and installed on
+  the authorized hardware Host. Eight focused Host topology tests, seven helper
+  transaction tests and package gates pass. RPM SHA256
+  `9ee6e2f4d2058432060ef5c863309d904bb9b7c89b6b23e68fa3a71d43b56c51`.
+  Installed RPM verification passes; configuration/certificate hashes match the
+  pre-update snapshot, and Host/PAM/display/Anyware services remain active.
+- Live helper tests, including the supervisor's restricted service context,
+  independently pass logical-size and backing-pixel dual layouts. XRandR and
+  Mutter agree; exact initial MetaMode restoration and owned-mode cleanup pass
+  after both tests. The initial restricted-path probe exposed inaccessible
+  desktop-bus sockets; the final Host uses a read-only attested runtime bind.
+- New Client opened and the separate Retina control inspected. Current bookmark:
+  Match client displays, macOS desktop size, Native scaling. Client is at direct
+  sign-in; authenticated end-to-end matching, drag and UI-size acceptance are
+  pending. No persistent system DPI or Xorg configuration change was made.
+
+The accepted native-Spaces Client and Pause Host below remain rollback artifacts.
+Intermittent left-click recurrence is parked at the operator's request; its cause
+is not established. Original pre-testing Host layout restoration remains due at
+end of all live testing. Machine details and test captures stay in private audit.
 
 ## Fork continuation — experimental macOS 15 Client
 
