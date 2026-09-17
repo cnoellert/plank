@@ -3,6 +3,7 @@
 import importlib.machinery
 import importlib.util
 from pathlib import Path
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -75,7 +76,32 @@ class DisplayMatchTest(unittest.TestCase):
         self.assertEqual(apply[2], "4616x1440")
         self.assertIn("PLANK-Match-123-456-0", apply)
         self.assertIn("2056x0", apply)
+        panning = [apply[index + 1] for index, arg in enumerate(apply) if arg == "--panning"]
+        self.assertEqual(panning, ["2056x1286+0+0", "2560x1440+2056+0"])
         self.assertFalse(any(argv[0] == match.NVIDIA and "--assign" in argv for argv in commands))
+
+    def test_rejects_viewport_that_can_pan_despite_correct_current_position(self):
+        query = QUERY.replace("2560x1440+0+0 (normal", "2056x1286+0+0 (normal")
+        query = query.replace("x axis y axis)\n", "x axis y axis) panning 2560x1440+0+0\n", 1)
+        expected = {"DP-0": (2056, 1286, 0, 0)}
+        with patch.object(match, "command", return_value=query), \
+             patch.object(match, "mutter_geometry", return_value={"DP-0": (*expected["DP-0"], 1.0, 0)}), \
+             patch.object(match.time, "monotonic", side_effect=[0, 7]):
+            with self.assertRaisesRegex(ValueError, "geometry"):
+                match.verify(expected)
+
+    def test_accepts_fixed_panning_domain(self):
+        for suffix in ["", " panning 2560x1440+0+0"]:
+            query = QUERY.replace("x axis y axis)\n", "x axis y axis)" + suffix + "\n", 1)
+            with patch.object(match, "command", return_value=query), \
+                 patch.object(match, "mutter_geometry", return_value={"DP-0": (2560, 1440, 0, 0, 1.0, 0)}):
+                match.verify({"DP-0": (2560, 1440, 0, 0)})
+
+    def test_nvidia_zero_exit_error_is_not_success(self):
+        result = subprocess.CompletedProcess([], 0, "", "ERROR: Error assigning value (Attribute not available).")
+        with patch.object(match.subprocess, "run", return_value=result):
+            with self.assertRaisesRegex(ValueError, "NVIDIA rejected"):
+                match.command([match.NVIDIA, "--assign", "CurrentMetaMode=" + BASELINE])
 
     def test_compositor_mismatch_restores_baseline_before_cleanup(self):
         commands = self.transaction(fail=True)

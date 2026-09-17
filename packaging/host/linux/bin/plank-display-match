@@ -23,6 +23,9 @@ def command(argv):
                             stderr=subprocess.PIPE, timeout=5, check=True)
     if len(result.stdout) > 256 * 1024:
         raise ValueError("Display command output exceeds limit")
+    # nvidia-settings can exit successfully even when an assignment is rejected.
+    if argv[0] == NVIDIA and re.search(r"\bERROR:", result.stderr):
+        raise ValueError("NVIDIA rejected the display command")
     return result.stdout
 
 
@@ -43,8 +46,10 @@ def outputs(query):
         match = re.match(r"^([A-Za-z0-9_-]+) connected(?: (primary))?(?: (\d+)x(\d+)\+(-?\d+)\+(-?\d+))? ", line)
         if match:
             name, primary, width, height, x, y = match.groups()
+            panning = re.search(r" panning (\d+)x(\d+)\+(-?\d+)\+(-?\d+)", line)
             result.append({"name": name, "primary": bool(primary),
-                           "rect": tuple(map(int, (width, height, x, y))) if width else None})
+                           "rect": tuple(map(int, (width, height, x, y))) if width else None,
+                           "panning": tuple(map(int, panning.groups())) if panning else None})
     return result
 
 
@@ -105,9 +110,14 @@ def verify(expected):
     """Wait briefly for both XRandR and GNOME to acknowledge exact geometry."""
     deadline = time.monotonic() + 6
     while True:
-        actual = {item["name"]: item["rect"] for item in outputs(command([XRANDR, "--query"])) if item["rect"]}
+        active = [item for item in outputs(command([XRANDR, "--query"])) if item["rect"]]
+        actual = {item["name"]: item["rect"] for item in active}
+        # A correct CRTC position alone is not sufficient: the NVIDIA viewport
+        # can move later if its retained panning domain is larger than the mode.
+        fixed_viewports = all(item["panning"] is None or item["panning"] == item["rect"]
+                              for item in active)
         compositor = mutter_geometry()
-        if actual == expected and compositor == {name: (*rect, 1.0, 0) for name, rect in expected.items()}:
+        if fixed_viewports and actual == expected and compositor == {name: (*rect, 1.0, 0) for name, rect in expected.items()}:
             return
         if time.monotonic() >= deadline:
             raise ValueError("XRandR and GNOME did not agree on the matched display geometry")
@@ -176,7 +186,9 @@ def apply(token, modes):
             command([XRANDR, "--addmode", item["name"], name])
             attached.append((item["name"], name))
             expected[item["name"]] = (width, height, x, 0)
-            args += ["--output", item["name"], "--mode", name, "--pos", str(x) + "x0", "--rotate", "normal", "--transform", "none"]
+            args += ["--output", item["name"], "--mode", name, "--pos", str(x) + "x0",
+                     "--rotate", "normal", "--transform", "none",
+                     "--panning", f"{width}x{height}+{x}+0"]
             x += width
         for item in items:
             if item not in selected:

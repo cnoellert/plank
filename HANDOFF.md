@@ -1,5 +1,22 @@
 # PLANK handoff
 
+## Matching layout correction in progress
+
+The first authenticated automatic-matching trial exposed a retained NVIDIA
+panning domain larger than the requested Mac logical-size output. Pointer
+movement shifted that viewport into the adjacent display despite an initially
+correct CRTC position. The helper now sets each panning domain to its exact
+output rectangle and verifies that it cannot move. Ten helper tests pass,
+including rejection of a larger domain at an otherwise correct position and
+NVIDIA's zero-exit-status assignment error. Candidate 1.0.123 is not yet
+packaged or live-accepted. The current stream needs a fresh capture after the
+live geometry correction; visible overlap has not yet been cleared.
+
+Separately, the Mac camera-safe size estimate differs from the settled native
+fullscreen content height by a few logical pixels; investigate before claiming
+exact Retina matching. The supervisor's legacy MetaMode assignment path still
+needs readback verification for zero-exit-status driver errors.
+
 ## Current work — automatic matching candidate
 
 The operator selected automatic display matching including Retina and requested
