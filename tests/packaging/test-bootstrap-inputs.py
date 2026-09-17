@@ -36,7 +36,6 @@ class BootstrapInputs(unittest.TestCase):
             commands.mkdir()
             # No dependency downloads or compiler calls in this contract test.
             # Only the fake archive bypasses its hash; the real patch is hashed.
-            real_sha = shutil.which('sha256sum')
             for name, content in {
                 'curl': '#!/bin/sh\nexit 99\n',
                 'nasm': '#!/bin/sh\nexit 99\n',
@@ -47,9 +46,11 @@ class BootstrapInputs(unittest.TestCase):
                     'assert sys.argv[1:3] == ["-m", "--"] and len(sys.argv) == 4\n'
                     'print(Path(sys.argv[3]).resolve())\n',
                 'patch': '#!/bin/sh\ncat >/dev/null\nexit 0\n',
-                'sha256sum': '#!/usr/bin/env python3\nimport subprocess,sys\ns=sys.stdin.read()\n'
+                'sha256sum': '#!/usr/bin/env python3\nimport hashlib,pathlib,sys\ns=sys.stdin.read()\n'
                     'if "ffmpeg-9.0.1.tar.xz" not in s:\n'
-                    f' sys.exit(subprocess.run([{real_sha!r}, *sys.argv[1:]], input=s, text=True).returncode)\n',
+                    ' expected, name = s.strip().split(maxsplit=1)\n'
+                    ' actual = hashlib.sha256(pathlib.Path(name.lstrip(" *")).read_bytes()).hexdigest()\n'
+                    ' sys.exit(0 if actual == expected else 1)\n',
             }.items():
                 program = commands / name
                 program.write_text(content)
@@ -60,13 +61,11 @@ class BootstrapInputs(unittest.TestCase):
             self.assertFalse((base / 'empty-stage').exists())
             return result
 
-    @unittest.skipUnless(shutil.which('sha256sum'), 'Linux bootstrap requires sha256sum')
     def test_empty_runtime_stage_uses_tracked_patch(self):
         result = self.run_bootstrap(True)
         self.assertEqual(result.returncode, 37, result.stderr)
         self.assertIn('client_ffmpeg_identity_gbr_patch_gate=pass', result.stdout)
 
-    @unittest.skipUnless(shutil.which('sha256sum'), 'Linux bootstrap requires sha256sum')
     def test_missing_tracked_patch_stops_bootstrap(self):
         result = self.run_bootstrap(False)
         self.assertEqual(result.returncode, 1, result.stderr)
