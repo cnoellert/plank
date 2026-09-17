@@ -3,6 +3,8 @@
 - [User documentation](user/): bookmark behavior and product configuration.
 - [Architecture](architecture/): media, input, authentication and lifecycle.
 - [Development](development/): platform matrix, acceptance, build runbooks and plans.
+  [macOS 15 integration review](development/macos15-integration-review.md)
+  covers the experimental fork, evidence, regression risks and linked PR plan.
   [GitHub-hosted builds](development/build/github-builds.md) covers CI scope,
   artifacts and signing boundaries.
 - [Security](security/): threat models and security-focused contracts.

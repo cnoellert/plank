@@ -1,5 +1,10 @@
 # Experimental macOS 15 Client fork
 
+For the current consolidated inventory, acceptance matrix, upstream comparison
+and contribution plan, see [the integration review](macos15-integration-review.md).
+The entries below retain the detailed development history; earlier pending
+states are superseded only by explicit later acceptance for the same behavior.
+
 This fork adds an explicit Apple Silicon macOS 15 Client build target.
 The initial goal is keyboard, mouse, video and audio from a Linux Host.
 An experimental Mac raw USB Wacom backend now also passes initial attachment

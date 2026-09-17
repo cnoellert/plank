@@ -1,5 +1,32 @@
 # PLANK handoff
 
+## PR preparation and regression review
+
+The operator requested comprehensive documentation and protection of working
+upstream paths before contribution. Root and Client branch
+`codex/macos15-pr-review` is isolated from the accepted `codex/macos15-client`
+checkout and installed Client 1.0.126 / Host 1.0.125. See the
+[integration review](docs/development/macos15-integration-review.md) and
+[five local PR drafts](docs/development/pr-drafts/README.md).
+
+Fetched root `424204b` and Client `b9e4be6` and reconciled the Retina overlap,
+retaining upstream's native Quit bridge and root build-cache/release work.
+Review Client `9c1af82` limits automatic capture, native Space cleanup and
+single-host-output presentation policy to macOS; Wayland keeps upstream policy.
+Root `50a05e1` keys dependencies by explicit deployment target and adds platform
+guards. The common-C PR must target `plank/client`, not the repository's default
+`atomics` branch; the Host library PR targets `plank/main`, not `master`.
+
+Clean candidate 1.0.127 passes 84 Qt cases, seven fullscreen/platform guards,
+native input ordering, 106 Mach-O/dependency/signature gates, seven portable
+CTest suites and 38 CI tests. Executable SHA256:
+`96807fe329b4e24e0a5e6e08785b0f4e831ea0abb853de0f7d6a4d4892a87442`.
+Artifact: `artifacts/development/macos15-pr-review/PLANK Client Development.app`.
+New-commit privacy scans pass across all five repos. This candidate is not
+deployed or live-accepted. Ubuntu Client and supported newer-Mac qualification,
+recovery/hotplug, physical single-output and failure-restoration gates remain.
+No fork, remote push, PR, merge to upstream or release has been performed.
+
 ## Secondary fullscreen window cleanup accepted
 
 Client candidate 1.0.126 explicitly leaves and synchronizes a secondary native
