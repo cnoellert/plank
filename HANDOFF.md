@@ -33,6 +33,17 @@ notes' README before machine-specific work; deployment information stays outside
   | libvirtualhid / plank/main | `a74f9694fe4bec29a4643975ced6da4cdedbf04f` |
   | libvirtualhid / master (activation only) | `62838758220d594d008d42e0c90e1210c49c1a79` |
 
+  Initial GitHub Dependabot jobs all completed successfully: root Cargo
+  `35270141576`, Actions `35270137176`, submodules `35270136847`; Host
+  `35270026662`, Client `35270030228`, Kymux `35270045661`, build-deps
+  `35270044386`, libvirtualhid `35270045226`. First update PRs are open on the
+  intended targets; none were merged. This validates automation, not the
+  proposed dependency versions. Root setup commit is
+  `6377245de4a1e82b201320877c0a7858fb87054f`. No candidate build or deployment
+  was needed for this configuration-only setup. Quinn automatic security-fix
+  PRs are also excluded by the explicit ignore rule; alerts still require
+  manual triage against the repaired production fork.
+
 - The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
   and release. Root and Client are on pushed main: package-source root
   `cb01cfe84504d7a74dfa78c5b79d701c8277bf6e`, Client merge

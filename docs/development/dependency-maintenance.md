@@ -67,8 +67,10 @@ together; do not treat this table as another build manifest.
 
 ### Quinn and Vulkan exceptions
 
-Quinn/Quinn-proto version PRs are intentionally excluded from the root and
-Kymux schedules. Production and probes share the repaired
+Quinn/Quinn-proto automatic PRs are intentionally excluded from the root and
+Kymux schedules, including automatic security fixes. Security alerts remain
+enabled; these dependencies require manual advisory triage and repairs.
+Production and probes share the repaired
 `third_party/quinn-proto-0.11.17` source via Cargo patches. Review upstream
 security advisories manually, including RustSec reports, and upgrade the fork,
 callers, both lockfiles and documented repairs together. Never remove that path
