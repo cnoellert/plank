@@ -19,8 +19,19 @@ notes' README before machine-specific work; deployment information stays outside
   pass. Hosted run 35185516514 compiled the application and passed existing
   topology/toolbar/desktop-stage tests, then caught a missing direct SDL include
   in the retained shortcut test after bridge removal. That test dependency is
-  corrected; no package was produced. Native Qt/AppKit tests and the corrected
-  signed hosted build remain pending. No merge or deployment. Preserve the
+  corrected; no package was produced by that failed run. Corrected signed run
+  `35185783350` passed from root `be387875a3fde8dd87c5a3b4c046d368f1a58457`,
+  Client `be8a1e06cba05299f939cea2bc4f440bef1a9196`. Dependency cache restored
+  and independently verified. Native suite totals: topology 19, toolbar 21,
+  desktop-stage 7, shortcut 9, application lifecycle 8 (totals include suite
+  init/cleanup; the latter two have seven and six actual cases). All passed.
+  Signing/notarization/stapling/Gatekeeper and signing cleanup passed. Verified
+  86,548,985-byte DMG is collected under
+  `artifacts/packages/candidates/1.0.123-macos-quit-lifecycle/macos/` as
+  `plank-client_1.0.123-macos-quit-lifecycle_arm64.dmg`; SHA256:
+  `58847e6616f240a98eb0a8180edefadaf1106ad19653e6f53f854e819f719a8c`.
+  Host/Kymux and recursive Client pins remain those recorded below. Live
+  acceptance of the rewrite remains pending. No merge or deployment. Preserve the
   original checkpoint branch and unrelated primary-worktree research.
 
 - Accepted behavioral checkpoint: `1.0.122-macos-command-q`. Client commit

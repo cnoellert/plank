@@ -36,3 +36,16 @@ Build/sign/notarize on GitHub-hosted macOS27, retaining exact source and hashes.
 Operator gate: captured Command-Q quits only the remote app; menu and Dock Quit
 close PLANK while streaming and during reconnect; disconnect keeps PLANK open;
 idle/capture-disabled Command-Q quits locally. Do not merge before acceptance.
+
+## Candidate result
+
+Signed hosted run 35185783350 passed at root
+`be387875a3fde8dd87c5a3b4c046d368f1a58457`, Client
+`be8a1e06cba05299f939cea2bc4f440bef1a9196`. All seven native shortcut and six
+application-lifetime cases passed, alongside existing suites. Dependency cache
+restored and verified; signing, notarization and Gatekeeper passed. Exact
+package/hash are in HANDOFF. No deployment or live acceptance yet.
+
+The initial run 35185516514 compiled the application but caught a test relying
+on the deleted bridge's transitive SDL include. The test now includes SDL
+directly; no package or weakened gate resulted from that failed attempt.
