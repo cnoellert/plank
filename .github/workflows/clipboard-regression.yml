@@ -1,0 +1,35 @@
+name: Clipboard regressions
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  x11-backend:
+    runs-on: ubuntu-24.04
+    container: rockylinux/rockylinux:9.7@sha256:53f4c6dcb34e1403bd93207351f0af9a593610faeb7165cb8a037346765199b0
+    timeout-minutes: 15
+    steps:
+      - name: Install isolated X11 test tools
+        run: |
+          dnf --disablerepo='*' \
+            --repofrompath=ci-baseos,https://dl.rockylinux.org/vault/rocky/9.7/BaseOS/x86_64/os/ \
+            --repofrompath=ci-appstream,https://dl.rockylinux.org/vault/rocky/9.7/AppStream/x86_64/os/ \
+            --repofrompath=ci-crb,https://dl.rockylinux.org/vault/rocky/9.7/CRB/x86_64/os/ \
+            --enablerepo=ci-baseos --enablerepo=ci-appstream --enablerepo=ci-crb \
+            install -y git gcc-toolset-14-gcc-c++ pkgconf-pkg-config libX11-devel libxcb-devel xorg-x11-server-Xvfb
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check out exact Host input
+        run: git submodule update --init apps/host/linux
+      - name: Exercise production clipboard backend against Xvfb
+        shell: bash
+        run: |
+          source /opt/rh/gcc-toolset-14/enable
+          bash apps/host/linux/tests/clipboard/run-x11-backend.sh
