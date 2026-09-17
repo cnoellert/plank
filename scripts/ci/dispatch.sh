@@ -6,12 +6,13 @@ signed=${2:-false}
 clean_bootstrap=false
 case ${3:-} in '') ;; --clean-bootstrap) clean_bootstrap=true;; *) exit 2;; esac
 (( $# <= 3 )) || exit 2
-case $product in all|linux-host|linux-client|macos-host|macos-client) ;; *) exit 2 ;; esac
+case $product in all|linux-host|linux-client|macos-host|macos-client|macos-fullscreen-probe) ;; *) exit 2 ;; esac
 case $signed in
   false) ;;
-  true) case $product in macos-host|macos-client) ;; *) exit 2;; esac ;;
+  true) case $product in macos-host|macos-client|macos-fullscreen-probe) ;; *) exit 2;; esac ;;
   *) exit 2 ;;
 esac
+[[ $product != macos-fullscreen-probe || $signed == true ]] || exit 2
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$root"
 test -z "$(git status --porcelain)" || { echo 'Commit the candidate before dispatch.' >&2; exit 1; }

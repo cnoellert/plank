@@ -61,6 +61,39 @@ class SigningTests(unittest.TestCase):
                 command.assert_not_called()
             self.assertFalse(directory.exists())
 
+    def test_probe_uses_fixed_diagnostic_commands_without_secret_environment(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'plank-macos-signing'
+            env = {name: 'Zml4dHVyZQ==' for name in signing.SECRET_NAMES}
+            env.update(PLANK_CI_PRODUCT='macos-fullscreen-probe', PLANK_MACOS_TEAM_ID='ABCDEFGHIJ',
+                       PLANK_SOURCE_ROOT='/example/source', PLANK_WORK_ROOT=temporary+'/work')
+            calls = []
+
+            def run(args):
+                self.assertFalse(set(signing.SECRET_NAMES) & set(os.environ))
+                calls.append(args)
+                return subprocess.CompletedProcess(args, 0)
+
+            def command(stage, args):
+                if stage == 'read keychain search list':
+                    return '"/example/login.keychain-db"'
+                if stage == 'validate signing identities':
+                    return ('A'*40 + ' "Developer ID Application: Example (ABCDEFGHIJ)"\n' +
+                            'B'*40 + ' "Developer ID Installer: Example (ABCDEFGHIJ)"')
+                return ''
+
+            with patch.dict(os.environ, env, clear=True), \
+                    patch.object(signing, 'runner_directory', return_value=directory), \
+                    patch.object(signing.sys, 'argv', ['sign-macos.py']), \
+                    patch.object(signing, 'command', side_effect=command), \
+                    patch.object(signing.subprocess, 'run', side_effect=run):
+                signing.main()
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[0][1], '/example/source/scripts/package/build-macos-fullscreen-probe.sh')
+            self.assertEqual(calls[0][2], '--build')
+            self.assertEqual(calls[1][2], '--package')
+            self.assertFalse(directory.exists())
+
 
 if __name__ == '__main__':
     unittest.main()

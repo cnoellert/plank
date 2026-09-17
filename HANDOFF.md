@@ -463,11 +463,150 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Mainline 1.0.121 package rebuild completed from pushed root
+  `41961fb5e9ef8329711e04d1adf75cc4b2968ce3`. Client PR #1 is approved and
+  merged at `b9e4be6b374001bef08ac4753764bc12edcb8357`; the root Client pin
+  now includes the macOS native application Quit bridge. Linux Host and Kymux
+  pins are unchanged. Clipboard PRs are not included: their reviews requested
+  changes. All four hosted builds and package gates passed: Linux Host
+  `35166761486`, Ubuntu Client `35166763396`, signed Mac Host `35166765361`,
+  signed Mac Client `35166767426`. Both Mac packages passed notarization,
+  stapling and Gatekeeper. All downloaded packages passed SHA256 verification
+  and are collected under `artifacts/packages/releases/1.0.121/`, with manifest
+  and checksums. Both Clients and Mac Host restored verified dependency caches.
+  Linux Host had a cold miss because NVIDIA's two CUDA config-common RPMs
+  advanced from 13.4.49 to 13.4.92; its successful build saved the new cache.
+  Local CI tests (37) and package-collection tests (6) passed. See
+  `docs/releases/1.0.121.md` for build links and validation scope. Published as
+  [v1.0.121](https://github.com/instinctual/plank/releases/tag/v1.0.121)
+  at the operator's request. Its annotated tag identifies the exact package
+  source above, not the subsequent documentation commits. Server-side SHA256
+  digests match all four packages, manifest and release checksum file. No
+  installation or native hardware acceptance was performed. Unchanged Linux Host is
+  `9329784ac41f50cbec0c9d76badfd22227ec5e5f`; Kymux is
+  `912ece5c64787997f978673ca60d313898a3548c`. Client common-c is
+  `b9650552f98d97f6e30c9f007115c6246f0809e5`; qmdnsengine is
+  `b7a5a9f225d5e14b39f9fd1f905c4f505cf2ee99`. Host recursive pins remain
+  as recorded below.
+  Source review found no actionable defect in the Quit bridge, but native
+  menu/Dock Quit during streaming/reconnect and physical Command-Q ownership
+  remain live validation follow-ups. The author's reported eight lifecycle
+  scenarios are not committed tests and were not independently rerun.
+  Preserve the primary worktree's unrelated RK3576 research.
+
+- Dependency-cache follow-up is merged and pushed to main at
+  `4bd87fbcf5c96d177006ac0ea0c99b532396d5b5` (based on main `4001161`).
+  All four hosted products are wired for exact-input caches; the previously
+  qualified Mac Client cache format is unchanged. New Linux Host/Client caches
+  retain prepared FFmpeg and patch-verification sources; Host also retains
+  Boost. Those products and Mac Host cache Rust toolchains/downloaded Cargo
+  inputs, never application/transport objects or credentials. Installed Linux
+  package/compiler versions and dependency scripts/pins/patches invalidate keys.
+  Pull requests cannot save caches; clean bootstrap bypasses restore and save.
+  Local 37 CI tests and all five root CTest suites pass. Hosted cold/warm
+  qualification passed for all four products; exact runs and phase timings are
+  in `docs/development/build/github-builds.md`. Linux Host cold/warm used
+  `35144970937` attempts 1/2 at `478edad0ee302c22c713df1cb67b4c4c185340a5`.
+  The Ubuntu-specific archive correction is `64f368a4fdb58cc0de267bc8f59ec108a8f43be8`;
+  its cold/warm runs `35146540028` / `35147537196` both passed. Initial warm
+  run `35146202369` was correctly stopped by the source audit because the cache
+  omitted the pristine FFmpeg archive. The archive is now cached and required
+  by completeness tests; no source/patch gate was weakened. Mac Host warm run
+  `35145530809`, Mac Client warm run `35145993419`, and an additional Mac Host
+  cold build at the corrected source (`35146543166`) passed.
+  The Ubuntu correction changes cache keys but not the qualified Host cache
+  contents/logic. Application and transport source revisions remain identical
+  to the 1.0.120 release below. No runtime change, version bump or deployment.
+  Post-merge hosted run `35148481593` passed all four products at that exact
+  merge SHA and populated main's branch-scoped caches. Do not relabel the CI test packages
+  or replace the published 1.0.120 assets. No additional deployment requested.
+  Completed root branches `dependency-cache`, `macos-auth-recovery`,
+  `macos-fullscreen` and `reconnect-lifecycle`, plus the Client's three matching
+  macOS/reconnect branches, were deleted locally and remotely after ancestry
+  checks against pushed main. Their commits remain in main. Root, Client,
+  Linux Host and Kymux remotes now have only main. Preserve the local
+  `rk3576-client` research branch and its dirty primary worktree; it is not
+  disposable merely because its committed starting point is an ancestor of main.
+
+- Operator accepted Client 1.0.119-macos-fullscreen and authorized commit,
+  push, merge and a full rebuild. Root merge `53c7c3988f88a440f1cffeda0ce61ed526de6c43`
+  and Client merge `95060dee8fa63e0da98dfa83e7ddd8185731a837` are pushed to main.
+  All four Host/Client packages rebuilt successfully as 1.0.120 from that exact
+  root on disposable GitHub-hosted builders with `clean_bootstrap=true`.
+  Successful runs: Linux Host `35137573043`, Ubuntu Client `35137572752`,
+  signed Mac Host `35137572797`, signed Mac Client `35137572549`.
+  Package, dependency, version and platform regression gates passed; both Mac
+  packages passed Developer ID signing, notarization, stapling and Gatekeeper.
+  All four downloaded packages passed SHA256 verification and collection with
+  exact source provenance under `artifacts/packages/releases/1.0.120/`.
+  At the operator's subsequent request, all four packages were published as
+  [v1.0.120](https://github.com/instinctual/plank/releases/tag/v1.0.120).
+  The annotated tag identifies the exact package source above. Server-side
+  SHA256 digests match all four packages, manifest and release checksum file.
+  Notes are in `docs/releases/1.0.120.md`. No installation or new hardware
+  acceptance was performed. Preserve unrelated primary-worktree research. Earlier candidate
+  packages below are historical evidence, not the current mainline artifacts.
+  Normal full application rebuilds may reuse verified dependency caches;
+  reserve cold bootstrap for explicit qualification. At this release's source,
+  caching existed only for the macOS Client; the follow-up above extends it.
+
+  | Package (relative to the 1.0.120 catalog) | SHA256 |
+  | --- | --- |
+  | `linux/plank-host-1.0.120-1.el9.x86_64.rpm` | `b74fd2486ab5864fb332d77d594b03c24ce76355c7651d24c3de3c05f49aa046` |
+  | `linux/plank-client_1.0.120_amd64.deb` | `dea73b7f9ac840010ce02f15154b4ae2d4020ef61e925bc787ad0fb821074b53` |
+  | `macos/plank-host_1.0.120_arm64.pkg` | `0fc01ce11172d075d864841d26a997c8bb5f5911032afff8536f43d98e244b35` |
+  | `macos/plank-client_1.0.120_arm64.dmg` | `618a42f6ff8c86765f3a692b918c852ab7557a79e1733e0294999a219466765e` |
+
+  Root and Client merge SHAs above pin the complete source tree; unchanged
+  gitlinks are listed with the accepted evidence below. Linux Host common-c
+  is `775943b5ac5e5100a3c2b1b89d9e21151dea4f29` and build-deps is
+  `caf0495d5e6baff94f349853d4a59e3779a451a0`.
+
+- Accepted Client 1.0.119-macos-fullscreen evidence:
+  Operator tested all five standalone AppKit modes: no side borders, same
+  system-owned top notch strip. Operator accepts that strip and native Spaces.
+  New policy: Mac-to-Mac fullscreen Match Client uses NSScreen's dynamic top
+  camera inset and preserves compositor backing density. Zero inset leaves
+  non-notched displays unchanged. Windowed/manual sizing stays unchanged.
+  Authentication, startup validation and reconnect use the same viewport;
+  original display bounds remain separate for window placement/identity.
+  Removed ineffective SDL content-size patch/hint/helper. Bootstrap/cache inputs
+  changed, forcing fresh upstream SDL dependencies; FFmpeg patch gates remain.
+  Local five fullscreen tests (including compiled geometry), 26 CI tests,
+  14 reconnect guards and five root CTest suites pass. Signed hosted run
+  `35131997746` passed from root `9167fd8412172fee9d47be9eb2bc67cc155d7750`,
+  Client `6f0c25269c5a8bf1051814317440f2cd57fda005`: cold dependency bootstrap,
+  SDK27 native compile, 19 topology / 21 toolbar / seven desktop-stage tests,
+  package/version/dependency gates, Developer ID signing, notarization, staple,
+  Gatekeeper and signing-material cleanup. New dependency cache sealed.
+  Operator reports the fix works and accepts it. This is not a claim that every
+  display/input combination was individually tested. No Host behavior change.
+  Start a fresh fullscreen connection; toggling window mode alone does not
+  renegotiate an existing Host resolution.
+  Hash-verified DMG (85,582,956 bytes):
+  `artifacts/packages/candidates/1.0.119-macos-fullscreen/macos/plank-client_1.0.119-macos-fullscreen_arm64.dmg`.
+  SHA256: `58f8d4b56b6f68e3490e5c54b066030525e7ebee074ababcaccba96eaba709c9`.
+  Unchanged gitlinks: Linux Host `9329784ac41f50cbec0c9d76badfd22227ec5e5f`,
+  Kymux `912ece5c64787997f978673ca60d313898a3548c`; Client common-c
+  `b9650552f98d97f6e30c9f007115c6246f0809e5`, qmdnsengine
+  `b7a5a9f225d5e14b39f9fd1f905c4f505cf2ee99`.
+
+- Superseded fullscreen evidence: Client 1.0.117 (root `aea1ab33`,
+  Client `509f2fc7`, signed run `35124970815`) restored swipes but retained
+  side borders; AppKit ignored the requested full-panel content size. The
+  standalone 1.0.118 probe (root `21c29544`, signed run `35129303592`) passed
+  build/signing and the operator compared all five modes. That probe is NOT
+  Client 1.0.118. Its retained diagnostic DMG is under
+  `artifacts/diagnostics/1.0.118-macos-fullscreen/macos/`; SHA256
+  `8e391cf9c07ed7df9faaad1964f5319626e84a3f521c6527d8bec360600f06a9`.
+  Full-panel override experiments are retired. See
+  `docs/development/plans/macos-fullscreen.plan` for findings and acceptance gates.
+
 - The operator authorized merging the reconnect follow-up into main after
   manually installing Host 1.0.116. Reconnect implementation root `4173138`
   and Client `e8fc0cc0` extend the previously accepted root `d34a110` / Client
   `060e6424`. The separate worktree (directory still named macos-auth-recovery)
-  is now the mainline continuation point; preserve unrelated primary-worktree research.
+  contains the continuation work; preserve unrelated primary-worktree research.
   Host and Client candidates 1.0.116 retain valid setup authorization across readiness retries,
   stop rejected authentication/TLS/permission failures, and gate new requests
   on the configured Ask/Disconnect deadline. Keep Waiting explicitly resumes.
@@ -621,7 +760,11 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Release evidence
 
-Latest published Host-only release: [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106),
+Latest published release is **v1.0.120**, all four products, recorded above.
+The merged dependency-cache work extends hosted caches without runtime changes;
+qualification runs are separate from the published package source.
+
+Historical Host-only release: [v1.0.106](https://github.com/instinctual/plank/releases/tag/v1.0.106),
 mainline source `4b634071d0aa96c5568e90068f5f42b7cd953365`, signed run
 35035036281. Catalog `releases/1.0.106/macos/plank-host_1.0.106_arm64.pkg`;
 SHA256 `bdb59fb5ddf2df0afb4704920684b83d81c9b8975602e3d643bed5dd1c8d3e49`.
@@ -726,8 +869,9 @@ not imply missing release dependencies.
 
 Mainline macOS Host 1.0.106 is published, collected and checksum-verified.
 Its completed `macos-media-recovery` branch was deleted. The subsequently
-accepted `macos-auth-recovery` work is merged; `reconnect-lifecycle` and
-unrelated research remain separate.
+accepted authentication, reconnect, fullscreen and dependency-cache work is
+merged, and its completed feature branches are deleted. Unrelated local
+RK3576 research remains separate.
 Volume/mute is operator-validated. Longer app/alert audio, device changes,
 sleep/reconnect/topology and login/logout remain follow-up coverage, not
 blockers invented beyond the operator's merge approval. Inspect the new audio

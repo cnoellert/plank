@@ -66,6 +66,13 @@ Candidate builds must independently reverse-dry-run that patch and verify its
 hash. Private dylibs must be bundled with relocatable install names, licensed,
 signed and closure-checked before any package is offered to a user.
 
+SDL3.4.2 uses its unmodified native fullscreen Spaces implementation. Match
+Client requests the usable logical/backing area below a display's camera inset;
+non-notched displays retain the complete area. No content-size delegate patch
+or custom fullscreen hint is required. The changed bootstrap/cache inputs force
+a fresh hosted dependency build after removal of the experimental SDL patch.
+For local prepared dependencies, rerun the complete bootstrap, not FFmpeg-only.
+
 The current packaging path is qualified; each new candidate still requires its
 affected live acceptance gates. Do not use the old upstream setup-deps/prebuilts
 workflow.

@@ -1,11 +1,22 @@
 # PLANK Release Build Runbook
 
 For disposable GitHub-hosted workers, see [GitHub-hosted builds](github-builds.md).
-Mac Client hosted jobs reuse exact-input dependencies, never application objects
+Hosted jobs reuse exact-input dependencies, never application objects
 or signing state. Use the dispatch helper's `--clean-bootstrap` third argument
 to bypass both cache restore and save when qualifying a fresh bootstrap.
 Those workflows establish the same OS, dependency, clean-source and package
 contracts through `scripts/ci/`; they do not deploy or replace hardware gates.
+
+A full application rebuild still permits reuse of verified, exact-input
+dependencies. Reserve `--clean-bootstrap` for an explicit dependency-bootstrap
+qualification, not ordinary rebuilds after a merge. All four hosted products
+have exact-input dependency caches. Linux Host retains prepared FFmpeg and
+Boost sources, Ubuntu Client retains patched FFmpeg, and macOS Client retains
+prepared libraries and Qt. The other three products also retain the pinned
+Rust toolchain and downloaded Cargo inputs; macOS Host uses native Apple media
+frameworks, so has no separate FFmpeg/Qt dependency build to cache. Application
+and transport objects, tests, packaging and signing always run fresh. See
+`github-builds.md` for cache boundaries and cold/warm qualification status.
 
 This is the canonical, repeatable procedure for producing PLANK host
 and client candidate packages. Read it before changing or running a release
