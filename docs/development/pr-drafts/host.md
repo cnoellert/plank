@@ -18,7 +18,8 @@ independently from the XRandR primary flag.
 ## Dependencies and deployment
 
 - Host contribution: `d96eb476`; target: `main`.
-- Depends on libvirtualhid Pause `b0cc3c8` and the root's `plank-display-match`
+- Depends on [libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
+  (`b0cc3c8`) and the root's `plank-display-match`
   helper, RPM ownership/dependencies and tests.
 - Supervisor/worker request changes from SC-DISPLAY-3 to SC-DISPLAY-4; upgrade
   these components together. This is not an external schema-version change.
@@ -43,3 +44,10 @@ The operator confirmed correct display appearance and intended Flame placement.
 An upstream Ubuntu Client, headless preset workflows, forced helper termination,
 restoration failure and abrupt session recovery still need qualification. Do
 not describe successful normal restoration as proof of every failure path.
+
+The libvirtualhid dependency must be available from its canonical upstream URL
+before the gitlink is used as a reproducible build input.
+
+## Contribution set
+
+Tracked by [integration PR #4](https://github.com/instinctual/plank/pull/4); [change inventory and verification record](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).

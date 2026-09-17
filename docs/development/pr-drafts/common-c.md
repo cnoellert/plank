@@ -27,3 +27,8 @@ motion saturation remain review gates; there is no blanket cross-platform pass.
 Queue limits, allocation/error paths, sole-consumer assumptions and preservation
 of ordering under producer concurrency. No credentials, privilege changes or
 wire-format additions are involved.
+
+## Contribution set
+
+Tracked by [integration PR #4](https://github.com/instinctual/plank/pull/4); [change inventory and verification record](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).
+Consumed by [Client PR #3](https://github.com/instinctual/plank-client/pull/3).

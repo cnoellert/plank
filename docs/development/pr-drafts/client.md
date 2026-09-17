@@ -18,7 +18,8 @@
 
 ## Dependencies and compatibility
 
-Depends on the common-C ordered-input PR (`0c82257`) and the root's build,
+Depends on [common-C #3](https://github.com/instinctual/plank-common-c/pull/3)
+(`0c82257`) and the root's build,
 protocol fixtures and packaging. Display matching requires the optional Host
 features; older Hosts retain preset-only matching. The default newer-macOS
 build and Linux Client still require qualification.
@@ -50,3 +51,11 @@ platform guards; its build record is linked from the root review.
 Review Metal resource lifetimes, raw-HID ownership/control bounds and shared
 input ordering. Authentication, TLS and exact video-profile negotiation remain.
 Attach only sanitized bookmark UI screenshots; development captures are private.
+
+The common-C dependency must be available from its canonical upstream URL before
+this gitlink can be treated as a reproducible build input. Keep this PR draft
+until the dependency and qualification gates pass.
+
+## Contribution set
+
+Tracked by [integration PR #4](https://github.com/instinctual/plank/pull/4); [change inventory and verification record](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).

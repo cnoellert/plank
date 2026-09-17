@@ -23,3 +23,8 @@ No system keymap or persistent application workaround was installed.
 
 Portable versus scan-code paths, uinput advertised capabilities, and preserving
 F15 as a separate key. No protocol version or privilege change is required.
+
+## Contribution set
+
+Tracked by [integration PR #4](https://github.com/instinctual/plank/pull/4); [change inventory and verification record](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).
+Consumed by [Linux Host PR #2](https://github.com/instinctual/plank-host-linux/pull/2).

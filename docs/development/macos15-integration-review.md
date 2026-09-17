@@ -45,7 +45,8 @@ release notes and signing policy. No `ours`/`theirs` whole-tree replacement,
 force push, production branch reset or rewrite of upstream history was used.
 
 Upstream's open clipboard contribution is independent and was not merged.
-Refresh all bases again before publication and final merge.
+All five bases were checked again immediately before publication and were
+unchanged. Refresh them again before final merge.
 
 ## What changed, and why
 
@@ -141,16 +142,16 @@ failure. No product code or dependency pin was changed to bypass it.
 
 ## PR structure and merge order
 
-Prepare linked **draft** PRs; do not merge the root before its dependency commits
+Five linked **draft** PRs are open; do not merge the root before its dependency commits
 are available from the canonical upstream submodule URLs.
 
-1. **common-C:** ordered absolute mouse packets (`0c82257`), base `plank/client`.
-2. **libvirtualhid:** Pause mapping/tests (`b0cc3c8`), base `plank/main`.
-3. **Client:** macOS presentation, input, Wacom and display negotiation; depends
+1. **[common-C #3](https://github.com/instinctual/plank-common-c/pull/3):** ordered absolute mouse packets (`0c82257`), base `plank/client`.
+2. **[libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1):** Pause mapping/tests (`b0cc3c8`), base `plank/main`.
+3. **[Client #3](https://github.com/instinctual/plank-client/pull/3):** macOS presentation, input, Wacom and display negotiation; depends
    on common-C. Retains current upstream Quit/Retina fixes.
-4. **Linux Host:** bounded matching, primary binding and internal request update;
+4. **[Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2):** bounded matching, primary binding and internal request update;
    depends on libvirtualhid and must ship with the root's display helper.
-5. **Root:** coordinated gitlinks, helper packaging, protocol documentation,
+5. **[Root #4](https://github.com/instinctual/plank/pull/4):** coordinated gitlinks, helper packaging, protocol documentation,
    optional Mac target/build gates and evidence; depends on Client and Host.
 
 The two leaf changes are small and independently reviewable. Host and root
@@ -159,10 +160,12 @@ are separate. Do not install a Host submodule build without its matching helper.
 Do not change canonical `.gitmodules` URLs to personal forks as a merge shortcut.
 Maintainers may choose to separate target support from functional changes further.
 
-The current account has read access to upstream and no existing matching forks
-were found during review. Publishing requires forks and branch pushes in the
-dependency order above. Draft bodies are in [pr-drafts](pr-drafts/README.md).
-No PR, fork, branch push or upstream merge has been performed by this review.
+Contributor forks and branches were created and pushed in the dependency order
+above. All five PRs target the reviewed upstream branches and are draft. Bodies
+and publication links are in [pr-drafts](pr-drafts/README.md). No upstream merge,
+release or installed-binary change was performed. Initial GitHub inspection
+reported conflict-free merges with no status checks reported; this is not a
+CI pass and does not clear dependency or qualification gates.
 
 ## Required gates before merge/release
 

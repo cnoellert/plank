@@ -8,16 +8,16 @@ Coordinate the Client presentation/input/Wacom work, bounded Linux display
 matching, primary-output preservation, Pause support, explicit Mac target
 selection, tests and sanitized documentation. The full change inventory,
 upstream comparison, architecture boundaries and acceptance matrix are in
-`docs/development/macos15-integration-review.md`.
+[integration review](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).
 
 ## Dependency PRs
 
-1. common-C: ordered absolute input (`0c82257`, base plank/client).
-2. libvirtualhid: separate Pause/F15 mappings (`b0cc3c8`, base plank/main).
-3. Client: review branch incorporating upstream b9e4be6.
-4. Linux Host: d96eb476 plus the libvirtualhid pin.
+1. [common-C #3](https://github.com/instinctual/plank-common-c/pull/3): ordered absolute input (`0c82257`, base `plank/client`).
+2. [libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1): separate Pause/F15 mappings (`b0cc3c8`, base `plank/main`).
+3. [Client #3](https://github.com/instinctual/plank-client/pull/3): review branch incorporating upstream `b9e4be6`.
+4. [Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2): `d96eb476` plus the libvirtualhid pin.
 
-Replace these entries with published links. Merge/fetch dependencies before
+Merge/fetch dependencies before
 advancing canonical root gitlinks; fork-only object reachability is not a build
 contract. Host source and the root display helper are one deployment unit.
 
@@ -49,3 +49,7 @@ and visual/color tests. Intermittent left-click loss remains unresolved.
 No production release, permanent Xorg/global-DPI change, generic USB redirection
 or older macOS Host support is included. Keep this draft unmergeable until the
 required dependency, platform, restoration and maintainer-review gates pass.
+
+## Contribution set
+
+[change inventory and verification record](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md).

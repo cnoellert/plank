@@ -1,13 +1,13 @@
 # PLANK handoff
 
-## PR preparation and regression review
+## PR publication and regression review
 
 The operator requested comprehensive documentation and protection of working
 upstream paths before contribution. Root and Client branch
 `codex/macos15-pr-review` is isolated from the accepted `codex/macos15-client`
 checkout and installed Client 1.0.126 / Host 1.0.125. See the
 [integration review](docs/development/macos15-integration-review.md) and
-[five local PR drafts](docs/development/pr-drafts/README.md).
+[five published draft PRs](docs/development/pr-drafts/README.md).
 
 Fetched root `424204b` and Client `b9e4be6` and reconciled the Retina overlap,
 retaining upstream's native Quit bridge and root build-cache/release work.
@@ -25,7 +25,16 @@ Artifact: `artifacts/development/macos15-pr-review/PLANK Client Development.app`
 New-commit privacy scans pass across all five repos. This candidate is not
 deployed or live-accepted. Ubuntu Client and supported newer-Mac qualification,
 recovery/hotplug, physical single-output and failure-restoration gates remain.
-No fork, remote push, PR, merge to upstream or release has been performed.
+All five contribution branches are published to contributor forks, with linked
+draft PRs: root [#4](https://github.com/instinctual/plank/pull/4), Client
+[#3](https://github.com/instinctual/plank-client/pull/3), Host
+[#2](https://github.com/instinctual/plank-host-linux/pull/2), common-C
+[#3](https://github.com/instinctual/plank-common-c/pull/3) and libvirtualhid
+[#1](https://github.com/instinctual/plank-libvirtualhid/pull/1). Upstream bases
+were unchanged at publication. Initial GitHub inspection reports no conflicts
+and no status checks; that is not CI acceptance. Canonical dependency
+reachability, platform/recovery qualification and maintainer review remain
+merge gates. No upstream merge, release or installed-binary change was made.
 
 ## Secondary fullscreen window cleanup accepted
 
