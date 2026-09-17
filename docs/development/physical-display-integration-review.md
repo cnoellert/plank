@@ -108,6 +108,19 @@ no new restoration error. This qualifies normal disconnect restoration for the
 tested physical-startup configuration; interruption and failure recovery remain
 open.
 
+While preparing the next abrupt-exit test, the operator reported another
+remote left-click failure. With the session still active, the Host's XInput
+virtual mouse and Wacom stylus were floating slaves with button 1 marked down;
+the kernel virtual mouse reported its left button released. Reattaching and
+disabling/enabling those XInput devices did not clear the virtual mouse's down state.
+After normal disconnect, exact physical-display restoration still passed but
+XInput still marked the virtual mouse button down. Restarting the Host service
+recreated the virtual mouse attached to the core pointer with button 1 released
+in both XInput and the kernel, without changing the original physical mode.
+Live click behavior after reconnect remains to be checked. This evidence does
+not establish whether the input failure is caused by display matching, raw
+tablet forwarding or an independent XInput state transition.
+
 ## Remaining gates
 
 1. Test monitor-mode rejection, helper timeout and forced termination, failed
@@ -121,6 +134,10 @@ open.
    restoration tests with exact build hashes.
 4. Merge or make canonical upstream submodule commits reachable before treating
    the root branch as a reproducible build input.
+
+The intermittent left-click failure is also an open Mac Client/Host input gate;
+its live recurrence and recovery observations are recorded above. Do not infer
+input acceptance from the successful display restoration.
 
 Keep the PRs draft until these gates pass. Physical display mode changes can
 interrupt an active desktop, so live failure tests require an operator-approved

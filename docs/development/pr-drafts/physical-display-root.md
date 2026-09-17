@@ -33,6 +33,9 @@ checked against NVIDIA, XRandR and GNOME. The original single-output mode and
 primary returned, no temporary mode or lease remained, and the Host stayed
 active. Forced-failure recovery tests, including helper termination and abrupt
 Client exit, remain. Virtual startup should be compared for headless Flame Hosts.
+An intermittent remote left-click failure recurred during the next test. The
+Host input service was reset to clear a stale XInput button state; live input
+after reconnect and the cause of that failure are still under investigation.
 
 See the [display review](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md)
 for the full behavior, evidence and remaining gates. Keep this PR draft until

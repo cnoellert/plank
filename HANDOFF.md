@@ -28,6 +28,15 @@ started with multiple physical outputs remain open gates. The separate macOS 15
 Wacom review has since passed normal reconnect, hotplug, and abrupt-exit input tests;
 see its integration review for the exact evidence and limits.
 
+The next matched session exposed another remote left-click failure before the
+planned abrupt-exit test. XInput showed the virtual mouse and Wacom stylus as
+floating slaves with button 1 down while the kernel virtual mouse button was
+released. Device reattachment and disable/enable did not clear the stale
+XInput state. Normal disconnect restored the original display but left the
+virtual mouse marked down. A Host-service restart recreated it attached and
+released without changing the physical mode. Live clicks after reconnect are
+not yet confirmed; the cause is not established.
+
 ## Experimental Mac Client review branch — 2026-09-17
 
 Root and Client `codex/macos15-pr-review` are draft contributions for the
