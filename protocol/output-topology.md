@@ -353,7 +353,12 @@ Host binary knows this capability. See `output-topology-v13-matched.json` in the
 protocol test vectors.
 
 The supervisor invokes the packaged `plank-display-match` helper as the active
-X11 desktop owner. The helper selects active connected outputs in desktop order,
+X11 desktop owner. Its transient service hides home directories using
+`ProtectHome=tmpfs` and exposes only `/run/user/<attested UID>` as a read-only
+bind for the desktop bus and Xauthority. `ProtectHome=yes` prevents traversal
+to a nested bind and cannot support compositor verification; see the
+[systemd execution contract](https://github.com/systemd/systemd/blob/main/man/systemd.exec.xml).
+The helper selects active connected outputs in desktop order,
 then connected spares if needed, creates uniquely named reduced-blanking modes,
 and activates real scanout sizes. It verifies exact rectangles and 1x scale in
 both XRandR and Mutter before the supervisor publishes the lease. The original
