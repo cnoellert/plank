@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## Secondary fullscreen window lifecycle candidate
+## Secondary fullscreen window cleanup accepted
 
 Client candidate 1.0.126 explicitly leaves and synchronizes a secondary native
 fullscreen Space before hiding its window. Reentry shows the window before
@@ -20,10 +20,13 @@ Client `0f57be38`, produced
 The 84 Qt cases, five fullscreen checks, native input ordering, 106 Mach-O target
 checks, dependency closure and ad-hoc signatures pass. Executable SHA256:
 `f094e779e6ed1f7b390c99fcfd40b70a0d6c159d9c746bff2a4e8d07fdc5db64`.
-The prior client was cleanly disconnected and closed; the replacement is open
-at direct sign-in with Match client displays/macOS desktop size/Native retained.
-Authenticated fullscreen/windowed and physical single-output acceptance remain
-pending. Host 1.0.125 and tablet permissions are unchanged.
+The operator reports the correction is working. The authenticated matched-display
+session independently logs one window, two fullscreen outputs, then one window
+again, with no fullscreen transition failures or synchronization timeouts.
+This accepts fullscreen/windowed cleanup with macOS desktop size/Native retained.
+A physical single-output session has not yet been observed in this candidate's
+log; that separate live case remains pending. Host 1.0.125 and tablet permissions
+are unchanged.
 
 ## Preserve primary output identity for application monitor selection
 
