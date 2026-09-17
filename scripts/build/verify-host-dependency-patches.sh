@@ -66,7 +66,7 @@ verify_patch_group() {
   }
 
   git_dir=$(git -C "$generated_repo" rev-parse --absolute-git-dir)
-  while IFS=$'\t' read -r change_status patched_path; do
+  while IFS= read -r -d '' change_status && IFS= read -r -d '' patched_path; do
     # Dependency preparation intentionally omits the upstream Loader tests.
     # Permit only deletions there, not modified/added test files or missing
     # production source. Never exclude the entire path from verification.
@@ -77,12 +77,13 @@ verify_patch_group() {
     [[ -n $patched_path ]] && actual_paths+=("$patched_path")
   done < <(
     git --git-dir="$git_dir" --work-tree="$generated_repo" \
-      diff --no-renames --name-status
+      diff --no-renames --name-status -z
   )
   ((${#actual_paths[@]} == ${#expected_paths[@]})) || {
     echo "prepared dependency has an unexpected tracked modification count: ${generated_repo}" >&2
     printf 'expected=%s actual=%s\n' \
       "${#expected_paths[@]}" "${#actual_paths[@]}" >&2
+    printf 'actual_modified_path=%q\n' "${actual_paths[@]}" >&2
     exit 1
   }
   for patched_path in "${actual_paths[@]}"; do

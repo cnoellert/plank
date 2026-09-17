@@ -28,6 +28,9 @@ class HostDependencyPatches(unittest.TestCase):
             (source / 'other.c').write_text('original\n')
             (source / 'tests').mkdir()
             (source / 'tests/upstream.c').write_text('upstream test\n')
+            # Upstream Loader fixtures include non-ASCII filenames. Git quotes
+            # these without -z, which can hide their tests/ prefix from a parser.
+            (source / 'tests/unicode-\N{SNOWMAN}.c').write_text('unicode test\n')
             subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
             patch_dir = self.patches / dependency
             patch_dir.mkdir(parents=True)

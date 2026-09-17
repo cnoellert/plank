@@ -19,6 +19,10 @@ notes' README before machine-specific work; deployment information stays outside
   The verifier now permits only those tracked deletions, with regressions for
   deleted tests, modified tests and deleted production source. It still rejects
   absent/conflicting patches and unexpected production changes.
+  Rerun `35279985121` exposed one quoted emoji filename in those deleted tests.
+  The verifier now consumes NUL-delimited Git paths. A local reproduction using
+  the exact upstream source and the real CMake copy exclusion passes all nine
+  required patches; the unit fixture also includes a non-ASCII filename.
   Clean hosted Host bootstrap/package build and hardware qualification are
   pending. No PR merge, release, or installation yet. NVIDIA headers/driver
   remain unchanged; driver ceiling 595.91.07. Client and transport pins are
