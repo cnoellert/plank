@@ -19,9 +19,12 @@ notes' README before machine-specific work; deployment information stays outside
   Linux Host had a cold miss because NVIDIA's two CUDA config-common RPMs
   advanced from 13.4.49 to 13.4.92; its successful build saved the new cache.
   Local CI tests (37) and package-collection tests (6) passed. See
-  `docs/releases/1.0.121.md` for build links and validation scope. No
-  installation, native hardware acceptance or GitHub Release publication was
-  performed. Unchanged Linux Host is
+  `docs/releases/1.0.121.md` for build links and validation scope. Published as
+  [v1.0.121](https://github.com/instinctual/plank/releases/tag/v1.0.121)
+  at the operator's request. Its annotated tag identifies the exact package
+  source above, not the subsequent documentation commits. Server-side SHA256
+  digests match all four packages, manifest and release checksum file. No
+  installation or native hardware acceptance was performed. Unchanged Linux Host is
   `9329784ac41f50cbec0c9d76badfd22227ec5e5f`; Kymux is
   `912ece5c64787997f978673ca60d313898a3548c`. Client common-c is
   `b9650552f98d97f6e30c9f007115c6246f0809e5`; qmdnsengine is
