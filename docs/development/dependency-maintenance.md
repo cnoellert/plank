@@ -77,17 +77,26 @@ callers, both lockfiles and documented repairs together. Never remove that path
 override merely to make a bot PR compile. The vendored crate's own Cargo.lock
 is not the production dependency lockfile.
 
-The qualified Vulkan Loader is 1.4.357, commit
-`5f157b62e333c63260d05d81bf66faa216ab0fb8`. It predates the dynamic-filter
-allocation failure found during review of 1.4.362. A future Vulkan upgrade must
-prove out-of-memory handling for layer/extension filter parsing and both
-enumeration paths; do not assume a newer Loader is safer. The reviewed repair
-returned `VK_ERROR_OUT_OF_HOST_MEMORY` and propagated failure through cleanup.
-Its twelve fault-injection cases failed on the unpatched candidate and passed
-with the repair; the repaired candidate passed 713 Loader tests. This is upgrade
-evidence, not qualification of a new PLANK package. Retain/reproduce those
-negative-control checks before adopting a version with the changed allocation
-code. Do not apply that repair to the unaffected current Loader.
+The released Vulkan Loader remains 1.4.357, commit
+`5f157b62e333c63260d05d81bf66faa216ab0fb8`. The 1.4.362 candidate, commit
+`b8b96a2862bff1eed468e602d43f706beae89cf1`, requires the tracked build-deps
+ID-filter allocation repair. It returns `VK_ERROR_OUT_OF_HOST_MEMORY` through
+both physical-device/device-group enumeration cleanup paths rather than
+dereferencing a failed device/vendor/driver-filter allocation. The required
+patch is independent of optional FFmpeg patches; bootstrap/cache/package
+preflight verifies it separately from the upstream-framework test patch.
+Twelve fault-injection cases exercise all three filters, both APIs and both
+count-only/output-array forms, checking cleanup and retry. Preserve the
+unpatched negative control and run the complete Loader suite. Passing those
+tests is not real-driver or packaged Host qualification. Do not apply this
+repair to the unaffected older Loader.
+
+The operator's qualified NVIDIA driver ceiling is **595.91.07** because of
+Autodesk Flame requirements. Do not adopt NV codec headers whose documented
+minimum driver exceeds it. The currently pinned Video Codec SDK 13.0.19
+headers require Linux 570.0 or newer; the separate 13.1.15 proposal requires
+610.0 and remains on hold. Vulkan Loader qualification does not authorize a
+driver or NV codec header upgrade.
 
 ## Upgrade sequence and acceptance
 

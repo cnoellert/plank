@@ -30,6 +30,7 @@ verify_patch_group() {
   local git_dir
   local patch_file
   local patched_path
+  local group_patch_count=0
   local -A expected_paths=()
   local -a actual_paths=()
 
@@ -49,12 +50,18 @@ verify_patch_group() {
       exit 1
     fi
     ((patch_count += 1))
+    ((group_patch_count += 1))
     printf 'host_dependency_patch=present:%s\n' \
       "${patch_file#"${patch_root}/"}"
     while IFS= read -r patched_path; do
       [[ -n $patched_path ]] && expected_paths["$patched_path"]=1
     done < <(sed -n -e 's#^+++ b/##p' -e 's#^--- a/##p' "$patch_file")
   done < <(find "$product_patch_dir" -type f -name '*.patch' -print0 | sort -z)
+
+  ((group_patch_count > 0)) || {
+    echo "required Host dependency patch group is empty: ${product_patch_dir}" >&2
+    exit 1
+  }
 
   git_dir=$(git -C "$generated_repo" rev-parse --absolute-git-dir)
   mapfile -t actual_paths < <(
@@ -87,6 +94,9 @@ verify_patch_group \
 verify_patch_group \
   "${build_dir}/FFmpeg/x265_git" \
   "${patch_root}/FFmpeg/x265_git"
+verify_patch_group \
+  "${build_dir}/FFmpeg/Vulkan-Loader" \
+  "${patch_root}/FFmpeg/Vulkan-Loader"
 
 ((patch_count > 0)) || {
   echo "no active Host dependency patches were verified" >&2

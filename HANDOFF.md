@@ -5,6 +5,19 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Active candidate: `vulkan-loader-repair`, base version 1.0.126. Build-deps
+  PR #1 now includes required Vulkan Loader ID-filter OOM handling and 12
+  upstream-framework regression cases. Exact build-deps commit:
+  `9f2ea61423fb1dd1c1b0eda463b3260837630064`; Host gitlink-only candidate:
+  `4d80cf9594cfe58483422449346f46dbcb50f05f`.
+  Fresh Loader build passed 713/713 tests; fresh/repeated/mismatched patch-helper
+  checks pass and a second fresh source reproduces the tested production files.
+  Root adds independent Loader patch verification and seven preflight tests.
+  Clean hosted Host bootstrap/package build and hardware qualification are
+  pending. No PR merge, release, or installation yet. NVIDIA headers/driver
+  remain unchanged; driver ceiling 595.91.07. Client and transport pins are
+  unchanged. Preserve the primary worktree's unrelated RK3576 research.
+
 - GitHub Actions update is approved and merged through root PR #8: merge
   `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
   `2be3d797046df177589cb0c1b97e3cb5d109ade1`, including the merged Rustls

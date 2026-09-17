@@ -35,6 +35,16 @@ fail-closed contract before configuring a package build.
 dependency worktrees contain exactly the tracked files named by those patches,
 with no additional tracked source modifications or patch residue.
 
+The Vulkan Loader 1.4.362 candidate also requires
+`patches/FFmpeg/Vulkan-Loader/01-handle-id-filter-allocation-failure.patch`.
+It propagates ID-filter allocation failure as `VK_ERROR_OUT_OF_HOST_MEMORY`
+through both physical-device enumeration APIs and their cleanup paths. It is
+applied even when optional FFmpeg patches are disabled. Bootstrap/cache/package
+preflight independently verifies the generated Loader source; the separate
+upstream-framework test patch is not applied to production dependency sources.
+Run `tests/packaging/test-host-dependency-patches.py` to check that stale,
+unpatched, incompatible or unexpectedly modified prepared sources are rejected.
+
 The active selection is controlled by the pinned build-deps CMake options and
 therefore may include patches for FFmpeg CBS, AMF, Vulkan, x264 integration,
 x265 integration/source, NV codec headers, libva, or SVT-AV1. The PLANK Host
