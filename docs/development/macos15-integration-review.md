@@ -36,16 +36,21 @@ display policy. The separate display series uses `0x1000000` for matched modes;
 | Build target | Explicit 15.0 minimum OS; default remains 27.0 | Dependency target, architecture, package and signature checks passed for local 15.0 candidates; 27.0 still needs final regression |
 | Two displays | Separate Metal surfaces crop one decoded stream with shared input geometry | Native GPU readback, mixed-density geometry and three Space exit/reentry cycles passed; longer pacing and color acceptance remain open |
 | Fullscreen | Native Spaces on both screens, early SDL policy, camera-safe viewport, secondary-window cleanup | Operator accepted dual fullscreen drag, right-click focus and windowed transition in earlier exact candidates |
-| Wacom | Exclusive allowlisted USB HID forwarding, report/control protocol, passive cursor and pen focus | Flame pressure and focus were accepted on earlier candidates; current ad-hoc builds may need renewed Input Monitoring permission |
+| Wacom | Exclusive allowlisted USB HID forwarding, timed asynchronous report I/O, bounded release waits, passive cursor and pen focus | A stalled-callback state test passes; Flame pressure and focus were accepted only on earlier candidates, and the new path needs live acceptance |
 | Input queue | Adjacent absolute moves coalesce at enqueue; button/key events retain order | Existing drag fixture and new 150-position release fixture pass with the actual worker; the new fixture fails on the prior PR head |
 | Upstream behavior | Current MacApplication Quit/Command-Q, Linux capture policy and Wayland window lifecycle retained | Native Quit tests and platform source guards pass; Linux hardware remains untested |
 
-Client `851f4a4` with common-C `b2b2b29` passed a complete local Apple
-Silicon/macOS 15 build: 97 Qt results, the actual native input-worker fixture,
+Client `397678e` with common-C `b2b2b29` passed a complete local Apple
+Silicon/macOS 15 build: 98 Qt results, the actual native input-worker fixture,
 seven fullscreen/platform checks and three Quit lifecycle guards. The queue
-fixture passed 50 repeated runs and an AddressSanitizer build. The root
-integration tests and final package checks need to be rerun after the PR split.
+fixture passed 50 repeated runs and an AddressSanitizer build. The split root
+passed six CTest gates and 38 CI-policy tests. Final package checks remain.
 This source result has not replaced the accepted local Client installation.
+The Wacom report callback retains its device and buffer until IOKit calls back;
+an OS request that never calls back is capped at 64 retained contexts so a late
+callback cannot access freed memory. The release barrier gives up after two
+seconds and a stalled worker owns its state until it exits. Neither behavior
+has been exercised with a stalled physical device.
 
 The earlier accepted Client 1.0.126 passed 84 Qt results, native input ordering,
 106 Mach-O checks, dependency closure and ad-hoc signature checks. Three native
@@ -62,7 +67,7 @@ Those observations do not establish the final review head as live-accepted.
   reachable from the canonical submodule URL before the root gitlink can merge.
 - [Client PR #3](https://github.com/instinctual/plank-client/pull/3) contains
   the Mac-specific implementation and the common-C pin. Its current review
-  branch is being narrowed to the Mac scope.
+  branch is limited to the Mac scope.
 - [root PR #4](https://github.com/instinctual/plank/pull/4) coordinates the
   Client pin, optional target build paths, focused tests and this evidence.
 - [libvirtualhid PR #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
@@ -76,9 +81,9 @@ retains its upstream policy. No upstream merge or release has occurred.
 
 ## Gates before merge
 
-1. Replace the unbounded Wacom report I/O and shutdown barrier with bounded
-   asynchronous completion and safe callback/device lifetime. Exercise stalled
-   I/O during focus loss, reconnect and Quit.
+1. Exercise the new asynchronous Wacom path on physical hardware: pressure,
+   focus loss, reconnect, Quit and unplug/replug. The deterministic test covers
+   delayed callback state and release deadlines, but not a stalled HID driver.
 2. Reproduce and resolve the intermittent live left-click loss. The queue test
    proves one release-loss bug, not that every observed click failure had the
    same cause.

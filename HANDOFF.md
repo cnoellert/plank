@@ -12,24 +12,28 @@ physical-display matching feature is in separate draft Client
 maintained Host base, so it does not package the display helper or alter Host
 physical-monitor behavior.
 
-Client `851f4a4` retains multi-display Metal presentation, native fullscreen
+Client `397678e` retains multi-display Metal presentation, native fullscreen
 Spaces, cross-display pointer and pen focus, raw USB Wacom forwarding, and
-current upstream Quit handling. Common-C `b2b2b29` combines adjacent absolute
-positions at enqueue under the input queue lock. A deterministic worker fixture
+current upstream Quit handling. Wacom report requests now use timed IOKit
+callbacks, stale replies are discarded after release, and focus/reconnect/Quit
+release waits have deadlines with worker-owned fallback state. Common-C
+`b2b2b29` combines adjacent absolute positions at enqueue under the input
+queue lock. A deterministic worker fixture
 failed on the prior common-C PR head when mouse/key releases followed 150
 positions, then passed after the fix, including 50 repeated and AddressSanitizer
-runs. The split Client built on Apple Silicon/macOS 15 and passed 97 Qt results,
+runs. The split Client built on Apple Silicon/macOS 15 and passed 98 Qt results,
 the native input-worker test, seven fullscreen guards and three Quit lifecycle
 guards. These are build and local test results, not new live acceptance.
 
 Previously observed live behavior includes two-screen fullscreen drag/focus,
 normal mouse input, and Flame tablet pressure/focus in exact earlier candidates.
 The intermittent remote left-click loss is not established as fixed; the queue
-repair addresses one reproduced release-loss path. Wacom report calls still
-need bounded asynchronous completion before this PR is ready. Ubuntu Client and
-macOS 27 regression, tablet hotplug, interrupted reconnect/sleep and held-input
-recovery remain open. GitHub hosted jobs have reported `action_required` without
-running; maintainer action is needed for those gates. No upstream merge or
+repair addresses one reproduced release-loss path. The new Wacom I/O path
+has a deterministic stalled-callback test but needs live tablet acceptance.
+Ubuntu Client and macOS 27 regression, tablet hotplug, interrupted
+reconnect/sleep and held-input recovery remain open. GitHub hosted jobs have
+reported `action_required` without running; maintainer action is needed for
+those gates. No upstream merge or
 release has been performed.
 
 See [the current integration review](docs/development/macos15-integration-review.md)
