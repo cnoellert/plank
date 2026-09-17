@@ -5,6 +5,15 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- GitHub Actions update is in root PR #8, based on current main including the
+  merged Rustls update. Checkout and artifact upload move to 7.0.1; cache
+  restore/save move to 6.1.0. All use Node24 and full commit-SHA pins. Update
+  the two existing policy tests' reviewed hashes and stale cache comments;
+  keep read-only permissions, credential persistence off, exact cache checks,
+  PR cache-write exclusion and signing isolation unchanged. Hosted four-product
+  validation is pending. No product code, dependency gitlink or package version
+  changes in this CI-only update; no release or deployment is requested.
+
 - Rustls security update is approved and merged through root PR #9: merge
   `8f1ad75bede2fc6948315cb61d7ef380d29ff4df`, reviewed head
   `617cecc6990b01967137536a744971cba94411cc`. Both production and standalone
