@@ -7,8 +7,18 @@ Upstream advanced during draft publication: Client `86682b5` and root
 captured Command-Q handling. Review Client `d9ad2b1` merges those changes while
 retaining raw Wacom focus/cleanup and display routing. Root merges the matching
 build/tests, runbook and release history. Candidate 1.0.128 supersedes the
-1.0.127 review snapshot; its fresh build and native tests are pending. The
-installed accepted Client 1.0.126 / Host 1.0.125 are unchanged.
+1.0.127 review snapshot. A fresh application build from clean root `9b495ee`
+passes 101 Qt results (including upstream's nine shortcut/eight application
+lifecycle results), native input-worker ordering, seven fullscreen guards,
+three Quit lifecycle guards, seven portable suites and 38 CI tests. All 106
+Mach-O targets, dependency closure, build-path and ad-hoc signature checks pass.
+Executable SHA256: `3fcabb629d9c1159921ac22e7ebb4c1f1e37e9bfe7b17d113413c00e0b546802`.
+Retained artifact: `artifacts/development/macos15-pr-publication/PLANK Client Development.app`.
+The installed accepted Client 1.0.126 / Host 1.0.125 are unchanged; 1.0.128 is
+not live-accepted. New Client/root commit ranges and publication docs pass
+privacy checks. GitHub's hosted-build and privacy workflows report
+`action_required` without running jobs; maintainer action and hosted validation
+remain pending.
 
 ## PR publication and regression review
 

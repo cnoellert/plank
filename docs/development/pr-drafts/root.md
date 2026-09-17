@@ -14,7 +14,7 @@ upstream comparison, architecture boundaries and acceptance matrix are in
 
 1. [common-C #3](https://github.com/instinctual/plank-common-c/pull/3): ordered absolute input (`0c82257`, base `plank/client`).
 2. [libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1): separate Pause/F15 mappings (`b0cc3c8`, base `plank/main`).
-3. [Client #3](https://github.com/instinctual/plank-client/pull/3): review branch incorporating upstream `b9e4be6`.
+3. [Client #3](https://github.com/instinctual/plank-client/pull/3): review Client `d9ad2b1`, incorporating upstream `86682b5`.
 4. [Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2): `d96eb476` plus the libvirtualhid pin.
 
 Merge/fetch dependencies before
@@ -23,8 +23,10 @@ contract. Host source and the root display helper are one deployment unit.
 
 ## Preserving working upstream behavior
 
-- Current root main 424204b is merged, retaining build cache, workflow, release
-  and signing work. Upstream's Client native Quit bridge is preserved.
+- Current root main `cb01cfe` is merged, retaining build cache, workflow, release
+  and signing work. Client `86682b5` replaces the earlier Quit bridge with
+  explicit application-exit ownership and captured Command-Q handling; both
+  native suites remain mandatory alongside the tablet/display tests.
 - Mac-specific capture/fullscreen policies are scoped to macOS. Shared input
   ordering and Host layout changes remain explicit regression-review surfaces.
 - Default Client target stays 27.0; experimental 15.0 is opt-in. Cache identity
@@ -38,6 +40,14 @@ Seven portable root suites, 38 CI tests, seven fullscreen/platform guards and
 new-commit privacy checks across all five repositories pass. Exact candidate
 build/package and earlier live evidence are listed in the integration review
 and HANDOFF; build success is not a cross-platform hardware pass.
+
+
+Publication-time upstream refresh: fresh candidate 1.0.128 from root `9b495ee`
+/ Client `d9ad2b1` passes 101 Qt results, native input ordering, seven fullscreen
+and three Quit lifecycle guards, seven portable suites, 38 CI tests, 106 Mach-O
+checks, dependency closure and ad-hoc signatures. It has not been deployed.
+GitHub hosted-build/privacy runs report `action_required` with no jobs executed;
+maintainer action and hosted CI remain pending.
 
 ## Open gates
 

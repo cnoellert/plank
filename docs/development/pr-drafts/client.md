@@ -7,7 +7,7 @@
 - Present one decoded desktop on two Cocoa/Metal surfaces with consistent
   logical/backing-pixel input geometry.
 - Preserve native Spaces; fix secondary Space cleanup and single-host-output
-  presentation; retain the current upstream Retina and native Quit fixes.
+  presentation; retain the current upstream Retina, captured Command-Q and Quit lifecycle fixes.
 - Preserve captured drags and input ordering; follow pointer/pen focus between
   owned fullscreen surfaces without an activation click.
 - Forward allowlisted USB Wacom raw HID with normal Input Monitoring permission,
@@ -24,7 +24,9 @@ protocol fixtures and packaging. Display matching requires the optional Host
 features; older Hosts retain preset-only matching. The default newer-macOS
 build and Linux Client still require qualification.
 
-Upstream `b9e4be6` is merged. The review branch scopes Cocoa automatic capture,
+Upstream `86682b5` is merged in review Client `d9ad2b1`. Its explicit
+MacApplication exit ownership replaces the earlier Quit bridge; captured
+Command-Q handling and both new native suites are preserved. The review branch scopes Cocoa automatic capture,
 Space cleanup and one-host-output presentation policy to macOS. Wayland retains
 its previous capture and window lifecycle policy. Shared motion ordering is an
 intentional cross-platform correction and has its own test gate.
@@ -35,8 +37,16 @@ Accepted Client 1.0.126: 84 Qt tests, native input-worker ordering, five fullscr
 checks, 106 Mach-O checks and package/signature checks. Three AppKit lifecycle
 cycles and 14 GPU readback cases passed. Operator acceptance covers fullscreen
 mouse dragging/focus, earlier exact-build tablet pressure/focus and current
-fullscreen/windowed cleanup. The integration candidate adds upstream Quit and
+fullscreen/windowed cleanup. The integration candidate preserves current upstream Quit lifecycle and
 platform guards; its build record is linked from the root review.
+
+
+Publication-time upstream refresh: fresh candidate 1.0.128 from root `9b495ee`
+/ Client `d9ad2b1` passes 101 Qt results, native input ordering, seven fullscreen
+and three Quit lifecycle guards, seven portable suites, 38 CI tests, 106 Mach-O
+checks, dependency closure and ad-hoc signatures. It has not been deployed.
+GitHub hosted-build/privacy runs report `action_required` with no jobs executed;
+maintainer action and hosted CI remain pending.
 
 ## Known limitations / merge gates
 

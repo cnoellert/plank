@@ -15,7 +15,7 @@ container. That does not qualify Rocky 9.5 as a supported release platform.
 
 The accepted development pair is Client 1.0.126 / Host 1.0.125. The separate
 `codex/macos15-pr-review` branches reconcile current upstream and reduce the
-effect of Mac-specific fixes on Linux. Their candidate is 1.0.127, which is
+effect of Mac-specific fixes on Linux. Their latest candidate is 1.0.128, which is
 not yet live-accepted. Neither branch is a published release or a blanket
 replacement qualification for an existing remote desktop product.
 
@@ -30,8 +30,8 @@ Review bases were fetched directly from the maintained repositories:
 
 | Repository | Upstream reviewed | Local contribution / integration |
 | --- | --- | --- |
-| `instinctual/plank` | `424204b` (`main`) | Review branch merges upstream through `7be7219`; product review snapshot `50a05e1` |
-| `instinctual/plank-client` | `b9e4be6` (`main`) | Accepted `0f57be3`; integration `ecb37e7`, platform scoping `9c1af82` |
+| `instinctual/plank` | `cb01cfe` (`main`) | Earlier snapshot `50a05e1`; publication-time integration `9b495ee` |
+| `instinctual/plank-client` | `86682b5` (`main`) | Accepted `0f57be3`; platform scoping `9c1af82`; publication-time integration `d9ad2b1` |
 | `instinctual/plank-host-linux` | `9329784a` (`main`) | `d96eb476` |
 | `instinctual/plank-common-c` | `b965055` (`plank/client`) | `0c82257` |
 | `instinctual/plank-libvirtualhid` | `93d57db` (`plank/main`) | `b0cc3c8` |
@@ -39,14 +39,19 @@ Review bases were fetched directly from the maintained repositories:
 The Client's upstream Retina commits `509f2fc` and `6f0c252` had already been
 cherry-picked with attribution. Their merge conflicts were reconciled while
 retaining native Spaces, the Mac-only tablet cursor and the measured macOS 15
-camera margin. Upstream's newer Quit bridge (`c56b0a1`) is preserved exactly.
-The root integration retains upstream's dependency caching, build workflow,
-release notes and signing policy. No `ours`/`theirs` whole-tree replacement,
+camera margin. The initial review preserved upstream's Quit bridge (`c56b0a1`).
+Upstream advanced during PR publication and replaced that bridge with explicit
+MacApplication exit ownership and captured Command-Q handling. Client `d9ad2b1`
+merges `86682b5`, retaining that replacement alongside Wacom cleanup/focus and
+our display routing. Root `9b495ee` merges `cb01cfe`, including the new mandatory
+native suites, runbook and release history. The root integration retains
+upstream's dependency caching, build workflow, release notes and signing policy. No `ours`/`theirs` whole-tree replacement,
 force push, production branch reset or rewrite of upstream history was used.
 
 Upstream's open clipboard contribution is independent and was not merged.
-All five bases were checked again immediately before publication and were
-unchanged. Refresh them again before final merge.
+All five bases were unchanged at the first publication check. The later
+root/Client updates above were reconciled after GitHub reported conflicts.
+Refresh bases again before final merge.
 
 ## What changed, and why
 
@@ -140,6 +145,17 @@ replaced the accepted running app. The first fresh-checkout build lacked the
 pinned kymux submodule; initializing that exact dependency resolved the build
 failure. No product code or dependency pin was changed to bypass it.
 
+The publication-time reconciliation was rebuilt from clean root `9b495ee` /
+Client `d9ad2b1` as 1.0.128-macos15-pr-review. All 101 Qt results pass, including
+upstream's nine shortcut/eight application-lifecycle results. The native input
+worker, seven fullscreen guards, three Quit lifecycle guards, seven portable
+suites, 38 CI tests and all 106 Mach-O targets pass. Dependency closure,
+build-path checks and ad-hoc signatures pass. Executable SHA256:
+`3fcabb629d9c1159921ac22e7ebb4c1f1e37e9bfe7b17d113413c00e0b546802`. Artifact:
+`artifacts/development/macos15-pr-publication/`; this build has not been deployed.
+New merged Client/root ranges pass privacy checks. The earlier 1.0.127 build
+remains historical evidence and is not the current PR-head binary.
+
 ## PR structure and merge order
 
 Five linked **draft** PRs are open; do not merge the root before its dependency commits
@@ -148,7 +164,7 @@ are available from the canonical upstream submodule URLs.
 1. **[common-C #3](https://github.com/instinctual/plank-common-c/pull/3):** ordered absolute mouse packets (`0c82257`), base `plank/client`.
 2. **[libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1):** Pause mapping/tests (`b0cc3c8`), base `plank/main`.
 3. **[Client #3](https://github.com/instinctual/plank-client/pull/3):** macOS presentation, input, Wacom and display negotiation; depends
-   on common-C. Retains current upstream Quit/Retina fixes.
+   on common-C. Retains current upstream Quit lifecycle/Command-Q and Retina fixes.
 4. **[Linux Host #2](https://github.com/instinctual/plank-host-linux/pull/2):** bounded matching, primary binding and internal request update;
    depends on libvirtualhid and must ship with the root's display helper.
 5. **[Root #4](https://github.com/instinctual/plank/pull/4):** coordinated gitlinks, helper packaging, protocol documentation,
@@ -163,9 +179,11 @@ Maintainers may choose to separate target support from functional changes furthe
 Contributor forks and branches were created and pushed in the dependency order
 above. All five PRs target the reviewed upstream branches and are draft. Bodies
 and publication links are in [pr-drafts](pr-drafts/README.md). No upstream merge,
-release or installed-binary change was performed. Initial GitHub inspection
-reported conflict-free merges with no status checks reported; this is not a
-CI pass and does not clear dependency or qualification gates.
+release or installed-binary change was performed. Initial GitHub inspection reported no conflicts, then root/Client conflicts
+appeared as upstream advanced. The publication-time integrations above resolve
+that overlap with normal merges. GitHub hosted-build and privacy workflow runs report `action_required` with
+no jobs executed; maintainer action and hosted CI remain pending. Local
+build/test evidence does not clear dependency or hardware qualification gates.
 
 ## Required gates before merge/release
 
