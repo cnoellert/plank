@@ -363,9 +363,11 @@ then connected spares if needed, creates uniquely named reduced-blanking modes,
 and activates real scanout sizes. It verifies exact rectangles and 1x scale in
 both XRandR and Mutter before the supervisor publishes the lease. The original
 NVIDIA MetaMode is retained for failure, disconnect and lease expiry restoration.
-Only the lease's generated modes are removed afterward. Replacing a lease first
-restores its original baseline; it must never save an earlier temporary layout
-as the new baseline. Display-manager restarts and persistent Xorg edits are not
+Restoration applies that MetaMode, removes only the lease's generated modes,
+then verifies or recovers GNOME's logical monitors. A same-size temporary mode
+must be removed before GNOME recovery or GNOME can reactivate it. Replacing a
+lease first restores its original baseline; it must never save an earlier
+temporary layout as the new baseline. Display-manager restarts and persistent Xorg edits are not
 part of physical matching. Each panning domain is constrained to its output
 rectangle and verified, so pointer movement cannot shift a viewport into its
 neighbour. Without primary-output negotiation, the host primary is preserved.

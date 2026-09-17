@@ -12,14 +12,16 @@ monitor file still described the earlier matched two-screen layout. This
 exposed a restoration gap: the helper checked the MetaMode and XRandR primary
 but did not require a visible GNOME logical monitor.
 
-The draft physical-display PR now waits for GNOME after restoration and, for an
-unambiguous single physical output, recovers its exact advertised mode through
-Mutter's temporary configuration. It rechecks the saved MetaMode and primary
-afterward. Twenty-five no-display helper tests pass, including empty and stale
-GNOME layouts. The updated helper is not installed or live-qualified yet;
-interrupted-session and multi-output restoration remain open gates. The Wacom
-pressure recorder observed no pen events during this diagnostic interval, so
-the separate Client candidate's live pressure acceptance is also pending.
+The first split-branch Host RPM was installed and tested with a matching macOS
+15 Client. Two 2560×1440 displays and the intended primary worked, but normal
+disconnect retained a same-size `PLANK-Match` mode: GNOME reselected it during
+logical-monitor recovery. The original NVIDIA mode, primary, and GNOME logical
+monitor were restored manually. Follow-up source now removes only the lease's
+temporary modes before GNOME recovery, with 28 no-display helper tests passing.
+This correction is not yet packaged or live-qualified. Interruption recovery
+and multi-output restoration remain open gates. The separate macOS 15 Wacom
+review has since passed normal reconnect, hotplug, and abrupt-exit input tests;
+see its integration review for the exact evidence and limits.
 
 ## Experimental Mac Client review branch — 2026-09-17
 

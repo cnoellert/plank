@@ -20,13 +20,16 @@ negative Client negotiation test agree.
 [View only this PR's changes relative to the Mac root branch](https://github.com/cnoellert/plank/compare/codex/macos15-pr-review...codex/physical-display-stack).
 The GitHub PR diff also contains its unmerged Mac base until that PR lands.
 
-Earlier exact packages connected two 2560×1440 outputs, preserved the intended
-primary for Flame, and restored the original one-screen Host layout after a
-normal disconnect. Twenty helper tests and a local Client build with 102 Qt
-results pass. This split branch still needs a fresh qualified Host package and
-forced-failure recovery tests, including helper termination, failed
-restoration and abrupt
-Client exit. Virtual startup should be compared for headless Flame Hosts.
+The exact split-branch Host package connected two 2560×1440 outputs and put
+Flame on the intended primary. The operator confirmed normal work across the
+two screens. The first normal disconnect then exposed a restoration bug:
+GNOME selected a same-size temporary mode instead of the original physical
+mode. The original Host layout was restored manually. A follow-up change now
+removes the session's temporary modes before GNOME recovery; 28 no-display
+helper tests pass. It still needs a fresh qualified Host package and a repeat
+live disconnect test. Forced-failure recovery tests, including helper
+termination and abrupt Client exit, also remain. Virtual startup should be
+compared for headless Flame Hosts.
 
 See the [display review](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md)
 for the full behavior, evidence and remaining gates. Keep this PR draft until

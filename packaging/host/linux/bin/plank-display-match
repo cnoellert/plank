@@ -3,7 +3,8 @@
 
 Runs as the active desktop owner, never root. No shell, configuration writes,
 display-manager restart, or client-provided modelines. The supervisor owns the
-baseline MetaMode and invokes cleanup only after restoring that baseline.
+baseline MetaMode and lease identity; restoration removes its temporary modes
+before recovering GNOME's logical monitor.
 """
 
 import os
@@ -270,7 +271,7 @@ def apply(token, modes, primary_index=-1):
             command([XRANDR, "--newmode", name] + modeline(width, height))
             created.append(name)
             command([XRANDR, "--addmode", item["name"], name])
-            attached.append((item["name"], name))
+            attached.append(name)
             expected[item["name"]] = (width, height, x, 0)
             args += ["--output", item["name"], "--mode", name, "--pos", str(x) + "x0",
                      "--rotate", "normal", "--transform", "none",
@@ -285,11 +286,12 @@ def apply(token, modes, primary_index=-1):
         command(args)
         verify(expected, matched_primary)
     except Exception:
-        restore(baseline, primary or "none")
-        for output, name in reversed(attached):
-            command([XRANDR, "--delmode", output, name])
+        restore(baseline, primary or "none", token)
+        # --newmode can succeed even if --addmode fails. Such an unattached
+        # mode is absent from xrandr --query, so cleanup cannot discover it.
         for name in reversed(created):
-            command([XRANDR, "--rmmode", name])
+            if name not in attached:
+                command([XRANDR, "--rmmode", name])
         raise
 
 
@@ -299,12 +301,14 @@ def current_primary():
                  if item["primary"]), "none")
 
 
-def restore(baseline, primary="keep"):
-    """Restore NVIDIA, XRandR primary, and GNOME's visible desktop."""
+def restore(baseline, primary="keep", token=None):
+    """Restore NVIDIA, remove this lease's modes, then recover GNOME."""
     if not baseline or len(baseline) > 32768 or any(ord(c) < 32 or ord(c) > 126 for c in baseline):
         raise ValueError("Invalid baseline MetaMode")
     if primary not in ("keep", "none") and not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", primary):
         raise ValueError("Invalid primary output")
+    if token is not None:
+        mode_names(token)
     command([NVIDIA, "--assign", "CurrentMetaMode=" + baseline])
     actual = command([NVIDIA, "--query", "CurrentMetaMode", "--terse"]).partition("::")[2].strip()
     if "".join(actual.split()) != "".join(baseline.split()):
@@ -314,9 +318,14 @@ def restore(baseline, primary="keep"):
                 [XRANDR, "--output", primary, "--primary"])
         if current_primary() != primary:
             raise ValueError("Primary output restoration did not take effect")
+    # Mutter can still advertise a same-size lease mode after NVIDIA switches
+    # back. If it recovers the logical monitor first, that mode becomes active
+    # again and changes the restored MetaMode. Remove only this lease's modes.
+    if token is not None:
+        cleanup(token)
     ensure_restored_mutter_output(current_primary() if primary == "keep" else primary)
-    # Mutter recovery can itself reconfigure XRandR. Recheck the exact lease
-    # baseline before the supervisor releases the temporary modes.
+    # Mutter recovery can itself reconfigure XRandR. Recheck the exact saved
+    # baseline before declaring restoration complete.
     actual = command([NVIDIA, "--query", "CurrentMetaMode", "--terse"]).partition("::")[2].strip()
     if "".join(actual.split()) != "".join(baseline.split()) or (
             primary != "keep" and current_primary() != primary):
@@ -331,12 +340,12 @@ def main(argv):
         apply(argv[2], argv[4:], int(argv[3]))
     elif len(argv) == 2 and argv[1] == "primary":
         print(current_primary())
-    elif len(argv) == 4 and argv[1] == "restore":
-        restore(argv[2], argv[3])
+    elif len(argv) in (4, 5) and argv[1] == "restore":
+        restore(argv[2], argv[3], argv[4] if len(argv) == 5 else None)
     elif len(argv) == 3 and argv[1] == "cleanup":
         cleanup(argv[2])
     else:
-        raise ValueError("Usage: plank-display-match apply TOKEN PRIMARY MODE [MODE] | cleanup TOKEN | primary | restore METAMODE PRIMARY")
+        raise ValueError("Usage: plank-display-match apply TOKEN PRIMARY MODE [MODE] | cleanup TOKEN | primary | restore METAMODE PRIMARY [TOKEN]")
 
 
 if __name__ == "__main__":

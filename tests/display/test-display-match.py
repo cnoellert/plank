@@ -81,11 +81,21 @@ class DisplayMatchTest(unittest.TestCase):
 
     def transaction(self, fail=False, primary=-1):
         commands = []
+        attached = []
 
         def run(argv):
             commands.append(argv)
             if argv == [match.XRANDR, "--query"]:
-                return QUERY
+                lines = []
+                for line in QUERY.splitlines():
+                    lines.append(line)
+                    if line.startswith("DP-"):
+                        output = line.split()[0]
+                        lines.extend("   " + mode + " 59.95" for name, mode in attached
+                                     if name == output)
+                return "\n".join(lines) + "\n"
+            if argv[:2] == [match.XRANDR, "--addmode"]:
+                attached.append((argv[2], argv[3]))
             if argv[:3] == [match.NVIDIA, "--query", "CurrentMetaMode"]:
                 return "id=7 :: " + BASELINE
             return ""
@@ -229,6 +239,64 @@ class DisplayMatchTest(unittest.TestCase):
              patch.object(match, "ensure_restored_mutter_output"):
             with self.assertRaisesRegex(ValueError, "changed the restored"):
                 match.restore(BASELINE, "DP-0")
+
+    def test_restore_removes_same_size_lease_mode_before_gnome_recovery(self):
+        token = "123-456"
+        query = QUERY.replace("   existing-mode 60.00*",
+                              "   existing-mode 60.00*\n   PLANK-Match-123-456-1 60.00")
+        query = query.replace("DP-2 connected (normal left inverted right x axis y axis)\n",
+                              "DP-2 connected (normal left inverted right x axis y axis)\n"
+                              "   PLANK-Match-123-456-0 60.00\n")
+        actions = []
+
+        def run(argv):
+            actions.append(argv)
+            if argv == [match.XRANDR, "--query"]:
+                return query
+            if argv[:3] == [match.NVIDIA, "--query", "CurrentMetaMode"]:
+                return "id=7 :: " + BASELINE
+            return ""
+
+        def recover(primary):
+            actions.append(["recover", primary])
+            self.assertIn([match.XRANDR, "--rmmode", "PLANK-Match-123-456-1"], actions)
+            self.assertIn([match.XRANDR, "--rmmode", "PLANK-Match-123-456-0"], actions)
+
+        with patch.object(match, "command", side_effect=run), \
+             patch.object(match, "ensure_restored_mutter_output", side_effect=recover):
+            match.restore(BASELINE, "DP-0", token)
+        self.assertEqual(actions[0], [match.NVIDIA, "--assign", "CurrentMetaMode=" + BASELINE])
+        recovery = actions.index(["recover", "DP-0"])
+        self.assertIn([match.NVIDIA, "--query", "CurrentMetaMode", "--terse"],
+                      actions[recovery + 1:])
+
+    def test_invalid_restore_token_rejected_before_display_write(self):
+        with patch.object(match, "command") as run:
+            with self.assertRaisesRegex(ValueError, "lease identity"):
+                match.restore(BASELINE, "DP-0", "../other-lease")
+            run.assert_not_called()
+
+    def test_failed_addmode_removes_unattached_mode_after_restore(self):
+        commands = []
+
+        def run(argv):
+            commands.append(argv)
+            if argv == [match.XRANDR, "--query"]:
+                return QUERY
+            if argv[:3] == [match.NVIDIA, "--query", "CurrentMetaMode"]:
+                return "id=7 :: " + BASELINE
+            if argv[:2] == [match.XRANDR, "--addmode"]:
+                raise ValueError("could not attach mode")
+            return ""
+
+        with patch.object(match, "command", side_effect=run), \
+             patch.object(match, "mutter_geometry", return_value={}), \
+             patch.object(match, "modeline", return_value=["timing"]), \
+             patch.object(match, "restore") as restore:
+            with self.assertRaisesRegex(ValueError, "could not attach mode"):
+                match.apply("123-456", ["2056x1286"])
+            restore.assert_called_once_with(BASELINE, "DP-0", "123-456")
+        self.assertEqual(commands[-1], [match.XRANDR, "--rmmode", "PLANK-Match-123-456-0"])
 
     def test_primary_index_rejected_before_mutation(self):
         with patch.object(match, "command") as run:

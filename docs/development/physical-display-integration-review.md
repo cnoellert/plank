@@ -73,10 +73,31 @@ on the same Host worker. That retry behavior is part of this display series.
 These are normal-flow observations on earlier exact packages, not qualification
 of the newly split branch or standalone operation without remote desktop.
 
+The exact split-branch Host RPM from hosted run `35270406081` (root `e60bfe3`,
+Host `ec04961`) was installed on a Rocky 9.5 physical-startup test Host after
+its dependency check passed. A matching macOS 15 Client (`d193690`) connected
+with two 2560×1440 desktop-size outputs. XRandR and GNOME agreed on the
+5120×1440 layout and the right-hand primary, and the operator reported that
+window movement and Flame placement worked. **Normal disconnect failed the
+restoration gate:** XRandR returned to one output, but NVIDIA retained an active
+`PLANK-Match` mode. GNOME had chosen that same-size temporary mode during
+logical-monitor recovery. The original NVIDIA mode, primary and GNOME logical
+monitor were restored manually by assigning the saved MetaMode, removing this
+lease's inactive modes, then recovering GNOME. The Host is no longer in a
+temporary layout.
+
+The follow-up source change passes the supervisor-owned mode token to the
+helper and removes only that lease's modes after the NVIDIA assignment but
+before GNOME recovery. Twenty-eight no-display helper tests pass, including
+the same-size mode ordering and an unattached-mode apply failure. This source
+change requires a new qualified RPM and another live disconnect test; the
+installed package above is the failing build.
+
 ## Remaining gates
 
-1. Rebuild the exact Host source with this root helper/RPM on a qualified Rocky
-   9.7 builder; verify package content and then test the installed candidate.
+1. Rebuild the restoration fix with the paired Host and root commits on a
+   qualified Rocky 9.7 builder; verify package content and repeat the normal
+   disconnect/restoration test on the installed candidate.
 2. Test monitor-mode rejection, helper timeout and forced termination, failed
    restoration, abrupt Client exit and transport loss. Verify the original
    physical desktop remains usable, primary is correct and no lease-owned mode
