@@ -265,9 +265,14 @@ menu-bar, drag and focus checks. Tablet permission/pressure remains to be
 verified with this exact app. No release or performance acceptance is claimed.
 The subsequent live session confirms two `native-fullscreen=1` windows with
 settled drawables 2560x1440 at 1x and 4112x2572 at 2x below the camera area.
-Operator menu-bar/drag/focus acceptance is pending. Launch-time TCC diagnostics
-reject the previous Input Monitoring signature; raw tablet attachment and
-permission renewal have not yet been confirmed for this candidate.
+The operator confirms the requested fullscreen/menu-bar, cross-display drag and
+immediate right-click tests work. Input Monitoring was renewed through normal
+macOS settings: TCC now explicitly allows this exact app, and its live log
+confirms both Wacom interfaces attached with raw HID forwarding active. The
+session was disconnected during permission recovery; the operator is asked to
+reconnect and confirm Flame pressure and pen focus in this native-Spaces build.
+Those application checks remain pending; the prior build's pressure acceptance
+does not substitute for this check.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

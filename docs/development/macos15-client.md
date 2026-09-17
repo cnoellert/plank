@@ -668,10 +668,15 @@ All 79 Client tests, five fullscreen checks, the native input-order regression,
 106 Mach-O target checks, dependency closure, build-path and ad-hoc signature
 gates pass. The previous app is closed; this candidate is at direct sign-in.
 Live menu-bar, input, tablet and transition acceptance remains pending.
-The connected session now logs native fullscreen on both outputs: final
-drawable sizes are 2560x1440 and 4112x2572 at 1x/2x respectively. This is geometry
-evidence, not operator acceptance. Launch-time TCC diagnostics again reject the
-old Input Monitoring code requirement; raw tablet attachment remains unverified.
+The connected session logs native fullscreen on both outputs: final drawable
+sizes are 2560x1440 and 4112x2572 at 1x/2x respectively. The operator confirms
+fullscreen/menu-bar behavior, both-direction window dragging and immediate
+right-click focus work. Launch-time TCC diagnostics rejected the old Input
+Monitoring code requirement, but a normal OS permission renewal now explicitly
+allows this app and the Client confirms both Wacom interfaces attached with raw
+HID forwarding active. After the permission-recovery disconnect, the operator
+is asked to reconnect and check Flame pressure and pen focus. Those checks
+remain pending for this exact native-Spaces candidate.
 
 The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
