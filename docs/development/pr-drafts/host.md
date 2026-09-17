@@ -21,6 +21,8 @@ independently from the XRandR primary flag.
 - Depends on [libvirtualhid #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
   (`b0cc3c8`) and the root's `plank-display-match`
   helper, RPM ownership/dependencies and tests.
+- The paired Client controls are [Client #4](https://github.com/instinctual/plank-client/pull/4);
+  the helper and package wiring are [root #7](https://github.com/instinctual/plank/pull/7).
 - Supervisor/worker request changes from SC-DISPLAY-3 to SC-DISPLAY-4; upgrade
   these components together. This is not an external schema-version change.
 
@@ -36,18 +38,24 @@ Review that narrowed privilege boundary and timeout/restoration behavior.
 ## Verification and remaining gates
 
 Focused Host topology/session tests and Linux keyboard tests passed in Rocky
-9.7. Twenty helper transaction/geometry tests passed. Package and installed-file
-checks, actual single/desktop-size/Retina-size helper trials, primary identity,
-exact restore and temporary-mode cleanup passed on the authorized NVIDIA Host.
-The operator confirmed correct display appearance and intended Flame placement.
+9.7 for earlier exact candidates. Twenty helper transaction/geometry tests
+pass. Earlier package and installed-file checks, actual single/desktop-size/
+Retina-size helper trials, primary identity, exact restore and temporary-mode
+cleanup passed on the authorized NVIDIA Host. The operator confirmed correct
+display appearance and intended Flame placement. The final capability-bit
+revision still needs a fresh qualified Host package build and installation.
 
 An upstream Ubuntu Client, headless preset workflows, forced helper termination,
 restoration failure and abrupt session recovery still need qualification. Do
 not describe successful normal restoration as proof of every failure path.
+For headless Flame workstations, compare existing virtual startup before
+choosing temporary physical modes as a deployment policy.
 
 The libvirtualhid dependency must be available from its canonical upstream URL
 before the gitlink is used as a reproducible build input.
 
 ## Contribution set
 
-Paired with the separate [physical display integration review](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md). The root Mac Client PR no longer contains this Host feature.
+Paired with [root display PR #7](https://github.com/instinctual/plank/pull/7)
+and its [review record](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md).
+The root Mac Client PR no longer contains this Host feature.
