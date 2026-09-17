@@ -34,6 +34,9 @@ fail-closed contract before configuring a package build.
 `scripts/build/verify-host-dependency-patches.sh` also proves that the generated
 dependency worktrees contain exactly the tracked files named by those patches,
 with no additional tracked source modifications or patch residue.
+The Loader source copy intentionally omits its upstream `tests/` directory;
+the verifier allows only tracked deletions there, not modified tests or deleted
+production source.
 
 The Vulkan Loader 1.4.362 candidate also requires
 `patches/FFmpeg/Vulkan-Loader/01-handle-id-filter-allocation-failure.patch`.
