@@ -273,6 +273,18 @@ session was disconnected during permission recovery; the operator is asked to
 reconnect and confirm Flame pressure and pen focus in this native-Spaces build.
 Those application checks remain pending; the prior build's pressure acceptance
 does not substitute for this check.
+The operator then reported another loss of remote left-click. The Client had
+already closed before inspection: kernel, XInput slave and master button states
+were all released, the virtual mouse was attached, and the exact display layout
+was preserved. No Host restart or input/display configuration change was made.
+The operator relaunched the native-Spaces artifact and confirms mouse left-click
+and pen taps both work. Its running executable hash matches the candidate above.
+This is recovery evidence; the intermittent failure's cause remains unconfirmed.
+A completed 180-second read-only Host trace records 23 complete mouse-left
+press/release pairs, two complete pen-tip pairs and no read errors. Kernel,
+XInput and master-pointer button states finish released. No observer remains
+running. Flame pressure in
+this build remains a separate pending application check.
 Other remaining gates: visual/color acceptance, modifier/scroll/display-mapping checks, longer pacing,
 multi-monitor and outage-recovery tests;
 investigate Host NvFBC teardown and Client renderer/window warnings. The earlier

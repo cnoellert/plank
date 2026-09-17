@@ -678,6 +678,18 @@ HID forwarding active. After the permission-recovery disconnect, the operator
 is asked to reconnect and check Flame pressure and pen focus. Those checks
 remain pending for this exact native-Spaces candidate.
 
+A subsequent intermittent loss of remote left-click recovered after the
+operator relaunched this native-Spaces artifact. The operator confirms both
+mouse clicks and pen taps work. The running binary matches the recorded hash;
+no Host restart or input/display configuration change was performed. First
+inspection occurred after the failed Client had closed: all kernel/XInput
+buttons were released and the virtual mouse was attached. That snapshot cannot
+establish the failure's cause or equate it with the earlier stuck-XInput incident.
+A completed 180-second button-state trace records 23 complete mouse-left pairs,
+two complete pen-tip pairs, no errors and released kernel/XInput/master states
+at completion. The observer has stopped. Recurrence remains open, and application
+pressure acceptance is separate from successful pen taps.
+
 The original upstream base is `15e60000bbad0cc9af50c4f1df4db3a5777a6540`,
 Client `e8fc0cc0c1d73d7cb78c81524fc0ee425c24ff05`, transport dependency
 `912ece5c64787997f978673ca60d313898a3548c`. Workstation paths and raw logs are
