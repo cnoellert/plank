@@ -48,8 +48,14 @@ Host status 425 as an error even though the Host completed the transition. The
 failed local setup had consumed the Client's one-session credential handoff, so
 the Client's transition wait did not run. Client `4accda4` now waits with the
 valid session token and asks for a new sign-in only if a replacement worker
-rejects that token. The macOS 15 build and existing focused checks pass; this
-new Client change has not yet received a live regression test or been pushed.
+rejects that token. Its separate ad-hoc-signed macOS 15 development app passed
+the existing Client checks. In a live repeat, the operator first reproduced
+the 8192 rejection, then switched to macOS desktop size without another sign-in.
+The Client logged status 425, waited for the Host transition, and connected;
+the operator confirmed the result. This tests the retry path, not the broader
+Client release gates. Normal disconnect then restored the exact pre-session
+single-output MetaMode and primary property, removed the temporary modes, and
+cleared the lease. The new commits have not been pushed.
 
 ## Upstream reconciliation
 

@@ -18,11 +18,18 @@ for the display transition. Its previous failed setup had consumed the Client's
 one-session credential handoff while leaving a valid token. Client `4accda4`
 removes that early credential requirement and requests a new sign-in only if
 the Host replaces the worker and rejects the token. The local macOS 15 build
-and existing Client checks pass in `work/pr-review-client-build`; this patched
-binary has not been deployed or live-accepted. Next, reproduce the
-early-failure/425 sequence against this candidate, then fold the fix into the
-Mac Client-only PR split. Keep the owner-requested feature-bit collision,
-bounded Wacom shutdown, left-click regression, and non-PCoIP Host tests open.
+and existing Client checks pass in `work/pr-review-client-build`. A separate
+ad-hoc-signed development app (executable SHA256
+`9bbe863c64dc37fcf8f663c19ecb5b74ae4b7d9fb48cab32bd144e71dfcc36a3`)
+was used for the exact live regression: Retina pixel detail first produced the
+8192 canvas rejection, then macOS desktop size connected without another
+sign-in. The Client waited through 425 and the operator confirmed the stream.
+Normal disconnect restored the original single-output MetaMode and primary
+property and removed the lease and temporary modes. This accepts the specific
+retry/recovery sequence, not the complete Client candidate. The new commits
+remain local. Next, fold the fix into the Mac Client-only PR split. Keep the
+owner-requested feature-bit collision, bounded Wacom shutdown, left-click
+regression, and non-PCoIP Host tests open.
 
 ## Publication-time upstream refresh
 
