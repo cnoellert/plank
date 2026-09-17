@@ -31,8 +31,8 @@ disconnect are outside v1.
 `PLANK_CLIPBOARD_WIRE_HEADER` is defined in `moonlight-common-c/src/plank.h`.
 All header fields use little-endian byte order.
 
-| Lane | Type | Direction |
-|---|---|---|
+| Lane / type | Direction |
+|---|---|
 | PLE1 event `PLANK_TRANSPORT_EVENT_CLIPBOARD_OFFER` (5) | Host → client |
 | Input `PLANK_TRANSPORT_INPUT_CLIPBOARD_OFFER` (9) | Client → Host |
 
