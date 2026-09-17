@@ -27,7 +27,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Check out exact Host input
-        run: git submodule update --init apps/host/linux
+        run: git -c safe.directory="$GITHUB_WORKSPACE" submodule update --init apps/host/linux
       - name: Exercise production clipboard backend against Xvfb
         shell: bash
         run: |
