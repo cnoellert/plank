@@ -31,6 +31,22 @@ class DependencyPolicyTests(unittest.TestCase):
             self.assertRegex(self.policy, rf'(?m)^      - dependency-name: {dependency}$')
         self.assertNotIn('directory: /third_party/quinn-proto', self.policy)
 
+    def test_transport_and_probe_share_rustls_lock(self):
+        identities = []
+        for directory in ('protocol/plank-transport', 'probes/network/plank-transport'):
+            lock = (ROOT / directory / 'Cargo.lock').read_text()
+            packages = [block for block in lock.split('[[package]]')
+                        if re.search(r'(?m)^name = "rustls"$', block)]
+            self.assertEqual(len(packages), 1, directory)
+            identity = []
+            for field in ('version', 'source', 'checksum'):
+                values = re.findall(rf'(?m)^{field} = "([^"]+)"$', packages[0])
+                self.assertEqual(len(values), 1, (directory, field))
+                identity.append(values[0])
+            identities.append(identity)
+        self.assertEqual(identities[0], identities[1],
+                         'Update the transport and probe Rustls lockfiles together')
+
     def test_root_gitlinks_track_the_maintained_branches(self):
         modules = configparser.ConfigParser()
         modules.read(ROOT / '.gitmodules')

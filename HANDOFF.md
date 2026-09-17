@@ -5,6 +5,42 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Rustls security update is approved and merged through root PR #9: merge
+  `8f1ad75bede2fc6948315cb61d7ef380d29ff4df`, reviewed head
+  `617cecc6990b01967137536a744971cba94411cc`. Both production and standalone
+  probe locks now select 0.23.45, addressing upstream GHSA-2mjx-qc3c-rqvc.
+  A CI guard requires the two Rustls identities to remain synchronized.
+  Quinn's repaired path override, RaptorQ, all product gitlinks and media
+  behavior are unchanged. Package base advances to 1.0.125 for new build bytes;
+  no release or deployment is authorized by this dependency change alone.
+  Hosted runs `35272691429` and `35272698006` both passed all four platform
+  builds plus policy/privacy checks. Mac signing is deliberately skipped for
+  these candidate checks. Local Rust 1.89.0 validation passed 21 unit tests,
+  the standalone probe locked check, 42 CI policy tests, native C ABI media/
+  control/closure checks, 40 repeated peer-close cases, and rejection of a
+  mismatched certificate fingerprint. The optimized 150 Mbps loopback loss
+  matrix passed at 0.5%, 1%, 2% and 5%. An initial debug run timed out during
+  concurrent local build activity; the unchanged baseline and an isolated
+  candidate debug rerun passed (about 148/150 seconds), as did the optimized
+  candidate (about four seconds). These are synthetic tests, not fresh
+  hardware/WAN qualification. No packages were deployed or release published.
+  Product pins remain Client `86682b5b596e5c31b81a6e2a4b238bb62dc6e42c`,
+  Host `9329784ac41f50cbec0c9d76badfd22227ec5e5f`, and Kymux
+  `912ece5c64787997f978673ca60d313898a3548c`; recursive pins are unchanged.
+  The operator's NVIDIA driver ceiling remains 595.91.07; this update changes
+  no NVIDIA dependency or requirement.
+
+  Separate follow-up: Kymux's audio UnreliableFec receiver can buffer completed
+  audio received before its configuration, then wait for another inbound
+  message before delivering it. A receiver-only reproduction at the production
+  Kymux pin demonstrates this without TLS/QUIC: config-first delivers audio;
+  datagrams-first delivers config but stalls the ready audio. Inspect
+  `kyproto/src/protocol/driver/av/audio_unreliable_fec.rs` before a separate fix.
+  This is a possible cause of the original intermittent macOS loopback timeout,
+  not proof of that run's ordering. The Rustls PR adds detailed failure output
+  only; assertions and the five-second deadline remain unchanged. Do not mask
+  this with retries or mix its runtime fix into a dependency-only update.
+
 - Dependency maintenance setup adds weekly Dependabot proposals to the root,
   Host, Client, Kymux, build-deps and libvirtualhid repositories. Common-C's
   maintained branches have no dependency manifests; do not resurrect its
@@ -32,6 +68,17 @@ notes' README before machine-specific work; deployment information stays outside
   | Build-deps / master (activation only) | `5490628476568af75fd563ff097ad5d447ccbea3` |
   | libvirtualhid / plank/main | `a74f9694fe4bec29a4643975ced6da4cdedbf04f` |
   | libvirtualhid / master (activation only) | `62838758220d594d008d42e0c90e1210c49c1a79` |
+
+  Initial GitHub Dependabot jobs all completed successfully: root Cargo
+  `35270141576`, Actions `35270137176`, submodules `35270136847`; Host
+  `35270026662`, Client `35270030228`, Kymux `35270045661`, build-deps
+  `35270044386`, libvirtualhid `35270045226`. First update PRs are open on the
+  intended targets; none were merged. This validates automation, not the
+  proposed dependency versions. Root setup commit is
+  `6377245de4a1e82b201320877c0a7858fb87054f`. No candidate build or deployment
+  was needed for this configuration-only setup. Quinn automatic security-fix
+  PRs are also excluded by the explicit ignore rule; alerts still require
+  manual triage against the repaired production fork.
 
 - The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
   and release. Root and Client are on pushed main: package-source root
