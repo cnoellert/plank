@@ -5,7 +5,7 @@ and contribution plan, see [the integration review](macos15-integration-review.m
 The entries below retain the detailed development history; earlier pending
 states are superseded only by explicit later acceptance for the same behavior.
 
-This fork adds an explicit Apple Silicon macOS 15 Client build target.
+This fork adds Apple Silicon macOS 15 Client support.
 The initial goal is keyboard, mouse, video and audio from a Linux Host.
 An experimental Mac raw USB Wacom backend now also passes initial attachment
 and variable-pressure delivery in Autodesk Flame. See the tablet evidence below
@@ -15,15 +15,12 @@ for the candidate and remaining hardware qualification gates.
 
 Use the pinned dependencies and instructions in
 [the Mac Client runbook](build/macos-client-build-runbook.md). Before dependency
-bootstrap, application build and packaging, additionally set:
-
-```bash
-export PLANK_MAC_CLIENT_MIN_MACOS=15.0
-```
-
-Use a separate `PLANK_DEP_ROOT`, `PLANK_MAC_CLIENT_DEPS` and `PLANK_WORK_ROOT`
-for each deployment target. Defaults remain 27.0. The Client target helper
-requires Apple Silicon and an SDK at least as new as the selected target.
+bootstrap, application build and packaging, the common target helper selects
+15.0 automatically. The operator requested one package for macOS15 and macOS27;
+SDK27 or newer remains mandatory, independently of the deployment floor.
+Rebuild old27-minimum dependencies instead of reusing them. The historical
+per-target builds below are evidence for their exact candidates, not a request
+to maintain separate product editions.
 The Client builds its existing Rust transport with the same deployment target;
 the macOS Host build policy is independent.
 

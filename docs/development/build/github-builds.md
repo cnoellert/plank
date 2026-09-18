@@ -16,7 +16,7 @@ credential/cache restrictions just to accept a Dependabot update.
 | Linux Host | Pinned Rocky 9.7 container on Ubuntu runner | RPM and provenance catalog |
 | Linux Client | Ubuntu 26.04, Qt 6.10.2 | DEB and provenance catalog |
 | macOS Host | `xcode-27`, arm64, SDK/OS 27+ | Unsigned compile and portable tests |
-| macOS Client | `xcode-27`, arm64, SDK/OS 27+ | Unsigned developer build |
+| macOS Client | `xcode-27`, arm64, SDK/OS 27+; deployment minimum15.0 | One unsigned developer build for macOS15+ |
 
 Runner labels are not substitutes for version checks. Unsupported OS, Qt or
 SDK versions stop the build. The Rocky repositories are fixed to the 9.7 vault;
@@ -24,6 +24,14 @@ CUDA compilation retains the existing complete architecture set. Runtime GPU
 drivers are not installed. `scripts/ci/` creates the path contract, bootstraps
 pinned dependencies, then invokes the normal build/package scripts. Existing
 patch, payload, version and clean-source gates remain mandatory.
+
+The Mac Client uses one package on macOS15 and macOS27. Its lower deployment
+floor does not lower the builder SDK requirement or change the Host's27.0
+minimum. Exact cache keys include the Client deployment policy; old
+27-minimum dependencies are not reused. Native target-validation fixtures run
+in the Client build, and DMG packaging checks every bundled binary and the app
+plist. Live acceptance of the identical package on both OS versions is a
+separate gate; newer APIs require runtime availability checks.
 
 Linux package artifacts expire after seven days and do not publish releases.
 Feature builds retain their branch-qualified visible and package versions.

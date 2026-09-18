@@ -1,14 +1,15 @@
 # Repository Guidelines
 
-## Fork scope
+## Mac Client compatibility scope
 
-This fork explicitly supports work on an experimental Apple Silicon macOS 15
-Client. Set `PLANK_MAC_CLIENT_MIN_MACOS=15.0` for its dependency bootstrap,
-application build and packaging. The operator authorized development and local
-Client testing on that target. This supersedes the older-OS Client prohibition
-below for this fork; the macOS Host and Linux host qualification rules remain.
-Keep dependency and application builds isolated by deployment target. Do not
-claim streaming, audio, input or tablet acceptance from compilation alone.
+The operator authorized one Apple Silicon Client package for macOS 15 and newer,
+built with SDK27 or newer and a 15.0 deployment target. Bootstrap, application,
+and DMG packaging use that same policy; do not reuse dependencies built with a
+newer minimum OS. Use runtime availability checks for APIs newer than macOS15,
+not compile-time removal of macOS27 capabilities. The macOS Host remains
+27-only, and Linux qualification rules are unchanged. Qualify the identical
+Client package on both macOS15 and macOS27; compilation alone is not streaming,
+audio, input or tablet acceptance.
 
 ## Project Structure & Module Organization
 
@@ -97,7 +98,7 @@ macOS compatibility paths. Beta results require revalidation against the final
 OS release. This work does not change the supported Linux release gates below.
 
 Experimental macOS Client builds use the same authorized dedicated development
-Mac, Apple Silicon, SDK27 and deployment target27.0. See
+Mac, Apple Silicon, SDK27 or newer and deployment target15.0. See
 `docs/development/plans/macos-client.plan` and `docs/development/build/macos-client-build-runbook.md`. This is not
 permission to compile Linux packages on the Mac or restore inherited prebuilts.
 
