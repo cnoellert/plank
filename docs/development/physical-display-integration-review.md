@@ -209,6 +209,40 @@ Exact-package live display acceptance remains open.
 
 ## Remaining gates
 
+### Maintainer review follow-up — September 18
+
+The maintainer's review of root display PR #7 identified three correctness
+gaps. The paired draft branches now address them without changing released
+packages:
+
+- Host `09eda225` limits the `DP-0` primary-connector identity check to a
+  virtual-startup Host that negotiated that capability. A physical lease with
+  a correctly selected `DP-2` primary no longer retriggers a transition.
+  The binding test covers that case.
+- The root helper verifies the full restored GNOME output set, rectangles and
+  selected primary against XRandR before reporting success. Missing outputs,
+  stale geometry and wrong primary are regression cases; all 29 no-display
+  helper tests pass locally.
+- Client `78f6074` offers and applies the Retina-size choice only when an
+  authenticated physical Host advertises matched modes. Headless virtual
+  Hosts retain the existing panel-native mode selection. The topology test
+  covers physical and virtual startup with the capability present and absent.
+
+Root `31b80e4` pins these Client and Host commits on the 1.0.137 mainline
+base. Its unsigned four-product hosted build is
+[run 35371792390](https://github.com/cnoellert/plank/actions/runs/35371792390).
+Policy, Rocky Host, Ubuntu Client, Mac Host and Mac Client jobs all passed.
+These are source/build checks, not signed-package or hardware qualification.
+The GNU/Linux-only display preparation shell test and the new Host unit case
+are in a separate exact-source Rocky qualification
+[run 35373732797](https://github.com/cnoellert/plank/actions/runs/35373732797),
+which remains pending at this update.
+
+This review also confirms the working virtual-output route for the headless
+Flame test workflow. The physical-output helper remains a separate draft for
+hybrid workstations until its use case and interruption/restoration behavior
+are qualified.
+
 1. Test monitor-mode rejection, helper timeout and forced termination, failed
    restoration, abrupt Client exit and transport loss. Verify the original
    physical desktop remains usable, primary is correct and no lease-owned mode
