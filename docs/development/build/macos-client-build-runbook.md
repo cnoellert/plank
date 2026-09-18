@@ -1,8 +1,24 @@
 # macOS Client build inputs and procedure
 
-Experimental Apple Silicon/macOS27 only. Read the canonical release runbook
-first. Linux builder/test roles remain unchanged. Use clean Git worktrees and
-verified Git bundles imported dependency-first, with recursive fetch disabled.
+Build one experimental Apple Silicon Client for macOS15 and newer with SDK27
+or newer. The deployment target is 15.0 throughout the app, dependencies, and
+DMG; there is no separate reduced-capability macOS15 edition. Newer APIs must
+use runtime availability checks so macOS27 retains its capabilities. The Host
+stays macOS27-only. Read the canonical release runbook first. Linux builder/test
+roles remain unchanged. Use clean Git worktrees and verified Git bundles
+imported dependency-first, with recursive fetch disabled.
+
+`macos-client-target.sh` exports the common deployment policy. Do not set
+`PLANK_MAC_CLIENT_MIN_MACOS=27.0` from an old shell: it is rejected instead of
+silently producing a different package. The dependency cache includes the
+target and policy file, forcing a fresh build of older 27-minimum libraries.
+Local prepared dependencies must be fully bootstrapped again when changing
+this target; an FFmpeg-only rebuild is insufficient. Every bundled Mach-O must
+contain arm64 with a minimum OS no newer than15, and the app plist must say15.0.
+The build runs real Mach-O positive/negative fixtures for this gate on the Mac.
+The same resulting DMG must pass live acceptance on macOS15 and macOS27; the
+hosted SDK27 build alone cannot establish that. See
+[the current integration review](../macos15-integration-review.md).
 
 For hosted candidates use [GitHub builds](github-builds.md), including the
 exact-input dependency cache and explicit clean-bootstrap option. The local
@@ -85,6 +101,15 @@ bootstrap bundle, so fetching that origin is not a source update.
 bash "$PLANK_SOURCE_ROOT/scripts/build/build-macos-client.sh" \
   "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/client-build"
 ```
+
+For repeated local Wacom tests, `stage-macos-client-dev.sh` can use a stable
+code-signing identity from the local keychain. Set
+`PLANK_MACOS_DEV_SIGNING_IDENTITY` to its 40-character SHA-1 identifier before
+staging. The default remains ad hoc signing. Every changed ad hoc build has a
+new `cdhash` requirement, so macOS may reject its prior Input Monitoring grant;
+the operator must approve any new grant through System Settings. A signed
+development app remains unnotarized and is not a distributable release. Do not
+put signing-key passwords in scripts or environment variables.
 
 For a self-contained drag-to-Applications DMG, in the signing SSH session:
 

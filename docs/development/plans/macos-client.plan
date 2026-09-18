@@ -7,6 +7,12 @@ interactive qualification gates below are not implied complete by this merge.
 
 ## Scope
 
+September17 update: the operator authorized one SDK27-built Apple Silicon Client
+package with a macOS15.0 minimum, preserving macOS27 features with runtime API
+availability checks. The Host remains27-only. See the current
+Mac Client build runbook and `macos15-integration-review.md` for qualification;
+the milestones below describe the initial macOS27 implementation.
+
 Extend the existing Qt/SDL3 Client. Initial target is Apple Silicon, macOS 27
 and SDK 27, built on the authorized dedicated development Mac. Reuse current
 bookmarks, authentication, native Kyber transport, telemetry and session

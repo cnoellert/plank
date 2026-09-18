@@ -13,6 +13,7 @@ INPUTS = (
     'scripts/ci/cache-macos-client.py',
     'scripts/ci/bootstrap.sh',
     'scripts/build/bootstrap-macos-client-deps.sh',
+    'scripts/build/macos-client-target.sh',
     'scripts/build/build-paths.sh',
     'scripts/build/relocate-openssl-pc.py',
     'scripts/build/sanitize-ffmpeg-build-info.py',
@@ -28,7 +29,10 @@ def fingerprint(root, dependency_root, toolchain):
     # Prepared .pc/CMake/dylib metadata has absolute build prefixes. Never reuse
     # it under a different path, SDK, compiler or OS image. App/version changes
     # deliberately do not invalidate these independent libraries.
-    data = {'schema': 1, 'inputs': hashes, 'source_root': str(root),
+    target = os.environ.get('PLANK_MAC_CLIENT_MIN_MACOS') or '15.0'
+    if target != '15.0':
+        raise ValueError('PLANK Client deployment target must be 15.0')
+    data = {'schema': 1, 'deployment_target': target, 'inputs': hashes, 'source_root': str(root),
             'dependency_root': str(dependency_root), 'toolchain': toolchain}
     return KEY_PREFIX + hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 

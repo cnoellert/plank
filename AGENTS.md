@@ -1,5 +1,16 @@
 # Repository Guidelines
 
+## Mac Client compatibility scope
+
+The operator authorized one Apple Silicon Client package for macOS 15 and newer,
+built with SDK27 or newer and a 15.0 deployment target. Bootstrap, application,
+and DMG packaging use that same policy; do not reuse dependencies built with a
+newer minimum OS. Use runtime availability checks for APIs newer than macOS15,
+not compile-time removal of macOS27 capabilities. The macOS Host remains
+27-only, and Linux qualification rules are unchanged. Qualify the identical
+Client package on both macOS15 and macOS27; compilation alone is not streaming,
+audio, input or tablet acceptance.
+
 ## Project Structure & Module Organization
 
 This repository is in late integration and production hardening. It has a
@@ -87,7 +98,7 @@ macOS compatibility paths. Beta results require revalidation against the final
 OS release. This work does not change the supported Linux release gates below.
 
 Experimental macOS Client builds use the same authorized dedicated development
-Mac, Apple Silicon, SDK27 and deployment target27.0. See
+Mac, Apple Silicon, SDK27 or newer and deployment target15.0. See
 `docs/development/plans/macos-client.plan` and `docs/development/build/macos-client-build-runbook.md`. This is not
 permission to compile Linux packages on the Mac or restore inherited prebuilts.
 

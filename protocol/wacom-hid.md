@@ -54,6 +54,13 @@ the corresponding input/output-report ioctl on the original `hidraw` node.
 Errors and returned lengths must be preserved. The host must never synthesize a
 successful feature reply.
 
+The experimental macOS Client uses `IOHIDDeviceGetReport`/`IOHIDDeviceSetReport`
+on the corresponding physical interface. It converts Linux UHID report types
+to IOKit types and retains numbered report IDs. For unnumbered feature/control
+reports, the synthetic Linux zero-ID slot is removed before IOKit and restored
+on GET replies. Native failures are returned as Linux errno values; logs record
+native status codes without report data or device serials.
+
 ## First-generation Intuos Pro fallback
 
 Linux UHID cannot reproduce the USB-interface type required by `hid-wacom` for
@@ -82,6 +89,16 @@ explicit final device teardown remains destructive and sends `tablet-detach`.
 An ordinary resumable stream disconnect also suspends transport and retains the
 same endpoints. Stale reports from an older or suspended generation are
 discarded.
+
+On macOS, a dedicated HID run loop exclusively opens every interface with
+`kIOHIDOptionsTypeSeizeDevice` before sending the grouped attachment. A partial
+open or rejected/timed-out attachment releases the entire group. Report I/O and
+device closure stay on that worker; focus loss and reconnect use a release
+barrier before the old control channel is stopped. No driver is disabled or
+reconfigured. The host remains responsible for tablet coordinates; a passive
+Mac cursor view displays the host's reported cursor position. The first-generation
+normalized fallback is not implemented on Mac; those device IDs are excluded
+from the Mac raw path rather than represented as supported.
 
 ## Reconnect Barrier
 

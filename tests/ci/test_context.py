@@ -34,7 +34,9 @@ class ContextTests(unittest.TestCase):
 
     def test_worktree_and_explicit_path_contract(self):
         with tempfile.TemporaryDirectory() as directory:
-            base = Path(directory)
+            # macOS exposes /var through /private/var; compare canonical paths
+            # just as the production context writer does.
+            base = Path(directory).resolve()
             source = base / 'checkout'
             source.mkdir()
             subprocess.run(['git', 'init', '-q', str(source)], check=True)

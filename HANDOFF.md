@@ -1,5 +1,52 @@
 # PLANK handoff
 
+## Mac Client integration — 2026-09-17
+
+The operator authorized approval and merge of Client PR #3 and root PR #4.
+Client #3 is merged at `a6a97d024269aa5c8523a2e50e0a887208cf4a05`; the parent
+pins this exact mainline commit. Its tree is identical to tested Client
+`82436e5ada0e6139c967a167a5079d6ab1cbbdcd`. This is integration approval, not a
+signed release or a claim of completing the remaining hardware gates.
+
+- One Apple Silicon Client package targets macOS 15 and newer with SDK27+,
+  preserving newer capabilities with runtime availability checks. The Host
+  remains macOS 27-only. Build/bootstrap/cache/DMG checks share the deployment
+  policy and reject newer-minimum dependencies or unguarded newer API calls.
+- Multi-display Metal presentation, native fullscreen Spaces, cross-display
+  mouse/pen focus and raw USB Wacom forwarding are included. Current upstream
+  Quit/Command-Q and clipboard handling are retained.
+- Wacom fix `a6faf27a` preserves focus/reconnect intent after a bounded release
+  wait expires, but resumes only after worker-confirmed physical release.
+  Newer focus loss/reconnect/Quit requests take precedence. Stale callbacks
+  remain excluded; the worker owns its lifetime after a timed-out shutdown.
+- Common-C stays `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`, containing the
+  merged input queue ordering and release-delivery repair. Linux Host remains
+  `42c1a13618b04d80ac15c2e46c9ad5e2058c700e`; other recursive pins are unchanged.
+- Version base: 1.0.129. Hosted run `35312646798` passed all four product jobs
+  at root `915f64a549c39d7bb79bd366d9c018b3deb979d3`. Mac Client: 124 Qt results,
+  six target-validation fixtures and the native input-worker gate passed,
+  including fresh SDK27 dependencies with minimum15.0. Privacy and clipboard
+  jobs passed. Mac signing was disabled. The merge pin has identical source
+  bytes; documentation changes do not change those results.
+- Portable validation: 43 CI tests, six root CTest suites, seven fullscreen and
+  three Quit guards passed. All 11 Wacom Qt results passed 30 repetitions and
+  ASan/UBSan with leak detection. This is not stalled-driver fault injection.
+
+Next release gates: the identical packaged Client on macOS15/macOS27, Ubuntu
+regression, physical Wacom pressure/focus/reconnect/Quit/hotplug, sleep and
+held-input recovery, and investigation of the previously intermittent live
+left-click loss. Earlier live successes belong to their exact candidates, not
+this final source. No installation or signed release was performed here.
+
+Linux physical-display matching remains separate: Client
+[#4](https://github.com/instinctual/plank-client/pull/4), root
+[#7](https://github.com/instinctual/plank/pull/7), Host
+[#2](https://github.com/instinctual/plank-host-linux/pull/2). This integration
+does not package that display helper or alter physical-monitor mode policy.
+See [the integration review](docs/development/macos15-integration-review.md)
+and the chronological [Mac Client record](docs/development/macos15-client.md).
+Earlier checkpoints below are retained as historical context.
+
 Read AGENTS.md and the platform build runbook before work. Read the private
 notes' README before machine-specific work; deployment information stays outside Git.
 
