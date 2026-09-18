@@ -131,6 +131,14 @@ the app to Trash. Host installation/permissions are separate and unchanged.
 
 ## Known failure signatures
 
+- A visible toolbar flashing during a stats update can be a Metal overlay
+  publication race. Build/upload the replacement before exchanging the texture
+  under the overlay lock, and preserve the old image on allocation failure.
+  Do not publish an empty slot except for an explicit hide. Every Mac Client
+  build runs `macmetaloverlay` against the production updater with deterministic
+  allocation/upload stalls, allocation failure, concurrent readers and lifetime
+  checks. The test uses Metal resource doubles without a desktop/GPU; it does
+  not replace the native GPU presentation probe or live flicker acceptance.
 - Command-Q reaching the Host and also quitting PLANK is duplicate native
   shortcut handling, not a transport disconnect. SDL queues the key before
   AppKit can activate the local Quit menu. The shortcut guard prevents local

@@ -1,5 +1,23 @@
 # PLANK handoff
 
+## Mac overlay replacement fix — in progress
+
+The operator reported intermittent toolbar flashing while testing1.0.131 and
+authorized a scoped repair. The Metal overlay updater cleared the old texture
+before preparing its replacement, allowing the separate render thread to omit
+the toolbar for a frame. That updater was byte-identical in1.0.124 and1.0.131;
+changed timing/RTT redraws exposing it is a hypothesis, not captured live proof.
+The separately reported horizontal menu-bar edge disappeared and remains
+unattributed; do not claim this patch resolves it.
+
+Candidate1.0.132-pr-integration preserves the old complete texture until the new
+one is uploaded, swaps under the existing lock, and retains the old image on
+allocation failure. Only explicit hide clears the slot. Host, shaders, video
+geometry, transport, input and Linux runtime code are unchanged. A new headless
+Mac regression exercises the production updater with controlled Metal resource
+doubles; it is mandatory in the Mac Client build. Native execution, signed
+hosted build, package collection and live flicker acceptance are pending.
+
 ## Combined test packages — 2026-09-18
 
 Current package-source root is `c225083ebd27d06e63296e9df3bd55a99f92f6ed` on
