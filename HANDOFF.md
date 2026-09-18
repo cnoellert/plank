@@ -49,6 +49,24 @@ Installed Linux Host/Client versions and a Ctrl-V plain-text check are awaiting
 confirmation. No live logs or clipboard contents were collected, and no
 clipboard repair or macOS Host implementation was authorized in this follow-up.
 
+Follow-up: the operator installed Linux Host 1.0.131 and reported Client 1.0.132
+rejecting `Invalid composite source rectangle or output provenance (Error 400)`.
+Read-only inspection of the hardware test Host confirmed the installed candidate
+and an active Host service. Runtime display state claims one virtual 1920x1080
+output, while XRandR/NVIDIA reports two active physical connectors spanning
+5120x2160 (a 1920x1080 logical viewport on the primary 3840x2160 output, plus a
+1280x2160 secondary at x=3840). The state was carried from GDM into the user
+desktop. `live_display_layout()` trusts that requested runtime state;
+`output_topology_json()` combines it with the actual two-output inventory.
+Client validation correctly rejects the inconsistent virtual-mode provenance.
+The physical-lease/topology Host code and that Client validation are unchanged
+from 1.0.124, so this is not a new clipboard implementation failure. Exact cause
+of the retained/reactivated secondary output is not yet proven. The temporary
+MetaMode builder omits unused outputs and the apply path checks command success,
+not realized geometry. No service restart, display mutation or repair performed.
+Next: with authorization, repair and verify physical-lease topology publication
+and handoff rather than relaxing the Client's validation.
+
 ## Mac overlay replacement fix — ready for testing
 
 The operator reported intermittent toolbar flashing while testing 1.0.131 and
