@@ -87,10 +87,12 @@ pre-restart launch recorded those assignments in the opposite order. The
 restarted NVIDIA MetaMode listed the left connector first; the earlier live
 single-to-dual transition had listed the right, primary connector first.
 Reordering only those MetaMode entries at runtime preserved both rectangles,
-the XRandR primary and the Plank stream. The display helper now writes the
-primary connector first in its boot MetaMode too. Its isolated Linux shell
-test passed. A fresh Flame launch and a reboot or X restart with the updated
-Host package are still required to qualify this correction.
+the XRandR primary and the Plank stream. On the next Flame launch, its log
+placed the main UI at `1920,0` on `2560×1440` and the alternate UI at `0,240`
+on `1920×1200`; the operator confirmed the chooser appeared on the intended
+primary screen. The display helper now writes the primary connector first in
+its boot MetaMode too. Its isolated Linux shell test passed. An X restart with
+the updated Host package is still required to qualify persistence.
 
 Before merge, GDM-to-user handoff, sleep/reconnect and Wacom pointer mapping
 on the hardware-test Host remain open. The same Client package needs live
