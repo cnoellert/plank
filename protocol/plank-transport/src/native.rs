@@ -487,7 +487,7 @@ mod tests {
     async fn run_loss_proxy(
         socket: tokio::net::UdpSocket,
         server_address: SocketAddr,
-        drop_every_server_packet: Arc<AtomicU64>,
+        server_loss_basis_points: Arc<AtomicU64>,
         forwarded_server_packets: Arc<AtomicU64>,
         dropped_server_packets: Arc<AtomicU64>,
     ) {
@@ -503,8 +503,11 @@ mod tests {
                     continue;
                 };
                 server_sequence = server_sequence.wrapping_add(1);
-                let drop_every = drop_every_server_packet.load(Ordering::Acquire);
-                if drop_every != 0 && server_sequence.is_multiple_of(drop_every) {
+                // Evenly distributed, deterministic omissions at this receiver-
+                // side proxy, not a sender-side discard before Quinn sees data.
+                // This is a FEC regression fixture, not a random WAN-loss model.
+                let loss = server_loss_basis_points.load(Ordering::Acquire);
+                if (server_sequence % 10_000) * loss % 10_000 < loss {
                     dropped_server_packets.fetch_add(1, Ordering::Relaxed);
                     continue;
                 }
@@ -563,7 +566,7 @@ mod tests {
             congestion_controller_factory: Some(PlankRateControllerFactory::new(
                 rate_policy.clone(),
             )),
-            datagram_pacer: Some(rate_policy.pacer()),
+            datagram_pacer: rate_policy.outgoing_pacer(),
         };
         let server = kynet::Connection::start_server_on_addr(
             address,
@@ -843,13 +846,13 @@ mod tests {
         let proxy_address = proxy_socket
             .local_addr()
             .expect("loss proxy has no local address");
-        let drop_every_server_packet = Arc::new(AtomicU64::new(0));
+        let server_loss_basis_points = Arc::new(AtomicU64::new(0));
         let forwarded_server_packets = Arc::new(AtomicU64::new(0));
         let dropped_server_packets = Arc::new(AtomicU64::new(0));
         let proxy_task = tokio::spawn(run_loss_proxy(
             proxy_socket,
             server_address,
-            drop_every_server_packet.clone(),
+            server_loss_basis_points.clone(),
             forwarded_server_packets.clone(),
             dropped_server_packets.clone(),
         ));
@@ -868,7 +871,7 @@ mod tests {
             congestion_controller_factory: Some(PlankRateControllerFactory::new(
                 rate_policy.clone(),
             )),
-            datagram_pacer: Some(rate_policy.pacer()),
+            datagram_pacer: rate_policy.outgoing_pacer(),
         };
         let server = kynet::Connection::start_server_on_addr(
             server_address,
@@ -929,36 +932,41 @@ mod tests {
             .await
             .expect("failed to send loss-test config packet");
 
+        let payload = Bytes::from(
+            (0..312_000)
+                .map(|index| ((index * 29 + 7) & 0xff) as u8)
+                .collect::<Vec<_>>(),
+        );
+        let expected_payload = payload.clone();
         let receiver = tokio::spawn(async move {
             let mut frames = 0_u64;
-            while frames < 240 {
+            while frames < 300 {
                 let packet = client_video
                     .recv
                     .recv()
                     .await
                     .expect("loss-test video endpoint closed")
                     .expect("loss-test video receive failed");
-                if matches!(packet, AVPacket::Media(ref media) if !media.header.is_config) {
-                    frames += 1;
+                if let AVPacket::Media(media) = packet {
+                    if !media.header.is_config {
+                        assert_eq!(media.header.pts, frames * 1_500);
+                        assert_eq!(media.payload, expected_payload);
+                        frames += 1;
+                    }
                 }
             }
             frames
         });
 
-        let payload = Bytes::from(
-            (0..312_000)
-                .map(|index| ((index * 29 + 7) & 0xff) as u8)
-                .collect::<Vec<_>>(),
-        );
         let mut frame_number = 0_u64;
         let mut dropped_after_phase = 0_u64;
-        for drop_every in [200_u64, 100, 50, 20] {
-            drop_every_server_packet.store(drop_every, Ordering::Release);
+        for loss in [0_u64, 50, 100, 300, 500] {
+            server_loss_basis_points.store(loss, Ordering::Release);
             let phase_start = tokio::time::Instant::now();
             for phase_frame in 0..60_u64 {
-                server_video
-                    .send
-                    .send(AVPacket::Media(MediaPacket {
+                tokio::time::timeout(
+                    Duration::from_secs(5),
+                    server_video.send.send(AVPacket::Media(MediaPacket {
                         header: MediaPacketHeader {
                             is_config: false,
                             is_key: frame_number == 0,
@@ -966,9 +974,11 @@ mod tests {
                             size: payload.len() as u32,
                         },
                         payload: payload.clone(),
-                    }))
-                    .await
-                    .expect("failed to send paced loss-test frame");
+                    })),
+                )
+                .await
+                .expect("loss-test sender timed out")
+                .expect("failed to send paced loss-test frame");
                 frame_number += 1;
                 tokio::time::sleep_until(
                     phase_start + Duration::from_nanos((phase_frame + 1) * 1_000_000_000 / 60),
@@ -976,14 +986,22 @@ mod tests {
                 .await;
             }
             let dropped = dropped_server_packets.load(Ordering::Relaxed);
-            assert!(dropped > dropped_after_phase);
+            if loss == 0 {
+                assert_eq!(dropped, dropped_after_phase);
+            } else {
+                assert!(dropped > dropped_after_phase);
+            }
+            eprintln!(
+                "fec_loss_phase_basis_points={loss} frames=60 elapsed_ms={} dropped_datagrams={}",
+                phase_start.elapsed().as_millis(), dropped - dropped_after_phase
+            );
             dropped_after_phase = dropped;
         }
         let received_frames = tokio::time::timeout(Duration::from_secs(5), receiver)
             .await
             .expect("loss-test receiver timed out")
             .expect("loss-test receiver task failed");
-        assert_eq!(received_frames, 240);
+        assert_eq!(received_frames, 300);
         assert!(forwarded_server_packets.load(Ordering::Relaxed) > 20_000);
         assert!(dropped_server_packets.load(Ordering::Relaxed) > 500);
         let fec = client_connection.protocol_stats();
@@ -991,7 +1009,7 @@ mod tests {
         let missing = fec.video_fec_source_symbols_missing.expect("missing pre-FEC counter");
         assert!(source > 0 && missing > 0 && missing <= source);
         assert_eq!(fec.video_fec_source_symbols_unrecovered, Some(0));
-        eprintln!("fec_loss_matrix_frames=240 source={source} missing={missing} unrecovered=0");
+        eprintln!("fec_loss_matrix_frames=300 source={source} missing={missing} unrecovered=0");
 
         server_connection.close();
         client_connection.close();

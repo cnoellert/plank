@@ -1,5 +1,25 @@
 # PLANK handoff
 
+## Active task: Linux Host fast-send
+
+The operator approved the two-change Linux experiment discussed after 1.0.137:
+bypass application DATAGRAM pacing and use the same 1 Gbps minimum Quinn window
+budget as macOS. Work is on `linux-fast-send` in `build/worktrees/pr-integration`,
+branched from main `51cd817966ea2cc6eb927d1fc1390da9d2e4ef72`. Primary RK3576
+research remains untouched. See [the plan](docs/development/plans/linux-fast-send.plan).
+
+Candidate base version is 1.0.138. Implementation uses a Linux-only Cargo feature
+selected by Host packaging; Client defaults, macOS policy, FEC, MTU, encoder
+targets and queue capacities are unchanged. Rust loopback tests now select the
+actual outgoing policy and check reconstructed payloads/order through controlled
+receiver-side loss. Package builds run unit/native/C ABI tests with the same
+features as the Host archive and verify a fast-send binary marker.
+
+Validation/build are pending. No hardware installation, live acceptance, merge
+or release has occurred. The next steps are automated gates, a hosted branch RPM,
+then coordinated ten-minute live baseline/candidate soaks and receiver-side loss.
+Do not treat an idle build job or synthetic traffic as a live playback result.
+
 ## Current release: 1.0.137
 
 The operator requested rebuilding all public Host/Client packages and publishing
@@ -164,8 +184,8 @@ with that unmerged preference. Mac Host support below27 is discussion only.
 
 ## Workspace and build policy
 
-Release work is in the separate `build/worktrees/pr-integration` directory,
-currently on `main`; its directory name is not the branch. The primary
+Current work is in the separate `build/worktrees/pr-integration` directory,
+on `linux-fast-send`; its directory name is not the branch. The primary
 checkout remains unrelated `rk3576-client` research with uncommitted notes and
 diagnostics. Preserve it. Do not clean or switch that checkout during release.
 Other review worktrees/branches are not permission for a broad cleanup.
