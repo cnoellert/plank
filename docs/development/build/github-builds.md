@@ -58,7 +58,7 @@ allowed branch proceeds automatically. Keep custom deployment branch policies
 enabled (currently `main`, `macos-display-recovery` and
 `macos-media-recovery`, `macos-auth-recovery`, `reconnect-lifecycle` and
 `macos-fullscreen`, `macos-command-q`, `macos-quit-lifecycle`, `pr-integration`,
-`macos-hotkey-focus`); do not replace them with
+`macos-hotkey-focus`, `macos-host-clipboard`); do not replace them with
 an all-branches wildcard. Review source, workflow and dependency changes before
 dispatching or adding a candidate branch. Public push/PR jobs have no signing
 authority. This removes the approval gate itself, not through a bot/token that

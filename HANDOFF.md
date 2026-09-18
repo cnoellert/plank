@@ -16,13 +16,18 @@ Linux Host and Mac Client use that validator too. Transient queue pressure
 retains unsent chunks rather than restarting a copy or disconnecting video.
 Clipboard contents never enter logs; teardown preserves newer local copies.
 
-Candidate Client `37921316`, Linux Host `fd5cbf86`, Client common-C `ef8ac14`,
+Candidate Client `6663d569`, Linux Host `b8abf72c`, Client common-C `ef8ac14`,
 Host header-only common-C `3a97a58` are committed/pushed on feature branches.
 Other dependencies remain at the release pins below. Portable wire tests passed
 under ASan/UBSan, C11/C++17 ABI checks passed, as did 43 CI-policy tests and six
-portable CTest suites. Native Mac tests, Xvfb regressions and candidate builds
-are pending. No candidate artifact, deployment or live acceptance is claimed.
-Next: complete hosted native validation, collect branch-qualified packages,
+portable CTest suites. Initial hosted run35354919985 passed both Mac builds
+(including native clipboard tests) and the Linux Client build; Linux Host was
+still running at this checkpoint. Clipboard run35354920003 exposed missing
+sanitizer development libraries in the disposable test container; those are now
+explicit test prerequisites. The 512 KiB cumulative-X11-overflow fixture and
+shared Client frame-validation cleanup also require the next exact-source run.
+No signed candidate artifact, deployment or live acceptance is claimed.
+Next: finish exact-source hosted validation, collect branch-qualified packages,
 then test Mac↔Mac, Mac↔Linux, large/interrupted transfers, Spaces/focus and
 login/logout/reconnect ownership. No production machine was changed.
 
