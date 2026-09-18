@@ -36,6 +36,32 @@ case and failure restoration are reviewed.
 
 ## Evidence and gates
 
+On 2026-09-18, the exact root, Host and Client pins in this series passed the
+[hosted build](https://github.com/cnoellert/plank/actions/runs/35382202995),
+including Rocky Host, Ubuntu Client, SDK 27 Mac Client and Mac Host jobs. A
+separate [SDK 27 development-bundle run](https://github.com/cnoellert/plank/actions/runs/35386142008)
+used those same code pins and produced a locally signed Client with macOS 15.0
+minimum. Bundle integrity, local signature and startup were verified on
+Portofino (macOS 15.7.4). The exact Host RPM was installed on flame-01
+(Rocky 9.5); the Host configuration and XRandR/NVIDIA layout were unchanged by
+installation.
+
+With the two-output manual bookmark, the signed Client completed workstation
+sign-in and streamed a 4480×1440 canvas. XRandR showed 1920×1200 left on
+DP-2 and 2560×1440 right and primary on DP-0. The operator confirmed both
+fullscreen windows mapped to the intended Mac displays and Flame's project
+chooser opened on the Eizo. After a normal disconnect, both outputs, their
+positions and primary assignment remained the same, and mouse and stylus
+buttons were released. An abrupt Client process exit also left that layout,
+the Host services and released input state intact. The Host log recorded a
+transport-loss error after the forced exit and an NvFBC release error on both
+normal and forced disconnect; the services stayed active.
+
+The Host already had DP-0 on the Eizo side before this installation. Thus this
+first live session validates the packaged pair and presentation, but does not
+yet prove that this source changes connector order during a live transition.
+The post-exit reconnect and a single-to-dual transition remain in progress.
+
 The previous paired development build passed a single-to-dual reconnect on
 the headless hardware-test Host. The operator confirmed that Flame opened on
 the intended primary screen, and NVIDIA, XRandR and GNOME readbacks matched
@@ -43,11 +69,7 @@ the original virtual layout after normal disconnect. That live result is
 historical evidence from the earlier combined build; it does not qualify this
 newly isolated source.
 
-Before merge, build the exact Host and Client pins together, run the Host
-primary-binding and private-message tests, the Client topology and
-presentation tests, and the Linux display-preparation test. Then repeat
-Flame placement and window movement with a signed Client, plus single-to-dual
-return, GDM-to-user handoff, abrupt disconnect, sleep/reconnect and Wacom
-pointer mapping on the hardware-test Host. The same Client package needs live
-macOS 15 and macOS 27 acceptance. Unavailable macOS 27 hardware is an open
-gate, not a passed test.
+Before merge, finish the live connector transition, post-exit reconnect,
+single-to-dual return, GDM-to-user handoff, sleep/reconnect and Wacom pointer
+mapping on the hardware-test Host. The same Client package needs live macOS 27
+acceptance. Unavailable macOS 27 hardware is an open gate, not a passed test.
