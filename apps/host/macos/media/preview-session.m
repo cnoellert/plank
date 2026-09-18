@@ -3,6 +3,7 @@
 #import "fixed-capture.h"
 #import "native-input.h"
 #import "clipboard-sync.h"
+#include "stream-diagnostics.h"
 #include "plank_transport_control.h"
 #include "plank_transport_input.h"
 #include "plank_transport_event.h"
@@ -79,6 +80,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     BOOL _captureStarted;
     uint64_t _captureDeadline;
     NSMutableArray *_stopCallbacks;
+    PLANKMacInputTiming _inputWaitTiming, _inputDeliveryTiming;
 }
 - (instancetype)init { return nil; }
 - (instancetype)initWithSessions:(PLANKMacAuthenticationSession *)sessions
@@ -252,6 +254,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         while (running) @autoreleasepool {
             uint8_t bytes[PLANK_TRANSPORT_INPUT_MAX_PAYLOAD_SIZE], type = 0; size_t size = 0;
             int32_t result = plank_transport_native_input_receive(endpoint, &type, bytes, sizeof(bytes), &size, 1000);
+            uint64_t receivedAt = clock_gettime_nsec_np(CLOCK_MONOTONIC);
             const uint8_t *payload = bytes;
             // The synchronous handoff bounds outstanding work to one packet.
             // It also prevents input from racing capture/control teardown.
@@ -263,14 +266,17 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                 if (result != PLANK_TRANSPORT_OK) {
                     [owner stopOnQueueForReason:[NSString stringWithFormat:@"input-receive-failed result=%d", result]]; return;
                 }
+                PLANKMacInputTimingNote(&owner->_inputWaitTiming, receivedAt, clock_gettime_nsec_np(CLOCK_MONOTONIC));
                 if (type == PLANK_TRANSPORT_INPUT_CLIPBOARD_OFFER) {
                     if (!owner->_clipboard || ![owner->_clipboard receive:[NSData dataWithBytes:payload length:size]]) {
                         [owner stopOnQueueForReason:@"clipboard-rejected"]; return;
                     }
                     keepGoing = YES; return;
                 }
+                uint64_t deliveryAt = clock_gettime_nsec_np(CLOCK_MONOTONIC);
                 PLANKMacInputResult delivered = [owner->_input consumeType:type
                     payload:[NSData dataWithBytes:payload length:size] time:clock_gettime_nsec_np(CLOCK_UPTIME_RAW)];
+                PLANKMacInputTimingNote(&owner->_inputDeliveryTiming, deliveryAt, clock_gettime_nsec_np(CLOCK_MONOTONIC));
                 if (delivered == PLANKMacInputMalformed || delivered == PLANKMacInputDenied || delivered == PLANKMacInputStopped) {
                     NSString *cause = delivered == PLANKMacInputMalformed ? @"malformed" :
                         delivered == PLANKMacInputDenied ? @"denied" : @"stopped";
@@ -375,8 +381,16 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     self.stopReason = reason;
     // One first-cause line per session, before revocation/drain hides the cause.
     // Log no remote strings, coordinates, keys, text, accounts or tokens.
-    NSLog(@"PLANK stream stopping: reason=%@ state=%u transport-state=%u", reason,
-        (unsigned)self.state, _endpoint ? plank_transport_native_endpoint_state(_endpoint) : PLANK_TRANSPORT_STATE_INVALID);
+    char transportError[1024] = {0};
+    if (_endpoint) plank_transport_native_endpoint_last_error(_endpoint, transportError, sizeof(transportError));
+    NSLog(@"PLANK stream stopping: reason=%@ state=%u transport-state=%u transport-failure=%s", reason,
+        (unsigned)self.state, _endpoint ? plank_transport_native_endpoint_state(_endpoint) : PLANK_TRANSPORT_STATE_INVALID,
+        PLANKMacTransportFailureClass(transportError));
+    NSLog(@"PLANK input timing: owner-wait-count=%llu owner-wait-over20ms=%llu owner-wait-max-ms=%.3f delivery-count=%llu delivery-over20ms=%llu delivery-max-ms=%.3f",
+        (unsigned long long)_inputWaitTiming.count, (unsigned long long)_inputWaitTiming.slow,
+        (double)_inputWaitTiming.maximum / NSEC_PER_MSEC,
+        (unsigned long long)_inputDeliveryTiming.count, (unsigned long long)_inputDeliveryTiming.slow,
+        (double)_inputDeliveryTiming.maximum / NSEC_PER_MSEC);
     self.state = PLANKMacPreviewStopping;
     [_clipboard stop];
     if (_repeatWatch) { dispatch_source_cancel(_repeatWatch); _repeatWatch = nil; }

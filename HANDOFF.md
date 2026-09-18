@@ -1,5 +1,24 @@
 # PLANK handoff
 
+## Follow-up in progress: 1.0.142-mouse-edge-recovery
+
+The operator explicitly wants screen-saver/lock continuity, not disconnection
+followed by new PLANK authentication. The Mac Host no longer treats the
+distributed screen-lock notification as permanent revocation. Actual session
+resignation, sleep, logout, changed on-console ownership/audit session/account,
+lost graphic access and expired machine admission retain their existing guards.
+No unlock notification grants authority and macOS still enforces OS unlock.
+Synthetic OS/notification tests exercise the real authority and authentication
+lease; live lock/unlock capture and input must still be tested.
+
+Wallpaper hover reliably causes mouse lag, and opening/hovering Screen Saver
+settings makes it worse, independently of actual saver activation. New Mac-only
+diagnostics classify the underlying native transport failure with fixed labels
+and summarize input owner-queue wait/delivery timing at session stop. Raw native
+error text is never logged. No queue enlargement, input loss/coalescing, new
+worker, timeout change or speculative lag repair is included. Build and live
+validation are pending; no new package is installed or accepted.
+
 ## Active integration candidate: 1.0.141-mouse-edge-recovery
 
 The operator requested combining all current fixes in this candidate rather
@@ -38,7 +57,7 @@ component evidence, not qualification of the combined source.
 Mac system logs become root:admin, directory 0750/files 0640. Only root writes;
 administrators read; other users are denied. Existing objects are validated
 before changes and contents preserved. Keys and per-user desktop logs remain
-private. No machines have been modified for this task.
+private. No agent installation or session interruption was performed.
 
 Local evidence: six common-C suites passed 25 repetitions; the boundary test
 fails against the unfixed library and passes against the candidate. Installer
@@ -93,8 +112,60 @@ Ubuntu Client pair is ready for an operator-installed idle/normal-use test.
 If the waiting popup recurs, collect the updated Host desktop log with its first
 stop reason and the corresponding Client log. Do not claim the idle issue fixed.
 
-All four collected payloads match their builder SHA-256 hashes. Next: await
-operator-installed idle and normal-use testing. Live edge/drag/reconnect and
+On 2026-09-18, the operator reported installing Host/Client 1.0.141 at
+12:38 PM local time, initially without the waiting popup. The operator later
+clarified that the Client is Ubuntu, not macOS; uploaded logs confirm Wayland,
+PipeWire and exact-profile VA-API HEVC 10-bit 4:4:4 hardware decoding. This was
+an initial positive observation, not a completed soak or acceptance.
+
+Separate pre-existing report: starting the macOS screen saver kicks the Client
+out. Code inspection found that graphical-authority.m permanently revokes its
+authority on screen-lock, session-resignation or system-sleep notifications;
+authentication then ends the active stream lease. This is a plausible path if
+the saver also locks the screen, not a confirmed diagnosis of saver-only
+behavior. Confirm password-lock state and correlate new stop-reason logs before
+changing lifecycle policy. Preserve actual logout/user-switch revocation and
+OS unlock requirements. No code or system setting was changed for this report.
+The operator tested actual screen-saver activation: it disconnects the stream,
+and a manually restarted connection prompts for PLANK authentication, followed
+by macOS unlock as previously reported. The operator subsequently requested
+preserving the connection through saver/lock; see the .142 follow-up above.
+This is separate from merely opening/hovering the settings panels below.
+
+The operator subsequently reported 1–2 seconds of visible cursor lag followed
+by "Waiting for Workstation" on the .141 Ubuntu-to-Mac pair when opening the Screen Saver
+panel in System Settings, not a confirmed lock event. Client hostrecovery.h
+shows this status after one second without received video; the message alone
+does not establish transport closure. The Mac embedded cursor can expose video
+delay as apparent mouse delay. A read-only SSH attempt could not authenticate.
+The operator subsequently supplied both logs outside Git. Four actual transport
+failures/reconnects correlate between 12:49:25 and 12:49:44 local time. Host
+transport state is already FAILED (8) at stop, including the two input-denied
+entries; these do not prove a permission denial. There is no malformed-input,
+capture-failure or graphical-worker replacement in this episode. Client reports
+the native data receiver ending while active, with sub-millisecond sampled RTT;
+two short failed sessions report zero missing/unrecovered video symbols. Do not
+infer that all network failure modes are excluded.
+
+Operator's repeatable trigger: mouse movement over the Wallpaper settings
+window becomes somewhat slow; over Screen Saver settings it becomes much worse.
+This is not evidence that the screen saver actually started or locked the Mac.
+Use those panels for the next controlled input/transport diagnostic.
+
+Source inspection shows a 128-packet native Host input receive queue whose
+exhaustion terminates the endpoint. The Mac input consumer hands each packet to
+the shared capture/control owner queue synchronously. Queue pressure is a
+plausible lead for lag followed by closure, not a proven cause. Detailed native
+transport failure text already exists behind the last-error API but the Mac
+Host does not record it. Next diagnostic should preserve a privacy-safe exact
+failure classification before teardown; do not blindly enlarge queues, discard
+button/key events, change timeouts or weaken permission checks. No runtime code
+was changed during this log review. Private notes retain numeric trace details.
+The initial positive observation is superseded by this recurrence, not accepted
+as a complete repair.
+
+All four collected payloads match their builder SHA-256 hashes. Next: continue
+operator-led idle and normal-use testing. Live edge/drag/reconnect and
 Linux sender-policy tests also remain. Do not install, merge to main or publish
 a release without further direction.
 

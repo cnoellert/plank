@@ -46,3 +46,30 @@ root:admin, directory0750/files0640. Installer fixtures cover fresh creation,
 upgrades, admin read-only access, non-admin denial and unchanged private keys.
 Desktop-user logs and key permissions remain private. No system-wide logging
 policy or Linux Host log permission is changed.
+
+## Wallpaper/settings recurrence and screen-lock continuity
+
+The .141 Ubuntu-to-Mac test still exhibits lag over System Settings' Wallpaper
+window and worse lag over its Screen Saver window, before the saver activates.
+Matching logs show the Host transport already FAILED when input is denied;
+the Client sees a closed native data receiver. That is not a malformed-input
+or demonstrated permission failure. A bounded Host input receive queue and
+synchronous delivery on the capture/control owner queue are diagnostic leads,
+not an established cause. Low sampled RTT and sometimes zero missing video
+symbols do not exclude every network failure.
+
+.142 classifies the native last-error at teardown without exposing its raw
+text, and records bounded input queue-wait/delivery aggregates. The counters
+do not change scheduling, queue capacity, event order, retry or timeout policy.
+The next controlled test should reproduce Wallpaper/Screen Saver hover and then
+disconnect, retaining the resulting product log. Input-queue exhaustion and
+delivery stalls must be established before choosing a throughput fix.
+
+Actual screen-lock disconnection is separate: graphical authority previously
+revoked permanently on `com.apple.screenIsLocked`. The operator requested that
+an authenticated connection remain usable at the OS lock screen. .142 removes
+only that revocation trigger, retaining user-switch/sleep notifications and all
+per-use graphical scope, permission and machine-admission checks. The synthetic
+regression keeps an active lease through saver/lock/unlock notifications and
+tests nine terminal scope-change cases. Those tests do not qualify real
+ScreenCaptureKit/Quartz behavior at the lock screen; operator validation remains.
