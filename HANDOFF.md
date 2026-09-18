@@ -1,22 +1,49 @@
 # PLANK handoff
 
-## Mac overlay replacement fix — in progress
+## Mac overlay replacement fix — ready for testing
 
-The operator reported intermittent toolbar flashing while testing1.0.131 and
+The operator reported intermittent toolbar flashing while testing 1.0.131 and
 authorized a scoped repair. The Metal overlay updater cleared the old texture
 before preparing its replacement, allowing the separate render thread to omit
-the toolbar for a frame. That updater was byte-identical in1.0.124 and1.0.131;
+the toolbar for a frame. That updater was byte-identical in 1.0.124 and 1.0.131;
 changed timing/RTT redraws exposing it is a hypothesis, not captured live proof.
 The separately reported horizontal menu-bar edge disappeared and remains
 unattributed; do not claim this patch resolves it.
 
-Candidate1.0.132-pr-integration preserves the old complete texture until the new
+Candidate 1.0.132-pr-integration preserves the old complete texture until the new
 one is uploaded, swaps under the existing lock, and retains the old image on
 allocation failure. Only explicit hide clears the slot. Host, shaders, video
 geometry, transport, input and Linux runtime code are unchanged. A new headless
 Mac regression exercises the production updater with controlled Metal resource
-doubles; it is mandatory in the Mac Client build. Native execution, signed
-hosted build, package collection and live flicker acceptance are pending.
+doubles; it is mandatory in the Mac Client build.
+
+Package-source root is `101a09e9ab472698c5c04f4d3614f21547ce3734`, with Client
+`4af97738c7662ee38a25d4349cc7b3e9bd2047d5`; both are pushed to `pr-integration`.
+Other recursive pins remain those of the 1.0.131 candidate below. Signed hosted
+run `35321905204` passed, using the verified dependency cache, SDK27 and one
+Apple Silicon Client 15+ target. All 126 existing Qt results and five new
+overlay regression groups passed, including delayed allocation/upload,
+allocation failure, explicit hide, concurrent publication and resource lifetime.
+Signing, notarization and stapling passed. Privacy and clipboard CI passed.
+The ordinary build run `35321875930` has passed Mac Host, Mac Client and Linux
+Client; its unrelated Linux Host job was still running at this handoff.
+
+The checksum-verified installer is
+`artifacts/packages/candidates/1.0.132-pr-integration/macos/plank-client_1.0.132-pr-integration_arm64.dmg`.
+SHA256: `1289e7620c2bf43140966e1d024b78c2609ee9cf95dfc2432a2cc796a45b6a23`.
+The catalog records exact provenance and marks functional acceptance as pending.
+No deployment, merge or release publication. Next: manually test a pinned toolbar
+over moving video and during stats updates, dragging and hide/reveal; verify the
+intermittent flashing is gone. No Host upgrade is required for this repair.
+
+Discussion only: the operator asked about forwarding Command-Tab/Command-Space
+without local OS activation. Current SDL Cocoa has no keyboard-grab backend;
+the existing Command-Q fix only removes PLANK's own menu shortcut. A native
+modifying event tap would require Accessibility authorization and should obey
+the existing capture preference, stream focus and release lifecycle. AppKit's
+permission-free `disableProcessSwitching` documents Command-Tab suppression,
+but Spotlight forwarding and Spaces gesture behavior remain untested. Do not
+claim it covers all system shortcuts. No keyboard-capture changes are in 1.0.132.
 
 ## Combined test packages — 2026-09-18
 
