@@ -55,11 +55,9 @@ product. The job requires manual dispatch and directly names the protected
 `macos-signing` environment. At the operator's request, this environment has no
 required reviewers or wait timer: an explicitly dispatched signed build on an
 allowed branch proceeds automatically. Keep custom deployment branch policies
-enabled (currently `main`, `macos-display-recovery` and
-`macos-media-recovery`, `macos-auth-recovery`, `reconnect-lifecycle` and
-`macos-fullscreen`, `macos-command-q`, `macos-quit-lifecycle`, `pr-integration`,
-`macos-hotkey-focus`, `macos-host-clipboard`); do not replace them with
-an all-branches wildcard. Review source, workflow and dependency changes before
+enabled (currently `main` only after merged-branch cleanup); do not replace them
+with an all-branches wildcard. Remove a temporary branch's signing permission
+when retiring that branch. Review source, workflow and dependency changes before
 dispatching or adding a candidate branch. Public push/PR jobs have no signing
 authority. This removes the approval gate itself, not through a bot/token that
 approves each run; it does not enable signing on every push.

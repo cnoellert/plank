@@ -1,5 +1,30 @@
 # PLANK handoff
 
+## Branch cleanup and Vulkan follow-up
+
+The operator authorized cleanup of redundant branches. Removed 21 remote branch
+references across the six affected public repositories and 30 fully merged local
+branches, including old `stationconnect/main` aliases in build-deps/libvirtualhid.
+Every removed tip was first proven reachable from its maintained branch. Clean
+attached worktrees were detached at their existing commit; source files, build
+artifacts and commit history were not removed. The primary `rk3576-client`
+checkout and its uncommitted research remain untouched. Open-PR branches,
+maintained defaults/product branches, PLANK2 and private repositories are retained.
+Ten stale `macos-signing` deployment branch policies were removed; only `main`
+currently has signing authorization. This does not add manual approval or change
+the protected secrets.
+
+The parent and Linux Host `vulkan-loader-repair` branches are intentionally
+retained. The actual Loader repair is already present in the current build-deps
+pin `c29c4822cb96f5bfeb8640e72601c5cf4e3c3137`; bootstrap applies it from
+`cmake/ffmpeg/vulkan.cmake`. The parent package verifier still checks only FFmpeg
+and x265, so the independent Loader patch check, its ten regression cases,
+CTest registration and qualification documentation remain outside main.
+Recommendation: port those focused checks onto current main and validate them;
+do not merge the old branch's version or Host/build-deps pins wholesale. No
+Vulkan code or verification script was changed during this cleanup. The operator
+asked whether this follow-up should be done; implementation remains a next step.
+
 ## Accepted clipboard changes: merged, not yet released
 
 The operator reported that the clipboard changes work, accepted them and
@@ -120,7 +145,7 @@ the packages, manifest and flat-filename release checksum file.
 
 The published release remains unchanged; the accepted clipboard merge is above. Remaining
 qualification items below are not claims of failed acceptance or authority to
-disrupt a live machine. No unrelated branch cleanup or pending-PR merge occurred.
+disrupt a live machine. Branch cleanup is recorded above; no pending PR was merged.
 
 ## Accepted fix and integration scope
 
