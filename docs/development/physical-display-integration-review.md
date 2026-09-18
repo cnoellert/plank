@@ -189,19 +189,23 @@ and its test: upstream clipboard synchronization remains `0x400000` on Linux
 X11, while matched modes, matched primary and virtual connector order retain
 their separate bits. The resulting PR diff has eight display/session source and
 test files and no Pause dependency change. The root display branch pins this
-Host commit. Diff checks passed; the merged source has not yet had a Rocky 9.7
-package build or hardware retest, so earlier package results do not qualify it.
+Host commit. Diff checks and the Rocky 9.7 package build in hosted run
+`35313099850` passed; it has not had a new hardware retest, so earlier package
+results do not qualify it.
 
 Client commit `42f583c` merged the earlier Mac review base and upstream
 clipboard support with the display controls. Follow-up `d26faf4` merges Mac
 review `82436e5`, including Wacom timeout recovery and the unified macOS 15+
 deployment policy. The Client keeps the clipboard bit separate from the
 matched-mode and primary-output bits. Root display `b3b493f` merges root Mac
-review `915f64a` and pins Client `d26faf4` with Host `0957df96`. The earlier
-integrated root `61b82b7` passed all five hosted jobs and its local Mac build
-passed 125 Qt results; those results do not qualify the newer source. Portofino
-currently has SDK 26.2, below the newer SDK 27 build requirement. Hosted builds
-and exact-package live display acceptance are the next gates.
+review `915f64a` and pins Client `d26faf4` with Host `0957df96`. Accepted
+Client main was subsequently merged into display Client `38ea170`, and the
+root display branch now follows accepted root main. The earlier integrated
+root `61b82b7` passed all five hosted jobs and its local Mac build passed 125
+Qt results. The newer root `3d7f413` passed all five hosted jobs, clipboard and
+private-information checks. Its Client tree is unchanged by the accepted-main
+merge. Portofino currently has SDK 26.2, below the SDK 27 build requirement.
+Exact-package live display acceptance remains open.
 
 ## Remaining gates
 

@@ -1,19 +1,18 @@
 # PLANK handoff
 
-## Display stack rebased onto current Mac review — 2026-09-17
+## Display stack on accepted Mac Client base — 2026-09-17
 
-The display Client now includes Mac review commits `a6faf27` (Wacom release
-timeout recovery) and `82436e5` (one macOS 15+ Client with SDK 27 and a 15.0
-deployment target). Display Client `d26faf4` adds only the display changes
-relative to that review head. Display root `b3b493f` merges root Mac review
-`915f64a` and pins Client `d26faf4` and Host `0957df96`. No Mac review branch
-was rewritten. The display PRs remain drafts stacked on the Mac review PRs.
+Mac Client PR #3 and root PR #4 have merged. Display Client `38ea170` merges
+accepted Client main and contains the 17-file display-only incremental diff.
+The root display branch merges accepted root main and pins Client `38ea170`
+with Host `0957df96`. The display PRs remain drafts.
 
-Portofino currently has SDK 26.2, so it cannot build this updated candidate
-under the new SDK 27 policy. The source-level target, fullscreen, Quit and
-display helper tests pass locally; hosted Mac and Linux compilation/package
-checks, then exact-package live qualification, remain pending for these heads.
-Earlier build and live results below belong to their recorded commits.
+The preceding display root `3d7f413` passed all five jobs in hosted run
+`35313099850`, with separate clipboard and private-information checks also
+passing. The accepted-base merge changes ancestry and Client commit identity,
+not its tree or product behavior. Portofino has SDK 26.2, below the required
+SDK 27 for a local build. Exact-package live qualification remains open;
+earlier live results below belong to their recorded commits.
 
 ## Review scope split — 2026-09-17
 
@@ -29,14 +28,15 @@ earlier Rocky 9.5 hardware test.
 Host display commit `0957df96` then merged current upstream Host `main` and
 resolved the overlapping clipboard/display feature flags in the topology
 header and test. Host PR #2 now has a clean eight-file display/session diff
-against upstream and remains draft pending a Rocky 9.7 build and hardware
-retest. The root display branch pins this merged Host source.
+against upstream and remains draft pending hardware retest. The merged source
+passed the Rocky 9.7 hosted build in run `35313099850`; the root display branch
+pins it.
 
-Client display commit `42f583c` merges the updated Mac review base and its
-upstream clipboard support. The root display branch pins both paired commits
-and includes current root `main`. Fresh hosted builds and hardware checks are
-still needed for this integrated source; the earlier installed package results
-remain tied to their exact commits.
+Client display commit `42f583c` merged the earlier Mac review base and its
+upstream clipboard support. Current `38ea170` includes accepted Client main.
+The root display branch pins the current paired Client and Host commits.
+Hosted builds passed at the preceding equivalent tree; live hardware checks
+remain tied to their exact installed packages.
 
 ## Virtual connector order and Flame launch — live tested
 
@@ -173,72 +173,52 @@ passed; a signed Client's live log reported the correct 1920 + 2560 canvas,
 and the operator reported that the layout appears correct. Pointer drag,
 tablet and held-button recovery are not new acceptance claims from this check.
 
-## Experimental Mac Client review branch — 2026-09-17
+## Mac Client integration — 2026-09-17
 
-Root and Client `codex/macos15-pr-review` are draft contributions for the
-macOS Client. The operator now requests one Apple Silicon package for macOS15
-and macOS27: SDK27 or newer, deployment minimum15.0. The Host remains27-only.
-The accepted local Client
-and Linux Host installations are separate from this source branch. The Linux
-physical-display matching feature is in separate draft Client
-[#4](https://github.com/instinctual/plank-client/pull/4) and root
-[#7](https://github.com/instinctual/plank/pull/7) PRs, paired with Host
-[#2](https://github.com/instinctual/plank-host-linux/pull/2). The Mac review branch pins the
-maintained Host base, so it does not package the display helper or alter Host
-physical-monitor behavior.
+The operator authorized approval and merge of Client PR #3 and root PR #4.
+Client #3 is merged at `a6a97d024269aa5c8523a2e50e0a887208cf4a05`; the parent
+pins this exact mainline commit. Its tree is identical to tested Client
+`82436e5ada0e6139c967a167a5079d6ab1cbbdcd`. This is integration approval, not a
+signed release or a claim of completing the remaining hardware gates.
 
-Client `397678e` retains multi-display Metal presentation, native fullscreen
-Spaces, cross-display pointer and pen focus, raw USB Wacom forwarding, and
-current upstream Quit handling. Wacom report requests now use timed IOKit
-callbacks, stale replies are discarded after release, and focus/reconnect/Quit
-release waits have deadlines with worker-owned fallback state. Common-C
-`b2b2b29` combines adjacent absolute positions at enqueue under the input
-queue lock. A deterministic worker fixture
-failed on the prior common-C PR head when mouse/key releases followed 150
-positions, then passed after the fix, including 50 repeated and AddressSanitizer
-runs. The split Client built on Apple Silicon/macOS 15 and passed 98 Qt results,
-the native input-worker test, seven fullscreen guards and three Quit lifecycle
-guards. These are build and local test results, not new live acceptance.
+- One Apple Silicon Client package targets macOS 15 and newer with SDK27+,
+  preserving newer capabilities with runtime availability checks. The Host
+  remains macOS 27-only. Build/bootstrap/cache/DMG checks share the deployment
+  policy and reject newer-minimum dependencies or unguarded newer API calls.
+- Multi-display Metal presentation, native fullscreen Spaces, cross-display
+  mouse/pen focus and raw USB Wacom forwarding are included. Current upstream
+  Quit/Command-Q and clipboard handling are retained.
+- Wacom fix `a6faf27a` preserves focus/reconnect intent after a bounded release
+  wait expires, but resumes only after worker-confirmed physical release.
+  Newer focus loss/reconnect/Quit requests take precedence. Stale callbacks
+  remain excluded; the worker owns its lifetime after a timed-out shutdown.
+- Common-C stays `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`, containing the
+  merged input queue ordering and release-delivery repair. Linux Host remains
+  `42c1a13618b04d80ac15c2e46c9ad5e2058c700e`; other recursive pins are unchanged.
+- Version base: 1.0.129. Hosted run `35312646798` passed all four product jobs
+  at root `915f64a549c39d7bb79bd366d9c018b3deb979d3`. Mac Client: 124 Qt results,
+  six target-validation fixtures and the native input-worker gate passed,
+  including fresh SDK27 dependencies with minimum15.0. Privacy and clipboard
+  jobs passed. Mac signing was disabled. The merge pin has identical source
+  bytes; documentation changes do not change those results.
+- Portable validation: 43 CI tests, six root CTest suites, seven fullscreen and
+  three Quit guards passed. All 11 Wacom Qt results passed 30 repetitions and
+  ASan/UBSan with leak detection. This is not stalled-driver fault injection.
 
-Client `26c031a` then merged upstream clipboard support and advanced common-C
-to canonical `16a7a50`, which contains the queue fix. The root Mac branch pins
-this source. A fresh build and live tablet retest of the merged source remain
-open; the results above belong to the earlier exact commits.
+Next release gates: the identical packaged Client on macOS15/macOS27, Ubuntu
+regression, physical Wacom pressure/focus/reconnect/Quit/hotplug, sleep and
+held-input recovery, and investigation of the previously intermittent live
+left-click loss. Earlier live successes belong to their exact candidates, not
+this final source. No installation or signed release was performed here.
 
-Previously observed live behavior includes two-screen fullscreen drag/focus,
-normal mouse input, and Flame tablet pressure/focus in exact earlier candidates.
-The intermittent remote left-click loss is not established as fixed; the queue
-repair addresses one reproduced release-loss path. The new Wacom I/O path
-has a deterministic stalled-callback test but needs live tablet acceptance.
-Ubuntu Client and macOS 27 regression, tablet hotplug, interrupted
-reconnect/sleep and held-input recovery remain open. GitHub hosted jobs have
-reported `action_required` on the upstream PRs; fork push builds are running
-for the integrated source. No Mac contribution merge or release has been
-performed.
-
-See [the current integration review](docs/development/macos15-integration-review.md)
+Linux physical-display matching remains separate: Client
+[#4](https://github.com/instinctual/plank-client/pull/4), root
+[#7](https://github.com/instinctual/plank/pull/7), Host
+[#2](https://github.com/instinctual/plank-host-linux/pull/2). This integration
+does not package that display helper or alter physical-monitor mode policy.
+See [the integration review](docs/development/macos15-integration-review.md)
 and the chronological [Mac Client record](docs/development/macos15-client.md).
-The earlier mainline handoff is retained below as historical context.
-
-### Current maintainer follow-up
-
-- Client `a6faf27a` repairs Wacom focus/reconnect recovery after release timeouts.
-  Desired state survives the bounded UI wait, but input remains blocked until
-  the worker finishes physical release. Newer focus/reconnect/Quit requests
-  always take precedence. No protocol or Linux input changes.
-- Client `82436e5ada0e6139c967a167a5079d6ab1cbbdcd` adds the single15.0 minimum
-  and compile-time rejection of unguarded newer APIs. Parent build/bootstrap/
-  cache/DMG policy requires SDK27, invalidates older dependency caches, and
-  validates the complete app's deployment floor. Host source and target remain
-  unchanged; common-C stays `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`.
-- Candidate base1.0.129. Wacom:11 Qt results,30 repeats and ASan/UBSan with leak
-  detection pass in an isolated Ubuntu26.04 container. Root:43 CI tests, six
-  CTest suites, seven fullscreen and three Quit guards pass. Native Mach-O
-  fixture is skipped on Linux and runs on the Mac builder.
-- Next: hosted unsigned compilation/package gates, then identical-package
-  qualification on macOS15 and27, especially delayed tablet release, reconnect,
-  focus changes, Quit and hotplug. Do not merge these draft PRs or claim a
-  release/hardware pass from the portable tests. No installations performed.
+Earlier checkpoints below are retained as historical context.
 
 Read AGENTS.md and the platform build runbook before work. Read the private
 notes' README before machine-specific work; deployment information stays outside Git.

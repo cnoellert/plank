@@ -1,6 +1,6 @@
 # Linux physical display matching integration
 
-**Draft: stacked after the Mac Client PR and pending recovery qualification.**
+**Draft: based on merged Mac Client work and pending recovery qualification.**
 
 This PR packages the temporary physical-display helper and pins the paired
 Client and Linux Host changes. When **Match client displays** is selected on a
@@ -18,7 +18,8 @@ clipboard synchronization. Client and Host constants, protocol vectors and a
 negative Client negotiation test agree.
 
 [View only this PR's changes relative to the Mac root branch](https://github.com/cnoellert/plank/compare/codex/macos15-pr-review...codex/physical-display-stack).
-The GitHub PR diff also contains its unmerged Mac base until that PR lands.
+The root branch now merges accepted main; its incremental diff is the display
+feature.
 
 The exact split-branch Host package connected two 2560×1440 outputs and put
 Flame on the intended primary. The operator confirmed normal work across the

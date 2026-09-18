@@ -1,9 +1,9 @@
 # PLANK
 
-This branch develops one experimental Apple Silicon **Client** package for
+PLANK builds one experimental Apple Silicon **Client** package for
 macOS 15 and newer, including macOS 27. See
 [the integration and acceptance notes](docs/development/macos15-integration-review.md).
-The macOS Host remains macOS 27-only; these changes are not a released package.
+The macOS Host remains macOS 27-only; integration does not imply release qualification.
 
 This is a fork of Sunshine/Moonlight with deep changes relevant to secure VFX Remote Desktop workflows. 
 

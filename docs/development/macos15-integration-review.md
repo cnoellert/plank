@@ -85,8 +85,14 @@ every Mac build runs real Mach-O target-validation fixtures. The complete
 packaged app is checked again after Qt deployment. Portable validation passes:
 43 CI tests, six root CTest suites, seven fullscreen checks and three Quit
 guards. Native Mach-O execution is explicitly skipped on Linux. The new
-candidate version is1.0.129; hosted/native builds and live macOS15/macOS27 tablet
-acceptance are pending, not implied by these source-level checks.
+candidate version is1.0.129. Hosted run
+[35312646798](https://github.com/instinctual/plank/actions/runs/35312646798) at
+root `915f64a549c39d7bb79bd366d9c018b3deb979d3` passed all four product jobs,
+including the fresh Mac Client dependency bootstrap at minimum15.0. The native
+Mac Client build passed124 Qt results, all six target-validation fixtures and
+the actual input-worker fixture. Separate hosted privacy and clipboard jobs
+passed too. Signing was disabled: there is no newly signed DMG or deployment.
+Live macOS15/macOS27 identical-package and tablet acceptance remain pending.
 
 The earlier accepted Client 1.0.126 passed 84 Qt results, native input ordering,
 106 Mach-O checks, dependency closure and ad-hoc signature checks. Three native
@@ -101,9 +107,9 @@ Those observations do not establish the final review head as live-accepted.
 - [common-C PR #3](https://github.com/instinctual/plank-common-c/pull/3)
   was merged and supplies the queue-order and release-delivery fix. Its source
   commit is now reachable from the canonical submodule URL.
-- [Client PR #3](https://github.com/instinctual/plank-client/pull/3) contains
-  the Mac-specific implementation and the common-C pin. Its current review
-  branch is limited to the Mac scope.
+- [Client PR #3](https://github.com/instinctual/plank-client/pull/3) is merged
+  at `a6a97d024269aa5c8523a2e50e0a887208cf4a05`. Its tree is identical to
+  tested Client `82436e5ada0e6139c967a167a5079d6ab1cbbdcd`.
 - [root PR #4](https://github.com/instinctual/plank/pull/4) coordinates the
   Client pin, unified target build paths, focused tests and this evidence.
 - [libvirtualhid PR #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
@@ -114,9 +120,12 @@ Those observations do not establish the final review head as live-accepted.
 Upstream Client `0544586` and root `7dd2c1a` were merged into the review
 branches. The upstream Quit implementation replaced the earlier bridge; Mac
 capture/fullscreen changes remain macOS-scoped, while Linux/Wayland behavior
-retains its upstream policy. No upstream merge or release has occurred.
+retains its upstream policy. The operator authorized approval and merge of
+the Client and parent PRs after the hosted build gates passed. The parent pins
+the tree-identical Client merge commit. No signed release or deployment was
+performed, and integration approval does not claim the live gates below passed.
 
-## Gates before merge
+## Remaining release qualification
 
 1. Exercise the new asynchronous Wacom path on physical hardware: pressure,
    focus loss, reconnect, Quit and unplug/replug. The deterministic test covers
@@ -132,5 +141,5 @@ retains its upstream policy. No upstream merge or release has occurred.
 5. Rebuild from the final root and recursive submodule commits, then run the
    required hosted build/privacy jobs and product packaging checks.
 
-Keep the Client and root PRs draft while these gates remain. The local source
-build does not establish release or cross-platform hardware acceptance.
+These gates remain release qualification tasks after the operator-authorized
+integration. Source builds do not establish cross-platform hardware acceptance.

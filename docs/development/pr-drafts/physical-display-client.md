@@ -1,6 +1,6 @@
 # Linux physical display matching controls for Mac Client
 
-**Draft: stacked after [Mac Client PR #3](https://github.com/instinctual/plank-client/pull/3).**
+**Draft: based on merged [Mac Client PR #3](https://github.com/instinctual/plank-client/pull/3).**
 
 This PR contains the Client half of optional physical-display matching. Under
 the existing **Match client displays** bookmark choice, a separate **Retina
@@ -15,14 +15,15 @@ non-preset matched mode, while a matched-mode vector does not imply clipboard.
 The Host and protocol changes are in the separate display series.
 
 [View only this PR's changes relative to the Mac Client branch](https://github.com/cnoellert/plank-client/compare/codex/macos15-pr-review...codex/physical-display-stack).
-The current GitHub PR diff also includes the unmerged Mac Client base until
-that PR lands. No Linux physical mode change is part of the base Mac PR.
+The Client branch merges accepted main, so its incremental diff is the display
+feature. No Linux physical mode change was part of the base Mac PR.
 
 The earlier integrated source passed 125 local Qt results, the native input
 worker, fullscreen/Quit guards and all five hosted build jobs. The current
 Client head also includes Alan's Wacom timeout recovery and unified macOS 15+
-build policy. Portofino has SDK 26.2, so the current head requires a hosted
-SDK 27 build before live qualification. Earlier installed packages completed
+build policy. The newer root `3d7f413` passed all five hosted jobs with SDK 27
+for the Mac Client. Portofino has SDK 26.2, so it cannot build the current head
+locally under the new policy. Earlier installed packages completed
 normal two-screen matching and restoration; this stacked source has not been
 installed. A headless virtual trial placed Flame on the Eizo and restored the
 starting Host layout, but Match client displays rejected the MacBook's current
