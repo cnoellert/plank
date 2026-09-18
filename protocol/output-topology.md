@@ -35,7 +35,6 @@ The host returns `schema_version: 13` and a numeric `feature_flags` field from
 - `0x40000` — opaque media-worker instance identity for early replacement detection
 - `0x800000` — matched physical-display primary selection
 - `0x1000000` — bounded real display modes in temporary physical-layout leases
-- `0x2000000` — bind the first virtual connector to the client-primary side
 
 ### Expected desktop handoff status
 
@@ -131,7 +130,7 @@ The document contains a monotonically changing `generation`, the bounding
 desktop rectangle, a `layout` object, and an `outputs` array. `layout.kind` is
 `physical`, `single`, or `dual-horizontal`; `layout.virtual_modes` is empty for
 a physical layout, contains one mode for `single`, and
-contains the independently ordered left/right modes for
+contains the independently ordered primary/secondary modes for
 `dual-horizontal`. `layout.startup_kind` reports the concrete boot topology:
 `physical`, or `single` for the safe 1920x1080 baseline created by the
 administrator's `virtual` policy. `layout.allowed_kinds` explicitly lists the
@@ -389,24 +388,6 @@ The supervisor separately saves the original primary property and restores it
 alongside the baseline MetaMode on disconnect or failure. Restoration reads
 both values back, because NVIDIA can return zero after rejecting a mode change.
 See `output-topology-v13-primary.json` for a right-hand primary example.
-
-### Virtual connector order (optional `0x2000000`)
-
-On a virtual-startup Host, a Client negotiating `0x2000000` may send
-`plankPrimaryOutput=0` or `1` for a dual-horizontal layout. The index refers
-to the requested left/right mode order. The Host puts its first virtual
-connector (`DP-0`, shown as PLK Display 1) on that side and marks it primary.
-This matters to applications such as Flame that choose the first connector
-independently of GNOME's primary-display setting. A missing index preserves
-the previous DP-0-left behavior. Single-output layouts accept only `0`.
-Unnegotiated or out-of-range values are rejected.
-
-Both the GDM display preparation and live XRandR transition use the same
-connector assignment. The Host reports virtual modes in desktop left/right
-order, even when connector enumeration is different. The Client uses the OS
-primary display for manual two-output bookmarks and Match client displays;
-older Hosts continue receiving no virtual primary index. The concrete
-right-primary topology is in `output-topology-v13-virtual-primary.json`.
 
 For a macOS Client connected to Linux, **Retina size** is a separate bookmark
 choice under **Match client displays**. **macOS desktop size** requests logical
