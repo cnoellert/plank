@@ -121,6 +121,32 @@ Live click behavior after reconnect remains to be checked. This evidence does
 not establish whether the input failure is caused by display matching, raw
 tablet forwarding or an independent XInput state transition.
 
+## Virtual connector order follow-up
+
+On the standalone virtual-startup Rocky Host, a two-output bookmark put
+1920×1200 on the left and 2560×1440 on the right. GNOME's primary flag alone
+did not place Flame correctly: Flame opened on the left because virtual
+connector `DP-0` (PLK Display 1) was there. A reversible live XRandR swap put
+`DP-0` on the right, and the operator confirmed Flame's chooser opened on the
+Eizo. The previous Host then reset that manual swap on reconnect.
+
+The paired follow-up adds virtual-primary capability `0x2000000`. The macOS
+Client sends the primary screen's index in left-to-right desktop order when
+the Host advertises it. The Host binds `DP-0` to that side during live and GDM
+transitions; earlier Clients retain the old connector order. The protocol
+vector covers the asymmetric right-primary case. Rocky display-preparation
+shell tests, local macOS Client tests, and Rocky 9.7 CI run `35303224086`
+passed. The exact RPM was digest-verified and installed on flame-01; the local
+signed Client used the same code.
+
+The Client log recorded `plankPrimaryOutput=1` with modes 1920×1200 and
+2560×1440. The operator then switched to a single 2560×1440 Eizo session and
+returned to the two-output bookmark. The Host supervisor logged both live
+transitions. XRandR independently read `DP-2` at 1920×1200+0+0 and primary
+`DP-0` at 2560×1440+1920+0. The operator confirmed that the new two-screen
+session launched correctly. This establishes the live single-to-dual path on
+the tested Rocky 9.5 Host; GDM-start and interruption recovery remain open.
+
 ## Remaining gates
 
 1. Test monitor-mode rejection, helper timeout and forced termination, failed

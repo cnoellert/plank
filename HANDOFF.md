@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## Virtual connector order and Flame launch — candidate
+## Virtual connector order and Flame launch — live tested
 
 On the standalone virtual Rocky test Host, a manual dual-output bookmark
 correctly placed a 1920×1200 Mac display on the left and a 2560×1440 display
@@ -18,9 +18,19 @@ enumeration order. Legacy clients omit the index and retain the existing
 DP-0-left behavior. Invalid or unnegotiated indices are rejected. The
 protocol vector and spec cover a right-primary asymmetric layout. The Rocky
 display-preparation shell tests and the complete local macOS 15 Client build
-and tests pass. A qualified Rocky 9.7 Host package build, hardware installation,
-normal reconnect, single-to-dual return, and Flame launch on the new pair
-remain pending; the manual live test alone is not acceptance of the candidate.
+and tests pass. Rocky 9.7 CI run `35303224086` built the exact Host RPM from
+root `740f308` and Host `7f22b1c`; its digest was verified before installation
+on flame-01. The signed Client from Client `6a6b9bc` requested a two-output
+1920×1200-left/2560×1440-right layout with `plankPrimaryOutput=1`.
+
+After an initial successful connection, the operator switched to a single
+2560×1440 Eizo session and then back to the two-output bookmark. The Host
+supervisor logged both live display transitions. XRandR readback after the
+second transition showed `DP-2` at 1920×1200+0+0 and primary `DP-0` at
+2560×1440+1920+0, and the operator confirmed the resulting session launched
+correctly. The earlier manual swap alone was insufficient evidence; this
+single-to-dual return exercised the installed paired build. Abrupt exit,
+GDM-start transition, and a fresh session after a Host restart remain untested.
 
 ## Single-output GNOME restoration regression
 
