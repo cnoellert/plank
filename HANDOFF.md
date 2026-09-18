@@ -1,278 +1,116 @@
 # PLANK handoff
 
-## Release 1.0.137 preparation
+## Release 1.0.137: verified, publication pending
 
-The operator requested rebuilding all products and publishing a release.
-Version 1.0.137 rebuilds current main with the accepted clipboard changes and
-Vulkan verification. All four packages use GitHub-hosted builders; both Mac
-packages require protected signing/notarization. Verified exact-input dependency
-caches are allowed, with fresh application/transport compilation and packaging.
-No installation, hardware test, dependency upgrade or pending PR is authorized
-as part of this operation. Preserve the primary RK3576 checkout.
+The operator requested rebuilding all public Host/Client packages and publishing
+a release. Package-source root is
+`41cffcddaf487acd84b293fe1792d3406bfe8d64` on `main`. Runtime changes were
+accepted in the 1.0.136 clipboard candidate before merging; this is a fresh
+mainline rebuild, not relabeled candidate artifacts. See
+[release notes](docs/releases/1.0.137.md).
 
-Builds, artifact verification and publication are pending. The current published
-release remains 1.0.135 until all gates pass. Tag the exact package-source commit,
-not a later evidence-only notes commit. See [release notes](docs/releases/1.0.137.md).
-
-## Branch cleanup and Vulkan verification
-
-The operator authorized cleanup of redundant branches. Removed 21 remote branch
-references across the six affected public repositories and 30 fully merged local
-branches, including old `stationconnect/main` aliases in build-deps/libvirtualhid.
-Every removed tip was first proven reachable from its maintained branch. Clean
-attached worktrees were detached at their existing commit; source files, build
-artifacts and commit history were not removed. The primary `rk3576-client`
-checkout and its uncommitted research remain untouched. Open-PR branches,
-maintained defaults/product branches, PLANK2 and private repositories are retained.
-Ten stale `macos-signing` deployment branch policies were removed; only `main`
-currently has signing authorization. This does not add manual approval or change
-the protected secrets.
-
-The operator authorized the Vulkan follow-up. Integration uses
-`build/worktrees/pr-integration`, preserving the unrelated primary checkout.
-The actual Loader repair
-is already present in build-deps pin
-`c29c4822cb96f5bfeb8640e72601c5cf4e3c3137`; no runtime code or dependency pin
-changes are needed. The parent now independently checks the required Loader
-patch alongside FFmpeg/x265, permits only deliberately omitted Loader test-file
-deletions, and parses NUL-delimited Git filenames. Twelve regression cases and
-CTest registration cover missing/conflicting patches, empty groups, unexpected
-modifications, Unicode paths, and the narrow deletion exception.
-
-The integration retains old root branch history but selectively restores only
-the verification changes and qualification notes, not its superseded package
-version or Host gitlink. The old Linux Host branch contains only an earlier
-build-deps pin, already superseded by current main. See
-[the qualification record](docs/development/reviews/vulkan-loader-qualification.md).
-Candidate root is `0865e02adf82598156b137642e1f35a2465ab7e4`. All twelve
-preflight cases, seven portable CTest suites and 43 CI-policy tests pass locally.
-A negative control confirms that the old verifier accepts the unpatched Loader
-fixture which the new verifier rejects. Hosted Linux Host
-[run 35360266594](https://github.com/instinctual/plank/actions/runs/35360266594)
-passed a cache-cold dependency bootstrap, fresh Host compile, RPM gates and
-cache sealing. All nine required patches were independently verified at
-bootstrap, package preflight and cache sealing, including the Loader repair.
-The log-directory and package payload gates pass. No hardware test or
-installation was performed.
-
-The 8,579,761-byte validation RPM is retained in
-`artifacts/packages/candidates/1.0.136-vulkan-preflight/linux/` as
-`plank-host-1.0.136-0.vulkan_preflight.1.el9.x86_64.rpm`, SHA256
-`f5849b413fb1948f46a33a48341d67bd4a610ac95dfd970d1670822a75684f74`.
-The collector verified the downloaded package against hosted provenance.
-The following root CMake-only adjustment limits the Linux/GNU-shell regression
-suite to Linux; all seven local suites passed again, and a Darwin-target
-configuration retained its six existing registrations (not native Mac testing).
-It does not change product build inputs or the package's recorded source.
-
-Integration is merged and pushed to main at
-`d6d9be4883650c56dedaf6409a60278d221d643e` (before these completion notes).
-Removed the root `vulkan-loader-repair` and temporary `vulkan-preflight`
-branches, plus the Linux Host `vulkan-loader-repair` branch, locally and on
-GitHub. Root history is preserved by the integration merge. The Host branch's
-only unique commit (`4d80cf9594cfe58483422449346f46dbcb50f05f`) advanced
-build-deps to a repair already included in current main; it added no separate
-runtime code. Both old worktrees remain detached at their exact prior commits,
-so source/artifacts and the superseded pointer commit remain locally recoverable.
-No worktree files were deleted. Current runtime and dependency pins are unchanged.
-
-This does not publish a release, rebuild a mainline package, or install anything;
-the current release remains 1.0.135 and the accepted clipboard release work below
-is unchanged. RK3576 research and all open-PR branches remain untouched.
-
-## Accepted clipboard changes: merged, not yet released
-
-The operator reported that the clipboard changes work, accepted them and
-authorized merge. Mac Host ↔ Mac Client plain-text clipboard, the shared
-512 KiB limit, outgoing validation and queue-pressure repairs are now merged
-into main. Common-C changes were fast-forwarded into its maintained
-`plank/client` and `plank/host` branches first, followed by Client, Linux Host
-and the parent repository. No tested code or gitlink changed during merging.
-The accepted merge is on main, not the unrelated primary
-`rk3576-client` checkout. This merge does not publish a release or deploy software.
-See [the plan](docs/development/plans/macos-host-clipboard.plan).
-
-Implementation adds a desktop-worker-only native pasteboard backend and Mac
-launch schema3 with explicit clipboard opt-in/result. LoginWindow and Linux
-Clients negotiate no clipboard. The existing encrypted types/ports are reused.
-Mac Host framing and UTF-8 validation share the portable protocol helper;
-Linux Host and Mac Client use that validator too. Transient queue pressure
-retains unsent chunks rather than restarting a copy or disconnecting video.
-Clipboard contents never enter logs; teardown preserves newer local copies.
-
-Candidate package-source root is `16c5b99817747ab76d25741fbce37d3399907366`.
-The accepted feature tip is `a949440792afa978d1172b8a906a8306243e614f`;
-it and the following recursive pins are now on their maintained branches.
-Later acceptance-only notes do not change candidate package provenance.
-Changed recursive pins:
-
-| Input | Commit |
-| --- | --- |
-| Client | `6663d5692ecf9eaa12f401b3d3a7781103ae2f1b` |
-| Linux Host | `b8abf72c2b41c96edab4c62303a97bd3464de9ea` |
-| Client common-C | `ef8ac14c87ce3dc6fa2bc1f4a08f6e61371739d1` |
-| Host header-only common-C | `3a97a58f215323753cfd1180af760ec7e3253538` |
-
-Other dependencies remain at the release pins below. Portable wire tests passed
-under ASan/UBSan, C11/C++17 ABI checks passed, as did 43 CI-policy tests and six
-portable CTest suites.
+All packages use GitHub-hosted builders. Both Mac packages require signing,
+notarization and stapling. Exact-input dependency caches are independently
+verified; application/transport compilation and packaging run fresh. No package
+installation, hardware test, dependency upgrade or pending PR is part of this
+release operation. All builds and local artifact checks passed. Publication is
+the remaining step; the currently published release is still 1.0.135.
 
 | Gate | Hosted run | State |
 | --- | --- | --- |
-| Four-product ordinary build | 35355443932 | Passed |
-| Signed/notarized Mac Host | 35355443904 | Passed |
-| Signed/notarized Mac Client | 35355447200 | Passed |
-| Privacy checks | 35355443955 | Passed |
-| Clipboard regressions | 35355443952 | Passed |
+| Four-product ordinary build | 35362841568 | Passed |
+| Signed/notarized Mac Host | 35362882541 | Passed |
+| Signed/notarized Mac Client | 35362884456 | Passed |
+| Privacy checks | 35362841435 | Passed |
+| Clipboard regressions | 35362841434 | Passed |
 
 The signed Client passed all 156 native Qt results, including 23 clipboard
-results. The Mac Host passed its named-pasteboard tests (bidirectional data,
-queue pressure, generations, ownership and denied authority). The Linux Xvfb
-suite passed 13 backend cases and five negative controls, including exact 512 KiB,
-cumulative overflow and timeout recovery. Shared wire validation passed under
-ASan/UBSan. Both signed Mac jobs passed notarization, stapling, package checks
-and temporary-key cleanup. These are not live hardware acceptance claims.
+results. The Mac Host passed native named-pasteboard tests for bidirectional
+data, queue pressure, generations, ownership and denied authority. The Linux
+Xvfb suite passed 13 production-backend cases and five negative controls,
+including exact 512 KiB, cumulative overflow and timeout recovery. Shared wire
+validation passed under ASan/UBSan. Both signed Mac jobs passed notarization,
+stapling, package checks and temporary-key cleanup. These are build/test
+results, not new live hardware acceptance.
 
-Verified packages are in
-`artifacts/packages/candidates/1.0.136-macos-host-clipboard/`; the manifest
-records source, target OS, checksums and package-only validation. Mac Host PKG
-SHA256 is `e90bae689aaaa6b034355626c9da01b157962aac3687200eee69356ed2c0fa3d`;
-Mac Client DMG is `e356a68e6be2d3d7417682772d656e6a70fa7b90343264ed8757bd1a4c0c45ef`;
-Linux Client DEB is `4719c2b2cafe66b1bbe3112c7fc488565bd5620d9cf6cc6db474d1d0c6a32e72`;
-Linux Host RPM is `ebc73b52dfb55a2e4ced0cb66b0525681ff057c0955deeefd22dcfab328eeed9`.
-The agent did not install packages or modify a production machine. The operator
-tested and accepted the candidate; individual stress cases were not enumerated.
-
-Merge is complete. A new mainline package/release build is a separate next step;
-do not relabel the accepted branch artifacts. Keep large/interrupted transfers,
-Spaces/focus and login/logout/reconnect ownership in the qualification matrix.
-Use matching peers because Mac launch schema 3 is a coordinated change.
-Immediate-paste ordering remains an explicit stress gate:
-native pasteboard writes are asynchronous and no applied-write acknowledgment
-exists; queue-retry tests alone do not establish an atomic paste guarantee.
-
-## Current release: 1.0.135
-
-The operator accepted the macOS Spaces-return shortcut fix and requested a full
-release. Root, Client and Linux Host changes are merged/pushed to main.
-[v1.0.135](https://github.com/instinctual/plank/releases/tag/v1.0.135) is published
-with all four freshly built packages, manifest and SHA256SUMS. Its annotated tag
-identifies exact package-source root
-`af74d8b8fdf9bb58cf096eeb10fb5aaba01a19d4`, not the later evidence-only notes
-commit. Every package was built on GitHub-hosted runners; no branch package was
-relabeled. No deployment was performed. Remaining open PRs are excluded.
-
-1.0.134 was withheld before publication because of the live Spaces-return defect.
-Its successful packages are historical evidence, not the current release.
-See [1.0.135 release notes](docs/releases/1.0.135.md) for the complete change list
-since the previous published release, v1.0.124.
-
-| Gate | Hosted run | Current state |
-| --- | --- | --- |
-| Four-product ordinary build | 35330999876 | Passed |
-| Signed/notarized Mac Host | 35331000308 | Passed |
-| Signed/notarized Mac Client | 35331003759 | Passed |
-| Privacy checks | 35330999945 | Passed |
-| Clipboard regressions | 35331000013 | Passed |
-
-Local validation passed: 43 CI-policy tests, six portable CTest suites, five
-keyboard-capture guards, two Metal-overlay guards, three Quit-lifecycle guards,
-seven fullscreen guards, 14 reconnect guards, release-version contract and
-whitespace checks. These are not new native hardware tests.
-
-Both Mac packages passed signing, notarization, stapling and temporary-key
-cleanup. The signed Mac Client passed all153 native Qt results and five Metal
-overlay groups. Dependency caches restored and were independently verified.
-Linux package/dependency/private-FFmpeg/version/payload gates passed, including
-Host log-directory ownership and Client no-autostart checks. Package manifests
-correctly keep functional validation separate from build acceptance.
+Local validation passed: release-version contract, all seven portable CTest
+suites (including twelve dependency-patch cases), 43 CI-policy tests and
+whitespace/privacy checks. Linux Client gates include runtime dependency
+closure, private FFmpeg, visible version, persistent logging and no autostart.
 
 All four packages are checksum-verified under
-`artifacts/packages/releases/1.0.135/`. GitHub's server-side SHA256 digests match
-the packages, manifest and flat-filename release checksum file.
+`artifacts/packages/releases/1.0.137/`. Exact package names, hashes and target
+platforms are in the release notes and catalog manifest. Linux Host completed
+a cache-cold dependency bootstrap; all nine required patches passed bootstrap,
+package preflight and cache sealing, including the Loader repair. The RPM
+log-directory ownership and payload gates passed. Other product dependency
+caches restored and were independently verified. No deployment was performed.
+Tag the exact package-source commit above, not a later evidence-only notes
+commit. Publish four packages, the manifest and flat-filename SHA256SUMS only
+after verifying uploaded asset digests against the local files.
 
-| Package (relative to the catalog) | Bytes | SHA256 |
-| --- | --- | --- |
-| `linux/plank-host-1.0.135-1.el9.x86_64.rpm` | 8579937 | `198ef27454243d9300c1b11cdd861540f4defef906797cdf561996bd614800bd` |
-| `linux/plank-client_1.0.135_amd64.deb` | 15451432 | `910a7030ed68cd68172fbf22a45d0276024419a9ca1f92fe2853c0de2d782f49` |
-| `macos/plank-host_1.0.135_arm64.pkg` | 6613304 | `811452516a1688b685216e0abcdccb497bf0dc67b2c91915545bc03e49599245` |
-| `macos/plank-client_1.0.135_arm64.dmg` | 86618191 | `e910f0b39573ea0cfba5f45c4d42a651d6dfe9879fed2d05bedd703060601803` |
+## Accepted changes and scope
 
-The published release remains unchanged; the accepted clipboard merge is above. Remaining
-qualification items below are not claims of failed acceptance or authority to
-disrupt a live machine. Branch cleanup is recorded above; no pending PR was merged.
+Mac Host ↔ Mac Client plain-text clipboard, the shared 512 KiB limit, outgoing
+validation and queue-pressure repairs are merged into maintained branches.
+Common-C was merged first, then Client/Linux Host and the parent gitlinks.
+The accepted candidate package-source root was
+`16c5b99817747ab76d25741fbce37d3399907366`; its tested runtime code and pins are
+unchanged by release preparation. The operator reported successful use, but did
+not enumerate every stress case. See
+[the clipboard plan](docs/development/plans/macos-host-clipboard.plan).
 
-## Accepted fix and integration scope
+Clipboard is desktop-worker-only on Mac Host. Mac launch schema 3 explicitly
+negotiates it; upgrade Host and Client together. LoginWindow and Linux Clients
+negotiate no clipboard. Existing encrypted message types/ports are reused.
+Mac Host, Linux Host and Mac Client share framing/UTF-8 validation. Transient
+queue pressure retains unsent chunks. Teardown preserves newer locally copied
+text; clipboard contents never enter logs. Files/images/rich text are excluded.
+Mac Client ↔ Linux X11 Host support remains intact.
 
-The operator confirms the 1.0.135-macos-hotkey-focus candidate works after
-swiping away from and back to the fullscreen stream. Earlier clicking inside
-the stream did not recover capture.
+Immediate-paste ordering is still a stress gate: native pasteboard writes are
+asynchronous and no applied-write acknowledgment exists. Queue-retry tests
+alone do not establish an atomic paste guarantee.
 
-The authorized public CGEvent tap remains registered through ordinary focus
-loss; background keys pass through before their key data is inspected.
-Returning re-arms forwarding on the first eligible key, using native AppKit
-application/key-window/active-Space state rather than cached SDL focus or a
-later timer tick. Explicit capture release and revoked permission still block
-re-arm. Revocation/teardown remove the tap; the existing silent timer handles
-authorization and disabled-tap recovery. No Linux or Host behavior changed.
+The actual Vulkan Loader repair was already in the build-deps pin and release
+1.0.135. New parent verification independently proves that required patch during
+bootstrap, cache validation and package preflight. Only deliberately omitted
+Loader test-file deletions are allowed; Git filenames are parsed NUL-delimited.
+Twelve regression cases cover missing/conflicting patches, empty groups,
+unexpected changes, Unicode paths and the narrow deletion exception. No runtime
+graphics code, driver or dependency pin changed in this follow-up.
+See [qualification evidence](docs/development/reviews/vulkan-loader-qualification.md).
+The earlier cache-cold Host run 35360266594 passed all nine required patches,
+fresh compilation, RPM gates and cache sealing; it was not a new hardware test.
 
-Candidate source was root `42e2d835d0effdcb31a83d39d5e87d0f878afdd1`,
-Client `d2532825b99edb3237d50d0773dab6ab352d4d2f`. Ordinary four-product
-run35329265662 and signed Client run35329265614 passed. The signed job passed
-153 native Qt results (27 keyboard-capture results, including suite setup/
-cleanup), five Metal-overlay groups, dependency verification, package gates,
-signing, notarization, stapling and temporary-key cleanup. Candidate DMG:
-`artifacts/packages/candidates/1.0.135-macos-hotkey-focus/macos/plank-client_1.0.135-macos-hotkey-focus_arm64.dmg`;
-SHA256 `03824969ca2319aae9c65ef5a87cb29469d4c2c6579be6f6518c624aaa92e69d`.
-The operator installed/tested it; the agent did not deploy it.
+Already released behavior remains: Mac hotkey capture re-arms after a Spaces
+return, Accessibility prompts occur outside streams, toolbar RTT uses shared
+telemetry, and Metal overlay replacement preserves the old texture until the
+new one is ready. Prior release detail is in
+[1.0.135 notes](docs/releases/1.0.135.md), not a pending task list.
 
-The release also contains reviewed integration work since1.0.124:
+Completed branch cleanup removed fully integrated branches, including the root
+and Linux Host Vulkan repair branches. The parent preserved relevant history
+and integrated verification without restoring superseded pins/version changes.
+Old worktrees remain detached and recoverable. No worktree source or artifacts
+were deleted. Do not repeat cleanup from historical HANDOFF instructions.
 
-- Plain UTF-8 clipboard synchronization is macOS Client ↔ Linux X11 Host only,
-  operator-accepted after both peers were upgraded. No Mac Host or Linux
-  Client backend, files or images. Large-transfer/ownership/reconnect stress
-  remains separate from that acceptance.
-- Mac system shortcuts obey the existing capture preference and stream focus.
-  Accessibility permission is requested in the ordinary launcher at startup
-  or idle Settings, never behind an active stream. CLI autoconnect requires
-  prior launcher authorization. Captured Command-Q and explicit menu/Dock Quit
-  retain their separate tested lifecycle. No private CGS grab path.
-- Network RTT reuses the existing once-per-second statistic in the compact
-  toolbar. Metal overlays retain the complete old texture until replacement
-  is uploaded and exchanged under lock; allocation failure preserves it.
-- Mac multi-display Metal presentation and allowlisted raw Wacom forwarding,
-  including bounded timeout-release recovery, are merged. One Apple Silicon
-  Client targets macOS15+ using SDK27; runtime checks retain newer APIs. Mac
-  Host remains27+. Linux input queue ordering/release and virtual-HID Pause-key
-  release fixes are included.
-- Reviewed dependency updates include x264, Vulkan with allocation-failure
-  repair/reproducible patch tests, Rustls0.23.45, mDNS and CI Actions/maintenance.
-  NVIDIA headers remain compatible with the hard driver ceiling595.91.07.
-  Kymux's new pin is maintenance-only; no application datagram pacer returns.
+## Exact 1.0.137 source pins
 
-Focused details:
-[clipboard follow-up](docs/development/clipboard-review-followup.md),
-[Mac integration](docs/development/macos15-integration-review.md),
-[dependency maintenance](docs/development/dependency-maintenance.md),
-[Mac Client runbook](docs/development/build/macos-client-build-runbook.md).
-
-## Published 1.0.135 source pins
-
-Package root `af74d8b8fdf9bb58cf096eeb10fb5aaba01a19d4` and these immutable
-gitlinks identify the complete recursive source; no dependency is selected by a
-moving branch at build time. Builders initialize exact product inputs. Locally
-uninitialized dependencies are not missing release inputs.
+Package root `41cffcddaf487acd84b293fe1792d3406bfe8d64` and immutable gitlinks
+identify the recursive source. Builders initialize exact product inputs;
+locally uninitialized dependencies are not missing release inputs.
 
 | Input | Commit |
 | --- | --- |
-| Shared Client | `d2532825b99edb3237d50d0773dab6ab352d4d2f` |
-| Linux Host | `f3ab763a31288f392fb94743cb47ee580d9cc01e` |
+| Shared Client | `6663d5692ecf9eaa12f401b3d3a7781103ae2f1b` |
+| Linux Host | `b8abf72c2b41c96edab4c62303a97bd3464de9ea` |
 | Kymux | `6f3df8e2c9eac41d4bc0ec9d3f1fc9cbf8d1a804` |
-| Client common-C | `16a7a503b2cfafad12faeedbc67257f7a1c0deb8` |
+| Client common-C | `ef8ac14c87ce3dc6fa2bc1f4a08f6e61371739d1` |
 | Client qmdnsengine | `920c097ffa742e2968290f15d4dde6693aec02e5` |
 | Host build-deps | `c29c4822cb96f5bfeb8640e72601c5cf4e3c3137` |
 | Host libvirtualhid | `a0d3aa0cc4d53daa18bfa2f2fbdf848957b6d294` |
-| Host common-C | `88fd5ac594ce9fa8b7e01530a7830aba3fc0b986` |
+| Host common-C | `3a97a58f215323753cfd1180af760ec7e3253538` |
 | Host common tooling | `f9d91e1d29b7473f58e43acde4579da4e56c4abe` |
 | Host GoogleTest | `52eb8108c5bdec04579160ae17225d66034bd723` |
 | Plasma protocols | `382dfabda886d3f2f5c067b22e5a22376685ba78` |
@@ -283,9 +121,11 @@ uninitialized dependencies are not missing release inputs.
 | NVIDIA codec headers | `e844e5b26f46bb77479f063029595293aa8f812d` |
 | Host common-C doxyconfig | `419127bad87f49b2d45fa957ea7302abbb49c01f` |
 
-Other unchanged recursive pins are retained by those Git trees. Previous
-candidate/run/hash details remain in Git history and their artifact manifests;
-do not interpret historical HANDOFF instructions as current tasks.
+
+Other unchanged recursive pins remain in those Git trees. NVIDIA driver
+qualification stays capped at 595.91.07. Kymux maintenance does not restore
+application datagram pacing. Historical candidate evidence remains in Git,
+release notes and package manifests.
 
 ## Remaining gates and known issue
 
@@ -298,7 +138,7 @@ tested. Follow [acceptance criteria](docs/development/acceptance-criteria.md):
   local emergency shortcuts, disconnect/menu/Dock cleanup.
 - Live pinned-toolbar updates/dragging/hide-reveal after the Metal repair.
   The separately reported transient menu-bar line remains unattributed.
-- Clipboard interruption/ownership/large-transfer stress, identity color and
+- Clipboard interruption/ownership/large-transfer/immediate-paste stress, identity color and
   profile-specific hardware paths, packet loss and long-session cleanup.
 - Final macOS27 release revalidation; hosted builders cannot establish live
   hardware, permissions, display or network acceptance.
