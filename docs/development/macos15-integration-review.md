@@ -85,8 +85,14 @@ every Mac build runs real Mach-O target-validation fixtures. The complete
 packaged app is checked again after Qt deployment. Portable validation passes:
 43 CI tests, six root CTest suites, seven fullscreen checks and three Quit
 guards. Native Mach-O execution is explicitly skipped on Linux. The new
-candidate version is1.0.129; hosted/native builds and live macOS15/macOS27 tablet
-acceptance are pending, not implied by these source-level checks.
+candidate version is1.0.129. Hosted run
+[35312646798](https://github.com/instinctual/plank/actions/runs/35312646798) at
+root `915f64a549c39d7bb79bd366d9c018b3deb979d3` passed all four product jobs,
+including the fresh Mac Client dependency bootstrap at minimum15.0. The native
+Mac Client build passed124 Qt results, all six target-validation fixtures and
+the actual input-worker fixture. Separate hosted privacy and clipboard jobs
+passed too. Signing was disabled: there is no newly signed DMG or deployment.
+Live macOS15/macOS27 identical-package and tablet acceptance remain pending.
 
 The earlier accepted Client 1.0.126 passed 84 Qt results, native input ordering,
 106 Mach-O checks, dependency closure and ad-hoc signature checks. Three native

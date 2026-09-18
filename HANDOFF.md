@@ -62,8 +62,13 @@ The earlier mainline handoff is retained below as historical context.
   detection pass in an isolated Ubuntu26.04 container. Root:43 CI tests, six
   CTest suites, seven fullscreen and three Quit guards pass. Native Mach-O
   fixture is skipped on Linux and runs on the Mac builder.
-- Next: hosted unsigned compilation/package gates, then identical-package
-  qualification on macOS15 and27, especially delayed tablet release, reconnect,
+- Hosted run `35312646798` passed all four product jobs at root
+  `915f64a549c39d7bb79bd366d9c018b3deb979d3`, including the fresh SDK27 Client
+  dependency build with minimum15.0. The Mac Client passed124 Qt results,
+  all six native/portable target fixtures and the native input-worker gate.
+  Mac signing was disabled. Separate hosted privacy and clipboard jobs passed.
+  This evidence update changes documentation only; no package was installed.
+- Next: identical-package qualification on macOS15 and27, especially delayed tablet release, reconnect,
   focus changes, Quit and hotplug. Do not merge these draft PRs or claim a
   release/hardware pass from the portable tests. No installations performed.
 
