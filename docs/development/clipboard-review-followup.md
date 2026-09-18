@@ -58,16 +58,20 @@ platform claims are introduced by these follow-ups.
 Validation at parent `b0026c503f713016901bc5650a22371a4b7e1ef1`: 13 isolated
 Xvfb cases and five negative controls pass; ASan/UBSan with leak detection also
 passes. All 42 CI policy checks and five root CTest suites pass. Hosted X11
-run `35290252469` passes. Hosted build `35290252364` has passed both macOS
-products and the Linux Client, including platform negotiation on both Clients
-and 20 native clipboard Qt results (including init/cleanup). The full Linux
-Host package job remains in progress at this checkpoint; verify its result
-before approval/merge. The Mac jobs are unsigned and no hardware was installed.
+run `35290252469` passes. Hosted build `35290252364` passed all four products,
+including the Linux Host RPM, platform negotiation on both Clients and 20 native
+clipboard Qt results (including init/cleanup). The Mac jobs are unsigned and no
+hardware was installed.
+
+The operator authorized merge after these fixes. Client PR #2 merged at
+`05445865d3f8f6d58102a4fb4c45b712545ece1e` and Linux Host PR #1 at
+`42c1a13618b04d80ac15c2e46c9ad5e2058c700e`. Both merge trees exactly match the
+tested inputs. Parent PR #3 records those mainline pins; no product source is
+changed by replacing the tested heads with their identical merge trees.
 
 ## Remaining acceptance
 
-Keep the PRs under review. Do not equate the fixes or build results with Alan's
-approval, and do not automatically resolve his review threads.
+Merge authorization is not evidence of live paired-system acceptance.
 
 A scoped paired-system session must still verify both clipboard directions,
 focus policy, repeated copies, disconnect into a different Host, large UTF-8
