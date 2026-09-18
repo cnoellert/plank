@@ -1,6 +1,31 @@
 # PLANK handoff
 
-## Accessibility prompt timing — in progress
+## Mainline 1.0.134 release — authorized, in progress
+
+The operator authorized commit, push, merge, fresh mainline builds and release
+publication. This supersedes the earlier integration-only/no-release scope
+below. Merge the reviewed `pr-integration` work in dependency order; leave the
+remaining open PRs out. No deployment is requested. Preserve the unrelated
+research checkout and its uncommitted files.
+
+The final candidate source is root
+`7c98680ac184240c23ebc8a1f509ef597975a978`, Client
+`cd4cb052b1b26d95c92cc3850201901bf3d1c17f`, Linux Host
+`f3ab763a31288f392fb94743cb47ee580d9cc01e`; other recursive pins are those
+recorded under the 1.0.131 integration baseline below. All four candidate jobs
+passed in hosted run `35326742242`. Signed Mac Client run `35326742491` also
+passed, including notarization/stapling. Its native tests passed all 149 Qt
+results plus five Metal overlay regression groups. The mainline packages must
+be rebuilt, not relabeled copies of these branch artifacts.
+
+The operator accepted live Mac shortcut forwarding and Mac Client ↔ Linux Host
+plain-text clipboard transfer. Startup permission-prompt timing, the final
+overlay repair and the remaining hardware/stress gates are not yet explicitly
+accepted. Mac Host clipboard remains unimplemented. Keep the physical-display
+lease inconsistency below open; the operator chose a manual reboot, not a code
+repair. Do not claim a permanent fix without verification.
+
+## Accessibility prompt timing — build validated
 
 The operator confirmed 1.0.133 hotkey forwarding works, but the permission
 dialog appeared after connection and was difficult to reach with the captured
@@ -12,7 +37,8 @@ autoconnect requires prior authorization from the ordinary launcher and never
 opens a permission dialog behind a stream. Session permission monitoring is
 silent, including revocation and reconnection; the accepted capture path is
 unchanged. New prompt-policy tests cover disabled capture, existing permission
-and once-only behavior. Build/signing and timing acceptance are pending.
+and once-only behavior. Candidate builds/signing passed as recorded above;
+live startup-prompt timing acceptance remains pending.
 
 The operator elected to reboot the hardware test Host manually after the
 display-topology failure below. No remote restart or Host change was performed.
@@ -21,7 +47,7 @@ unchanged from .124, but the upgrade/restart path could expose an older defect.
 Do not dismiss the timing or call the reboot a permanent repair; retest the same
 bookmark and login-to-desktop transition after the operator's reboot.
 
-## Mac system shortcut capture — ready for testing
+## Mac system shortcut capture — forwarding accepted
 
 The operator authorized the Accessibility-based Client fix for system shortcuts.
 Candidate 1.0.133-pr-integration adds a session-scoped public CGEvent tap feeding
@@ -41,20 +67,21 @@ results, including suite init/cleanup) passed, along with five overlay tests.
 The exact dependency cache restored and independently verified. Local capture,
 Quit, overlay, fullscreen, reconnect and CI-policy checks passed. Signed
 installer run `35324741700` passed, including signing, notarization and stapling.
-Privacy and clipboard CI passed. Live Accessibility/shortcut acceptance remains
-pending. Native tests exercise the production callback and bounded queue with
+Privacy and clipboard CI passed. The operator confirmed live Accessibility
+hotkey forwarding works; permission-prompt timing is corrected by the follow-up
+above. Native tests exercise the production callback and bounded queue with
 synthetic events; they do not install an OS event tap or grant TCC permission.
 
 The checksum-verified installer is
 `artifacts/packages/candidates/1.0.133-pr-integration/macos/plank-client_1.0.133-pr-integration_arm64.dmg`.
 SHA256: `598e84d710bb10e013902287d1e2544147ebf262a13bc0819b2e2d4419340dce`.
 It includes the 1.0.132 toolbar repair. No deployment, merge or release
-publication. Next: install on the test Mac, approve PLANK Client Accessibility
-in System Settings, and verify focused-stream Command-Tab, Command-Space and
-Command-Q reach only the Host. Verify three-finger Spaces swipes, local
+publication. Ordinary shortcut forwarding is user-accepted. Remaining explicit
+edge checks include three-finger Spaces swipes, local
 Command-Option-Escape, Ctrl-Alt-Shift-Z capture release, permission denial and
 revocation, focus transitions, menu/Dock Quit and disconnect cleanup. No Host
-upgrade is required for keyboard capture. Functional acceptance stays pending.
+upgrade is required for keyboard capture. Do not infer every edge check passed
+from the general success report.
 
 Correction to the earlier investigation: SDL 3.4.2 does contain a Cocoa keyboard
 grab implementation in `SDL_cocoakeyboard.m`, guarded by `SDL_MAC_NO_SANDBOX`.
@@ -66,9 +93,12 @@ The merged clipboard PRs implement only macOS Client ↔ Linux X11 Host plain te
 the macOS Host has neither a clipboard backend nor the advertised feature bit.
 The 1.0.124 release Host predates the implementation. The paired 1.0.131
 integration Linux Host RPM contains it; a Client-only update cannot enable it.
-Installed Linux Host/Client versions and a Ctrl-V plain-text check are awaiting
-confirmation. No live logs or clipboard contents were collected, and no
-clipboard repair or macOS Host implementation was authorized in this follow-up.
+The operator subsequently upgraded the Linux Host and confirmed Mac ↔ Linux
+clipboard copy/paste works; the original failure was a Host version mismatch,
+not a demonstrated clipboard defect. No clipboard payloads were collected.
+Mac ↔ Mac remains unsupported and no macOS Host clipboard implementation was
+authorized in this follow-up. This user acceptance does not establish the
+remaining large-transfer, cross-session and reconnect stress gates.
 
 Follow-up: the operator installed Linux Host 1.0.131 and reported Client 1.0.132
 rejecting `Invalid composite source rectangle or output provenance (Error 400)`.
