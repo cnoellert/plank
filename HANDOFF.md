@@ -5,6 +5,31 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- The operator authorized the combined clipboard merge. Client PR #2 is merged
+  at `05445865d3f8f6d58102a4fb4c45b712545ece1e`; Linux Host PR #1 is merged at
+  `42c1a13618b04d80ac15c2e46c9ad5e2058c700e`. Parent PR #3 pins those exact
+  mainline commits. Both merged dependency trees are identical to the tested
+  Client `f13654d329eec4c099e6eb848ae886f04050f2cc` and Host
+  `7771aba399b6853c7cb37aed300bc1aefb16be36` inputs. Clipboard sync is macOS
+  Client to Linux X11 Host; Linux Clients do not advertise an implementation
+  they lack. Pasteboard ownership, bounded X11 INCR transfers and canonical
+  dependency sources are fixed. See `docs/development/clipboard-review-followup.md`.
+  Common-C Host/Client pins are
+  `88fd5ac594ce9fa8b7e01530a7830aba3fc0b986` /
+  `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`; mDNS remains
+  `920c097ffa742e2968290f15d4dde6693aec02e5`. Other recursive pins are unchanged.
+  Thirteen isolated Xvfb cases, five negative controls, 42 CI policy checks and
+  all five root CTest suites pass. Hosted X11 run `35290252469` and privacy
+  checks pass at root `b0026c503f713016901bc5650a22371a4b7e1ef1`. The Xvfb suite
+  also passes ASan/UBSan with leak detection. Hosted run `35290252364` passed
+  all four products, including the Linux Host RPM, platform negotiation on both
+  Clients and all 20 native clipboard Qt results (suite init/cleanup included).
+  The parent merge changes dependency commit identities to their tree-identical
+  merge commits and updates notes, not tested product code. These Mac builds
+  were unsigned. No release publication, deployment or live paired-session
+  acceptance was performed; mainline CI is separate from the completed feature
+  build. Remaining paired-system checks are documented in the follow-up.
+
 - GitHub Actions update is approved and merged through root PR #8: merge
   `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
   `2be3d797046df177589cb0c1b97e3cb5d109ade1`, including the merged Rustls

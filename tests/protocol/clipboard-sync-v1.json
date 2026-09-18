@@ -1,0 +1,43 @@
+{
+  "protocol": "PLANK clipboard sync",
+  "version": 1,
+  "byte_order": "little",
+  "maximum_text_bytes": 1048576,
+  "maximum_host_event_chunk_bytes": 49152,
+  "maximum_client_input_chunk_bytes": 8160,
+  "vectors": [
+    {
+      "name": "single-chunk-hello",
+      "generation": 1,
+      "flags": ["first", "last"],
+      "text": "hello",
+      "hex": "42434c500100000003000000010000000000000005000000000000000500000068656c6c6f"
+    },
+    {
+      "name": "reject-truncated-payload",
+      "declared_chunk_bytes": 5,
+      "payload_bytes": 4,
+      "valid": false
+    },
+    {
+      "name": "reject-overlong-utf8",
+      "text_hex": "c0af",
+      "valid": false
+    },
+    {
+      "name": "reject-surrogate-utf8",
+      "text_hex": "eda080",
+      "valid": false
+    },
+    {
+      "name": "reject-out-of-range-utf8",
+      "text_hex": "f4908080",
+      "valid": false
+    },
+    {
+      "name": "reject-embedded-null",
+      "text_hex": "610062",
+      "valid": false
+    }
+  ]
+}
