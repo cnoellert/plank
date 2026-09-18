@@ -52,6 +52,13 @@ callback cannot access freed memory. The release barrier gives up after two
 seconds and a stalled worker owns its state until it exits. Neither behavior
 has been exercised with a stalled physical device.
 
+Client `26c031a` merges upstream clipboard support with this Mac branch. Its
+common-C pointer advances to canonical `16a7a50`, which includes the merged
+queue-order fix. The text conflicts combined the mouse-motion and clipboard
+includes, and retained both presentation and clipboard topology tests. Diff
+checks passed; the merged Client has not yet had a fresh Mac build or live
+tablet acceptance, so the results above remain tied to `397678e`.
+
 The earlier accepted Client 1.0.126 passed 84 Qt results, native input ordering,
 106 Mach-O checks, dependency closure and ad-hoc signature checks. Three native
 AppKit cycles and 14 Metal readback cases passed. Live testing confirmed

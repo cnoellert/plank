@@ -25,6 +25,11 @@ runs. The split Client built on Apple Silicon/macOS 15 and passed 98 Qt results,
 the native input-worker test, seven fullscreen guards and three Quit lifecycle
 guards. These are build and local test results, not new live acceptance.
 
+Client `26c031a` then merged upstream clipboard support and advanced common-C
+to canonical `16a7a50`, which contains the queue fix. The root Mac branch pins
+this source. A fresh build and live tablet retest of the merged source remain
+open; the results above belong to the earlier exact commits.
+
 Previously observed live behavior includes two-screen fullscreen drag/focus,
 normal mouse input, and Flame tablet pressure/focus in exact earlier candidates.
 The intermittent remote left-click loss is not established as fixed; the queue
