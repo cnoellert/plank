@@ -55,6 +55,15 @@ The clipboard feature remains `0x400000`; matched physical-mode work reserves
 its own bit separately. No protocol wire-format changes or new clipboard
 platform claims are introduced by these follow-ups.
 
+Validation at parent `b0026c503f713016901bc5650a22371a4b7e1ef1`: 13 isolated
+Xvfb cases and five negative controls pass; ASan/UBSan with leak detection also
+passes. All 42 CI policy checks and five root CTest suites pass. Hosted X11
+run `35290252469` passes. Hosted build `35290252364` has passed both macOS
+products and the Linux Client, including platform negotiation on both Clients
+and 20 native clipboard Qt results (including init/cleanup). The full Linux
+Host package job remains in progress at this checkpoint; verify its result
+before approval/merge. The Mac jobs are unsigned and no hardware was installed.
+
 ## Remaining acceptance
 
 Keep the PRs under review. Do not equate the fixes or build results with Alan's

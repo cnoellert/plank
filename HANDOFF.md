@@ -19,9 +19,14 @@ notes' README before machine-specific work; deployment information stays outside
   `920c097ffa742e2968290f15d4dde6693aec02e5`. Other recursive pins are unchanged.
   Thirteen isolated Xvfb cases, five negative controls, 42 CI policy checks and
   all five root CTest suites pass. Hosted X11 run `35290252469` and privacy
-  checks pass at root `b0026c503f713016901bc5650a22371a4b7e1ef1`. All-platform
-  unsigned build run `35290252364` is in progress at that source. No deployment,
-  live clipboard acceptance, approval, or merge is implied by this checkpoint.
+  checks pass at root `b0026c503f713016901bc5650a22371a4b7e1ef1`. The Xvfb suite
+  also passes ASan/UBSan with leak detection. Hosted run `35290252364` has passed
+  both macOS products and the Linux Client, including the new platform feature
+  check on both Client platforms and all 20 native clipboard Qt results (suite
+  init/cleanup included). The full Linux Host package job is still running.
+  Check its conclusion before merge. Notes-only commits after the build source
+  do not change its product inputs. No deployment, live clipboard acceptance,
+  approval, or merge is implied by this checkpoint.
 
 - GitHub Actions update is approved and merged through root PR #8: merge
   `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
