@@ -147,6 +147,33 @@ transitions. XRandR independently read `DP-2` at 1920×1200+0+0 and primary
 session launched correctly. This establishes the live single-to-dual path on
 the tested Rocky 9.5 Host; GDM-start and interruption recovery remain open.
 
+## Headless route comparison on flame-01
+
+On September 17, with `display.startup_layout = virtual`, the operator tested
+both connection choices against the Eizo-primary MacBook/Eizo arrangement.
+Before each trial, the Host's NVIDIA MetaMode, XRandR outputs and GNOME logical
+monitors were captured. **Match client displays** with macOS desktop sizing
+rejected the MacBook's current 2056×1286 mode in the Client because that mode
+is absent from the virtual EDID allowlist. The Host did not transition; its
+4480×1440 layout and primary remained unchanged. Retina backing pixels would
+also need a separate canvas-limit check before this route could be qualified.
+
+**Two virtual displays** with the existing 1920×1200-left and 2560×1440-right
+bookmark connected. XRandR reported `DP-2` on the left and primary `DP-0` on
+the right; GNOME reported the same logical positions and primary. The operator
+confirmed Flame's project chooser opened on the Eizo. After normal disconnect,
+the NVIDIA MetaMode, XRandR geometry and GNOME logical-monitor geometry matched
+the pretrial snapshot exactly. This is a working approximation of the MacBook
+size, rather than exact automatic display matching.
+
+The earlier viewport-based physical-startup trial had inconsistent desktop
+geometry, but this virtual-startup trial does not reproduce that problem.
+For this headless Flame workflow, the physical-output mode-changing helper is
+not required by the observed two-screen path. Its potential value for hybrid
+workstations with real Host monitors is a separate acceptance question. The
+remaining headless display gap is automatic qualification of the MacBook's
+current mode, or an explicit, predictable virtual-mode fallback.
+
 ## Remaining gates
 
 1. Test monitor-mode rejection, helper timeout and forced termination, failed

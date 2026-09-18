@@ -32,6 +32,16 @@ correctly. The earlier manual swap alone was insufficient evidence; this
 single-to-dual return exercised the installed paired build. Abrupt exit,
 GDM-start transition, and a fresh session after a Host restart remain untested.
 
+A controlled route comparison followed. On the virtual-startup Host,
+**Match client displays** rejected the MacBook's current 2056×1286 desktop
+mode before any Host transition because the virtual EDID pool lacks it.
+The existing two-virtual-display bookmark connected with 1920×1200 left and
+2560×1440 right. GNOME and XRandR agreed on the primary right-hand Eizo, and
+the operator saw Flame's chooser there. After disconnect, NVIDIA MetaMode,
+XRandR and GNOME geometry matched the saved starting layout. This establishes
+that flame-01's headless workflow can use virtual outputs without the
+physical-output helper, while exact automatic MacBook sizing remains open.
+
 ## Single-output GNOME restoration regression
 
 During the separate macOS 15 Wacom Client review, the Rocky test Host's active
