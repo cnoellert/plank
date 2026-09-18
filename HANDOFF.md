@@ -2,27 +2,28 @@
 
 ## Combined test packages — 2026-09-18
 
-The operator subsequently requested a compact RTT column immediately left of
-the Encoder Target segment. Follow-up `1.0.131-pr-integration` pins Client
+Current package-source root is `c225083ebd27d06e63296e9df3bd55a99f92f6ed` on
+`pr-integration`, for `1.0.131-pr-integration`. All remaining PRs stay on hold.
+The operator requested a compact RTT column immediately left of
+the Encoder Target segment. The follow-up pins Client
 `261c250bb8098908f434019ba0b6363ff00bc031`. It reuses the existing once-per-second
 QUIC RTT measurement for both toolbar and overlay (`Network RTT`), sharing
 formatting and unavailable state. The slider and target text share measured
 width reserved for all valid bitrate values; endpoints do not move while
 dragging. Toolbar height and pointer routing are unchanged. Native Qt tests
-cover formatting and text/slider/control spacing; run them on both Client
-builders. Host and transport code/pins remain unchanged by this follow-up.
+cover formatting and text/slider/control spacing and pass on both Client
+builders (23 toolbar results each). Host and transport code/pins remain
+unchanged by this follow-up.
 
 Baseline `1.0.130-pr-integration` uses root
 `f8b76119ff3e2fa46e71ae9b68e6d74e2f06b331` (before RTT). Hosted build run
 `35317481578`, signed Mac Host `35317500220`, signed Mac Client `35317502640`.
-Mac signed jobs and Ubuntu package passed and were checksum-collected; Linux
-Host compile and RPM gates passed, with cache/artifact upload finishing. Privacy
-and clipboard checks passed. Local 43 CI-policy
+All four baseline products passed and were checksum-collected. Privacy and
+clipboard checks passed. Local 43 CI-policy
 tests, six portable CTest suites, release-version checks, seven fullscreen and
 three Quit guards passed; follow-up source checks also pass 14 reconnect and
-four interface-MTU cases. Do not interrupt the baseline Host build by pushing
-the follow-up until that run has finished. Rebuild the final four packages at
-1.0.131 rather than relabel baseline artifacts. No hardware acceptance yet.
+four interface-MTU cases. The baseline finished before the follow-up was pushed;
+1.0.131 packages are fresh builds, never relabelled. No hardware acceptance yet.
 
 The operator authorized an integration branch and all four test packages from
 already-merged PRs. Work is on `pr-integration`, based on main
@@ -42,26 +43,49 @@ publish a production release, or deploy these packages as part of this task.
   Vulkan updates with the allocation-failure repair/tests, and x264
   `0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee`. NVIDIA headers remain
   `e844e5b26f46bb77479f063029595293aa8f812d`; driver ceiling 595.91.07 remains.
+  Vulkan Headers/Loader pins are `ee2ec5fd83dafce291024683b50dc89219333076` /
+  `b8b96a2862bff1eed468e602d43f706beae89cf1`; other codec gitlinks are unchanged.
 - libvirtualhid advances to `a0d3aa0cc4d53daa18bfa2f2fbdf848957b6d294`, including
   the merged Pause-key release fix and common tooling/documentation updates.
   Host common-C remains `88fd5ac594ce9fa8b7e01530a7830aba3fc0b986`.
+  Its doxyconfig/common pins are `419127bad87f49b2d45fa957ea7302abbb49c01f` /
+  `f9d91e1d29b7473f58e43acde4579da4e56c4abe`.
+- Host common tooling is `f9d91e1d29b7473f58e43acde4579da4e56c4abe`, with
+  Host-owned GoogleTest `52eb8108c5bdec04579160ae17225d66034bd723`.
+  Plasma/Wayland protocol pins are `382dfabda886d3f2f5c067b22e5a22376685ba78` /
+  `819004adb3ab7e46f3fa3caef05b96e20434b244`; other Host gitlinks are unchanged.
 - Kymux advances to `6f3df8e2c9eac41d4bc0ec9d3f1fc9cbf8d1a804`, a Dependabot
   configuration-only change; transport implementation is unchanged.
 - Physical-monitor mode changes and the pending Retina bookmark dropdown are
   excluded. Remaining dependency PRs are excluded. No new runtime edits are
   part of the baseline pin synchronization; RTT is the separate UI follow-up.
 
-Build on GitHub-hosted runners: Linux Host RPM, Ubuntu Client DEB, signed and
-notarized macOS Host PKG and unified macOS15+ Client DMG. Host remains27-only.
-Use verified exact-input dependency caches and fresh application builds. Add
-only this exact reviewed candidate branch to the protected signing environment;
-do not broaden signing to arbitrary branches or PRs. Collect verified packages
-under `artifacts/packages/candidates/1.0.131-pr-integration/` with source,
-gitlink and checksum provenance. Build results and live acceptance are pending.
+Final hosted run `35318811736` passed all four product jobs. Signed Mac Host
+`35318811682` and signed Mac Client `35318813819` also passed, including
+notarization/stapling and temporary-signing-material cleanup. Mac Client native
+Qt total is126, including the23 toolbar results. Privacy and clipboard
+regressions pass at the exact package-source root. All products rebuilt fresh;
+dependency caches were restored and independently verified. Only the exact
+reviewed `pr-integration` branch was added to the protected signing environment;
+public PRs still have no signing authority. No deployment or GitHub release.
+
+Packages are collected under
+`artifacts/packages/candidates/1.0.131-pr-integration/`, with exact source,
+top-level gitlinks, package sizes and SHA256 in `manifest.json` / `SHA256SUMS`.
+Linux Host is Rocky9.7/x86_64, Client is Ubuntu26.04/amd64; both Mac packages
+are Apple Silicon, Host27-only and one Client15+ package. The baseline1.0.130
+catalog is retained separately; prefer1.0.131 for testing RTT.
 
 Existing hardware gates below still apply, particularly Linux identity encode/
 decode, input/clipboard, and the identical Mac Client package on macOS15/macOS27
 with physical Wacom focus, reconnect, pressure and release recovery.
+
+Discussion only: the operator asked about lowering the Mac Host minimum to15.
+No Host target or compatibility code was changed. SDK27 plus runtime availability
+checks can retain newer capabilities, but headless virtual displays, login/
+logout, first-user permissions, audio and real HEVC44410/5K encoding require
+separate macOS15 qualification. Do not infer Intel support or silently downgrade
+encoding profiles. Keep this work separate from the current test package set.
 
 ## Mac Client integration — 2026-09-17
 
