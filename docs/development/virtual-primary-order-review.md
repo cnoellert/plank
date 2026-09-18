@@ -66,8 +66,11 @@ The unchanged two-output bookmark then caused the Host to expand to a
 2560×1440+1920+0; NVIDIA's MetaMode agreed. The signed Client connected and
 streamed that full canvas. This exercises the live single-to-dual connector
 transition. The operator also confirmed a fresh connection after the earlier
-forced exit. Flame's chooser placement after this particular transition is
-still pending; its launcher is paused at a GPU Adaptive mode prompt.
+forced exit. After unlocking the desktop, the operator confirmed Flame's
+project chooser opened on the Eizo. No project was opened. After a normal
+disconnect, XRandR and NVIDIA still reported the same 4480×1440 layout,
+DP-2 left and DP-0 right and primary. The Host and PAM services remained
+active, and mouse and stylus buttons were released.
 
 The previous paired development build passed a single-to-dual reconnect on
 the headless hardware-test Host. The operator confirmed that Flame opened on
@@ -76,8 +79,7 @@ the original virtual layout after normal disconnect. That live result is
 historical evidence from the earlier combined build; it does not qualify this
 newly isolated source.
 
-Before merge, confirm Flame placement after the live transition and the
-post-transition disconnect layout. GDM-to-user handoff, sleep/reconnect and
-Wacom pointer mapping on the hardware-test Host remain open. The same Client
-package needs live macOS 27 acceptance. Unavailable macOS 27 hardware is an
-open gate, not a passed test.
+Before merge, GDM-to-user handoff, sleep/reconnect and Wacom pointer mapping
+on the hardware-test Host remain open. The same Client package needs live
+macOS 27 acceptance. Unavailable macOS 27 hardware is an open gate, not a
+passed test.
