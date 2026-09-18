@@ -27,6 +27,34 @@ The Client suite uses a private named NSPasteboard. The timer test exercises the
 production timer and clipboard bridge, while the Session source check guards
 wiring; neither substitutes for a real network/renderer desktop handoff.
 
+## Maintainer follow-up
+
+The combined review also found and corrected:
+
+- A manually retained `NSString` in the macOS pasteboard writer. Its ownership
+  is now balanced on both successful and failed pasteboard writes; the Client
+  uses manual reference counting, not ARC.
+- Linux Clients advertised the clipboard feature despite having no clipboard
+  implementation. The launch mask now includes it only on macOS. The shared
+  topology suite checks this on both Linux and macOS builds.
+- The Host's fixed 250 ms worker sleep could exhaust the five-second INCR
+  deadline on valid 1 MiB text sent in 16 KiB chunks. Active transfers now wait
+  on the dedicated XCB connection, including events already buffered by XCB.
+  New conversions remain rate-limited, idle waits remain bounded, and the size
+  and total transfer deadline are unchanged. The production-backend fixture
+  covers worker cadence, idle waiting, reply wakeup and request rate limiting.
+  A fixed-sleep negative control must fail the large-transfer case.
+- Contributor dependency URLs were restored to the maintained PLANK repos.
+  Host common-C now uses `88fd5ac594ce9fa8b7e01530a7830aba3fc0b986` and Client
+  common-C uses `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`, preserving the
+  already-merged clipboard ABI tests and input queue fix. Current Client main,
+  including its accepted mDNS dependency update, is retained. These are exact
+  pins, not branch-tip dependencies.
+
+The clipboard feature remains `0x400000`; matched physical-mode work reserves
+its own bit separately. No protocol wire-format changes or new clipboard
+platform claims are introduced by these follow-ups.
+
 ## Remaining acceptance
 
 Keep the PRs under review. Do not equate the fixes or build results with Alan's

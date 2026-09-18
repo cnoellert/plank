@@ -23,7 +23,7 @@ jobs:
             --repofrompath=ci-crb,https://dl.rockylinux.org/vault/rocky/9.7/CRB/x86_64/os/ \
             --enablerepo=ci-baseos --enablerepo=ci-appstream --enablerepo=ci-crb \
             install -y git gcc-toolset-14-gcc-c++ pkgconf-pkg-config libX11-devel libxcb-devel libXfixes-devel xorg-x11-server-Xvfb
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Check out exact Host input

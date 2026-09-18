@@ -1,6 +1,6 @@
 # Clipboard sync v1
 
-Status: implemented for the Teraguchi Mac client and Linux X11 Host. The
+Status: implemented for the PLANK macOS Client and Linux X11 Host. The
 feature remains candidate-scoped until a clean paired package passes live
 qualification.
 
@@ -20,7 +20,9 @@ disconnect are outside v1.
 
 `ClipboardSyncFeature` is launch feature bit `0x400000`.
 
-- The client includes the bit in `plankFeatureFlags`.
+- Only the macOS Client includes the bit in `plankFeatureFlags`, and only when
+  offered by the Host. Linux Clients do not implement clipboard synchronization
+  and must not negotiate it or cause the Host to read/transmit clipboard data.
 - The Host accepts clipboard traffic only when the authenticated session
   negotiated the bit.
 - If absent, no automatic synchronization occurs. The inherited text-injection
@@ -63,7 +65,9 @@ Mac application is sent after focus returns to the stream. Host offers are
 queued without event-owned heap payloads and carry a session epoch so events
 from an earlier connection cannot apply after reconnect.
 
-The client deduplicates repeated Host text by content. It never compares Host
+The client deduplicates repeated Host text only while it still owns that
+pasteboard change count; a newer local copy is not suppressed by matching text.
+It never compares Host
 generations against its independent outbound generation. Failed transport
 sends remain pending for the next poll; failure to queue a Host offer on the
 SDL event loop terminates the affected session.
@@ -74,8 +78,12 @@ The Linux X11 Host watches `CLIPBOARD`, publishes client text as owner of
 `CLIPBOARD` and `PRIMARY`, and answers `SelectionRequest` for UTF-8/plain-text
 targets. It records each locally forwarded value to prevent repeated offers.
 Validated Client offers cross a bounded latest-value inbox; the dedicated
-clipboard thread performs all Xlib selection reads and writes. If several
-offers arrive before the next 250 ms poll, the newest clipboard value wins.
+clipboard thread performs all selection reads and writes over a dedicated XCB
+connection. New conversions are limited to one per 250 ms. During an active
+conversion, X11 events wake the worker immediately, so deletion-acknowledged
+INCR chunks do not each incur a 250 ms sleep. Transfers retain the five-second
+total deadline and 1 MiB size bound. Waiting is bounded to 250 ms for client
+offers and shutdown; if several client offers arrive meanwhile, the newest wins.
 
 Session teardown releases any synthetic selection ownership, destroys the X11
 window, and closes the display after clipboard workers stop.

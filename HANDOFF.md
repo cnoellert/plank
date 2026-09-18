@@ -5,6 +5,17 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
+- Clipboard follow-ups are on `clipboard-review-fixes`, not main. Client PR #2,
+  Linux Host PR #1 and parent PR #3 remain unmerged. The Client balances the
+  pasteboard string's manual ownership and advertises clipboard support only
+  on macOS. The Host wakes active INCR transfers on X11 events while retaining
+  bounded polling, a five-second transfer deadline and the 1 MiB cap. Canonical
+  PLANK dependency URLs and merged common-C pins are restored; accepted main
+  changes are retained. See `docs/development/clipboard-review-followup.md`.
+  Thirteen isolated Xvfb cases, five negative controls and 42 CI policy checks
+  pass. Hosted CI validation is pending. No deployment, live clipboard
+  acceptance, approval, or merge is implied by this checkpoint.
+
 - GitHub Actions update is approved and merged through root PR #8: merge
   `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
   `2be3d797046df177589cb0c1b97e3cb5d109ade1`, including the merged Rustls
