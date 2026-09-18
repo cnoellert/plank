@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## Release 1.0.137: verified, publication pending
+## Current release: 1.0.137
 
 The operator requested rebuilding all public Host/Client packages and publishing
 a release. Package-source root is
@@ -13,8 +13,11 @@ All packages use GitHub-hosted builders. Both Mac packages require signing,
 notarization and stapling. Exact-input dependency caches are independently
 verified; application/transport compilation and packaging run fresh. No package
 installation, hardware test, dependency upgrade or pending PR is part of this
-release operation. All builds and local artifact checks passed. Publication is
-the remaining step; the currently published release is still 1.0.135.
+release operation. All builds and artifact checks passed.
+[v1.0.137](https://github.com/instinctual/plank/releases/tag/v1.0.137) is published
+as the latest release with four packages, manifest and SHA256SUMS. GitHub's
+server-side digests match all six local assets. The annotated tag names the
+exact package-source root above, not the subsequent evidence-only notes commits.
 
 | Gate | Hosted run | State |
 | --- | --- | --- |
@@ -45,9 +48,9 @@ a cache-cold dependency bootstrap; all nine required patches passed bootstrap,
 package preflight and cache sealing, including the Loader repair. The RPM
 log-directory ownership and payload gates passed. Other product dependency
 caches restored and were independently verified. No deployment was performed.
-Tag the exact package-source commit above, not a later evidence-only notes
-commit. Publish four packages, the manifest and flat-filename SHA256SUMS only
-after verifying uploaded asset digests against the local files.
+Release build, tag, publication and verification are complete. There is no
+pending release operation or automatic deployment. The next work is an
+operator-selected task or explicitly authorized remaining qualification below.
 
 ## Accepted changes and scope
 

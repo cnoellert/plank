@@ -3,10 +3,10 @@
 Branch: macos-host-clipboard. Baseline: release 1.0.135.
 
 Status: the operator accepted 1.0.136-macos-host-clipboard and authorized merge.
-The maintained dependency branches, Client/Host main and parent main now contain
-the tested implementation. The operator has now requested a fresh four-product
-mainline release (1.0.137); publication is tracked in HANDOFF. Deployment remains
-separate.
+The maintained dependency branches, Client/Host main and parent main contain
+the tested implementation. Mainline release 1.0.137 is published with four fresh
+Host/Client packages; build evidence and provenance are in HANDOFF and the
+release notes. No deployment was performed.
 The validation matrix below is retained; acceptance is not evidence that each
 individual stress case was exercised.
 
