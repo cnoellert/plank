@@ -1,0 +1,96 @@
+name: Wacom focus development Client bundle
+
+on:
+  push:
+    branches: [codex/wacom-focus-dev-bundle]
+
+permissions:
+  contents: read
+
+jobs:
+  development-client:
+    runs-on: xcode-27
+    timeout-minutes: 120
+    env:
+      BUILD_REF: ${{ github.ref_name }}
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+      PLANK_BUILD_JOBS: '3'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require pinned test source and SDK 27
+        run: |
+          test "$(git rev-parse HEAD^)" = e4b3801ee84389a9ea6aa4d4a957b55c0f723acd
+          test "$(git diff --name-only HEAD^ HEAD)" = .github/workflows/wacom-focus-dev-bundle.yml
+          test "$(git ls-tree HEAD apps/client | awk '{print $3}')" = ac1951945515505050c2e641178f54e56ea7532c
+          test "$(uname -m)" = arm64
+          test "$(sw_vers -productVersion | cut -d . -f 1)" -ge 27
+          test "$(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1)" -ge 27
+      - run: python3 scripts/ci/context.py
+      - name: Resolve the pinned development Client from the contributor fork
+        run: |
+          git -C "$PLANK_SOURCE_ROOT" config submodule.client/moonlight-qt-fork.url \
+            https://github.com/cnoellert/plank-client.git
+      - name: Select exact dependency inputs
+        id: deps-key
+        run: python3 scripts/ci/cache-dependencies.py prepare --product macos-client
+      - name: Restore dependencies
+        id: deps-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        with:
+          key: ${{ steps.deps-key.outputs.key }}
+          path: ${{ steps.deps-key.outputs.paths }}
+      - name: Verify exact restored dependencies
+        if: ${{ steps.deps-cache.outputs.cache-matched-key != '' }}
+        env:
+          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
+          MATCHED_KEY: ${{ steps.deps-cache.outputs.cache-matched-key }}
+        run: |
+          test "$MATCHED_KEY" = "$CACHE_KEY"
+          python3 scripts/ci/cache-dependencies.py verify --product macos-client --key "$CACHE_KEY"
+      - run: bash scripts/ci/bootstrap.sh macos-client
+      - name: Build and assemble ad hoc development app
+        run: |
+          export PATH="$PLANK_CARGO_ROOT/bin:$PATH"
+          export CARGO_HOME="$PLANK_CARGO_ROOT" RUSTUP_HOME="$PLANK_RUSTUP_ROOT"
+          export PLANK_MAC_CLIENT_DEPS="$PLANK_DEP_ROOT/macos-client"
+          export PLANK_QT_ROOT="$PLANK_DEP_ROOT/qt/6.10.2/macos"
+          bash "$PLANK_SOURCE_ROOT/scripts/package/stage-macos-client-dev.sh" \
+            "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/client-build" \
+            "$PLANK_WORK_ROOT/client-dev-stage"
+      - name: Seal source and archive for local test signing
+        run: |
+          set -euo pipefail
+          output="$PLANK_ARTIFACT_ROOT/dev-client"
+          mkdir -p "$output"
+          ditto -c -k --keepParent \
+            "$PLANK_WORK_ROOT/client-dev-stage/PLANK Client Development.app" \
+            "$output/client-dev-app.zip"
+          cp "$PLANK_WORK_ROOT/client-dev-stage/client-targets.json" "$output/"
+          python3 - "$output" <<'PY'
+          import hashlib, json, os, pathlib, subprocess, sys
+          out = pathlib.Path(sys.argv[1])
+          root = pathlib.Path(os.environ['PLANK_SOURCE_ROOT'])
+          def rev(path):
+              return subprocess.check_output(['git', '-C', str(path), 'rev-parse', 'HEAD'], text=True).strip()
+          archive = out / 'client-dev-app.zip'
+          manifest = {
+              'purpose': 'local-development-test-only',
+              'notarized': False,
+                'source_parent': 'e4b3801ee84389a9ea6aa4d4a957b55c0f723acd',
+              'workflow_commit': rev(root),
+              'client_commit': rev(root / 'apps/client'),
+              'host_commit': '9aef8719f2cd094795214d8d797dc97ec22e1ccf',
+              'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
+              'archive_size': archive.stat().st_size,
+          }
+          (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wacom-focus-dev-client-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PLANK_ARTIFACT_ROOT }}/dev-client/
+          if-no-files-found: error
+          retention-days: 7
