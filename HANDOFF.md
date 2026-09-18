@@ -14,16 +14,23 @@ Ten stale `macos-signing` deployment branch policies were removed; only `main`
 currently has signing authorization. This does not add manual approval or change
 the protected secrets.
 
-The parent and Linux Host `vulkan-loader-repair` branches are intentionally
-retained. The actual Loader repair is already present in the current build-deps
-pin `c29c4822cb96f5bfeb8640e72601c5cf4e3c3137`; bootstrap applies it from
-`cmake/ffmpeg/vulkan.cmake`. The parent package verifier still checks only FFmpeg
-and x265, so the independent Loader patch check, its ten regression cases,
-CTest registration and qualification documentation remain outside main.
-Recommendation: port those focused checks onto current main and validate them;
-do not merge the old branch's version or Host/build-deps pins wholesale. No
-Vulkan code or verification script was changed during this cleanup. The operator
-asked whether this follow-up should be done; implementation remains a next step.
+The operator authorized the Vulkan follow-up. Integration is on
+`vulkan-preflight` in `build/worktrees/pr-integration`. The actual Loader repair
+is already present in build-deps pin
+`c29c4822cb96f5bfeb8640e72601c5cf4e3c3137`; no runtime code or dependency pin
+changes are needed. The parent now independently checks the required Loader
+patch alongside FFmpeg/x265, permits only deliberately omitted Loader test-file
+deletions, and parses NUL-delimited Git filenames. Twelve regression cases and
+CTest registration cover missing/conflicting patches, empty groups, unexpected
+modifications, Unicode paths, and the narrow deletion exception.
+
+The integration retains old root branch history but selectively restores only
+the verification changes and qualification notes, not its superseded package
+version or Host gitlink. The old Linux Host branch contains only an earlier
+build-deps pin, already superseded by current main. See
+[the qualification record](docs/development/reviews/vulkan-loader-qualification.md).
+Local/hosted validation and retirement of those old references remain pending;
+no release or installation is implied by this build-only follow-up.
 
 ## Accepted clipboard changes: merged, not yet released
 
@@ -33,7 +40,7 @@ authorized merge. Mac Host ↔ Mac Client plain-text clipboard, the shared
 into main. Common-C changes were fast-forwarded into its maintained
 `plank/client` and `plank/host` branches first, followed by Client, Linux Host
 and the parent repository. No tested code or gitlink changed during merging.
-Work is in `build/worktrees/pr-integration` on main, not the unrelated primary
+The accepted merge is on main, not the unrelated primary
 `rk3576-client` checkout. This merge does not publish a release or deploy software.
 See [the plan](docs/development/plans/macos-host-clipboard.plan).
 
