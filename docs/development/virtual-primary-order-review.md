@@ -91,10 +91,22 @@ the XRandR primary and the Plank stream. On the next Flame launch, its log
 placed the main UI at `1920,0` on `2560×1440` and the alternate UI at `0,240`
 on `1920×1200`; the operator confirmed the chooser appeared on the intended
 primary screen. The display helper now writes the primary connector first in
-its boot MetaMode too. Its isolated Linux shell test passed. An X restart with
-the updated Host package is still required to qualify persistence.
+its boot MetaMode too. Its isolated Linux shell test passed. The exact-source
+[hosted build](https://github.com/cnoellert/plank/actions/runs/35402337659)
+passed all four product jobs, and the checksum-verified Host RPM was installed
+on the hardware-test Host. A clean reboot with that package first generated the
+expected single-output login layout. After Match Client workstation sign-in,
+the newly started user X server read a dual-output MetaMode listing the right,
+primary connector first. NVIDIA and XRandR reported `DP-0` at
+`2560×1440+1920+0` and `DP-2` at `1920×1200+0+0`; Xinerama head 0 was the
+right output. Plank retried while the new X server started, reconnected
+automatically after the GDM-to-desktop handoff on its fifth attempt, and
+streamed the full `4480×1440` canvas. Flame's new application log
+placed its main UI at `1920,0` on `2560×1440` and its alternate UI at `0,240`
+on `1920×1200`. The operator confirmed the chooser appeared on the Eizo.
+This qualifies persistence through a clean Host reboot and one authenticated
+GDM-to-user handoff on this hardware.
 
-Before merge, GDM-to-user handoff, sleep/reconnect and Wacom pointer mapping
-on the hardware-test Host remain open. The same Client package needs live
-macOS 27 acceptance. Unavailable macOS 27 hardware is an open gate, not a
-passed test.
+Before merge, sleep/reconnect and Wacom pointer mapping on the hardware-test
+Host remain open. The same Client package needs live macOS 27 acceptance.
+Unavailable macOS 27 hardware is an open gate, not a passed test.
