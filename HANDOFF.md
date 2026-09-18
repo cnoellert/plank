@@ -51,9 +51,20 @@ suite to Linux; all seven local suites passed again, and a Darwin-target
 configuration retained its six existing registrations (not native Mac testing).
 It does not change product build inputs or the package's recorded source.
 
-Merge and old-reference retirement are the final steps. This does not publish
-a release, rebuild a mainline package, or install anything; the current release
-remains 1.0.135 and the accepted clipboard release work below is unchanged.
+Integration is merged and pushed to main at
+`d6d9be4883650c56dedaf6409a60278d221d643e` (before these completion notes).
+Removed the root `vulkan-loader-repair` and temporary `vulkan-preflight`
+branches, plus the Linux Host `vulkan-loader-repair` branch, locally and on
+GitHub. Root history is preserved by the integration merge. The Host branch's
+only unique commit (`4d80cf9594cfe58483422449346f46dbcb50f05f`) advanced
+build-deps to a repair already included in current main; it added no separate
+runtime code. Both old worktrees remain detached at their exact prior commits,
+so source/artifacts and the superseded pointer commit remain locally recoverable.
+No worktree files were deleted. Current runtime and dependency pins are unchanged.
+
+This does not publish a release, rebuild a mainline package, or install anything;
+the current release remains 1.0.135 and the accepted clipboard release work below
+is unchanged. RK3576 research and all open-PR branches remain untouched.
 
 ## Accepted clipboard changes: merged, not yet released
 
