@@ -2,13 +2,35 @@
 
 ## Combined test packages — 2026-09-18
 
+The operator subsequently requested a compact RTT column immediately left of
+the Encoder Target segment. Follow-up `1.0.131-pr-integration` pins Client
+`261c250bb8098908f434019ba0b6363ff00bc031`. It reuses the existing once-per-second
+QUIC RTT measurement for both toolbar and overlay (`Network RTT`), sharing
+formatting and unavailable state. The slider and target text share measured
+width reserved for all valid bitrate values; endpoints do not move while
+dragging. Toolbar height and pointer routing are unchanged. Native Qt tests
+cover formatting and text/slider/control spacing; run them on both Client
+builders. Host and transport code/pins remain unchanged by this follow-up.
+
+Baseline `1.0.130-pr-integration` uses root
+`f8b76119ff3e2fa46e71ae9b68e6d74e2f06b331` (before RTT). Hosted build run
+`35317481578`, signed Mac Host `35317500220`, signed Mac Client `35317502640`.
+Mac signed jobs and Ubuntu package passed and were checksum-collected; Linux
+Host compile and RPM gates passed, with cache/artifact upload finishing. Privacy
+and clipboard checks passed. Local 43 CI-policy
+tests, six portable CTest suites, release-version checks, seven fullscreen and
+three Quit guards passed; follow-up source checks also pass 14 reconnect and
+four interface-MTU cases. Do not interrupt the baseline Host build by pushing
+the follow-up until that run has finished. Rebuild the final four packages at
+1.0.131 rather than relabel baseline artifacts. No hardware acceptance yet.
+
 The operator authorized an integration branch and all four test packages from
 already-merged PRs. Work is on `pr-integration`, based on main
 `4144a3d48d14e921295c4055362289a7211fe960`, with package version
-`1.0.130-pr-integration`. Do not merge pending display or dependency PRs,
+`1.0.130-pr-integration` for the initial baseline. Do not merge pending display or dependency PRs,
 publish a production release, or deploy these packages as part of this task.
 
-- Client stays at merged `a6a97d024269aa5c8523a2e50e0a887208cf4a05`, including
+- Baseline Client is merged `a6a97d024269aa5c8523a2e50e0a887208cf4a05`, including
   clipboard, input queue/release repair, mDNS and Mac multi-display/raw Wacom
   work. Common-C stays `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`; qmdnsengine
   stays `920c097ffa742e2968290f15d4dde6693aec02e5`.
@@ -27,14 +49,14 @@ publish a production release, or deploy these packages as part of this task.
   configuration-only change; transport implementation is unchanged.
 - Physical-monitor mode changes and the pending Retina bookmark dropdown are
   excluded. Remaining dependency PRs are excluded. No new runtime edits are
-  planned for this pin synchronization.
+  part of the baseline pin synchronization; RTT is the separate UI follow-up.
 
 Build on GitHub-hosted runners: Linux Host RPM, Ubuntu Client DEB, signed and
 notarized macOS Host PKG and unified macOS15+ Client DMG. Host remains27-only.
 Use verified exact-input dependency caches and fresh application builds. Add
 only this exact reviewed candidate branch to the protected signing environment;
 do not broaden signing to arbitrary branches or PRs. Collect verified packages
-under `artifacts/packages/candidates/1.0.130-pr-integration/` with source,
+under `artifacts/packages/candidates/1.0.131-pr-integration/` with source,
 gitlink and checksum provenance. Build results and live acceptance are pending.
 
 Existing hardware gates below still apply, particularly Linux identity encode/
