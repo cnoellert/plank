@@ -1,5 +1,32 @@
 # PLANK handoff
 
+## Release paused: macOS Spaces shortcut recovery
+
+The operator reported a new live defect before publication: system shortcuts
+work on the first connection, but after a three-finger swipe to the local
+desktop and back, they go to the local OS. Clicking inside the stream does not
+restore capture. Do not publish 1.0.134; its reviewed changes are already
+merged/pushed to root, Client and Linux Host main. Its package-source root is
+`5ca2eaa519b761a081d93dd2bad3668bf6fbd42b`. The independent mainline builds
+may finish; their successful packaging does not establish this focus gate.
+
+Follow-up is on root/Client `macos-hotkey-focus`, version1.0.135. The old path
+disabled the native event tap on ordinary focus loss and gated recovery on
+both native and cached SDL focus. The repair retains the authorized tap for
+the session, passes background events through before inspecting key data,
+and re-arms forwarding on the first eligible returned key. Native AppKit
+key-window/application/active-Space state is authoritative on macOS; Linux
+focus policy is unchanged. Explicit capture release and revoked authorization
+still prevent re-arm. Permission UI stays in the launcher. Teardown/revocation
+still remove the tap, and the existing timer handles disabled-tap recovery.
+
+Four native regressions cover repeated focus/Space return without an SDL event
+or timer tick, explicit capture release, permission revocation and background
+pass-through. These synthetic callback tests are not live Spaces acceptance.
+Local keyboard, Quit, fullscreen and reconnect wiring checks pass. Commit/push
+and build a signed candidate, then ask the operator to repeat swipe-away/return
+several times. Final mainline rebuild/release remains pending that retest.
+
 ## Mainline 1.0.134 release — authorized, in progress
 
 The operator authorized commit, push, merge, fresh mainline builds and release

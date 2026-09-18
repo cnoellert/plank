@@ -144,6 +144,14 @@ the app to Trash. Host installation/permissions are separate and unchanged.
   check detects authorization changes. Revocation, tap timeout,
   focus loss, queue failure and teardown discard pending input and release
   remote keys. Capture is retried only after rechecking permission and focus.
+  The authorized tap stays registered during ordinary focus loss; background
+  keys pass through untouched before their key data is inspected. Returning to
+  the stream re-arms forwarding on the first key using native AppKit focus and
+  active-Space state, not cached SDL focus or a later timer tick. Do not disable
+  the tap on every focus loss: that prevents first-key recovery after a Spaces
+  swipe. Explicit capture release and revoked permission still block re-arm;
+  teardown/revocation remove the tap. Test repeated three-finger swipe-away and
+  return without an intervening click, not just the first connected shortcut.
   Ctrl+Alt+Shift+Z remains the release toggle; mouse/trackpad gestures, Fn/media
   controls and explicit menu/Dock Quit stay local. Keys are never logged.
   The `mackeyboardcapture` native suite exercises the production callback and
