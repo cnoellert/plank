@@ -8,7 +8,10 @@ desktop and back, they go to the local OS. Clicking inside the stream does not
 restore capture. Do not publish 1.0.134; its reviewed changes are already
 merged/pushed to root, Client and Linux Host main. Its package-source root is
 `5ca2eaa519b761a081d93dd2bad3668bf6fbd42b`. The independent mainline builds
-may finish; their successful packaging does not establish this focus gate.
+all passed in run `35328082887`; signed Mac Host `35328093614` and signed
+Mac Client `35328096478` passed too. All four checksum-verified packages are in
+`artifacts/packages/releases/1.0.134/` (mainline catalog, not a published GitHub
+release). Successful packaging does not establish this focus gate.
 
 Follow-up is on root/Client `macos-hotkey-focus`, version1.0.135. The old path
 disabled the native event tap on ordinary focus loss and gated recovery on
@@ -23,9 +26,29 @@ still remove the tap, and the existing timer handles disabled-tap recovery.
 Four native regressions cover repeated focus/Space return without an SDL event
 or timer tick, explicit capture release, permission revocation and background
 pass-through. These synthetic callback tests are not live Spaces acceptance.
-Local keyboard, Quit, fullscreen and reconnect wiring checks pass. Commit/push
-and build a signed candidate, then ask the operator to repeat swipe-away/return
-several times. Final mainline rebuild/release remains pending that retest.
+Local keyboard, Quit, fullscreen and reconnect wiring checks, 43 CI policy
+tests and all six portable CTest suites pass.
+
+Candidate source is root `42e2d835d0effdcb31a83d39d5e87d0f878afdd1`, Client
+`d2532825b99edb3237d50d0773dab6ab352d4d2f`, both pushed. Host and recursive
+dependency pins are unchanged from 1.0.134. Signed hosted run `35329265614`
+passed with the independently verified dependency cache, SDK27 and the unified
+Apple Silicon Client15+ target. All153 native Qt results (27 keyboard-capture
+results) and five Metal overlay groups passed. Signing, notarization, stapling,
+package gates and temporary-key cleanup passed. Privacy and clipboard CI passed.
+The ordinary run `35329265662` has passed both Client jobs and the Mac Host;
+Linux Host completion is still pending at this checkpoint.
+
+Verified installer:
+`artifacts/packages/candidates/1.0.135-macos-hotkey-focus/macos/plank-client_1.0.135-macos-hotkey-focus_arm64.dmg`.
+SHA256: `03824969ca2319aae9c65ef5a87cb29469d4c2c6579be6f6518c624aaa92e69d`.
+No installation or release publication. Next: manually install this Client,
+connect and verify Command-Tab/Command-Space, swipe away/back at least five
+times and retest immediately without clicking. Local shortcuts must still
+work while away; explicit capture release must not be overridden on return.
+After acceptance, merge root/Client, rebuild the final mainline packages and
+publish the newer release instead of 1.0.134. Do not reuse branch packages as
+mainline artifacts.
 
 ## Mainline 1.0.134 release — authorized, in progress
 
