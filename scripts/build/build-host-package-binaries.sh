@@ -15,9 +15,9 @@ package_version=$PLANK_PACKAGE_VERSION
 build_dir=$(realpath -m -- "${1:-${repo_dir}/build/package-host}")
 ffmpeg_dir=$(realpath -m -- "${2:-${source_dir}/cmake-build-ffmpeg-x264rgb-install/ffmpeg}")
 build_jobs=${PLANK_BUILD_JOBS:-8}
-plank_transport_cargo_features=${PLANK_TRANSPORT_CARGO_FEATURES:-quinn-telemetry}
+plank_transport_cargo_features=${PLANK_TRANSPORT_CARGO_FEATURES:-quinn-telemetry,linux-fast-send}
 case "$plank_transport_cargo_features" in
-  quinn-telemetry|quinn-telemetry,quinn-bbr) ;;
+  quinn-telemetry|quinn-telemetry,quinn-bbr|quinn-telemetry,linux-fast-send) ;;
   *)
     echo "unsupported PLANK transport Cargo feature set: ${plank_transport_cargo_features}" >&2
     exit 1
@@ -1081,6 +1081,36 @@ env \
   -DPLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features"
 cmake --build "$build_dir" --parallel "$build_jobs" \
   --target sunshine plank-pam-broker plank-host-supervisor
+
+# Exercise the exact compiled transport policy, including real FEC/UDP and
+# active/setup-promoted C ABI paths. BUILD_TESTS=OFF above is for the Host's
+# hardware-dependent C++ suite, not permission to skip transport qualification.
+(
+  export CARGO_TARGET_DIR="$build_dir/plank-transport-cargo"
+  tested_policies=("$plank_transport_cargo_features")
+  if [[ $plank_transport_cargo_features == quinn-telemetry,linux-fast-send ]]; then
+    tested_policies+=(quinn-telemetry)
+  fi
+  for tested_features in "${tested_policies[@]}"; do
+    cargo test --locked --offline --release --features "$tested_features" \
+      --manifest-path "$plank_transport_dir/Cargo.toml"
+    PLANK_TRANSPORT_CARGO_FEATURES="$tested_features" SC_NATIVE_CARGO_PROFILE=release \
+      bash "$repo_dir/scripts/test/run-plank-transport-native-loopback.sh"
+  done
+  # Restore/build the selected archive after the paced baseline comparison.
+  PLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features" \
+    bash "$repo_dir/scripts/test/run-plank-transport-native-ffi-loopback.sh"
+)
+echo "host_transport_policy_loopback_gate=pass features=$plank_transport_cargo_features"
+
+if [[ $plank_transport_cargo_features == quinn-telemetry,linux-fast-send ]]; then
+  rg -a -Fq 'application-pacer=off controller-budget-floor-bps=1000000000' \
+    "$build_dir/plank-host" || {
+    echo "host binary is missing the selected fast-send policy" >&2
+    exit 1
+  }
+  echo "host_fast_send_binary_gate=pass"
+fi
 
 nm -C "$build_dir/plank-host" | \
   rg ' [Tt] plank_transport_abi_version$' >/dev/null || {

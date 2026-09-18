@@ -1,41 +1,50 @@
 # PLANK handoff
 
-## Active candidate: mouse-edge-recovery (1.0.140)
+## Active integration candidate: 1.0.141-mouse-edge-recovery
 
-Work is isolated on `mouse-edge-recovery`, based on main
-`51cd817966ea2cc6eb927d1fc1390da9d2e4ef72`, in the matching worktree under
-`build/worktrees/`. Do not switch or clean the primary research checkout or
-the separate Linux fast-send / Host input-release candidates.
+The operator requested combining all current fixes in this candidate rather
+than testing isolated packages. Work is on `mouse-edge-recovery` under
+`build/worktrees/`, based on main
+`51cd817966ea2cc6eb927d1fc1390da9d2e4ef72`. Preserve the primary research
+checkout and other registered worktrees. This is not a merge to main.
 
-The operator approved fixing the brief reconnect popup caused by invalid
-absolute edge coordinates, adding precise privacy-safe Mac stop reasons, and
-making Mac system logs administrator-readable. See
-[diagnosis and test scope](docs/development/reviews/mouse-edge-recovery.md).
-The old logs cannot prove that every reported reconnect has this same cause;
-new first-cause diagnostics and a live retest remain necessary.
+Included: dynamic last-pixel mouse bounds in Client/common-C, first-cause Mac
+session-stop diagnostics, administrator-readable Mac system logs, and the
+Linux fast-send policy previously qualified as1.0.138. Integrate the separate
+Linux Host input-release/PR8 candidate before building the combined packages.
+See [mouse diagnosis](docs/development/reviews/mouse-edge-recovery.md) and
+[fast-send plan/evidence](docs/development/plans/linux-fast-send.plan).
+
+The operator also sees the waiting popup away from the screen edge. The
+reproduced boundary defect is not a proven explanation for every reconnect.
+Keep diagnosis open; new Host stop reasons must distinguish input, topology,
+authorization, capture and transport failures. Do not hide the warning or
+weaken the Host packet guard.
 
 Client `46ae50c2e189e358400ece271be469c1b61c98f4` pins common-C
 `060f6179f88343327b44d915007f1fb4cede71f1`. Both are published on the matching
-feature branch. Clamp mouse positions to the dynamic last pixel without
-changing input queue ordering, pen mapping or strict Host validation.
-Linux Host/Kymux/other dependency pins remain those of1.0.137 below; the
-unmerged Linux Host PR8 work is not included.
+feature branch. Input queue ordering and pen mapping remain unchanged.
+Other dependency pins remain those of1.0.137 below unless noted here.
 
 Mac system logs become root:admin, directory0750/files0640. Only root writes;
-administrators read; other users are denied. The installer validates existing
-objects before changing permissions and preserves contents. Keys and per-user
-desktop logs remain private. No machines have been modified for this task.
+administrators read; other users are denied. Existing objects are validated
+before changes and contents preserved. Keys and per-user desktop logs remain
+private. No machines have been modified for this task.
 
-Local results: six common-C suites passed25 repetitions; the boundary test
+Local evidence: six common-C suites passed25 repetitions; the boundary test
 fails against the unfixed library and passes against the candidate. Installer
-shell fixtures passed23 portable checks;43 CI-policy tests and the version
-contract passed. The Mac payload permission suite passed seven checks with its
-native-only case skipped on Linux. Actual Mac filesystem, session/QUIC and
-signed-package tests require the hosted Mac jobs; not yet claimed passed.
+portable fixtures passed23 checks; CI policy/version tests passed. Mac-native
+filesystem and session/QUIC tests run on the hosted Mac builder. A first
+filesystem fixture attempt encountered runner sudo run-as-group policy; the
+test now drops UID/GID directly without altering accounts or sudo policy.
+The initial1.0.140 Linux Client run35383146478 passed; it predates the combined
+scope and is not the package to distribute. Other superseded builds were
+cancelled. No1.0.141 build or live acceptance is yet claimed.
 
-Next: commit/push the root, dispatch Linux Client plus signed Mac Host/Client
-on hosted builders, collect exact packages, then ask for live edge/drag/reconnect
-testing. Do not install, merge or publish a release without further direction.
+Next: finish integration, rerun tests, build all four products on hosted
+builders, collect exact packages, then request live edge/drag/reconnect and
+Linux sender-policy tests. Do not install, merge to main or publish a release
+without further direction.
 
 ## Current release: 1.0.137
 
@@ -201,8 +210,8 @@ with that unmerged preference. Mac Host support below27 is discussion only.
 
 ## Workspace and build policy
 
-Release work is in the separate `build/worktrees/pr-integration` directory,
-currently on `main`; its directory name is not the branch. The primary
+Current work is in the separate `build/worktrees/pr-integration` directory,
+on `linux-fast-send`; its directory name is not the branch. The primary
 checkout remains unrelated `rk3576-client` research with uncommitted notes and
 diagnostics. Preserve it. Do not clean or switch that checkout during release.
 Other review worktrees/branches are not permission for a broad cleanup.

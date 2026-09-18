@@ -597,6 +597,25 @@ decode/import and live playback acceptance; see
 
 ## Host RPM — linux-host-builder only
 
+The `linux-fast-send` candidate selects
+`PLANK_TRANSPORT_CARGO_FEATURES=quinn-telemetry,linux-fast-send` by default.
+The feature bypasses the application datagram pacer and floors the Quinn
+rate-derived window budget at 1 Gbps on Linux only; it changes neither the
+encoder target nor FEC, queues or MTU. For a controlled paced comparison,
+explicitly use `PLANK_TRANSPORT_CARGO_FEATURES=quinn-telemetry` and a separately
+identified candidate build; never mix policies under the same published bytes.
+No Client update is needed. Acceptance is tracked in
+`docs/development/plans/linux-fast-send.plan`.
+
+Host packaging runs Rust unit tests and the real native/C ABI loopbacks against
+its selected Cargo features in the same `plank-transport-cargo` target directory.
+Fast-send packaging repeats unit/native tests with the paced baseline and
+restores the selected archive before the final C ABI checks.
+Standalone loopback runners also accept `PLANK_TRANSPORT_CARGO_FEATURES`; an
+unset value exercises default Cargo features, not the fast-send Host selection.
+The loss fixture uses controlled receiver-side omissions, not a real WAN.
+Do not report its results as ten-minute or interactive hardware qualification.
+
 `209/STDOUT` with `Failed to set up standard output: No such file or directory`
 can mean `/var/log/plank` is missing, even when the unit has `LogsDirectory=plank`.
 systemd 252 opens `StandardOutput=append:` before creating managed directories.
