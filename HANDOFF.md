@@ -1,5 +1,46 @@
 # PLANK handoff
 
+## Combined test packages — 2026-09-18
+
+The operator authorized an integration branch and all four test packages from
+already-merged PRs. Work is on `pr-integration`, based on main
+`4144a3d48d14e921295c4055362289a7211fe960`, with package version
+`1.0.130-pr-integration`. Do not merge pending display or dependency PRs,
+publish a production release, or deploy these packages as part of this task.
+
+- Client stays at merged `a6a97d024269aa5c8523a2e50e0a887208cf4a05`, including
+  clipboard, input queue/release repair, mDNS and Mac multi-display/raw Wacom
+  work. Common-C stays `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`; qmdnsengine
+  stays `920c097ffa742e2968290f15d4dde6693aec02e5`.
+- Linux Host incorporates merged main `747a7fff22873f4cf2d1a4aac56111f970456067`
+  (common build tooling and Wayland protocol updates), plus pin-only commit
+  `f3ab763a31288f392fb94743cb47ee580d9cc01e` on its `pr-integration` branch
+  for the already-merged dependencies below.
+- Build-deps advances to `c29c4822cb96f5bfeb8640e72601c5cf4e3c3137`: reviewed
+  Vulkan updates with the allocation-failure repair/tests, and x264
+  `0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee`. NVIDIA headers remain
+  `e844e5b26f46bb77479f063029595293aa8f812d`; driver ceiling 595.91.07 remains.
+- libvirtualhid advances to `a0d3aa0cc4d53daa18bfa2f2fbdf848957b6d294`, including
+  the merged Pause-key release fix and common tooling/documentation updates.
+  Host common-C remains `88fd5ac594ce9fa8b7e01530a7830aba3fc0b986`.
+- Kymux advances to `6f3df8e2c9eac41d4bc0ec9d3f1fc9cbf8d1a804`, a Dependabot
+  configuration-only change; transport implementation is unchanged.
+- Physical-monitor mode changes and the pending Retina bookmark dropdown are
+  excluded. Remaining dependency PRs are excluded. No new runtime edits are
+  planned for this pin synchronization.
+
+Build on GitHub-hosted runners: Linux Host RPM, Ubuntu Client DEB, signed and
+notarized macOS Host PKG and unified macOS15+ Client DMG. Host remains27-only.
+Use verified exact-input dependency caches and fresh application builds. Add
+only this exact reviewed candidate branch to the protected signing environment;
+do not broaden signing to arbitrary branches or PRs. Collect verified packages
+under `artifacts/packages/candidates/1.0.130-pr-integration/` with source,
+gitlink and checksum provenance. Build results and live acceptance are pending.
+
+Existing hardware gates below still apply, particularly Linux identity encode/
+decode, input/clipboard, and the identical Mac Client package on macOS15/macOS27
+with physical Wacom focus, reconnect, pressure and release recovery.
+
 ## Mac Client integration — 2026-09-17
 
 The operator authorized approval and merge of Client PR #3 and root PR #4.
