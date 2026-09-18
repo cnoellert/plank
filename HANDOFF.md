@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## Branch cleanup and Vulkan follow-up
+## Branch cleanup and Vulkan verification
 
 The operator authorized cleanup of redundant branches. Removed 21 remote branch
 references across the six affected public repositories and 30 fully merged local
@@ -14,8 +14,9 @@ Ten stale `macos-signing` deployment branch policies were removed; only `main`
 currently has signing authorization. This does not add manual approval or change
 the protected secrets.
 
-The operator authorized the Vulkan follow-up. Integration is on
-`vulkan-preflight` in `build/worktrees/pr-integration`. The actual Loader repair
+The operator authorized the Vulkan follow-up. Integration uses
+`build/worktrees/pr-integration`, preserving the unrelated primary checkout.
+The actual Loader repair
 is already present in build-deps pin
 `c29c4822cb96f5bfeb8640e72601c5cf4e3c3137`; no runtime code or dependency pin
 changes are needed. The parent now independently checks the required Loader
@@ -29,8 +30,30 @@ the verification changes and qualification notes, not its superseded package
 version or Host gitlink. The old Linux Host branch contains only an earlier
 build-deps pin, already superseded by current main. See
 [the qualification record](docs/development/reviews/vulkan-loader-qualification.md).
-Local/hosted validation and retirement of those old references remain pending;
-no release or installation is implied by this build-only follow-up.
+Candidate root is `0865e02adf82598156b137642e1f35a2465ab7e4`. All twelve
+preflight cases, seven portable CTest suites and 43 CI-policy tests pass locally.
+A negative control confirms that the old verifier accepts the unpatched Loader
+fixture which the new verifier rejects. Hosted Linux Host
+[run 35360266594](https://github.com/instinctual/plank/actions/runs/35360266594)
+passed a cache-cold dependency bootstrap, fresh Host compile, RPM gates and
+cache sealing. All nine required patches were independently verified at
+bootstrap, package preflight and cache sealing, including the Loader repair.
+The log-directory and package payload gates pass. No hardware test or
+installation was performed.
+
+The 8,579,761-byte validation RPM is retained in
+`artifacts/packages/candidates/1.0.136-vulkan-preflight/linux/` as
+`plank-host-1.0.136-0.vulkan_preflight.1.el9.x86_64.rpm`, SHA256
+`f5849b413fb1948f46a33a48341d67bd4a610ac95dfd970d1670822a75684f74`.
+The collector verified the downloaded package against hosted provenance.
+The following root CMake-only adjustment limits the Linux/GNU-shell regression
+suite to Linux; all seven local suites passed again, and a Darwin-target
+configuration retained its six existing registrations (not native Mac testing).
+It does not change product build inputs or the package's recorded source.
+
+Merge and old-reference retirement are the final steps. This does not publish
+a release, rebuild a mainline package, or install anything; the current release
+remains 1.0.135 and the accepted clipboard release work below is unchanged.
 
 ## Accepted clipboard changes: merged, not yet released
 

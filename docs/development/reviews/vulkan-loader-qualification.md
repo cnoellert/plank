@@ -125,6 +125,15 @@ only its independent Loader preflight, CTest registration, regression suite and
 qualification notes. It also corrects the obsolete dependency-maintenance entry.
 The twelve preflight cases include the original ten plus rejection of production
 source moved under `tests/` and proof that the test-directory deletion exception
-does not apply to FFmpeg. No capture, encoding, presentation or driver code changes.
-Current integration validation belongs in HANDOFF; the historical hardware
-checks above must not be presented as a new interactive qualification.
+does not apply to FFmpeg. CTest registers this Linux Host-specific suite only on
+Linux; it does not impose Bash/GNU tooling on macOS checkouts. No capture,
+encoding, presentation or driver code changes.
+Hosted [run 35360266594](https://github.com/instinctual/plank/actions/runs/35360266594)
+at root `0865e02adf82598156b137642e1f35a2465ab7e4` passes a cache-cold
+dependency bootstrap, fresh Host compile and RPM packaging. Bootstrap, package
+preflight and cache sealing each verify all nine required patches. A negative
+control confirms the old verifier accepts an unpatched Loader fixture which the
+new verifier rejects. Local regression/portable suites pass; the subsequent
+Linux-only CTest-registration refinement changes no product build input.
+Package provenance and current integration state are in HANDOFF; the historical
+hardware checks above must not be presented as a new interactive qualification.
