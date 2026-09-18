@@ -92,6 +92,17 @@ reboot; the helper refuses to replace its overlay while the display manager is a
 Package removal deletes only an overlay carrying PLANK's generated
 file marker; it does not alter the currently running X server.
 
+Before using virtual startup on a workstation that is replacing another
+remote-desktop agent, verify that `display-manager.service` resolves to the
+intended GDM service. The Host stops and starts that systemd alias when it
+changes the headless login layout. If another agent still owns the alias, the
+new layout can be prepared while that agent restarts instead of GDM; the Client
+then waits for a desktop that never appears. Finish work in the old session,
+disable its display-manager service, enable GDM, and verify both the alias and
+an active GDM X11 greeter before connecting. Restart `plank-host.service` after
+changing `display.startup_layout`, since the supervisor reads that setting at
+startup.
+
 The administrator setting describes the boot policy. A host with
 `startup_layout = physical` removes the headless overlay but may lease a
 bookmark-selected logical layout over connected native scanouts for one remote

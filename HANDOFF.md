@@ -73,6 +73,26 @@ supervisor loaded `startup_layout = virtual`, invalidated that authentication
 session, and returned the Client to workstation sign-in. Re-authentication and
 the actual PCoIP-off input test remain pending.
 
+Standalone virtual-Host testing now runs with the legacy remote agent disabled
+and GDM owning `display-manager.service`. The alias initially pointed to the
+legacy agent, which caused a display-transition timeout; see the systemd
+packaging guide. The test Host's Autodesk Xorg configuration and packages were
+not changed. Its independent X11 service has a local firewall guard blocking
+non-loopback X11 TCP. Verify that guard after host maintenance or a reboot.
+
+The asymmetric manual bookmark requests 1920x1200 on the left and 2560x1440
+on the right, with the right Host output temporarily selected as primary.
+NVIDIA, XRandR and Mutter reported the 4480x1440 Host canvas and the intended
+primary. Manual virtual bookmarks do not yet expose a primary-selection
+control. The first Mac fullscreen view leaked part of the right Host output
+onto the left Client display because the Client used the laptop panel's native
+3456-pixel width as its crop boundary instead of the Host output's 1920 pixels.
+The Client now uses the manual Host output sizes for native two-screen
+presentation and pointer mapping. The local build and asymmetric Retina test
+passed; a signed Client's live log reported the correct 1920 + 2560 canvas,
+and the operator reported that the layout appears correct. Pointer drag,
+tablet and held-button recovery are not new acceptance claims from this check.
+
 ## Experimental Mac Client review branch — 2026-09-17
 
 Root and Client `codex/macos15-pr-review` are draft contributions for the
