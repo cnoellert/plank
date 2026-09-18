@@ -11,6 +11,11 @@ neither the newly split Host branch nor a combined package has been rebuilt
 and requalified yet. The Pause mapping itself worked in Flame during the
 earlier Rocky 9.5 hardware test.
 
+Host display commit `0957df96` then merged current upstream Host `main` and
+resolved the overlapping clipboard/display feature flags in the topology
+header and test. Host PR #2 now has a clean eight-file display/session diff
+against upstream and remains draft pending a Rocky 9.7 build and hardware
+retest. The root display branch pins this merged Host source.
 
 ## Virtual connector order and Flame launch — live tested
 

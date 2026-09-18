@@ -181,19 +181,31 @@ workstations with real Host monitors is a separate acceptance question. The
 remaining headless display gap is automatic qualification of the MacBook's
 current mode, or an explicit, predictable virtual-mode fallback.
 
+## Upstream Host integration
+
+Host commit `0957df96` merges the current upstream Host `main` into the draft
+display branch. The only source conflicts were the topology feature declaration
+and its test: upstream clipboard synchronization remains `0x400000` on Linux
+X11, while matched modes, matched primary and virtual connector order retain
+their separate bits. The resulting PR diff has eight display/session source and
+test files and no Pause dependency change. The root display branch pins this
+Host commit. Diff checks passed; the merged source has not yet had a Rocky 9.7
+package build or hardware retest, so earlier package results do not qualify it.
+
 ## Remaining gates
 
 1. Test monitor-mode rejection, helper timeout and forced termination, failed
    restoration, abrupt Client exit and transport loss. Verify the original
    physical desktop remains usable, primary is correct and no lease-owned mode
    remains. The existing fake helper tests do not cover all supervisor failures.
-2. Compare virtual startup on a headless Flame Host before choosing a deployment
-   default. Keep its qualified EDID presets and existing workflows intact.
+2. Qualify exact or predictable fallback sizing for the MacBook's current
+   2056×1286 virtual mode, plus virtual GDM-start and interruption recovery.
+   Keep the existing EDID presets and manual workflows intact.
 3. Qualify the final Client on Ubuntu and supported newer macOS, then repeat
    Mac logical/backing-size, single/dual, primary, Flame launch and normal
    restoration tests with exact build hashes.
-4. Merge or make canonical upstream submodule commits reachable before treating
-   the root branch as a reproducible build input.
+4. Merge the paired Client and Host contributions and update their root
+   gitlinks before treating the display branch as a reproducible mainline build.
 
 The intermittent left-click failure is also an open Mac Client/Host input gate;
 its live recurrence and recovery observations are recorded above. Do not infer
