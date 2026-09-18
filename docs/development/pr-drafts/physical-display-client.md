@@ -18,12 +18,15 @@ The Host and protocol changes are in the separate display series.
 The current GitHub PR diff also includes the unmerged Mac Client base until
 that PR lands. No Linux physical mode change is part of the base Mac PR.
 
-The local Apple Silicon/macOS 15 build passed 102 Qt results, including the
-new negotiation test and the inherited Wacom delayed-callback test, plus the
-native input-worker and fullscreen/Quit guards.
-The paired helper passed 20 fake-command tests. Earlier exact installed
-packages completed normal two-screen matching and restoration; this stacked
-source has not been installed. Ubuntu, macOS 27, headless virtual workflow and
+The earlier integrated source passed 125 local Qt results, the native input
+worker, fullscreen/Quit guards and all five hosted build jobs. The current
+Client head also includes Alan's Wacom timeout recovery and unified macOS 15+
+build policy. Portofino has SDK 26.2, so the current head requires a hosted
+SDK 27 build before live qualification. Earlier installed packages completed
+normal two-screen matching and restoration; this stacked source has not been
+installed. A headless virtual trial placed Flame on the Eizo and restored the
+starting Host layout, but Match client displays rejected the MacBook's current
+2056×1286 size because the virtual EDID pool lacks it. Ubuntu, macOS 27 and
 Host failure-recovery qualification remain open. Keep this PR draft.
 
 See the [physical display review](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md)

@@ -32,10 +32,17 @@ normal disconnects logged exact restoration; the second was independently
 checked against NVIDIA, XRandR and GNOME. The original single-output mode and
 primary returned, no temporary mode or lease remained, and the Host stayed
 active. Forced-failure recovery tests, including helper termination and abrupt
-Client exit, remain. Virtual startup should be compared for headless Flame Hosts.
+Client exit, remain. A headless virtual-startup comparison placed Flame on the
+Eizo and restored the original Host layout after disconnect. The physical-mode
+helper is not needed for that tested workflow; automatic matching still rejects
+the MacBook's current 2056×1286 size under the virtual EDID allowlist.
 An intermittent remote left-click failure recurred during the next test. The
 Host input service was reset to clear a stale XInput button state; live input
 after reconnect and the cause of that failure are still under investigation.
+
+This stack now includes the Mac review's Wacom timeout recovery and one-package
+macOS 15+ build policy. The earlier integrated head passed all five hosted jobs;
+the current head needs a new SDK 27 build and exact-package live checks.
 
 See the [display review](https://github.com/cnoellert/plank/blob/codex/physical-display-stack/docs/development/physical-display-integration-review.md)
 for the full behavior, evidence and remaining gates. Keep this PR draft until

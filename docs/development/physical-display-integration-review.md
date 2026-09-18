@@ -192,12 +192,16 @@ test files and no Pause dependency change. The root display branch pins this
 Host commit. Diff checks passed; the merged source has not yet had a Rocky 9.7
 package build or hardware retest, so earlier package results do not qualify it.
 
-Client commit `42f583c` merges the updated Mac review base, including upstream
-clipboard support, with the display controls. The Client keeps the clipboard
-bit separate from the matched-mode and primary-output bits. The root display
-branch pins this Client commit and now includes the current upstream root
-mainline. The integrated Client has not yet had a fresh local build or live
-display acceptance; hosted builds are the next source gate.
+Client commit `42f583c` merged the earlier Mac review base and upstream
+clipboard support with the display controls. Follow-up `d26faf4` merges Mac
+review `82436e5`, including Wacom timeout recovery and the unified macOS 15+
+deployment policy. The Client keeps the clipboard bit separate from the
+matched-mode and primary-output bits. Root display `b3b493f` merges root Mac
+review `915f64a` and pins Client `d26faf4` with Host `0957df96`. The earlier
+integrated root `61b82b7` passed all five hosted jobs and its local Mac build
+passed 125 Qt results; those results do not qualify the newer source. Portofino
+currently has SDK 26.2, below the newer SDK 27 build requirement. Hosted builds
+and exact-package live display acceptance are the next gates.
 
 ## Remaining gates
 

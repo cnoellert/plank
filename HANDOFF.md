@@ -1,5 +1,20 @@
 # PLANK handoff
 
+## Display stack rebased onto current Mac review — 2026-09-17
+
+The display Client now includes Mac review commits `a6faf27` (Wacom release
+timeout recovery) and `82436e5` (one macOS 15+ Client with SDK 27 and a 15.0
+deployment target). Display Client `d26faf4` adds only the display changes
+relative to that review head. Display root `b3b493f` merges root Mac review
+`915f64a` and pins Client `d26faf4` and Host `0957df96`. No Mac review branch
+was rewritten. The display PRs remain drafts stacked on the Mac review PRs.
+
+Portofino currently has SDK 26.2, so it cannot build this updated candidate
+under the new SDK 27 policy. The source-level target, fullscreen, Quit and
+display helper tests pass locally; hosted Mac and Linux compilation/package
+checks, then exact-package live qualification, remain pending for these heads.
+Earlier build and live results below belong to their recorded commits.
+
 ## Review scope split — 2026-09-17
 
 The Linux Pause/F15 dependency pointer is isolated in draft
