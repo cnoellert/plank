@@ -46,6 +46,13 @@ a clipboard-only flag cannot validate a non-preset matched mode.
 - The RPM owns the helper and its Python GObject dependency. Host source and
   this root packaging change must be deployed together.
 
+The Linux Pause-key dependency pin is tracked independently in
+[Host PR #7](https://github.com/instinctual/plank-host-linux/pull/7), following
+the merged [libvirtualhid fix](https://github.com/instinctual/plank-libvirtualhid/pull/1).
+This display series leaves the Host dependency pointer at its base revision.
+Earlier display-test RPMs contained the Pause pin; their reported test results
+remain specific to those exact packages.
+
 See the [implementation plan](plans/automatic-display-matching.md) and
 [protocol contract](../../protocol/output-topology.md#bounded-physical-display-matching-optional-0x1000000).
 

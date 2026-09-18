@@ -1,5 +1,17 @@
 # PLANK handoff
 
+## Review scope split — 2026-09-17
+
+The Linux Pause/F15 dependency pointer is isolated in draft
+[Host PR #7](https://github.com/instinctual/plank-host-linux/pull/7). The
+display Host branch has a follow-up commit restoring its original pointer, and
+the root display branch pins that follow-up. The earlier installed display
+RPM remains an exact historical test artifact that included the Pause fix;
+neither the newly split Host branch nor a combined package has been rebuilt
+and requalified yet. The Pause mapping itself worked in Flame during the
+earlier Rocky 9.5 hardware test.
+
+
 ## Virtual connector order and Flame launch — live tested
 
 On the standalone virtual Rocky test Host, a manual dual-output bookmark
