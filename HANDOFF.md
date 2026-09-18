@@ -1,5 +1,27 @@
 # PLANK handoff
 
+## Virtual connector order and Flame launch — candidate
+
+On the standalone virtual Rocky test Host, a manual dual-output bookmark
+correctly placed a 1920×1200 Mac display on the left and a 2560×1440 display
+on the right. GNOME marked the right output primary, but Flame opened on the
+left because PLANK Display 1 (`DP-0`) was always assigned there. With Flame
+closed, a reversible live XRandR swap put `DP-0` on the right at 2560×1440;
+the operator then confirmed Flame's project chooser opened on the intended
+right display. The installed Host reset this swap on a normal reconnect.
+
+The candidate now advertises a separate virtual-primary connector feature.
+The Client sends the macOS primary display's left/right index when the Host
+supports it. The Host binds `DP-0` to that side during both live and GDM
+transitions, and reads virtual modes in desktop order rather than connector
+enumeration order. Legacy clients omit the index and retain the existing
+DP-0-left behavior. Invalid or unnegotiated indices are rejected. The
+protocol vector and spec cover a right-primary asymmetric layout. The Rocky
+display-preparation shell tests and the complete local macOS 15 Client build
+and tests pass. A qualified Rocky 9.7 Host package build, hardware installation,
+normal reconnect, single-to-dual return, and Flame launch on the new pair
+remain pending; the manual live test alone is not acceptance of the candidate.
+
 ## Single-output GNOME restoration regression
 
 During the separate macOS 15 Wacom Client review, the Rocky test Host's active
