@@ -107,9 +107,9 @@ Those observations do not establish the final review head as live-accepted.
 - [common-C PR #3](https://github.com/instinctual/plank-common-c/pull/3)
   was merged and supplies the queue-order and release-delivery fix. Its source
   commit is now reachable from the canonical submodule URL.
-- [Client PR #3](https://github.com/instinctual/plank-client/pull/3) contains
-  the Mac-specific implementation and the common-C pin. Its current review
-  branch is limited to the Mac scope.
+- [Client PR #3](https://github.com/instinctual/plank-client/pull/3) is merged
+  at `a6a97d024269aa5c8523a2e50e0a887208cf4a05`. Its tree is identical to
+  tested Client `82436e5ada0e6139c967a167a5079d6ab1cbbdcd`.
 - [root PR #4](https://github.com/instinctual/plank/pull/4) coordinates the
   Client pin, unified target build paths, focused tests and this evidence.
 - [libvirtualhid PR #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
@@ -120,9 +120,12 @@ Those observations do not establish the final review head as live-accepted.
 Upstream Client `0544586` and root `7dd2c1a` were merged into the review
 branches. The upstream Quit implementation replaced the earlier bridge; Mac
 capture/fullscreen changes remain macOS-scoped, while Linux/Wayland behavior
-retains its upstream policy. No upstream merge or release has occurred.
+retains its upstream policy. The operator authorized approval and merge of
+the Client and parent PRs after the hosted build gates passed. The parent pins
+the tree-identical Client merge commit. No signed release or deployment was
+performed, and integration approval does not claim the live gates below passed.
 
-## Gates before merge
+## Remaining release qualification
 
 1. Exercise the new asynchronous Wacom path on physical hardware: pressure,
    focus loss, reconnect, Quit and unplug/replug. The deterministic test covers
@@ -138,5 +141,5 @@ retains its upstream policy. No upstream merge or release has occurred.
 5. Rebuild from the final root and recursive submodule commits, then run the
    required hosted build/privacy jobs and product packaging checks.
 
-Keep the Client and root PRs draft while these gates remain. The local source
-build does not establish release or cross-platform hardware acceptance.
+These gates remain release qualification tasks after the operator-authorized
+integration. Source builds do not establish cross-platform hardware acceptance.
