@@ -32,6 +32,7 @@ python3 "$source_root/tests/packaging/test-macos-client-target.py"
 python3 "$source_root/tests/packaging/test-macos-fullscreen.py" "$source_root"
 python3 "$source_root/tests/packaging/test-macos-quit-lifecycle.py" "$source_root"
 python3 "$source_root/tests/packaging/test-macos-metal-overlay.py"
+python3 "$source_root/tests/packaging/test-macos-keyboard-capture.py"
 patch_file="$client/app/deploy/linux/ffmpeg-patches/0001-hevc-enable-hwaccel-for-identity-gbr.patch"
 printf '%s  %s\n' 059cc9c0d585d71e292cd7421a43f239b1e7ce94e8598d0a7427dfe48e55847e "$patch_file" | shasum -a 256 -c -
 patch --batch --reverse --dry-run -d "$PLANK_MAC_CLIENT_DEPS/src/ffmpeg-9.0.1" -p1 < "$patch_file"
@@ -55,7 +56,7 @@ qmake -r "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     "QMAKE_CFLAGS+=$PLANK_C_FILE_FLAGS" "QMAKE_CXXFLAGS+=$PLANK_C_FILE_FLAGS"
 make -j"${PLANK_BUILD_JOBS:-8}" release
 # Run shared topology and toolbar geometry on every Mac Client candidate.
-for suite in outputtopology planktoolbarlogic desktopstage macquitshortcut macapplication plankpresentation macrawwacom macclipboardsync macmetaloverlay; do
+for suite in outputtopology planktoolbarlogic desktopstage macquitshortcut macapplication mackeyboardcapture plankpresentation macrawwacom macclipboardsync macmetaloverlay; do
 mkdir -p "$build/tests/$suite"
 (
     cd "$build/tests/$suite"

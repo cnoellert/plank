@@ -1,5 +1,23 @@
 # PLANK handoff
 
+## Mac system shortcut capture — in progress
+
+The operator authorized the Accessibility-based Client fix for system shortcuts.
+Candidate 1.0.133-pr-integration adds a session-scoped public CGEvent tap feeding
+the existing input handler through a bounded SDL wake/queue. It follows the
+existing fullscreen/always capture preference and native stream focus. Missing
+Accessibility authorization uses the system prompt, once per process; the
+settings tooltip explains the requirement. Pending keys are discarded and
+remote keys released on focus loss, capture release, permission revocation,
+tap interruption, queue failure and teardown. Pointer/Spaces gestures, Fn/media
+controls and menu/Dock Quit are not captured. No Host or Linux runtime change.
+Native compile/regressions, signed package and live acceptance remain pending.
+
+Correction to the earlier investigation: SDL 3.4.2 does contain a Cocoa keyboard
+grab implementation in `SDL_cocoakeyboard.m`, guarded by `SDL_MAC_NO_SANDBOX`.
+Its optional private CGS API path is not the implementation to use here. The new
+Mac path bypasses SDL keyboard-grab calls rather than layering both mechanisms.
+
 ## Mac overlay replacement fix — ready for testing
 
 The operator reported intermittent toolbar flashing while testing 1.0.131 and
@@ -36,8 +54,8 @@ No deployment, merge or release publication. Next: manually test a pinned toolba
 over moving video and during stats updates, dragging and hide/reveal; verify the
 intermittent flashing is gone. No Host upgrade is required for this repair.
 
-Discussion only: the operator asked about forwarding Command-Tab/Command-Space
-without local OS activation. Current SDL Cocoa has no keyboard-grab backend;
+Earlier discussion: the operator asked about forwarding Command-Tab/Command-Space
+without local OS activation. SDL's optional private Cocoa grab is not enabled;
 the existing Command-Q fix only removes PLANK's own menu shortcut. A native
 modifying event tap would require Accessibility authorization and should obey
 the existing capture preference, stream focus and release lifecycle. AppKit's
