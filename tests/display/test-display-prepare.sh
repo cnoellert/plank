@@ -92,7 +92,7 @@ grep -Fq 'virtual-2.edid' "$output_file"
 run_requested_prepare \
   --layout dual-horizontal --mode-1 1920x1200 --mode-2 2560x1440 \
   --primary-output 1 >/dev/null
-grep -Fq 'DFP-2: 1920x1200 +0+0, DFP-0: 2560x1440 +1920+0' "$output_file"
+grep -Fq 'DFP-0: 2560x1440 +1920+0, DFP-2: 1920x1200 +0+0' "$output_file"
 for invalid_primary in -1 -2 2 text; do
   if run_requested_prepare --layout dual-horizontal --mode-1 1920x1200 \
       --mode-2 2560x1440 --primary-output "$invalid_primary" >/dev/null 2>&1; then

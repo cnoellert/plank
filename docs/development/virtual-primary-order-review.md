@@ -79,6 +79,19 @@ the original virtual layout after normal disconnect. That live result is
 historical evidence from the earlier combined build; it does not qualify this
 newly isolated source.
 
+After an X server restart during tablet hotplug, a later Flame launch put both
+its chooser and main UI on the left output despite XRandR marking the right
+output primary. Flame's application log recorded its main UI at `0,240` on
+`1920×1200` and its alternate UI at `1920,0` on `2560×1440`. A successful
+pre-restart launch recorded those assignments in the opposite order. The
+restarted NVIDIA MetaMode listed the left connector first; the earlier live
+single-to-dual transition had listed the right, primary connector first.
+Reordering only those MetaMode entries at runtime preserved both rectangles,
+the XRandR primary and the Plank stream. The display helper now writes the
+primary connector first in its boot MetaMode too. Its isolated Linux shell
+test passed. A fresh Flame launch and a reboot or X restart with the updated
+Host package are still required to qualify this correction.
+
 Before merge, GDM-to-user handoff, sleep/reconnect and Wacom pointer mapping
 on the hardware-test Host remain open. The same Client package needs live
 macOS 27 acceptance. Unavailable macOS 27 hardware is an open gate, not a
