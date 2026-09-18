@@ -62,6 +62,17 @@ rule now drops inbound TCP 6000-6010. A separate client confirmed 6000 is
 blocked and PLANK's port remains reachable. Recheck this exposure before
 using an independent Xorg session as the normal Host startup path.
 
+The next connection attempt exposed the bounded virtual-mode contract: the
+MacBook's current 2056x1286 desktop request is outside the packaged EDID mode
+pool, so Match client displays rejected it before Host transition. The
+bookmark was set temporarily to two virtual outputs (2560x1440 and 1920x1200)
+with Native scaling. Its first retry used a supervisor that had cached the
+previous physical-startup policy and therefore attempted the physical lease;
+the display stayed at the one-output login baseline. Restarting the Host
+supervisor loaded `startup_layout = virtual`, invalidated that authentication
+session, and returned the Client to workstation sign-in. Re-authentication and
+the actual PCoIP-off input test remain pending.
+
 ## Experimental Mac Client review branch — 2026-09-17
 
 Root and Client `codex/macos15-pr-review` are draft contributions for the
