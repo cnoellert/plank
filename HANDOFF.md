@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## Mac system shortcut capture — in progress
+## Mac system shortcut capture — ready for testing
 
 The operator authorized the Accessibility-based Client fix for system shortcuts.
 Candidate 1.0.133-pr-integration adds a session-scoped public CGEvent tap feeding
@@ -11,12 +11,43 @@ settings tooltip explains the requirement. Pending keys are discarded and
 remote keys released on focus loss, capture release, permission revocation,
 tap interruption, queue failure and teardown. Pointer/Spaces gestures, Fn/media
 controls and menu/Dock Quit are not captured. No Host or Linux runtime change.
-Native compile/regressions, signed package and live acceptance remain pending.
+Package-source root is `1991fc708b4c9d1b51784a995bde2b85a7a4f6c8`, Client
+`ca22fb93bae6451b4e093ddd5bbd781582a1d96d`, both pushed to `pr-integration`.
+Other recursive pins remain those of 1.0.131. The first Mac compile caught and
+was corrected for an Apple SDK `keyModifiers` symbol collision. Final ordinary
+hosted run `35324741942` passed all four products. All 146 Mac Qt results (20 keyboard-capture
+results, including suite init/cleanup) passed, along with five overlay tests.
+The exact dependency cache restored and independently verified. Local capture,
+Quit, overlay, fullscreen, reconnect and CI-policy checks passed. Signed
+installer run `35324741700` passed, including signing, notarization and stapling.
+Privacy and clipboard CI passed. Live Accessibility/shortcut acceptance remains
+pending. Native tests exercise the production callback and bounded queue with
+synthetic events; they do not install an OS event tap or grant TCC permission.
+
+The checksum-verified installer is
+`artifacts/packages/candidates/1.0.133-pr-integration/macos/plank-client_1.0.133-pr-integration_arm64.dmg`.
+SHA256: `598e84d710bb10e013902287d1e2544147ebf262a13bc0819b2e2d4419340dce`.
+It includes the 1.0.132 toolbar repair. No deployment, merge or release
+publication. Next: install on the test Mac, approve PLANK Client Accessibility
+in System Settings, and verify focused-stream Command-Tab, Command-Space and
+Command-Q reach only the Host. Verify three-finger Spaces swipes, local
+Command-Option-Escape, Ctrl-Alt-Shift-Z capture release, permission denial and
+revocation, focus transitions, menu/Dock Quit and disconnect cleanup. No Host
+upgrade is required for keyboard capture. Functional acceptance stays pending.
 
 Correction to the earlier investigation: SDL 3.4.2 does contain a Cocoa keyboard
 grab implementation in `SDL_cocoakeyboard.m`, guarded by `SDL_MAC_NO_SANDBOX`.
 Its optional private CGS API path is not the implementation to use here. The new
 Mac path bypasses SDL keyboard-grab calls rather than layering both mechanisms.
+
+The operator also reported clipboard failures for Mac-to-Mac and Mac-to-Linux.
+The merged clipboard PRs implement only macOS Client ↔ Linux X11 Host plain text;
+the macOS Host has neither a clipboard backend nor the advertised feature bit.
+The 1.0.124 release Host predates the implementation. The paired 1.0.131
+integration Linux Host RPM contains it; a Client-only update cannot enable it.
+Installed Linux Host/Client versions and a Ctrl-V plain-text check are awaiting
+confirmation. No live logs or clipboard contents were collected, and no
+clipboard repair or macOS Host implementation was authorized in this follow-up.
 
 ## Mac overlay replacement fix — ready for testing
 
@@ -43,8 +74,7 @@ Apple Silicon Client 15+ target. All 126 existing Qt results and five new
 overlay regression groups passed, including delayed allocation/upload,
 allocation failure, explicit hide, concurrent publication and resource lifetime.
 Signing, notarization and stapling passed. Privacy and clipboard CI passed.
-The ordinary build run `35321875930` has passed Mac Host, Mac Client and Linux
-Client; its unrelated Linux Host job was still running at this handoff.
+The ordinary build run `35321875930` passed all four product jobs.
 
 The checksum-verified installer is
 `artifacts/packages/candidates/1.0.132-pr-integration/macos/plank-client_1.0.132-pr-integration_arm64.dmg`.
