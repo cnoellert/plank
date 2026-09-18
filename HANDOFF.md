@@ -34,8 +34,33 @@ floating slaves with button 1 down while the kernel virtual mouse button was
 released. Device reattachment and disable/enable did not clear the stale
 XInput state. Normal disconnect restored the original display but left the
 virtual mouse marked down. A Host-service restart recreated it attached and
-released without changing the physical mode. Live clicks after reconnect are
-not yet confirmed; the cause is not established.
+released without changing the physical mode. On reconnect, left-click failed
+again. A single-output Physical displays connection also failed, so the
+matched-display transition is not required to reproduce the input problem.
+Kernel mouse events included complete left-button press/release pairs while
+XInput received no new events and retained button 1 down. During the
+single-output test, the PCoIP-owned Xorg server crashed in pointer-grab event
+handling and its desktop session exited. The crash trigger remains unproved;
+the Plank Client was disconnected after the crash and its bookmark restored to
+Match client displays.
+
+For isolation, the operator authorized stopping PCoIP while testing PLANK as
+its replacement. PCoIP is inactive, and GDM now runs an independent X11
+greeter on the same Rocky test Host. The test configuration uses PLANK's
+packaged, qualified virtual-monitor EDIDs and `startup_layout = virtual`,
+initially exposing one 1920x1080 output with a second connected output
+available for matched sessions. The Autodesk Xorg configuration is restored
+to its pre-test content; a backup of the original PLANK host configuration is
+kept outside Git for rollback. The installed Xorg packages were not upgraded:
+the available update targets a newer Rocky minor release than this Flame host.
+The Host and Client were ready at workstation sign-in when this note was
+written. The decisive left-click test without PCoIP is still pending.
+Autodesk's installed `/usr/bin/Xorg` wrapper appends `-listen tcp -ac`; the
+standalone GDM server therefore listened on TCP 6000 while the system firewall
+service was inactive. A temporary, reboot-volatile `inet plank_test` nftables
+rule now drops inbound TCP 6000-6010. A separate client confirmed 6000 is
+blocked and PLANK's port remains reachable. Recheck this exposure before
+using an independent Xorg session as the normal Host startup path.
 
 ## Experimental Mac Client review branch — 2026-09-17
 
