@@ -201,8 +201,8 @@ preflight() {
     if present "$state"; then safe_directory "$state"; check_configuration; fi
 }
 
-# Validate every existing log before changing anything. Repair read/search
-# permission drift only on root-owned, non-writable-by-others product objects;
+# Validate every existing log before changing anything. Allow administrator
+# reads, with root-only writes, only on root-owned product objects;
 # never follow links, chmod recursively, or take ownership of someone else's file.
 prepare_logs() {
     local name mode
@@ -216,14 +216,18 @@ prepare_logs() {
                 (( (8#$mode & 07022) == 0 )) || fail "Unsafe log permissions: $logs/$name"
             fi
         done
-        /bin/chmod 700 "$logs"
+    else
+        ensure_directory "$logs" 700
     fi
-    ensure_directory "$logs" 700
     for name in host-machine.log host-sign-in.log; do
         if ! present "$logs/$name"; then (set -C; : > "$logs/$name"); fi
-        /bin/chmod 600 "$logs/$name"
-        safe_file "$logs/$name" 600
+        /usr/sbin/chown root:admin "$logs/$name"
+        /bin/chmod 640 "$logs/$name"
+        safe_file "$logs/$name" 640
     done
+    /usr/sbin/chown root:admin "$logs"
+    /bin/chmod 750 "$logs"
+    ensure_directory "$logs" 750
 }
 
 initialize_state() {

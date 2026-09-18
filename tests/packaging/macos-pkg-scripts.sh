@@ -142,14 +142,25 @@ if [[ $(uname -s) = Darwin ]]; then
 fi
 
 if [[ ${1:-} = --filesystem ]]; then
-    [[ $(uname -s) = Darwin && $(id -u) = 0 ]] || fail 'Filesystem fixture requires root on the development Mac'
+    [[ $(uname -s) = Darwin && $(id -u) = 0 ]] || fail 'Filesystem fixture requires root on an authorized Mac builder'
     fixture=$(/usr/bin/mktemp -d '/Library/Application Support/PLANKPackageTest.XXXXXX')
     cleanup() {
         case $fixture in '/Library/Application Support/PLANKPackageTest.'*) /bin/rm -rf "$fixture";; esac
     }
     trap cleanup EXIT
+    /bin/chmod 755 "$fixture"
     state="$fixture/state"; logs="$fixture/logs"
     initialize_state
+    [[ $(/usr/bin/stat -f '%Su:%Sg:%Lp' "$logs") = root:admin:750 ]]; ok
+    for name in host-machine.log host-sign-in.log; do
+        [[ $(/usr/bin/stat -f '%Su:%Sg:%Lp' "$logs/$name") = root:admin:640 ]]; ok
+        # Exercise actual group access without creating accounts or changing
+        # membership: this short-lived unprivileged process uses admin as GID.
+        /usr/bin/sudo -n -u nobody -g admin /bin/test -r "$logs/$name"; ok
+        /usr/bin/sudo -n -u nobody -g admin /bin/test ! -w "$logs/$name"; ok
+        /usr/bin/sudo -n -u nobody -g wheel /bin/test ! -r "$logs/$name"; ok
+    done
+    /usr/bin/sudo -n -u nobody -g admin /bin/test ! -r "$state/SignIn/key.pem"; ok
     [[ $(/usr/libexec/PlistBuddy -c 'Print :Address' "$state/host.plist") = 0.0.0.0 ]]; ok
     [[ $(/usr/libexec/PlistBuddy -c 'Print :Port' "$state/host.plist") = 28989 ]]; ok
     /usr/bin/plutil -replace Port -integer 29999 "$state/host.plist"
@@ -161,10 +172,27 @@ if [[ ${1:-} = --filesystem ]]; then
     /bin/chmod 744 "$logs"
     /bin/chmod 644 "$logs/host-machine.log" "$logs/host-sign-in.log"
     initialize_state
-    [[ $(/usr/bin/stat -f %Lp "$logs") = 700 ]]; ok
-    safe_file "$logs/host-machine.log" 600; ok
-    safe_file "$logs/host-sign-in.log" 600; ok
+    [[ $(/usr/bin/stat -f '%Su:%Sg:%Lp' "$logs") = root:admin:750 ]]; ok
+    safe_file "$logs/host-machine.log" 640; ok
+    safe_file "$logs/host-sign-in.log" 640; ok
     [[ $before = "$(/usr/bin/shasum -a 256 "$state/host.plist" "$state/SignIn/"* "$logs/"*)" ]]; ok
+    # Upgrade the previous root-only policy without changing contents or keys.
+    /usr/sbin/chown root:wheel "$logs" "$logs/host-machine.log" "$logs/host-sign-in.log"
+    /bin/chmod 700 "$logs"
+    /bin/chmod 600 "$logs/host-machine.log" "$logs/host-sign-in.log"
+    initialize_state
+    [[ $(/usr/bin/stat -f '%Su:%Sg:%Lp' "$logs") = root:admin:750 ]]; ok
+    for name in host-machine.log host-sign-in.log; do
+        [[ $(/usr/bin/stat -f '%Su:%Sg:%Lp' "$logs/$name") = root:admin:640 ]]; ok
+    done
+    check_configuration; ok
+    [[ $before = "$(/usr/bin/shasum -a 256 "$state/host.plist" "$state/SignIn/"* "$logs/"*)" ]]; ok
+    /bin/chmod 660 "$logs/host-sign-in.log"
+    reject prepare_logs
+    /bin/chmod 640 "$logs/host-sign-in.log"
+    /bin/chmod 770 "$logs"
+    reject prepare_logs
+    /bin/chmod 750 "$logs"
     /bin/ln "$logs/host-machine.log" "$fixture/log-hardlink"
     reject prepare_logs
     /bin/rm "$fixture/log-hardlink"

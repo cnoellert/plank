@@ -1,5 +1,42 @@
 # PLANK handoff
 
+## Active candidate: mouse-edge-recovery (1.0.140)
+
+Work is isolated on `mouse-edge-recovery`, based on main
+`51cd817966ea2cc6eb927d1fc1390da9d2e4ef72`, in the matching worktree under
+`build/worktrees/`. Do not switch or clean the primary research checkout or
+the separate Linux fast-send / Host input-release candidates.
+
+The operator approved fixing the brief reconnect popup caused by invalid
+absolute edge coordinates, adding precise privacy-safe Mac stop reasons, and
+making Mac system logs administrator-readable. See
+[diagnosis and test scope](docs/development/reviews/mouse-edge-recovery.md).
+The old logs cannot prove that every reported reconnect has this same cause;
+new first-cause diagnostics and a live retest remain necessary.
+
+Client `46ae50c2e189e358400ece271be469c1b61c98f4` pins common-C
+`060f6179f88343327b44d915007f1fb4cede71f1`. Both are published on the matching
+feature branch. Clamp mouse positions to the dynamic last pixel without
+changing input queue ordering, pen mapping or strict Host validation.
+Linux Host/Kymux/other dependency pins remain those of1.0.137 below; the
+unmerged Linux Host PR8 work is not included.
+
+Mac system logs become root:admin, directory0750/files0640. Only root writes;
+administrators read; other users are denied. The installer validates existing
+objects before changing permissions and preserves contents. Keys and per-user
+desktop logs remain private. No machines have been modified for this task.
+
+Local results: six common-C suites passed25 repetitions; the boundary test
+fails against the unfixed library and passes against the candidate. Installer
+shell fixtures passed23 portable checks;43 CI-policy tests and the version
+contract passed. The Mac payload permission suite passed seven checks with its
+native-only case skipped on Linux. Actual Mac filesystem, session/QUIC and
+signed-package tests require the hosted Mac jobs; not yet claimed passed.
+
+Next: commit/push the root, dispatch Linux Client plus signed Mac Host/Client
+on hosted builders, collect exact packages, then ask for live edge/drag/reconnect
+testing. Do not install, merge or publish a release without further direction.
+
 ## Current release: 1.0.137
 
 The operator requested rebuilding all public Host/Client packages and publishing
