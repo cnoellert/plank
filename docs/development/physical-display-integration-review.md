@@ -192,6 +192,13 @@ test files and no Pause dependency change. The root display branch pins this
 Host commit. Diff checks passed; the merged source has not yet had a Rocky 9.7
 package build or hardware retest, so earlier package results do not qualify it.
 
+Client commit `42f583c` merges the updated Mac review base, including upstream
+clipboard support, with the display controls. The Client keeps the clipboard
+bit separate from the matched-mode and primary-output bits. The root display
+branch pins this Client commit and now includes the current upstream root
+mainline. The integrated Client has not yet had a fresh local build or live
+display acceptance; hosted builds are the next source gate.
+
 ## Remaining gates
 
 1. Test monitor-mode rejection, helper timeout and forced termination, failed

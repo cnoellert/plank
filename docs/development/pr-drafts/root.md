@@ -19,11 +19,13 @@ be reviewed together in separate draft [Client #4](https://github.com/instinctua
 and [root #7](https://github.com/instinctual/plank/pull/7) PRs. The independent
 Pause-key library PR can be reviewed on its own.
 
-The split Mac Client built on Apple Silicon/macOS 15 with 97 passing Qt results
-and the native input-worker test. Earlier exact candidates passed live Mac
-fullscreen drag/focus and Flame Wacom pressure/focus. Remaining gates include
-bounded Wacom shutdown, intermittent left-click diagnosis, Ubuntu and macOS 27
-qualification, reconnection/hotplug recovery, and final hosted builds. No
+The split Mac Client built on Apple Silicon/macOS 15 with 98 passing Qt results
+and the native input-worker test. Its Wacom report I/O and release waits are now
+bounded, with delayed-callback state tests; the new path needs live tablet
+acceptance. Earlier exact candidates passed Mac fullscreen drag/focus and Flame
+Wacom pressure/focus. Remaining gates include intermittent left-click
+diagnosis, Ubuntu and macOS 27 qualification, reconnection/hotplug recovery,
+and final hosted builds. No
 upstream merge or release has been performed.
 
 See the [integration review](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md) for the full

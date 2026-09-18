@@ -1,6 +1,6 @@
 # macOS Client: two-screen presentation and USB Wacom
 
-**Draft: Wacom shutdown, live input and cross-platform qualification remain open.**
+**Draft: live Wacom, input and cross-platform qualification remain open.**
 
 This Client PR lets an Apple Silicon Mac running macOS 15 connect to PLANK as
 a Client. It presents one Linux desktop across two Mac displays, including a
@@ -19,12 +19,17 @@ bookmark choice. Those changes are in separate draft
 [Client #4](https://github.com/instinctual/plank-client/pull/4) and
 [root #7](https://github.com/instinctual/plank/pull/7) PRs.
 
-Earlier exact candidates passed live two-screen dragging, right-click focus,
-window cleanup, and Flame pressure/pen focus. The split review branch built on
-macOS 15 and passed 97 Qt results plus the actual input-worker fixture. The
-latest source still needs final live acceptance, an Ubuntu Client regression,
-macOS 27 qualification, interruption/hotplug tests, and a bounded asynchronous
-Wacom shutdown path. Intermittent left-click loss remains under investigation.
+The Wacom worker now uses timed IOKit report callbacks and bounded release
+waits. A late callback cannot reach a released Client, and a stalled worker
+keeps its own state instead of holding up Quit. A deterministic delayed-callback
+test covers focus loss, reconnect and Quit. This exact source built on macOS 15
+with 98 Qt results and the actual input-worker fixture.
+
+Earlier candidates passed live two-screen dragging, right-click focus, window
+cleanup and Flame pressure/pen focus. The new Wacom path still needs a physical
+tablet run, including unplug/replug and Quit. Ubuntu Client and macOS 27
+qualification, interruption/hotplug tests, and intermittent left-click
+diagnosis also remain open.
 
 See the [integration review](https://github.com/cnoellert/plank/blob/codex/macos15-pr-review/docs/development/macos15-integration-review.md) for commit and
 test evidence. Keep this PR draft until those gates pass.

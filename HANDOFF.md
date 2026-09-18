@@ -17,6 +17,12 @@ header and test. Host PR #2 now has a clean eight-file display/session diff
 against upstream and remains draft pending a Rocky 9.7 build and hardware
 retest. The root display branch pins this merged Host source.
 
+Client display commit `42f583c` merges the updated Mac review base and its
+upstream clipboard support. The root display branch pins both paired commits
+and includes current root `main`. Fresh hosted builds and hardware checks are
+still needed for this integrated source; the earlier installed package results
+remain tied to their exact commits.
+
 ## Virtual connector order and Flame launch — live tested
 
 On the standalone virtual Rocky test Host, a manual dual-output bookmark
@@ -164,25 +170,34 @@ physical-display matching feature is in separate draft Client
 maintained Host base, so it does not package the display helper or alter Host
 physical-monitor behavior.
 
-Client `851f4a4` retains multi-display Metal presentation, native fullscreen
+Client `397678e` retains multi-display Metal presentation, native fullscreen
 Spaces, cross-display pointer and pen focus, raw USB Wacom forwarding, and
-current upstream Quit handling. Common-C `b2b2b29` combines adjacent absolute
-positions at enqueue under the input queue lock. A deterministic worker fixture
+current upstream Quit handling. Wacom report requests now use timed IOKit
+callbacks, stale replies are discarded after release, and focus/reconnect/Quit
+release waits have deadlines with worker-owned fallback state. Common-C
+`b2b2b29` combines adjacent absolute positions at enqueue under the input
+queue lock. A deterministic worker fixture
 failed on the prior common-C PR head when mouse/key releases followed 150
 positions, then passed after the fix, including 50 repeated and AddressSanitizer
-runs. The split Client built on Apple Silicon/macOS 15 and passed 97 Qt results,
+runs. The split Client built on Apple Silicon/macOS 15 and passed 98 Qt results,
 the native input-worker test, seven fullscreen guards and three Quit lifecycle
 guards. These are build and local test results, not new live acceptance.
+
+Client `26c031a` then merged upstream clipboard support and advanced common-C
+to canonical `16a7a50`, which contains the queue fix. The root Mac branch pins
+this source. A fresh build and live tablet retest of the merged source remain
+open; the results above belong to the earlier exact commits.
 
 Previously observed live behavior includes two-screen fullscreen drag/focus,
 normal mouse input, and Flame tablet pressure/focus in exact earlier candidates.
 The intermittent remote left-click loss is not established as fixed; the queue
-repair addresses one reproduced release-loss path. Wacom report calls still
-need bounded asynchronous completion before this PR is ready. Ubuntu Client and
-macOS 27 regression, tablet hotplug, interrupted reconnect/sleep and held-input
-recovery remain open. GitHub hosted jobs have reported `action_required` without
-running; maintainer action is needed for those gates. No upstream merge or
-release has been performed.
+repair addresses one reproduced release-loss path. The new Wacom I/O path
+has a deterministic stalled-callback test but needs live tablet acceptance.
+Ubuntu Client and macOS 27 regression, tablet hotplug, interrupted
+reconnect/sleep and held-input recovery remain open. GitHub hosted jobs have
+reported `action_required` on the upstream PRs; fork push builds are running
+for the integrated source. No Mac contribution merge or release has been
+performed.
 
 See [the current integration review](docs/development/macos15-integration-review.md)
 and the chronological [Mac Client record](docs/development/macos15-client.md).
@@ -193,13 +208,156 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Current state
 
-- The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
-  and release. Preparing mainline 1.0.124 for all four Host/Client packages on
-  GitHub-hosted builders, with verified dependency caching and signed Mac
-  packages. Do not relabel candidate artifacts. Clipboard PRs and unrelated
-  RK3576 research remain excluded. Publication/build results are pending.
+- The operator authorized the combined clipboard merge. Client PR #2 is merged
+  at `05445865d3f8f6d58102a4fb4c45b712545ece1e`; Linux Host PR #1 is merged at
+  `42c1a13618b04d80ac15c2e46c9ad5e2058c700e`. Parent PR #3 pins those exact
+  mainline commits. Both merged dependency trees are identical to the tested
+  Client `f13654d329eec4c099e6eb848ae886f04050f2cc` and Host
+  `7771aba399b6853c7cb37aed300bc1aefb16be36` inputs. Clipboard sync is macOS
+  Client to Linux X11 Host; Linux Clients do not advertise an implementation
+  they lack. Pasteboard ownership, bounded X11 INCR transfers and canonical
+  dependency sources are fixed. See `docs/development/clipboard-review-followup.md`.
+  Common-C Host/Client pins are
+  `88fd5ac594ce9fa8b7e01530a7830aba3fc0b986` /
+  `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`; mDNS remains
+  `920c097ffa742e2968290f15d4dde6693aec02e5`. Other recursive pins are unchanged.
+  Thirteen isolated Xvfb cases, five negative controls, 42 CI policy checks and
+  all five root CTest suites pass. Hosted X11 run `35290252469` and privacy
+  checks pass at root `b0026c503f713016901bc5650a22371a4b7e1ef1`. The Xvfb suite
+  also passes ASan/UBSan with leak detection. Hosted run `35290252364` passed
+  all four products, including the Linux Host RPM, platform negotiation on both
+  Clients and all 20 native clipboard Qt results (suite init/cleanup included).
+  The parent merge changes dependency commit identities to their tree-identical
+  merge commits and updates notes, not tested product code. These Mac builds
+  were unsigned. No release publication, deployment or live paired-session
+  acceptance was performed; mainline CI is separate from the completed feature
+  build. Remaining paired-system checks are documented in the follow-up.
 
-- Current root/Client branch is `macos-quit-lifecycle`, candidate
+- GitHub Actions update is approved and merged through root PR #8: merge
+  `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
+  `2be3d797046df177589cb0c1b97e3cb5d109ade1`, including the merged Rustls
+  update. Checkout and artifact upload move to 7.0.1; cache restore/save move
+  to 6.1.0. All use Node24 and verified upstream full commit-SHA pins. The two
+  existing policy tests' reviewed hashes and stale cache comments are updated;
+  read-only permissions, credential persistence off, exact cache checks, PR
+  cache-write exclusion and signing isolation are unchanged. Local validation:
+  42 policy tests and eight negative controls pass. Hosted runs `35274932266`
+  and `35274938316` both passed all four platforms plus policy/privacy checks.
+  Existing Mac Host cache restore/verification and new Mac Client/Linux Client/
+  Linux Host cache saves succeeded. Client cache misses preceded publication
+  of their identical new mainline cache keys; they were not an Action format
+  incompatibility. Downloaded DEB/RPM catalogs passed checksum, exact-source,
+  gitlink and branch-qualified version checks. Mac jobs were unsigned; no
+  signing, release publication, deployment or hardware qualification performed.
+  No product code, dependency gitlink or package version changes in this
+  CI-only update. The automatic post-merge mainline build is separate from
+  these completed PR checks; do not relabel the candidate packages.
+
+- Rustls security update is approved and merged through root PR #9: merge
+  `8f1ad75bede2fc6948315cb61d7ef380d29ff4df`, reviewed head
+  `617cecc6990b01967137536a744971cba94411cc`. Both production and standalone
+  probe locks now select 0.23.45, addressing upstream GHSA-2mjx-qc3c-rqvc.
+  A CI guard requires the two Rustls identities to remain synchronized.
+  Quinn's repaired path override, RaptorQ, all product gitlinks and media
+  behavior are unchanged. Package base advances to 1.0.125 for new build bytes;
+  no release or deployment is authorized by this dependency change alone.
+  Hosted runs `35272691429` and `35272698006` both passed all four platform
+  builds plus policy/privacy checks. Post-merge main run `35274307903` also
+  passed all four platforms. Mac signing is deliberately skipped for
+  these candidate checks. Local Rust 1.89.0 validation passed 21 unit tests,
+  the standalone probe locked check, 42 CI policy tests, native C ABI media/
+  control/closure checks, 40 repeated peer-close cases, and rejection of a
+  mismatched certificate fingerprint. The optimized 150 Mbps loopback loss
+  matrix passed at 0.5%, 1%, 2% and 5%. An initial debug run timed out during
+  concurrent local build activity; the unchanged baseline and an isolated
+  candidate debug rerun passed (about 148/150 seconds), as did the optimized
+  candidate (about four seconds). These are synthetic tests, not fresh
+  hardware/WAN qualification. No packages were deployed or release published.
+  Product pins remain Client `86682b5b596e5c31b81a6e2a4b238bb62dc6e42c`,
+  Host `9329784ac41f50cbec0c9d76badfd22227ec5e5f`, and Kymux
+  `912ece5c64787997f978673ca60d313898a3548c`; recursive pins are unchanged.
+  The operator's NVIDIA driver ceiling remains 595.91.07; this update changes
+  no NVIDIA dependency or requirement.
+
+  Separate follow-up: Kymux's audio UnreliableFec receiver can buffer completed
+  audio received before its configuration, then wait for another inbound
+  message before delivering it. A receiver-only reproduction at the production
+  Kymux pin demonstrates this without TLS/QUIC: config-first delivers audio;
+  datagrams-first delivers config but stalls the ready audio. Inspect
+  `kyproto/src/protocol/driver/av/audio_unreliable_fec.rs` before a separate fix.
+  This is a possible cause of the original intermittent macOS loopback timeout,
+  not proof of that run's ordering. The Rustls PR adds detailed failure output
+  only; assertions and the five-second deadline remain unchanged. Do not mask
+  this with retries or mix its runtime fix into a dependency-only update.
+
+- Dependency maintenance setup adds weekly Dependabot proposals to the root,
+  Host, Client, Kymux, build-deps and libvirtualhid repositories. Common-C's
+  maintained branches have no dependency manifests; do not resurrect its
+  inherited ENet tree to produce update PRs. Security alerts/security-fix PRs
+  are enabled for all seven public repositories; auto-merge stays off and
+  companion build workflows stay disabled. Build-deps/libvirtualhid proposals
+  target `plank/main`, with configuration also on the inherited default branch.
+  Host/Client common-C branch hints now name `plank/host` and `plank/client`.
+  No production gitlinks, library versions, lockfiles or packages change.
+  See `docs/development/dependency-maintenance.md` for manual pin coverage,
+  Quinn/Vulkan exceptions and the next advisory/upgrade review steps.
+  Validation: all six Dependabot configurations pass JSON-schema validation,
+  schedule/allowlist/target-branch checks; 41 root CI tests pass. Privacy and
+  whitespace checks pass. GitHub confirms alerts and security updates enabled,
+  auto-merge disabled, on all seven repositories. Configuration-only commits
+  are pushed (root gitlinks deliberately retain released source):
+
+  | Repository / branch | Maintenance commit |
+  | --- | --- |
+  | Host / main | `6bef0d706a787a36eb456343cb4c6a719947c93c` |
+  | Client / main | `174bc1ff99bf437cd84efa028590ddc481953851` |
+  | Kymux / main | `6f3df8e2c9eac41d4bc0ec9d3f1fc9cbf8d1a804` |
+  | Common-C / atomics (policy only) | `9707808a0a949eaa7713c02811b848ed98064221` |
+  | Build-deps / plank/main | `8956f6425b0e35b4038025be682d2ba1a0225b69` |
+  | Build-deps / master (activation only) | `5490628476568af75fd563ff097ad5d447ccbea3` |
+  | libvirtualhid / plank/main | `a74f9694fe4bec29a4643975ced6da4cdedbf04f` |
+  | libvirtualhid / master (activation only) | `62838758220d594d008d42e0c90e1210c49c1a79` |
+
+  Initial GitHub Dependabot jobs all completed successfully: root Cargo
+  `35270141576`, Actions `35270137176`, submodules `35270136847`; Host
+  `35270026662`, Client `35270030228`, Kymux `35270045661`, build-deps
+  `35270044386`, libvirtualhid `35270045226`. First update PRs are open on the
+  intended targets; none were merged. This validates automation, not the
+  proposed dependency versions. Root setup commit is
+  `6377245de4a1e82b201320877c0a7858fb87054f`. No candidate build or deployment
+  was needed for this configuration-only setup. Quinn automatic security-fix
+  PRs are also excluded by the explicit ignore rule; alerts still require
+  manual triage against the repaired production fork.
+
+- The operator accepted 1.0.123 and authorized commit, push, merge, rebuild
+  and release. Root and Client are on pushed main: package-source root
+  `cb01cfe84504d7a74dfa78c5b79d701c8277bf6e`, Client merge
+  `86682b5b596e5c31b81a6e2a4b238bb62dc6e42c`. Mainline 1.0.124 rebuilds all
+  four Host/Client packages on GitHub-hosted builders with dependency caching:
+  Linux Host 35186794247, Ubuntu Client 35186794278, signed Mac Host 35186794535,
+  signed Mac Client 35186794688. All four passed, restored independently
+  verified dependency caches, and produced fresh mainline packages. Both Mac
+  packages passed signing/notarization/stapling/Gatekeeper; Client native suite
+  totals were 19/21/7/9/8. Local 37 CI tests, five fullscreen and three lifecycle
+  guards, plus all five root CTest suites passed. All downloads were
+  SHA256-verified and collected under `artifacts/packages/releases/1.0.124/`.
+  Published [v1.0.124](https://github.com/instinctual/plank/releases/tag/v1.0.124)
+  as latest with four packages, manifest and checksums. All six GitHub asset
+  digests match local files. The annotated tag pins the exact package-source
+  root above, not subsequent documentation commits. No deployment performed.
+  See `docs/releases/1.0.124.md`. Client
+  merge contents match the accepted candidate exactly; Host/Kymux and recursive
+  pins are unchanged. Do not relabel candidate artifacts. Clipboard PRs and
+  unrelated primary-worktree RK3576 research remain excluded.
+
+  | Package | SHA256 |
+  | --- | --- |
+  | Linux Host RPM | `fafd9624125738f688cb0336efba754088f78e56ecccadfe67be7da21d205c43` |
+  | Ubuntu Client DEB | `855e9fbb1f66980d02aad5e1860f947940a17c26c08819e380be631f89e58308` |
+  | macOS Host PKG | `fa05b6c8414728f49a768d2eff3784157a18d5d5e7a6de5d36e2db9f5d4bf748` |
+  | macOS Client DMG | `a0c8564f3cfca02733e86b41d1dc7755a110b47778e83121f222a51f933919bf` |
+
+- Accepted root/Client candidate branch is `macos-quit-lifecycle`, candidate
   `1.0.123-macos-quit-lifecycle`. The operator accepted 1.0.122's behavior but
   requested a fresh implementation without the contributed Quit bridge.
   That bridge is deleted, not layered over. MacApplication explicitly owns
@@ -543,7 +701,7 @@ notes' README before machine-specific work; deployment information stays outside
 
 ## Release evidence
 
-Latest published release is **v1.0.121**, all four products, recorded above.
+Latest published release is **v1.0.124**, all four products, recorded above.
 The merged dependency-cache work extends hosted caches without runtime changes;
 qualification runs are separate from the published package source.
 

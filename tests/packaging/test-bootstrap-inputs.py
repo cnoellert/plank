@@ -40,15 +40,17 @@ class BootstrapInputs(unittest.TestCase):
                 'curl': '#!/bin/sh\nexit 99\n',
                 'nasm': '#!/bin/sh\nexit 99\n',
                 'pkg-config': '#!/bin/sh\nexit 99\n',
-                # This is a path/patch test, not a Linux toolchain test. BSD
-                # realpath lacks -m, including on the Mac Client builder.
+                # The Linux command syntax is part of the fixture; macOS's
+                # system realpath does not implement GNU -m.
                 'realpath': '#!/usr/bin/env python3\nfrom pathlib import Path\nimport sys\n'
-                    'print(Path(sys.argv[-1]).resolve())\n',
+                    'assert sys.argv[1:3] == ["-m", "--"] and len(sys.argv) == 4\n'
+                    'print(Path(sys.argv[3]).resolve())\n',
                 'patch': '#!/bin/sh\ncat >/dev/null\nexit 0\n',
-                'sha256sum': '#!/usr/bin/env python3\nimport hashlib,sys\nfrom pathlib import Path\ns=sys.stdin.read()\n'
+                'sha256sum': '#!/usr/bin/env python3\nimport hashlib,pathlib,sys\ns=sys.stdin.read()\n'
                     'if "ffmpeg-9.0.1.tar.xz" not in s:\n'
-                    ' expected, path = s.strip().split(None, 1)\n'
-                    ' sys.exit(0 if hashlib.sha256(Path(path).read_bytes()).hexdigest() == expected else 1)\n',
+                    ' expected, name = s.strip().split(maxsplit=1)\n'
+                    ' actual = hashlib.sha256(pathlib.Path(name.lstrip(" *")).read_bytes()).hexdigest()\n'
+                    ' sys.exit(0 if actual == expected else 1)\n',
             }.items():
                 program = commands / name
                 program.write_text(content)

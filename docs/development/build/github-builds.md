@@ -5,6 +5,12 @@ It runs on pushes, pull requests and manual dispatch. No self-hosted machine,
 deployment credential, private repository or signing secret is available to
 these jobs. Actions are pinned to commit IDs and receive read-only permissions.
 
+When reviewing an Actions dependency update, update the exact reviewed hashes
+in `tests/ci/test_context.py` and `tests/ci/test_dependency_cache.py` alongside
+the workflow pins and version comments. Verify upstream runtime/input changes
+and run all four platform jobs. Do not remove pin assertions or weaken
+credential/cache restrictions just to accept a Dependabot update.
+
 | Product | Environment | Result |
 | --- | --- | --- |
 | Linux Host | Pinned Rocky 9.7 container on Ubuntu runner | RPM and provenance catalog |

@@ -90,6 +90,15 @@ bash "$PLANK_SOURCE_ROOT/scripts/build/build-macos-client.sh" \
   "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/client-build"
 ```
 
+For repeated local Wacom tests, `stage-macos-client-dev.sh` can use a stable
+code-signing identity from the local keychain. Set
+`PLANK_MACOS_DEV_SIGNING_IDENTITY` to its 40-character SHA-1 identifier before
+staging. The default remains ad hoc signing. Every changed ad hoc build has a
+new `cdhash` requirement, so macOS may reject its prior Input Monitoring grant;
+the operator must approve any new grant through System Settings. A signed
+development app remains unnotarized and is not a distributable release. Do not
+put signing-key passwords in scripts or environment variables.
+
 For a self-contained drag-to-Applications DMG, in the signing SSH session:
 
 ```bash

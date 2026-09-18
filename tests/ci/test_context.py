@@ -94,7 +94,7 @@ class ContextTests(unittest.TestCase):
         for path in (ROOT / '.github/workflows').glob('*.yml'):
             workflow = path.read_text()
             for action in re.findall(r'uses: (actions/checkout@[^\s]+)', workflow):
-                self.assertEqual(action, 'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803')
+                self.assertEqual(action, 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1')
 
 
 if __name__ == '__main__':

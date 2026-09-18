@@ -53,7 +53,7 @@ qmake -r "$client/moonlight-qt.pro" CONFIG+=release CONFIG+=disable-prebuilts \
     "QMAKE_CFLAGS+=$PLANK_C_FILE_FLAGS" "QMAKE_CXXFLAGS+=$PLANK_C_FILE_FLAGS"
 make -j"${PLANK_BUILD_JOBS:-8}" release
 # Run shared topology and toolbar geometry on every Mac Client candidate.
-for suite in outputtopology planktoolbarlogic desktopstage macquitshortcut macapplication plankpresentation macrawwacom; do
+for suite in outputtopology planktoolbarlogic desktopstage macquitshortcut macapplication plankpresentation macrawwacom macclipboardsync; do
 mkdir -p "$build/tests/$suite"
 (
     cd "$build/tests/$suite"

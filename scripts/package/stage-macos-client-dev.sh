@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assemble an ad-hoc-signed app for local development. Never produces a release.
+# Assemble a locally signed app for development. Never produces a release.
 set -euo pipefail
 [[ $# == 3 && $1 == /* && $2 == /* && $3 == /* ]] || {
     echo 'usage: stage-macos-client-dev.sh SOURCE BUILD NEW_OUTPUT' >&2; exit 2;
@@ -8,6 +8,17 @@ source_root=$1
 build=$2
 output=$3
 : "${PLANK_QT_ROOT:?}" "${PLANK_MAC_CLIENT_DEPS:?}"
+signing_identity=${PLANK_MACOS_DEV_SIGNING_IDENTITY:--}
+signing_flags=(--force --sign "$signing_identity")
+if [[ $signing_identity != - ]]; then
+    [[ $signing_identity =~ ^[[:xdigit:]]{40}$ ]] || {
+        echo 'PLANK_MACOS_DEV_SIGNING_IDENTITY must be a code-signing SHA-1 identity' >&2; exit 2;
+    }
+    security find-identity -v -p codesigning | grep -Fq "$signing_identity" || {
+        echo 'PLANK_MACOS_DEV_SIGNING_IDENTITY is not available in the keychain' >&2; exit 2;
+    }
+    signing_flags+=(--options runtime --timestamp=none)
+fi
 source "$source_root/scripts/build/macos-client-target.sh"
 plank_macos_client_target
 bash "$source_root/scripts/build/build-macos-client.sh" "$source_root" "$build"
@@ -41,15 +52,21 @@ while IFS= read -r -d '' binary; do
     if otool -L "$binary" | tail -n +2 | grep -E '^[[:space:]]+/(Users|opt|usr/local)/'; then
         echo 'Development app has an unbundled dependency' >&2; exit 1
     fi
-    codesign --force --sign - "$binary"
+    codesign "${signing_flags[@]}" "$binary"
 done < <(find "$app" -type f -print0)
 while IFS= read -r -d '' framework; do
-    codesign --force --sign - "$framework"
+    codesign "${signing_flags[@]}" "$framework"
 done < <(find "$app" -depth -type d -name '*.framework' -print0)
 python3 "$source_root/scripts/test/check-macos-client-target.py" \
     "$app" --target "$PLANK_MAC_CLIENT_MIN_MACOS" > "$output/client-targets.json"
 python3 "$source_root/scripts/test/check-package-build-paths.py" "$app"
-codesign --force --sign - "$app"
+codesign "${signing_flags[@]}" "$app"
 codesign --verify --deep --strict "$app"
+if [[ $signing_identity != - ]]; then
+    requirement=$(codesign -d -r- "$app" 2>&1)
+    [[ $requirement != *'cdhash'* ]] || {
+        echo 'Development app did not receive a stable signing requirement' >&2; exit 1;
+    }
+fi
 QT_QPA_PLATFORM=offscreen "$app/Contents/MacOS/plank-client" --version
 echo 'macos_client_development_app=pass notarized=no live_session=untested'
