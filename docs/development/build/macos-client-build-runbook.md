@@ -136,8 +136,12 @@ the app to Trash. Host installation/permissions are separate and unchanged.
   Core Graphics modifying tap queues keyboard input for the existing input
   handler; it does not post synthetic OS input or change global preferences.
   Native stream focus, the fullscreen/always policy, and capture release gate
-  activation. Missing permission prompts once per process; a one-second
-  main-run-loop check detects authorization changes. Revocation, tap timeout,
+  activation. Missing permission prompts once per process in the ordinary
+  launcher at startup (only if shortcut capture is enabled), or when enabled
+  later in Settings. CLI autoconnect never prompts; open the ordinary launcher
+  first to authorize it. Session creation, focus changes and permission
+  revocation never display permission UI. A silent one-second main-run-loop
+  check detects authorization changes. Revocation, tap timeout,
   focus loss, queue failure and teardown discard pending input and release
   remote keys. Capture is retried only after rechecking permission and focus.
   Ctrl+Alt+Shift+Z remains the release toggle; mouse/trackpad gestures, Fn/media

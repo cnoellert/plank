@@ -32,6 +32,24 @@ class MacKeyboardCapture(unittest.TestCase):
         session = (CLIENT / "app/streaming/session.cpp").read_text()
         self.assertIn("m_InputHandler->handleCapturedMacKeyEvent(event)", session)
 
+    def test_permission_requested_before_session_not_by_capture(self):
+        main = (CLIENT / "app/main.cpp").read_text()
+        self.assertIn("Session::get() == nullptr", main)
+        self.assertIn("&StreamingPreferences::captureSysKeysModeChanged", main)
+        self.assertIn("captureSysKeysMode != StreamingPreferences::CSK_OFF", main)
+        startup = main.index("auto requestKeyboardPermission =")
+        load = main.index('engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")))')
+        self.assertLess(startup, load)
+        self.assertIn("GlobalCommandLineParser::NormalStartRequested", main[startup:load])
+        self.assertIn("requestKeyboardPermission();", main[startup:load])
+        source = (CLIENT / "app/streaming/mackeyboardcapture.mm").read_text()
+        state = source[source.index("struct MacKeyboardCapture::State"):source.index(
+            "void MacKeyboardCapture::requestPermissionIfNeeded")]
+        self.assertNotIn("AXIsProcessTrustedWithOptions", state)
+        self.assertNotIn("requestTrust", state)
+        self.assertNotIn("requestPermissionIfNeeded", state)
+        self.assertEqual(source.count("AXIsProcessTrustedWithOptions"), 1)
+
     def test_mac_suite_is_mandatory(self):
         build = (ROOT / "scripts/build/build-macos-client.sh").read_text()
         self.assertIn("macapplication mackeyboardcapture plankpresentation", build)

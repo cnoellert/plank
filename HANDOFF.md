@@ -1,5 +1,26 @@
 # PLANK handoff
 
+## Accessibility prompt timing — in progress
+
+The operator confirmed 1.0.133 hotkey forwarding works, but the permission
+dialog appeared after connection and was difficult to reach with the captured
+pointer. Follow-up 1.0.134-pr-integration moves the request to ordinary app
+startup when shortcut capture is enabled, before loading the connection UI.
+Enabling the existing setting while idle also requests it. Already-approved
+permission does not prompt; requests are limited to one per app run. CLI
+autoconnect requires prior authorization from the ordinary launcher and never
+opens a permission dialog behind a stream. Session permission monitoring is
+silent, including revocation and reconnection; the accepted capture path is
+unchanged. New prompt-policy tests cover disabled capture, existing permission
+and once-only behavior. Build/signing and timing acceptance are pending.
+
+The operator elected to reboot the hardware test Host manually after the
+display-topology failure below. No remote restart or Host change was performed.
+The .131-trigger question remains open: relevant lease and validation code are
+unchanged from .124, but the upgrade/restart path could expose an older defect.
+Do not dismiss the timing or call the reboot a permanent repair; retest the same
+bookmark and login-to-desktop transition after the operator's reboot.
+
 ## Mac system shortcut capture — ready for testing
 
 The operator authorized the Accessibility-based Client fix for system shortcuts.
