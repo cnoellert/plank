@@ -58,16 +58,17 @@ Those observations do not establish the final review head as live-accepted.
 ## Dependencies and review state
 
 - [common-C PR #3](https://github.com/instinctual/plank-common-c/pull/3)
-  supplies the queue-order and release-delivery fix. Its source commit must be
-  reachable from the canonical submodule URL before the root gitlink can merge.
+  was merged and supplies the queue-order and release-delivery fix. Its source
+  commit is now reachable from the canonical submodule URL.
 - [Client PR #3](https://github.com/instinctual/plank-client/pull/3) contains
   the Mac-specific implementation and the common-C pin. Its current review
   branch is being narrowed to the Mac scope.
 - [root PR #4](https://github.com/instinctual/plank/pull/4) coordinates the
   Client pin, optional target build paths, focused tests and this evidence.
 - [libvirtualhid PR #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
-  is a separate approved Pause-key correction for Linux; it is not a Mac Client
-  dependency.
+  was merged as a separate Pause-key correction for Linux; it is not a Mac
+  Client dependency. The Linux Host dependency pin is in
+  [Host PR #7](https://github.com/instinctual/plank-host-linux/pull/7).
 
 Upstream Client `86682b5` and root `cb01cfe` were merged into the review
 branches. The upstream Quit implementation replaced the earlier bridge; Mac
