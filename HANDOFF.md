@@ -1,11 +1,15 @@
 # PLANK handoff
 
-## Active work: Mac Host clipboard / 1.0.136 candidate
+## Accepted clipboard changes: merged, not yet released
 
-The operator authorized Mac Host ↔ Mac Client plain-text clipboard, a shared
-512 KiB limit, outgoing validation and queue-pressure repairs. Work is on
-`macos-host-clipboard` in `build/worktrees/pr-integration`, not the unrelated
-primary `rk3576-client` checkout. Do not merge/release before paired acceptance.
+The operator reported that the clipboard changes work, accepted them and
+authorized merge. Mac Host ↔ Mac Client plain-text clipboard, the shared
+512 KiB limit, outgoing validation and queue-pressure repairs are now merged
+into main. Common-C changes were fast-forwarded into its maintained
+`plank/client` and `plank/host` branches first, followed by Client, Linux Host
+and the parent repository. No tested code or gitlink changed during merging.
+Work is in `build/worktrees/pr-integration` on main, not the unrelated primary
+`rk3576-client` checkout. This merge does not publish a release or deploy software.
 See [the plan](docs/development/plans/macos-host-clipboard.plan).
 
 Implementation adds a desktop-worker-only native pasteboard backend and Mac
@@ -17,8 +21,10 @@ retains unsent chunks rather than restarting a copy or disconnecting video.
 Clipboard contents never enter logs; teardown preserves newer local copies.
 
 Candidate package-source root is `16c5b99817747ab76d25741fbce37d3399907366`.
-Changes are committed/pushed on feature branches; later evidence-only notes do
-not change package provenance. Changed recursive pins:
+The accepted feature tip is `a949440792afa978d1172b8a906a8306243e614f`;
+it and the following recursive pins are now on their maintained branches.
+Later acceptance-only notes do not change candidate package provenance.
+Changed recursive pins:
 
 | Input | Commit |
 | --- | --- |
@@ -54,12 +60,14 @@ SHA256 is `e90bae689aaaa6b034355626c9da01b157962aac3687200eee69356ed2c0fa3d`;
 Mac Client DMG is `e356a68e6be2d3d7417682772d656e6a70fa7b90343264ed8757bd1a4c0c45ef`;
 Linux Client DEB is `4719c2b2cafe66b1bbe3112c7fc488565bd5620d9cf6cc6db474d1d0c6a32e72`;
 Linux Host RPM is `ebc73b52dfb55a2e4ced0cb66b0525681ff057c0955deeefd22dcfab328eeed9`.
-No package was installed and no production machine was changed.
+The agent did not install packages or modify a production machine. The operator
+tested and accepted the candidate; individual stress cases were not enumerated.
 
-Next: paired Mac↔Mac and Mac↔Linux acceptance, large/interrupted transfers,
-Spaces/focus and login/logout/reconnect
-ownership. Use matching candidate peers because Mac launch schema 3 is a
-coordinated change. Immediate-paste ordering remains an explicit live gate:
+Merge is complete. A new mainline package/release build is a separate next step;
+do not relabel the accepted branch artifacts. Keep large/interrupted transfers,
+Spaces/focus and login/logout/reconnect ownership in the qualification matrix.
+Use matching peers because Mac launch schema 3 is a coordinated change.
+Immediate-paste ordering remains an explicit stress gate:
 native pasteboard writes are asynchronous and no applied-write acknowledgment
 exists; queue-retry tests alone do not establish an atomic paste guarantee.
 
@@ -110,7 +118,7 @@ the packages, manifest and flat-filename release checksum file.
 | `macos/plank-host_1.0.135_arm64.pkg` | 6613304 | `811452516a1688b685216e0abcdccb497bf0dc67b2c91915545bc03e49599245` |
 | `macos/plank-client_1.0.135_arm64.dmg` | 86618191 | `e910f0b39573ea0cfba5f45c4d42a651d6dfe9879fed2d05bedd703060601803` |
 
-Release work is complete; active candidate work is described above. Remaining
+The published release remains unchanged; the accepted clipboard merge is above. Remaining
 qualification items below are not claims of failed acceptance or authority to
 disrupt a live machine. No unrelated branch cleanup or pending-PR merge occurred.
 
@@ -168,7 +176,7 @@ Focused details:
 [dependency maintenance](docs/development/dependency-maintenance.md),
 [Mac Client runbook](docs/development/build/macos-client-build-runbook.md).
 
-## Exact maintained source pins
+## Published 1.0.135 source pins
 
 Package root `af74d8b8fdf9bb58cf096eeb10fb5aaba01a19d4` and these immutable
 gitlinks identify the complete recursive source; no dependency is selected by a
@@ -234,7 +242,7 @@ with that unmerged preference. Mac Host support below27 is discussion only.
 ## Workspace and build policy
 
 Release work is in the separate `build/worktrees/pr-integration` directory,
-currently on `macos-host-clipboard`; its directory name is not the branch. The primary
+currently on `main`; its directory name is not the branch. The primary
 checkout remains unrelated `rk3576-client` research with uncommitted notes and
 diagnostics. Preserve it. Do not clean or switch that checkout during release.
 Other review worktrees/branches are not permission for a broad cleanup.

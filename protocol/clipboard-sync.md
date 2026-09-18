@@ -1,7 +1,8 @@
 # Clipboard sync v1
 
-Status: Mac Client ↔ Linux X11 Host is operator-accepted. Mac Host support and
-the 512 KiB hardening are candidate changes requiring paired live qualification.
+Status: Mac Client ↔ Linux X11 Host and Mac Client ↔ Mac Host support, including
+the 512 KiB hardening, are operator-accepted and merged. Large/interrupted
+transfer and lifecycle stress qualification remain separate from broad acceptance.
 
 ## Scope
 
