@@ -36,3 +36,29 @@ Build branch-qualified Host/Client candidates on hosted builders. Compilation
 is not live acceptance: paired Mac copy/paste, Linux regression, Spaces, user
 transitions and permission denial require interactive qualification. Do not
 merge or publish a release before acceptance.
+
+Include an immediate paste after a new copy, both at ordinary size and the
+512 KiB limit. Reliable chunk ordering is preserved, but completion of a native
+pasteboard write is asynchronous and the protocol has no applied-write
+acknowledgment. Queue-pressure tests prove transfer resumption, not atomic
+ordering between that write and a following paste keystroke. Do not claim that
+stronger guarantee from isolated tests.
+
+## Paired acceptance procedure
+
+- Install the matching candidate Mac Host and Mac Client. This is a coordinated
+  launch-schema update, not an old-peer compatibility test.
+- Copy multiline Unicode text from a local editor, return to the stream and
+  paste into a remote editor. Reverse the direction, leaving the stream with
+  the normal Spaces gesture before pasting into the local editor.
+- Repeat A→B→A, immediate copy/paste, a 512 KiB UTF-8 copy and a 512 KiB+1 copy.
+  Exact-limit text must arrive intact; oversize text must not be truncated or
+  partly replace the destination clipboard.
+- Disconnect/reconnect and log out/in. No clipboard traffic is negotiated for
+  LoginWindow; a desktop stream resumes normal behavior. Remotely owned text
+  is cleared on teardown, while text newly copied locally remains.
+- With matching Linux Host installed, repeat both Mac↔Linux directions. Verify
+  the Linux Client still connects to the Mac Host with clipboard disabled.
+- Confirm video, audio, keyboard/Spaces shortcuts, mouse and Wacom behavior
+  remain unchanged. Record native clipboard permission prompts or denial as
+  observed results, not as permission to bypass platform policy.

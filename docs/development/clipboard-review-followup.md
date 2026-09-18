@@ -1,5 +1,12 @@
 # Clipboard review follow-up
 
+This records the original Linux clipboard review and its historical 1 MiB
+limit. The `1.0.136-macos-host-clipboard` candidate reduces the limit to 512 KiB
+and adds native Mac Host support; see the current
+[clipboard contract](../../protocol/clipboard-sync.md) and
+[candidate plan](plans/macos-host-clipboard.plan). The older evidence below is
+not acceptance of that candidate.
+
 Alan's September 17 review identified four Client and four Linux Host blockers.
 The earlier green package builds did not demonstrate that these bugs were fixed.
 The focused contributions remain in [Client PR #2](https://github.com/instinctual/plank-client/pull/2),

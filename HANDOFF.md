@@ -16,20 +16,52 @@ Linux Host and Mac Client use that validator too. Transient queue pressure
 retains unsent chunks rather than restarting a copy or disconnecting video.
 Clipboard contents never enter logs; teardown preserves newer local copies.
 
-Candidate Client `6663d569`, Linux Host `b8abf72c`, Client common-C `ef8ac14`,
-Host header-only common-C `3a97a58` are committed/pushed on feature branches.
+Candidate package-source root is `16c5b99817747ab76d25741fbce37d3399907366`.
+Changes are committed/pushed on feature branches; later evidence-only notes do
+not change package provenance. Changed recursive pins:
+
+| Input | Commit |
+| --- | --- |
+| Client | `6663d5692ecf9eaa12f401b3d3a7781103ae2f1b` |
+| Linux Host | `b8abf72c2b41c96edab4c62303a97bd3464de9ea` |
+| Client common-C | `ef8ac14c87ce3dc6fa2bc1f4a08f6e61371739d1` |
+| Host header-only common-C | `3a97a58f215323753cfd1180af760ec7e3253538` |
+
 Other dependencies remain at the release pins below. Portable wire tests passed
 under ASan/UBSan, C11/C++17 ABI checks passed, as did 43 CI-policy tests and six
-portable CTest suites. Initial hosted run35354919985 passed both Mac builds
-(including native clipboard tests) and the Linux Client build; Linux Host was
-still running at this checkpoint. Clipboard run35354920003 exposed missing
-sanitizer development libraries in the disposable test container; those are now
-explicit test prerequisites. The 512 KiB cumulative-X11-overflow fixture and
-shared Client frame-validation cleanup also require the next exact-source run.
-No signed candidate artifact, deployment or live acceptance is claimed.
-Next: finish exact-source hosted validation, collect branch-qualified packages,
-then test Mac↔Mac, Mac↔Linux, large/interrupted transfers, Spaces/focus and
-login/logout/reconnect ownership. No production machine was changed.
+portable CTest suites.
+
+| Gate | Hosted run | State |
+| --- | --- | --- |
+| Four-product ordinary build | 35355443932 | Passed |
+| Signed/notarized Mac Host | 35355443904 | Passed |
+| Signed/notarized Mac Client | 35355447200 | Passed |
+| Privacy checks | 35355443955 | Passed |
+| Clipboard regressions | 35355443952 | Passed |
+
+The signed Client passed all 156 native Qt results, including 23 clipboard
+results. The Mac Host passed its named-pasteboard tests (bidirectional data,
+queue pressure, generations, ownership and denied authority). The Linux Xvfb
+suite passed 13 backend cases and five negative controls, including exact 512 KiB,
+cumulative overflow and timeout recovery. Shared wire validation passed under
+ASan/UBSan. Both signed Mac jobs passed notarization, stapling, package checks
+and temporary-key cleanup. These are not live hardware acceptance claims.
+
+Verified packages are in
+`artifacts/packages/candidates/1.0.136-macos-host-clipboard/`; the manifest
+records source, target OS, checksums and package-only validation. Mac Host PKG
+SHA256 is `e90bae689aaaa6b034355626c9da01b157962aac3687200eee69356ed2c0fa3d`;
+Mac Client DMG is `e356a68e6be2d3d7417682772d656e6a70fa7b90343264ed8757bd1a4c0c45ef`;
+Linux Client DEB is `4719c2b2cafe66b1bbe3112c7fc488565bd5620d9cf6cc6db474d1d0c6a32e72`;
+Linux Host RPM is `ebc73b52dfb55a2e4ced0cb66b0525681ff057c0955deeefd22dcfab328eeed9`.
+No package was installed and no production machine was changed.
+
+Next: paired Mac↔Mac and Mac↔Linux acceptance, large/interrupted transfers,
+Spaces/focus and login/logout/reconnect
+ownership. Use matching candidate peers because Mac launch schema 3 is a
+coordinated change. Immediate-paste ordering remains an explicit live gate:
+native pasteboard writes are asynchronous and no applied-write acknowledgment
+exists; queue-retry tests alone do not establish an atomic paste guarantee.
 
 ## Current release: 1.0.135
 
