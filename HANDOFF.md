@@ -1,5 +1,38 @@
 # PLANK handoff
 
+## Active candidate: immediate Linux mouse buttons
+
+Work is isolated on root `host-input-release`, based on main `51cd817`, in
+`build/worktrees/host-input-release`. Linux Host source is
+`cd738510c6588aa086746cf00dca93c17c6bea73`, a follow-up to
+[Host PR #8](https://github.com/instinctual/plank-host-linux/pull/8).
+The operator explicitly chose to remove the inherited absolute-mouse delayed
+left-release/synthetic-right-click workaround instead of retaining the timer
+and extending its disconnect cleanup. The agreed rationale is posted on the PR.
+
+The candidate removes that timer, sentinel values and pending-release state.
+Mouse transitions now reach the platform backend synchronously in their
+received order. Held-button disconnect cleanup and the stale connection-lease
+check remain. Keyboard, scrolling, normalized pen, raw-HID Wacom, Client and
+transport code/pins are unchanged. This does not claim to repair every previous
+input issue or all pre-existing concurrency between stream replacement and
+cleanup. The unrelated `linux-fast-send` candidate is not included.
+
+Candidate version is `1.0.139-host-input-release`. Hosted Rocky build/test
+validation is pending. CI now builds and repeats the fake-backend input suites
+25 times with shuffled order after producing the ordinary `BUILD_TESTS=OFF`
+RPM. Tests cover immediate releases, right-button holds, rapid clicks, cleanup,
+stale leases and reconnects; fixture teardown removes test-owned callbacks and
+held input before replacing the fake backend. Missing UHID hardware is a skip.
+Local CI-policy tests (43), shell syntax and whitespace checks passed.
+
+No deployment, live mouse/Wacom acceptance, merge or release has occurred.
+Obtain the operator's current Host/Client hardware pair and installation window
+before interrupting a session. Test mouse clicks, held-button drags, right-click
+menus and repeated disconnect/reconnect, then real Wacom tip/buttons/pressure
+and tablet margins. Do not substitute the fake backend for those live gates.
+The original RK3576 research checkout and Linux fast-send worktree are preserved.
+
 ## Current release: 1.0.137
 
 The operator requested rebuilding all public Host/Client packages and publishing
@@ -164,8 +197,8 @@ with that unmerged preference. Mac Host support below27 is discussion only.
 
 ## Workspace and build policy
 
-Release work is in the separate `build/worktrees/pr-integration` directory,
-currently on `main`; its directory name is not the branch. The primary
+The earlier release used `build/worktrees/pr-integration`, now occupied by
+the independent `linux-fast-send` candidate; its directory name is not the branch. The primary
 checkout remains unrelated `rk3576-client` research with uncommitted notes and
 diagnostics. Preserve it. Do not clean or switch that checkout during release.
 Other review worktrees/branches are not permission for a broad cleanup.

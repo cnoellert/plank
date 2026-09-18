@@ -12,6 +12,7 @@ case $role in
     mkdir -p "$PLANK_SOURCE_ROOT/apps/host/linux/cmake-build-ffmpeg-x264rgb-install" "$PLANK_WORK_ROOT/tmp"
     ln -s "$PLANK_HOST_FFMPEG_ROOT" "$PLANK_SOURCE_ROOT/apps/host/linux/cmake-build-ffmpeg-x264rgb-install/ffmpeg"
     TMPDIR="$PLANK_WORK_ROOT/tmp" bash "$PLANK_SOURCE_ROOT/scripts/package/build-host-rpm.sh" "$PLANK_WORK_ROOT/host-build" "$PLANK_WORK_ROOT/host-package"
+    bash "$PLANK_SOURCE_ROOT/scripts/ci/test-linux-host-input.sh" "$PLANK_WORK_ROOT/host-build"
     ;;
   linux-client)
     bash "$PLANK_SOURCE_ROOT/scripts/build/build-client-package-binaries.sh" \
