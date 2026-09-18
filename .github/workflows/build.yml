@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - run: python3 -m unittest discover -s tests/ci -v
@@ -67,7 +67,7 @@ jobs:
             --repofrompath=ci-appstream,https://dl.rockylinux.org/vault/rocky/9.7/AppStream/x86_64/os/ \
             --enablerepo=ci-baseos --enablerepo=ci-appstream \
             install -y git tar gzip python3 dnf-plugins-core
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -80,7 +80,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -101,11 +101,11 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product linux-host --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-host-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PLANK_ARTIFACT_ROOT }}/
@@ -124,7 +124,7 @@ jobs:
       PLANK_BUILD_JOBS: '4'
       QT_QPA_PLATFORM: offscreen
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -137,7 +137,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -158,11 +158,11 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product linux-client --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-client-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PLANK_ARTIFACT_ROOT }}/
@@ -184,7 +184,7 @@ jobs:
     env:
       PLANK_BUILD_JOBS: '3'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -203,7 +203,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -224,7 +224,7 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product macos-${{ matrix.product }} --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -244,7 +244,7 @@ jobs:
       PLANK_CI_PRODUCT: ${{ inputs.product }}
       PLANK_BUILD_JOBS: '3'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -262,7 +262,7 @@ jobs:
       - name: Restore dependencies
         if: ${{ inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap }}
         id: deps-cache
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
@@ -294,11 +294,11 @@ jobs:
         run: python3 scripts/ci/cache-dependencies.py seal --product "$PLANK_CI_PRODUCT" --key "$CACHE_KEY"
       - name: Save dependencies
         if: ${{ success() && inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5, Node24
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
         with:
           key: ${{ steps.deps-key.outputs.key }}
           path: ${{ steps.deps-key.outputs.paths }}
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signed-${{ inputs.product }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PLANK_ARTIFACT_ROOT }}/
