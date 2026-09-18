@@ -15,10 +15,21 @@ actual outgoing policy and check reconstructed payloads/order through controlled
 receiver-side loss. Package builds run unit/native/C ABI tests with the same
 features as the Host archive and verify a fast-send binary marker.
 
-Validation/build are pending. No hardware installation, live acceptance, merge
-or release has occurred. The next steps are automated gates, a hosted branch RPM,
-then coordinated ten-minute live baseline/candidate soaks and receiver-side loss.
-Do not treat an idle build job or synthetic traffic as a live playback result.
+Initial implementation root is
+`94e3009f1bb6e2e59bfed12a851cc37c3ce2d9b7`, pushed to the feature branch.
+All 48 local CI-policy tests, seven portable CTest suites, shell syntax and
+whitespace/privacy checks pass. In hosted run 35367054974, both Clients and Mac
+Host passed. Linux Host compiled and passed all 24 selected Rust unit tests,
+but its native loopback still unconditionally required an application pacing
+delay. That assertion now applies only when the selected policy attaches a
+pacer. Loss-matrix/C ABI/package gates were not reached; no RPM was produced.
+Rebuild the corrected Linux candidate before collecting it. No submodule pin
+changed, and live performance/FEC acceptance remains pending.
+
+No hardware installation, live acceptance, merge or release has occurred.
+The operator has been asked to identify an available Host/Client pair for
+coordinated ten-minute live baseline/candidate soaks and receiver-side loss.
+Do not interrupt a live session or treat synthetic traffic as live playback.
 
 ## Current release: 1.0.137
 

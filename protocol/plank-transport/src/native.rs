@@ -647,10 +647,12 @@ mod tests {
             }))
             .await
             .expect("failed to send native RaptorQ video frame");
-        assert!(
-            video_send_started.elapsed() >= Duration::from_millis(5),
-            "native RaptorQ symbols bypassed the pre-Quinn pacer"
-        );
+        if server_options.datagram_pacer.is_some() {
+            assert!(
+                video_send_started.elapsed() >= Duration::from_millis(5),
+                "native RaptorQ symbols bypassed the pre-Quinn pacer"
+            );
+        }
 
         let received_video_codec =
             tokio::time::timeout(Duration::from_secs(5), client_video.recv.recv())
