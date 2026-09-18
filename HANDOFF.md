@@ -12,9 +12,16 @@ notes' README before machine-specific work; deployment information stays outside
   bounded polling, a five-second transfer deadline and the 1 MiB cap. Canonical
   PLANK dependency URLs and merged common-C pins are restored; accepted main
   changes are retained. See `docs/development/clipboard-review-followup.md`.
-  Thirteen isolated Xvfb cases, five negative controls and 42 CI policy checks
-  pass. Hosted CI validation is pending. No deployment, live clipboard
-  acceptance, approval, or merge is implied by this checkpoint.
+  Exact Client: `f13654d329eec4c099e6eb848ae886f04050f2cc`; Linux Host:
+  `7771aba399b6853c7cb37aed300bc1aefb16be36`. Common-C Host/Client pins are
+  `88fd5ac594ce9fa8b7e01530a7830aba3fc0b986` /
+  `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`; mDNS remains
+  `920c097ffa742e2968290f15d4dde6693aec02e5`. Other recursive pins are unchanged.
+  Thirteen isolated Xvfb cases, five negative controls, 42 CI policy checks and
+  all five root CTest suites pass. Hosted X11 run `35290252469` and privacy
+  checks pass at root `b0026c503f713016901bc5650a22371a4b7e1ef1`. All-platform
+  unsigned build run `35290252364` is in progress at that source. No deployment,
+  live clipboard acceptance, approval, or merge is implied by this checkpoint.
 
 - GitHub Actions update is approved and merged through root PR #8: merge
   `7a86b907ec2e80907198cb55cf2b57f8d77de5ab`, reviewed head
