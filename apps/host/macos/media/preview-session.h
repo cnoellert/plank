@@ -42,6 +42,9 @@ typedef NS_ENUM(unsigned, PLANKMacPreviewState) {
                          capture:(id<PLANKMacPreviewCapture>)capture
                            input:(id<PLANKMacInputDevice>)input;
 @property(atomic, readonly) PLANKMacPreviewState state;
+// First terminal cause, made only from internal labels/numeric status codes.
+// Never contains credentials, clipboard contents or input payload values.
+@property(atomic, readonly, copy) NSString *stopReason;
 @property(readonly) BOOL clipboardEnabled;
 // Secret for the authenticated HTTPS launch reply only; never log/persist.
 @property(atomic, readonly, copy) NSString *transportToken;

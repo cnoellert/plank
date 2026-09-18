@@ -22,7 +22,7 @@ case ${PLANK_CLIENT_FRAME_FLOW_TRACE:-0} in
   *) echo "PLANK_CLIENT_FRAME_FLOW_TRACE must be 0 or 1" >&2; exit 2 ;;
 esac
 
-for command_name in c++ cargo cmp diff find git make mktemp nm patch pkg-config qmake6 readelf realpath rg rustc sha256sum stat tar timeout; do
+for command_name in cc c++ cargo cmp diff find git make mktemp nm patch pkg-config qmake6 readelf realpath rg rustc sha256sum stat tar timeout; do
   command -v "$command_name" >/dev/null || {
     echo "required command is unavailable: ${command_name}" >&2
     exit 1
@@ -1745,6 +1745,16 @@ client_binary="${build_dir}/app/plank-client"
   echo "PLANK client package binary was not produced" >&2
   exit 1
 }
+# Validate inclusive coordinates and ordered edge drags through the exact
+# queued input library linked into this candidate, without a desktop or host.
+mkdir -p "$build_dir/tests"
+cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -DNDEBUG \
+  -I"$source_dir/moonlight-common-c/moonlight-common-c/src" \
+  -I"$plank_transport_dir/include" \
+  "$source_dir/moonlight-common-c/moonlight-common-c/tests/native-input-bounds.c" \
+  "$build_dir/moonlight-common-c/libmoonlight-common-c.a" \
+  -lcrypto -lpthread -lm -o "$build_dir/tests/native-input-bounds"
+"$build_dir/tests/native-input-bounds"
 rg -a -Fq 'Packed 4:4:4 requires composed VAAPI layers' \
   "$client_binary" || {
   echo "client binary is missing the exact VAAPI EGL identity frontend" >&2

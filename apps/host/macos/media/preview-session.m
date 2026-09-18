@@ -52,6 +52,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 
 @interface PLANKMacPreviewSession ()
 @property(atomic, readwrite) PLANKMacPreviewState state;
+@property(atomic, readwrite, copy) NSString *stopReason;
 @end
 
 @implementation PLANKMacPreviewSession {
@@ -125,7 +126,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         if (self.state != PLANKMacPreviewPrepared) return;
         self.state = PLANKMacPreviewConnecting;
         if (plank_transport_native_endpoint_start(self->_endpoint) != PLANK_TRANSPORT_OK) {
-            [self stopOnQueue]; return;
+            [self stopOnQueueForReason:@"transport-start-failed"]; return;
         }
         __weak typeof(self) weakSelf = self;
         self->_watch = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, self->_queue);
@@ -143,14 +144,15 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         PLANKMacAccountIdentity identity = {0};
         // Also prunes an expired pending lease before QUIC has authenticated.
         BOOL active = [_sessions authorizeStreamLease:_lease identity:&identity];
-        if (!_lease.transportToken || ![_selected isEqual:_topology()]) { [self stopOnQueue]; return; }
+        if (!_lease.transportToken) { [self stopOnQueueForReason:@"lease-ended"]; return; }
+        if (![_selected isEqual:_topology()]) { [self stopOnQueueForReason:@"topology-changed"]; return; }
         uint32_t state = plank_transport_native_endpoint_state(_endpoint);
         if (state == PLANK_TRANSPORT_STATE_FAILED || state == PLANK_TRANSPORT_STATE_STOPPING ||
             state == PLANK_TRANSPORT_STATE_STOPPED || state == PLANK_TRANSPORT_STATE_INVALID) {
-            [self stopOnQueue]; return;
+            [self stopOnQueueForReason:@"transport-ended"]; return;
         }
         if (self.state == PLANKMacPreviewConnecting && !_captureStarted && state == PLANK_TRANSPORT_STATE_READY) {
-            if (![_sessions activateStreamLease:_lease]) { [self stopOnQueue]; return; }
+            if (![_sessions activateStreamLease:_lease]) { [self stopOnQueueForReason:@"lease-activation-failed"]; return; }
             __weak typeof(self) weakSelf = self;
             _video = [[PLANKMacNativeVideo alloc] initWithEndpoint:_endpoint sessions:_sessions lease:_lease
                 width:[_selected[@"capture"][@"width"] intValue] height:[_selected[@"capture"][@"height"] intValue]
@@ -172,7 +174,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                 } deliver:^(CGEventRef event, BOOL userActivity) {
                     [device postEvent:event userActivity:userActivity];
                 }];
-            if (!_video || !_audio || !_input) { [self stopOnQueue]; return; }
+            if (!_video || !_audio || !_input) { [self stopOnQueueForReason:@"media-input-initialization-failed"]; return; }
             _captureStarted = YES;
             _captureDeadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 5 * NSEC_PER_SEC;
             [_capture startWithTopology:_selected bitrate:_bitrate video:_video audio:_audio queue:_queue
@@ -181,19 +183,19 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                     if (!owner || owner.state != PLANKMacPreviewConnecting) return;
                     if (peak < owner->_bitrate ||
                         plank_transport_native_set_video_bitrate(owner->_endpoint, owner->_bitrate, peak) != PLANK_TRANSPORT_OK) {
-                        [owner stopOnQueue]; return;
+                        [owner stopOnQueueForReason:@"initial-bitrate-failed"]; return;
                     }
                     owner.state = PLANKMacPreviewStreaming;
                     [owner startClipboard];
                     [owner startInputReceiver];
                 }
-                failed:^{ [weakSelf stopOnQueue]; }];
+                failed:^{ [weakSelf stopOnQueueForReason:@"capture-failed"]; }];
         } else if (_captureStarted && !active) {
-            [self stopOnQueue]; return;
+            [self stopOnQueueForReason:@"stream-authorization-ended"]; return;
         }
-        if (_captureStarted && ![_inputDevice available]) { [self stopOnQueue]; return; }
+        if (_captureStarted && ![_inputDevice available]) { [self stopOnQueueForReason:@"input-permission-unavailable"]; return; }
         if (_captureStarted && self.state == PLANKMacPreviewConnecting &&
-            clock_gettime_nsec_np(CLOCK_MONOTONIC) >= _captureDeadline) { [self stopOnQueue]; return; }
+            clock_gettime_nsec_np(CLOCK_MONOTONIC) >= _captureDeadline) { [self stopOnQueueForReason:@"capture-start-timeout"]; return; }
         if (self.state == PLANKMacPreviewStreaming) {
             [self receiveControls];
             [self applyPendingBitrate];
@@ -238,7 +240,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         if (!owner || owner.state != PLANKMacPreviewStreaming) return;
         PLANKMacInputResult result = [owner->_input repeatAtTime:clock_gettime_nsec_np(CLOCK_UPTIME_RAW)];
         if (result == PLANKMacInputDenied || result == PLANKMacInputStopped || result == PLANKMacInputMalformed) {
-            [owner stopOnQueue]; return;
+            [owner stopOnQueueForReason:[NSString stringWithFormat:@"key-repeat-rejected result=%u", (unsigned)result]]; return;
         }
         [owner scheduleKeyRepeat];
     });
@@ -258,17 +260,21 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                 typeof(self) owner = weakSelf;
                 if (!owner || owner.state != PLANKMacPreviewStreaming) return;
                 if (result == PLANK_TRANSPORT_TIMEOUT) { keepGoing = YES; return; }
-                if (result != PLANK_TRANSPORT_OK) { [owner stopOnQueue]; return; }
+                if (result != PLANK_TRANSPORT_OK) {
+                    [owner stopOnQueueForReason:[NSString stringWithFormat:@"input-receive-failed result=%d", result]]; return;
+                }
                 if (type == PLANK_TRANSPORT_INPUT_CLIPBOARD_OFFER) {
                     if (!owner->_clipboard || ![owner->_clipboard receive:[NSData dataWithBytes:payload length:size]]) {
-                        [owner stopOnQueue]; return;
+                        [owner stopOnQueueForReason:@"clipboard-rejected"]; return;
                     }
                     keepGoing = YES; return;
                 }
                 PLANKMacInputResult delivered = [owner->_input consumeType:type
                     payload:[NSData dataWithBytes:payload length:size] time:clock_gettime_nsec_np(CLOCK_UPTIME_RAW)];
                 if (delivered == PLANKMacInputMalformed || delivered == PLANKMacInputDenied || delivered == PLANKMacInputStopped) {
-                    [owner stopOnQueue]; return;
+                    NSString *cause = delivered == PLANKMacInputMalformed ? @"malformed" :
+                        delivered == PLANKMacInputDenied ? @"denied" : @"stopped";
+                    [owner stopOnQueueForReason:[NSString stringWithFormat:@"input-%@ type=%u", cause, (unsigned)type]]; return;
                 }
                 [owner scheduleKeyRepeat];
                 keepGoing = YES; // Unsupported platform-specific keys do not become unrelated keys.
@@ -293,11 +299,14 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         int32_t result = plank_transport_native_data_receive(_endpoint, bytes, sizeof(bytes), &size, 0);
         if (result == PLANK_TRANSPORT_TIMEOUT) return;
         PlankTransportControlPacket packet;
-        if (result != PLANK_TRANSPORT_OK || plank_transport_control_decode(bytes, size, &packet)) {
-            [self stopOnQueue]; return;
+        if (result != PLANK_TRANSPORT_OK) {
+            [self stopOnQueueForReason:[NSString stringWithFormat:@"control-receive-failed result=%d", result]]; return;
+        }
+        if (plank_transport_control_decode(bytes, size, &packet)) {
+            [self stopOnQueueForReason:@"control-malformed"]; return;
         }
         if (packet.type == PLANK_TRANSPORT_CONTROL_CLIENT_DISCONNECT && !packet.payload_size) {
-            [self stopOnQueue]; return;
+            [self stopOnQueueForReason:@"client-disconnect"]; return;
         } else if (packet.type == PLANK_TRANSPORT_CONTROL_REQUEST_IDR && !packet.payload_size) {
             [_video requestKeyFrame];
         } else if (packet.type == PLANK_TRANSPORT_CONTROL_INVALIDATE_REFERENCE_FRAMES && packet.payload_size == 8 &&
@@ -307,7 +316,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         } else if (packet.type == PLANK_TRANSPORT_CONTROL_SET_VIDEO_BITRATE && packet.payload_size == 4) {
             uint32_t bitrate = plank_transport_control_read_u32(packet.payload);
             if (bitrate < 10000 || bitrate > 150000) {
-                [self stopOnQueue]; return;
+                [self stopOnQueueForReason:@"bitrate-out-of-range"]; return;
             }
             uint64_t now = clock_gettime_nsec_np(CLOCK_MONOTONIC);
             if (!_pendingBitrate) _bitrateFirstRequest = now;
@@ -315,7 +324,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                 _pendingBitrate = bitrate;
                 _bitrateDue = MIN(now + 150*NSEC_PER_MSEC, _bitrateFirstRequest + 500*NSEC_PER_MSEC);
             }
-        } else { [self stopOnQueue]; return; }
+        } else { [self stopOnQueueForReason:@"control-unsupported"]; return; }
     }
 }
 
@@ -324,14 +333,15 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     uint8_t reply[20]; size_t size = 0;
     if (plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_VIDEO_BITRATE_APPLIED,
         values, 3, reply, sizeof(reply), &size) ||
-        plank_transport_native_data_send(_endpoint, reply, size) != PLANK_TRANSPORT_OK) [self stopOnQueue];
+        plank_transport_native_data_send(_endpoint, reply, size) != PLANK_TRANSPORT_OK)
+        [self stopOnQueueForReason:@"bitrate-acknowledgment-failed"];
 }
 - (void)applyPendingBitrate {
     if (self.state != PLANKMacPreviewStreaming) return;
     uint64_t now = clock_gettime_nsec_np(CLOCK_MONOTONIC);
     if (_changingBitrate) {
         if (now >= _bitrateDeadline) {
-            NSLog(@"PLANK encoder replacement timed out"); [self stopOnQueue];
+            [self stopOnQueueForReason:@"encoder-replacement-timeout"];
         }
         return;
     }
@@ -346,7 +356,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         owner->_changingBitrate = NO;
         if (peak < bitrate ||
             plank_transport_native_set_video_bitrate(owner->_endpoint, bitrate, peak) != PLANK_TRANSPORT_OK) {
-            [owner stopOnQueue]; return;
+            [owner stopOnQueueForReason:@"bitrate-update-failed"]; return;
         }
         owner->_bitrate = bitrate;
         [owner acknowledgeBitrate:bitrate peak:peak];
@@ -357,11 +367,16 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     dispatch_async(_queue, ^{
         if (self.state == PLANKMacPreviewStopped) { if (completion) completion(); return; }
         if (completion) [self->_stopCallbacks addObject:[completion copy]];
-        [self stopOnQueue];
+        [self stopOnQueueForReason:@"owner-stop"];
     });
 }
-- (void)stopOnQueue {
+- (void)stopOnQueueForReason:(NSString *)reason {
     if (self.state == PLANKMacPreviewStopping || self.state == PLANKMacPreviewStopped) return;
+    self.stopReason = reason;
+    // One first-cause line per session, before revocation/drain hides the cause.
+    // Log no remote strings, coordinates, keys, text, accounts or tokens.
+    NSLog(@"PLANK stream stopping: reason=%@ state=%u transport-state=%u", reason,
+        (unsigned)self.state, _endpoint ? plank_transport_native_endpoint_state(_endpoint) : PLANK_TRANSPORT_STATE_INVALID);
     self.state = PLANKMacPreviewStopping;
     [_clipboard stop];
     if (_repeatWatch) { dispatch_source_cancel(_repeatWatch); _repeatWatch = nil; }

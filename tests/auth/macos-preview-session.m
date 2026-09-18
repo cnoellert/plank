@@ -5,6 +5,7 @@
 #import "macos-fake-input.h"
 #import "agent-connection.h"
 #include "plank_transport_control.h"
+#include "plank_transport_input.h"
 #include <unistd.h>
 #include <sys/resource.h>
 
@@ -173,7 +174,7 @@ int main(int argc, const char **argv) {
             topology:snapshot config:&cfg capture:source input:input]);
         PLANKMacAccountIdentity identity = {0};
         CHECK([auth authorizeToken:token peer:peer identity:&identity]);
-        for (unsigned scenario = 0; scenario < 21; ++scenario) {
+        for (unsigned scenario = 0; scenario < 24; ++scenario) {
             printf("macos_preview_scenario=%u\n", scenario); fflush(stdout);
             if (scenario >= 11 && scenario < 15) {
                 @synchronized(guard) { agent = [PLANKSessionAgent new]; }
@@ -224,6 +225,28 @@ int main(int argc, const char **argv) {
                 CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_CLIENT_DISCONNECT,
                     NULL, 0, control, sizeof(control), &length));
                 CHECK(plank_transport_native_data_send(client, control, length) == PLANK_TRANSPORT_OK);
+            } else if (scenario == 21 || scenario == 22 || scenario == 23) {
+                uint8_t motion[PLANK_TRANSPORT_INPUT_ABSOLUTE_MOUSE_SIZE];
+                if (scenario == 23) {
+                    // The last pixel is valid at every corner, with a held
+                    // button; the Host must not disconnect a correctly clamped drag.
+                    const uint16_t corners[][2] = {{0, 0}, {3839, 0}, {3839, 2159}, {0, 2159}};
+                    for (unsigned corner = 0; corner < 4; ++corner) {
+                        plank_transport_input_encode_absolute_mouse(motion, corners[corner][0], corners[corner][1], 3839, 2159);
+                        CHECK(plank_transport_native_input_send(client, PLANK_TRANSPORT_INPUT_ABSOLUTE_MOUSE, motion, sizeof(motion)) == PLANK_TRANSPORT_OK);
+                        CHECK(until(^BOOL { return input.delivered == 3 + corner; }));
+                        CHECK(session.state == PLANKMacPreviewStreaming && session.stopReason == nil);
+                    }
+                    CHECK(!plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_CLIENT_DISCONNECT,
+                        NULL, 0, control, sizeof(control), &length));
+                    CHECK(plank_transport_native_data_send(client, control, length) == PLANK_TRANSPORT_OK);
+                } else {
+                    // Reproduce the original one-pixel overrun. Keep the strict
+                    // wire guard, release held input, and retain the precise reason.
+                    plank_transport_input_encode_absolute_mouse(motion,
+                        scenario == 21 ? 3840 : 0, scenario == 22 ? 2160 : 0, 3839, 2159);
+                    CHECK(plank_transport_native_input_send(client, PLANK_TRANSPORT_INPUT_ABSOLUTE_MOUSE, motion, sizeof(motion)) == PLANK_TRANSPORT_OK);
+                }
             } else if (scenario >= 15) {
                 uint32_t rate = scenario == 19 ? 50000 : 10000;
                 unsigned requests = scenario == 15 ? 8 : 1;
@@ -317,6 +340,17 @@ int main(int argc, const char **argv) {
                 @synchronized(guard) { desktop.generation++; }
             }
             CHECK(until(^BOOL { return session.state == PLANKMacPreviewStopped; }));
+            NSString *firstReason = session.stopReason;
+            CHECK(firstReason.length > 0);
+            if (scenario == 3) CHECK([firstReason isEqual:@"control-unsupported"]);
+            if (scenario == 4) CHECK([firstReason isEqual:@"capture-failed"]);
+            if (scenario == 5) CHECK([firstReason isEqual:@"capture-start-timeout"]);
+            if (scenario == 10) CHECK([firstReason isEqual:@"input-malformed type=2"]);
+            if (scenario == 17) CHECK([firstReason isEqual:@"bitrate-update-failed"]);
+            if (scenario == 18) CHECK([firstReason isEqual:@"encoder-replacement-timeout"]);
+            if (scenario == 21 || scenario == 22) CHECK([firstReason isEqual:@"input-malformed type=1"]);
+            if (scenario == 0 || scenario == 8 || scenario == 15 || scenario == 16 || scenario == 19 || scenario == 20 || scenario == 23)
+                CHECK([firstReason isEqual:@"client-disconnect"]);
             if (source.pendingBitrate) {
                 dispatch_sync(source.queue, ^{
                     void (^late)(uint32_t) = source.pendingBitrate; source.pendingBitrate = nil;
@@ -335,6 +369,7 @@ int main(int argc, const char **argv) {
             [session stopWithCompletion:^{ dispatch_semaphore_signal(stopped); }];
             CHECK(dispatch_semaphore_wait(stopped, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)) == 0);
             CHECK(source.stops == 1);
+            CHECK([session.stopReason isEqual:firstReason]);
             plank_transport_native_endpoint_destroy(client);
             if (agent) {
                 if (scenario == 11) {
@@ -358,6 +393,6 @@ int main(int argc, const char **argv) {
             }
         }
         [auth revokeAll];
-        printf("macos_preview_session=pass checks=%u scenarios=21 synthetic_capture=1 real_quic=1 cleanup=1 agent_bound=1\n", checks);
+        printf("macos_preview_session=pass checks=%u scenarios=24 synthetic_capture=1 real_quic=1 cleanup=1 agent_bound=1 edge_bounds=1 stop_reason=1\n", checks);
     }
 }

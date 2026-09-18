@@ -63,6 +63,10 @@ requests no permission and uses no inherited GameStream packet wrapper.
 - Absolute motion uses inclusive wire maxima (`referenceWidth/Height - 1`).
   Captured-display physical pixels and global Quartz point bounds define the
   transform. Negative origins and Retina scales are explicit, not guessed.
+  The Client clamps rounded mouse positions to the last valid pixel; the
+  common-C sender independently clamps before enqueueing and rejects dimensions
+  below two pixels. Drag/button ordering and normalized tablet mapping are
+  unchanged. The Host still rejects out-of-range wire coordinates.
 - All five mouse buttons are mapped explicitly. Held buttons select drag
   events; duplicate down/up is suppressed. Click counts use the owner's local
   monotonic time and native double-click interval, never a remote clock.
@@ -98,6 +102,9 @@ needs performance measurement; no end-to-end latency guarantee follows.
 CGEvent posting with existing consent. The owner requires a valid mapper before
 capture starts, checks permission during lifecycle and delivery, and drains both
 capture and the input receiver before destroying the shared native endpoint.
+Session teardown logs its first terminal cause once, before revocation/drain,
+using fixed reason labels and numeric type/status codes. No coordinates,
+key values, text, clipboard contents, account names or credentials are logged.
 Owner abandonment revokes first and retains the endpoint until both drains;
 the receiver never strongly owns the session between deliveries.
 
