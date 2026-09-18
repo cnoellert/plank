@@ -10,8 +10,8 @@ checkout and other registered worktrees. This is not a merge to main.
 
 Included: dynamic last-pixel mouse bounds in Client/common-C, first-cause Mac
 session-stop diagnostics, administrator-readable Mac system logs, and the
-Linux fast-send policy previously qualified as1.0.138, and the Linux Host
-input-release/PR8 candidate previously built as1.0.139.
+Linux fast-send policy previously qualified as 1.0.138, and the Linux Host
+input-release/PR8 candidate previously built as 1.0.139.
 See [mouse diagnosis](docs/development/reviews/mouse-edge-recovery.md) and
 [fast-send plan/evidence](docs/development/plans/linux-fast-send.plan).
 
@@ -28,32 +28,75 @@ feature branch. Input queue ordering and pen mapping remain unchanged.
 Linux Host is `cd738510c6588aa086746cf00dca93c17c6bea73`: remove the delayed
 left-release/synthetic-right-click workaround while retaining held-button and
 stale-lease cleanup. There is no overlap with Client coordinate clamping.
-Other dependency pins remain those of1.0.137 below unless noted here.
+Other dependency pins remain those of 1.0.137 below unless noted here.
 
-The isolated1.0.139 Host build35378950273 passed RPM gates and25 shuffled input
-suite iterations (13 passes and3 hardware-dependent UHID skips each). Its
+The isolated 1.0.139 Host build 35378950273 passed RPM gates and 25 shuffled input
+suite iterations (13 passes and 3 hardware-dependent UHID skips each). Its
 package-source root is `06e9484d9f0923e75d2eacbbe5792404a96cc0f6`. That is prior
 component evidence, not qualification of the combined source.
 
-Mac system logs become root:admin, directory0750/files0640. Only root writes;
+Mac system logs become root:admin, directory 0750/files 0640. Only root writes;
 administrators read; other users are denied. Existing objects are validated
 before changes and contents preserved. Keys and per-user desktop logs remain
 private. No machines have been modified for this task.
 
-Local evidence: six common-C suites passed25 repetitions; the boundary test
+Local evidence: six common-C suites passed 25 repetitions; the boundary test
 fails against the unfixed library and passes against the candidate. Installer
-portable fixtures passed23 checks; CI policy/version tests passed. Mac-native
+portable fixtures passed 23 checks; CI policy/version tests passed. Mac-native
 filesystem and session/QUIC tests run on the hosted Mac builder. A first
 filesystem fixture attempt encountered runner sudo run-as-group policy; the
 test now drops UID/GID directly without altering accounts or sudo policy.
-The initial1.0.140 Linux Client run35383146478 passed; it predates the combined
+The initial 1.0.140 Linux Client run 35383146478 passed; it predates the combined
 scope and is not the package to distribute. Other superseded builds were
-cancelled. No1.0.141 build or live acceptance is yet claimed.
+cancelled. All six common-C suites also passed ASan/UBSan with GCC toolset 14.
 
-Next: rerun tests, build all four products on hosted
-builders, collect exact packages, then request live edge/drag/reconnect and
-Linux sender-policy tests. Do not install, merge to main or publish a release
-without further direction.
+Combined package-source root is
+`a3df4b0ed5b327049ad58ea9532712ea0fe25f05`. The signed Mac Host uses
+`378dbb4c409c5b1e0bb9668dbda16ba275ab95fd`, whose only additional change corrects
+a stale test expectation: a Boolean clipboard-enable field is valid, while
+numeric/string substitutes must be rejected. No runtime difference or gate
+relaxation is involved.
+
+| Product | Hosted run | State |
+| --- | --- | --- |
+| Ubuntu Client | 35384037039 | Passed; collected |
+| Signed/notarized Mac Client | 35384039994 | Passed; collected |
+| Signed/notarized Mac Host | 35384452065 | Passed; collected |
+| Linux Host | 35384037039 | Passed; collected |
+
+The ordinary run includes a superseded Mac Host test failure; use the successful
+signed Host rerun above rather than treating its overall conclusion as the
+result of the Linux jobs. Mac Host passed 726 checks across 24 real-QUIC session
+scenarios with synthetic capture, including edge drags, invalid-input cleanup
+and first-stop-reason retention. Native installer filesystem checks passed 60
+checks, including actual administrator read-only and non-administrator denial.
+Both Mac products passed signing/notarization/stapling and temporary-key cleanup.
+The Ubuntu Client passed the exact-linked-library input-bounds test, dependency
+closure, private FFmpeg, visible version, persistent logging and no-autostart
+gates. These are automated results, not live hardware acceptance.
+
+The combined Linux Host job passed production RPM checks and 25 shuffled input
+suite iterations (13 passes, 3 hardware-dependent UHID skips per iteration).
+The RPM remains a BUILD_TESTS=OFF package; test compilation happens afterward
+without repackaging. No skipped hardware case is claimed as qualified.
+Fast-send and paced-baseline transport suites passed, including native encrypted
+loopback, C ABI round trips and receiver-side loss matrices at approximately
+150 Mbps. Both 300-frame matrices reported zero unrecovered frames; this is
+synthetic transport evidence, not WAN or encoder hardware qualification.
+The temporary feature-branch signing-environment permission was removed after
+both signed builds completed; the existing main-only policy remains intact.
+
+All four verified packages are under
+`artifacts/packages/candidates/1.0.141-mouse-edge-recovery/`; its manifest and
+SHA256SUMS record exact per-product source commits and hashes. The Mac Host and
+Ubuntu Client pair is ready for an operator-installed idle/normal-use test.
+If the waiting popup recurs, collect the updated Host desktop log with its first
+stop reason and the corresponding Client log. Do not claim the idle issue fixed.
+
+All four collected payloads match their builder SHA-256 hashes. Next: await
+operator-installed idle and normal-use testing. Live edge/drag/reconnect and
+Linux sender-policy tests also remain. Do not install, merge to main or publish
+a release without further direction.
 
 ## Current release: 1.0.137
 
