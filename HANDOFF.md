@@ -1,5 +1,19 @@
 # PLANK handoff
 
+## Release 1.0.137 preparation
+
+The operator requested rebuilding all products and publishing a release.
+Version 1.0.137 rebuilds current main with the accepted clipboard changes and
+Vulkan verification. All four packages use GitHub-hosted builders; both Mac
+packages require protected signing/notarization. Verified exact-input dependency
+caches are allowed, with fresh application/transport compilation and packaging.
+No installation, hardware test, dependency upgrade or pending PR is authorized
+as part of this operation. Preserve the primary RK3576 checkout.
+
+Builds, artifact verification and publication are pending. The current published
+release remains 1.0.135 until all gates pass. Tag the exact package-source commit,
+not a later evidence-only notes commit. See [release notes](docs/releases/1.0.137.md).
+
 ## Branch cleanup and Vulkan verification
 
 The operator authorized cleanup of redundant branches. Removed 21 remote branch
