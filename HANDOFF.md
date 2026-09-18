@@ -1,6 +1,27 @@
 # PLANK handoff
 
-## Release paused: macOS Spaces shortcut recovery
+## Current task: accepted fix, full 1.0.135 release
+
+The operator accepted the 1.0.135-macos-hotkey-focus candidate: the Spaces-return
+shortcut-capture fix works. A full mainline release is authorized. Client main
+now contains `d2532825b99edb3237d50d0773dab6ab352d4d2f`; root main contains
+the candidate source and notes. Rebuild all four products from this clean
+mainline source on GitHub-hosted runners, sign/notarize both Mac packages,
+verify downloads, then publish v1.0.135. Do not relabel the branch candidate.
+No deployment is requested. Preserve unrelated primary-worktree research and
+leave remaining unmerged PRs out. Release scope is in `docs/releases/1.0.135.md`.
+
+The candidate's ordinary four-product run `35329265662` also completed
+successfully; the earlier pending Linux Host check is resolved. Candidate
+signing evidence and exact recursive integration pins are retained below.
+The operator's acceptance establishes the reported live Spaces-return fix,
+not every permission-denial, OS-version or hardware-stress gate.
+
+1.0.134 is superseded and must not be published. Its packages remain historical
+mainline build evidence only. The sections below describe earlier checkpoints;
+use this current task and the final 1.0.135 release evidence for next actions.
+
+## Earlier checkpoint: macOS Spaces shortcut recovery
 
 The operator reported a new live defect before publication: system shortcuts
 work on the first connection, but after a three-finger swipe to the local
