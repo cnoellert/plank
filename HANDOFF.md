@@ -43,6 +43,13 @@ The operator has been asked to identify an available Host/Client pair for
 coordinated ten-minute live baseline/candidate soaks and receiver-side loss.
 Do not interrupt a live session or treat synthetic traffic as live playback.
 
+Resume checkpoint (2026-09-18): build and artifact collection are complete;
+there is no in-flight build or deployment. The candidate checksum was rechecked
+when saving these notes. Continue from the existing candidate after the operator
+identifies an available test pair; do not repeat bootstrap or rebuild merely to
+resume. The primary checkout has a local routing note pointing here, with its
+unrelated research edits preserved and left uncommitted.
+
 ## Current release: 1.0.137
 
 The operator requested rebuilding all public Host/Client packages and publishing
