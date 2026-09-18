@@ -147,8 +147,14 @@ int main(int argc, const char **argv) {
             CHECK(!PLANKMacPreviewRequestMatchesTopology(bad, topology));
             for (id value in @[[NSNull null], @[], @{}, @YES, @"invalid"]) {
                 bad[field] = value;
-                CHECK(!PLANKMacPreviewRequestMatchesTopology(bad, topology));
+                // Clipboard is the one Boolean field in launch schema3.
+                BOOL validBoolean = [field isEqual:@"clipboard"] && value == (__bridge id)kCFBooleanTrue;
+                CHECK(PLANKMacPreviewRequestMatchesTopology(bad, topology) == validBoolean);
             }
+        }
+        for (id value in @[@0, @1, @1.5, @"true"]) {
+            NSMutableDictionary *bad = [request mutableCopy]; bad[@"clipboard"] = value;
+            CHECK(!PLANKMacPreviewRequestMatchesTopology(bad, topology));
         }
         for (NSString *field in @[@"width", @"height", @"frame_rate", @"bitrate_kbps", @"max_udp_payload_size"]) {
             for (NSNumber *value in @[@(-1), @1.5, @(UINT64_MAX)]) {
