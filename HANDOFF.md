@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## Follow-up in progress: 1.0.142-mouse-edge-recovery
+## Follow-up ready for testing: 1.0.142-mouse-edge-recovery
 
 The operator explicitly wants screen-saver/lock continuity, not disconnection
 followed by new PLANK authentication. The Mac Host no longer treats the
@@ -16,8 +16,29 @@ settings makes it worse, independently of actual saver activation. New Mac-only
 diagnostics classify the underlying native transport failure with fixed labels
 and summarize input owner-queue wait/delivery timing at session stop. Raw native
 error text is never logged. No queue enlargement, input loss/coalescing, new
-worker, timeout change or speculative lag repair is included. Build and live
-validation are pending; no new package is installed or accepted.
+worker, timeout change or speculative lag repair is included. The operator
+asked explicitly whether the mouse lag was repaired: no, diagnostics only.
+
+Package source is `e6e678f91e05bd9de0259473295ab74de96b4c08`, pushed on the same
+feature branch. Hosted signed Mac Host run `35390098576` passed 190 synthetic
+graphical-authority/active-lease checks, 726 checks across 24 real-QUIC session
+scenarios, the fixed-label/timing diagnostic tests, package gates, signing,
+notarization/stapling and temporary-key cleanup. Dependency cache restored and
+was independently verified. Local diagnostic and all 48 CI-policy tests passed.
+The temporary exact-branch signing permission was removed afterward; main-only
+environment policy is restored. No new package is installed or accepted.
+
+The collected, independently SHA-256-verified package is
+`artifacts/packages/candidates/1.0.142-mouse-edge-recovery/macos/plank-host_1.0.142-mouse-edge-recovery_arm64.pkg`,
+SHA-256 `6c1696a815a9e7b8cd3e52f1b2b1945f236e269e5153c2dc8b98cedf8388dbcc`.
+Keep Client .141; no Client, Linux Host, shared transport or protocol changes
+were made for .142. Prior combined fixes remain included. No main merge/release.
+
+Next operator test after manually installing the Mac Host: reproduce Wallpaper
+and Screen Saver panel hover, then disconnect and collect the desktop Host log.
+Separately activate the actual saver/lock and verify the connection remains
+usable for normal OS unlock. Real logout/user switching must still retire the
+old scope. Automated synthetic lock checks do not prove live SCK/Quartz behavior.
 
 ## Active integration candidate: 1.0.141-mouse-edge-recovery
 
