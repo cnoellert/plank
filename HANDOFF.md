@@ -10,12 +10,13 @@ checkout and other registered worktrees. This is not a merge to main.
 
 Included: dynamic last-pixel mouse bounds in Client/common-C, first-cause Mac
 session-stop diagnostics, administrator-readable Mac system logs, and the
-Linux fast-send policy previously qualified as1.0.138. Integrate the separate
-Linux Host input-release/PR8 candidate before building the combined packages.
+Linux fast-send policy previously qualified as1.0.138, and the Linux Host
+input-release/PR8 candidate previously built as1.0.139.
 See [mouse diagnosis](docs/development/reviews/mouse-edge-recovery.md) and
 [fast-send plan/evidence](docs/development/plans/linux-fast-send.plan).
 
-The operator also sees the waiting popup away from the screen edge. The
+The operator also sees the waiting popup away from the screen edge, believes
+it can occur while idle, and has no tablet connected. The
 reproduced boundary defect is not a proven explanation for every reconnect.
 Keep diagnosis open; new Host stop reasons must distinguish input, topology,
 authorization, capture and transport failures. Do not hide the warning or
@@ -24,7 +25,15 @@ weaken the Host packet guard.
 Client `46ae50c2e189e358400ece271be469c1b61c98f4` pins common-C
 `060f6179f88343327b44d915007f1fb4cede71f1`. Both are published on the matching
 feature branch. Input queue ordering and pen mapping remain unchanged.
+Linux Host is `cd738510c6588aa086746cf00dca93c17c6bea73`: remove the delayed
+left-release/synthetic-right-click workaround while retaining held-button and
+stale-lease cleanup. There is no overlap with Client coordinate clamping.
 Other dependency pins remain those of1.0.137 below unless noted here.
+
+The isolated1.0.139 Host build35378950273 passed RPM gates and25 shuffled input
+suite iterations (13 passes and3 hardware-dependent UHID skips each). Its
+package-source root is `06e9484d9f0923e75d2eacbbe5792404a96cc0f6`. That is prior
+component evidence, not qualification of the combined source.
 
 Mac system logs become root:admin, directory0750/files0640. Only root writes;
 administrators read; other users are denied. Existing objects are validated
@@ -41,7 +50,7 @@ The initial1.0.140 Linux Client run35383146478 passed; it predates the combined
 scope and is not the package to distribute. Other superseded builds were
 cancelled. No1.0.141 build or live acceptance is yet claimed.
 
-Next: finish integration, rerun tests, build all four products on hosted
+Next: rerun tests, build all four products on hosted
 builders, collect exact packages, then request live edge/drag/reconnect and
 Linux sender-policy tests. Do not install, merge to main or publish a release
 without further direction.
@@ -210,8 +219,9 @@ with that unmerged preference. Mac Host support below27 is discussion only.
 
 ## Workspace and build policy
 
-Current work is in the separate `build/worktrees/pr-integration` directory,
-on `linux-fast-send`; its directory name is not the branch. The primary
+The earlier release used `build/worktrees/pr-integration`, now occupied by
+the retained `linux-fast-send` candidate. Current combined work is in
+`build/worktrees/mouse-edge-recovery`; directory names are not branch policy. The primary
 checkout remains unrelated `rk3576-client` research with uncommitted notes and
 diagnostics. Preserve it. Do not clean or switch that checkout during release.
 Other review worktrees/branches are not permission for a broad cleanup.

@@ -34,6 +34,13 @@ plist. Live acceptance of the identical package on both OS versions is a
 separate gate; newer APIs require runtime availability checks.
 
 Linux package artifacts expire after seven days and do not publish releases.
+The Linux Host job also builds the fake-backend input tests after packaging and
+runs the input/raw-HID suites 25 times in shuffled order. Tests use the exact
+candidate sources and prepared dependencies. The RPM remains the production
+`BUILD_TESTS=OFF` payload; missing `/dev/uhid` cases are explicit skips, not live
+tablet acceptance. Keep real mouse/Wacom disconnect/reconnect qualification as
+a separate hardware gate.
+
 Feature builds retain their branch-qualified visible and package versions.
 These jobs do not install products or perform live display, audio, input,
 network-loss or hardware-decoder qualification. Existing hardware gates and

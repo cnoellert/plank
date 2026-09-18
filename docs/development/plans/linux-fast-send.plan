@@ -3,6 +3,11 @@
 Branch: linux-fast-send. Baseline: published 1.0.137.
 Candidate: 1.0.138-linux-fast-send. Built; not merged or live-accepted.
 
+The operator subsequently requested inclusion in the combined
+1.0.141-mouse-edge-recovery candidate with Client bounds, Mac logging and Linux
+mouse-button cleanup. It is integrated there, not yet merged to main or
+live-accepted. Prior isolated evidence below remains component evidence only.
+
 ## Scope
 
 Apply the two accepted macOS Host sender-policy changes to Linux Host: bypass

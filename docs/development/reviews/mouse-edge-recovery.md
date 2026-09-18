@@ -13,6 +13,11 @@ Thus the input-order repair can expose an older defect. This does not prove
 that every reported transient reconnect has the same cause: older Host logs
 did not retain a specific teardown reason.
 
+The operator subsequently reported occurrences away from screen edges, no
+attached tablet, and possible idle occurrences. Those are not established as
+this boundary defect. Keep the broader session-stop diagnosis open and use the
+new first-cause logging to identify the remaining failure path.
+
 ## Repair
 
 - Clamp rounded mouse coordinates to the dynamic last pixel in the Client.
