@@ -236,7 +236,10 @@ These are source/build checks, not signed-package or hardware qualification.
 The GNU/Linux-only display preparation shell test and the new Host unit case
 are in a separate exact-source Rocky qualification
 [run 35373732797](https://github.com/cnoellert/plank/actions/runs/35373732797),
-which remains pending at this update.
+which passed. The Rocky job built the Host package and test binary, passed
+`PlankTopology.PhysicalLeaseKeepsItsNonFirstPrimaryConnector`, all 29
+display-helper cases, and `test-display-prepare.sh`. It did not install the
+candidate on flame-01 or exercise live interruption recovery.
 
 This review also confirms the working virtual-output route for the headless
 Flame test workflow. The physical-output helper remains a separate draft for
