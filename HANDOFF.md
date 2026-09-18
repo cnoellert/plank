@@ -1,5 +1,31 @@
 # PLANK handoff
 
+## Active work: Mac Host clipboard / 1.0.136 candidate
+
+The operator authorized Mac Host ↔ Mac Client plain-text clipboard, a shared
+512 KiB limit, outgoing validation and queue-pressure repairs. Work is on
+`macos-host-clipboard` in `build/worktrees/pr-integration`, not the unrelated
+primary `rk3576-client` checkout. Do not merge/release before paired acceptance.
+See [the plan](docs/development/plans/macos-host-clipboard.plan).
+
+Implementation adds a desktop-worker-only native pasteboard backend and Mac
+launch schema3 with explicit clipboard opt-in/result. LoginWindow and Linux
+Clients negotiate no clipboard. The existing encrypted types/ports are reused.
+Mac Host framing and UTF-8 validation share the portable protocol helper;
+Linux Host and Mac Client use that validator too. Transient queue pressure
+retains unsent chunks rather than restarting a copy or disconnecting video.
+Clipboard contents never enter logs; teardown preserves newer local copies.
+
+Candidate Client `37921316`, Linux Host `fd5cbf86`, Client common-C `ef8ac14`,
+Host header-only common-C `3a97a58` are committed/pushed on feature branches.
+Other dependencies remain at the release pins below. Portable wire tests passed
+under ASan/UBSan, C11/C++17 ABI checks passed, as did 43 CI-policy tests and six
+portable CTest suites. Native Mac tests, Xvfb regressions and candidate builds
+are pending. No candidate artifact, deployment or live acceptance is claimed.
+Next: complete hosted native validation, collect branch-qualified packages,
+then test Mac↔Mac, Mac↔Linux, large/interrupted transfers, Spaces/focus and
+login/logout/reconnect ownership. No production machine was changed.
+
 ## Current release: 1.0.135
 
 The operator accepted the macOS Spaces-return shortcut fix and requested a full
@@ -47,9 +73,9 @@ the packages, manifest and flat-filename release checksum file.
 | `macos/plank-host_1.0.135_arm64.pkg` | 6613304 | `811452516a1688b685216e0abcdccb497bf0dc67b2c91915545bc03e49599245` |
 | `macos/plank-client_1.0.135_arm64.dmg` | 86618191 | `e910f0b39573ea0cfba5f45c4d42a651d6dfe9879fed2d05bedd703060601803` |
 
-Release work is complete. Await the next user task; remaining qualification
-items below are not claims of failed acceptance or authority to disrupt a live
-machine. No unrelated branch cleanup or pending-PR merge was performed.
+Release work is complete; active candidate work is described above. Remaining
+qualification items below are not claims of failed acceptance or authority to
+disrupt a live machine. No unrelated branch cleanup or pending-PR merge occurred.
 
 ## Accepted fix and integration scope
 
@@ -171,7 +197,7 @@ with that unmerged preference. Mac Host support below27 is discussion only.
 ## Workspace and build policy
 
 Release work is in the separate `build/worktrees/pr-integration` directory,
-currently on main; its directory name is not the current branch. The primary
+currently on `macos-host-clipboard`; its directory name is not the branch. The primary
 checkout remains unrelated `rk3576-client` research with uncommitted notes and
 diagnostics. Preserve it. Do not clean or switch that checkout during release.
 Other review worktrees/branches are not permission for a broad cleanup.

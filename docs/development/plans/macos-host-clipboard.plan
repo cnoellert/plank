@@ -1,0 +1,38 @@
+# Authenticated plain-text clipboard
+
+Branch: macos-host-clipboard. Baseline: release 1.0.135.
+
+## Scope
+
+Add macOS Host ↔ macOS Client plain UTF-8 clipboard, retaining Mac Client ↔
+Linux X11 Host. No files, images, rich text, new ports, Linux Client backend,
+login-screen clipboard or permission bypass. Maximum encoded text: 512 KiB.
+
+## Implementation
+
+1. Share bounded wire/UTF-8 validation across the native Mac Host and existing
+   endpoints. Keep platform clipboard ownership separate from transport.
+2. Reject oversize, embedded NUL and invalid UTF-8 before outgoing allocation;
+   never truncate or log contents. Retry queue pressure from the unsent chunk,
+   without restarting a generation or disconnecting video.
+3. Bound clipboard work per transport turn. Preserve reliable input ordering,
+   particularly clipboard completion before a following paste keystroke.
+4. Negotiate clipboard explicitly in the Mac launch contract. Only a negotiated,
+   authenticated desktop worker for the active account may access NSPasteboard.
+   A Linux Client still connects without negotiating clipboard.
+5. Scope pending work to the session; revoke on logout, takeover and teardown.
+   Clear only remotely owned pasteboard data, preserving later local copies.
+   Do not block capture/input lifecycle on an AppKit permission prompt.
+
+## Validation and handoff
+
+Test Unicode, multiline, exact/over-limit input, malformed chunks, independent
+generations, partial-send retry, queue pressure, repeated A→B→A, newer local
+ownership, background focus and session replacement. Keep existing Xvfb and
+native Client regressions. Add Mac Host native tests with an isolated pasteboard
+and fake session authority; never overwrite a runner/user's general clipboard.
+
+Build branch-qualified Host/Client candidates on hosted builders. Compilation
+is not live acceptance: paired Mac copy/paste, Linux regression, Spaces, user
+transitions and permission denial require interactive qualification. Do not
+merge or publish a release before acceptance.

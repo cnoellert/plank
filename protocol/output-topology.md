@@ -245,7 +245,7 @@ schema.
 The `macos-host` work adds `FixedCaptureFeature = 0x80000` within schema 13.
 This is a distinct fixed-capture description, **not** permission to relax the
 existing Linux topology requirements. Its exact current feature mask is
-`3670129` (`0x380071`): fixed capture, Mac desktop preparation, Mac encoding-profile
+`7864433` (`0x380071`): fixed capture, Mac desktop preparation, Mac encoding-profile
 selection (`0x200000`), output topology, topology generation,
 layout metadata and composite source geometry. All other bits are rejected
 for this preview. It is deliberately excluded from the Client's Linux

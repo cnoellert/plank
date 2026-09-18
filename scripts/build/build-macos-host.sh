@@ -18,6 +18,14 @@ bash "$source_root/scripts/test/build-macos-input.sh" "$source_root" "$output/in
 bash "$source_root/scripts/test/build-macos-preview.sh" "$source_root" "$output/preview-tests" "$archive" --synthetic-only
 python3 "$source_root/tests/packaging/test-macos-host-permissions.py"
 xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -DPLANK_CLIPBOARD_TEST_PASTEBOARD -Iapps/host/macos/media -Iprotocol/plank-transport/include \
+    apps/host/macos/media/clipboard-sync.m tests/input/macos-clipboard.m \
+    -framework Foundation -framework AppKit -o "$output/clipboard-test"
+"$output/clipboard-test"
+xcrun clang -std=c11 -Wall -Wextra -Werror -Iprotocol/plank-transport/include \
+    tests/protocol/clipboard-wire.c -o "$output/clipboard-wire-test"
+"$output/clipboard-wire-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Iapps/host/macos/input -Iprotocol/plank-transport/include \
     apps/host/macos/input/input-events.m tests/input/macos-pen-events.m \
     -framework Foundation -framework CoreGraphics -framework Carbon -framework AppKit -o "$output/pen-events-test"
@@ -88,7 +96,7 @@ sources=(apps/host/macos/auth/authentication-session.m apps/host/macos/auth/grap
     apps/host/macos/auth/account-verifier.m apps/host/macos/auth/account-channel.m
     apps/host/macos/control/http-request.m apps/host/macos/control/server-information.m
     apps/host/macos/control/fixed-capture.m apps/host/macos/control/desktop-display.m apps/host/macos/control/https-auth-server.m
-    apps/host/macos/media/native-video.m apps/host/macos/media/preview-session.m apps/host/macos/media/screen-capture.m
+    apps/host/macos/media/native-video.m apps/host/macos/media/preview-session.m apps/host/macos/media/clipboard-sync.m apps/host/macos/media/screen-capture.m
     apps/host/macos/media/native-audio.m apps/host/macos/media/opus-encoder.m apps/host/macos/media/audio-tap.m
     apps/host/macos/input/input-events.m apps/host/macos/input/native-input.m apps/host/macos/input/quartz-input.m
     apps/host/macos/session/agent-registry.m apps/host/macos/session/agent-connection.m

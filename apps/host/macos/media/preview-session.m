@@ -2,8 +2,11 @@
 #import "preview-session.h"
 #import "fixed-capture.h"
 #import "native-input.h"
+#import "clipboard-sync.h"
 #include "plank_transport_control.h"
 #include "plank_transport_input.h"
+#include "plank_transport_event.h"
+#include <unistd.h>
 #include <math.h>
 #include <time.h>
 
@@ -15,9 +18,11 @@ static BOOL integerInRange(id value, uint32_t minimum, uint32_t maximum) {
 }
 
 BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *topology) {
-    if (![request isKindOfClass:NSDictionary.class] || request.count != 9 ||
+    if (![request isKindOfClass:NSDictionary.class] || request.count != 10 ||
         ![topology isKindOfClass:NSDictionary.class] ||
-        !integerInRange(request[@"schema_version"], 2, 2) ||
+        !integerInRange(request[@"schema_version"], 3, 3) ||
+        ![request[@"clipboard"] isKindOfClass:NSNumber.class] ||
+        CFGetTypeID((__bridge CFTypeRef)request[@"clipboard"]) != CFBooleanGetTypeID() ||
         !PLANKMacEncodingProfile(request[@"encoding_mode"]) ||
         !integerInRange(request[@"frame_rate"], 60, 60) ||
         !integerInRange(request[@"bitrate_kbps"], 10000, 150000) ||
@@ -59,6 +64,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     PLANKMacNativeAudio *_audio;
     id<PLANKMacInputDevice> _inputDevice;
     PLANKMacNativeInput *_input;
+    PLANKMacClipboardSync *_clipboard;
     dispatch_group_t _inputGroup;
     BOOL _captureDrained;
     PlankTransportNativeEndpoint *_endpoint;
@@ -97,6 +103,9 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     _queue = dispatch_queue_create("la.instinctual.PLANK.Host.preview", DISPATCH_QUEUE_SERIAL);
     _stopCallbacks = [NSMutableArray array];
     _inputDevice = input; _inputGroup = dispatch_group_create();
+    // LoginWindow worker is root; only the authenticated user's own desktop
+    // process can enable a pasteboard. Tokens cannot cross graphical scopes.
+    _clipboardEnabled = [request[@"clipboard"] boolValue] && geteuid() != 0 && account.uid == geteuid();
     _lease = [sessions claimToken:token peer:peer];
     if (!_lease) return nil;
     PlankTransportConfig configuration = *config;
@@ -175,6 +184,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                         [owner stopOnQueue]; return;
                     }
                     owner.state = PLANKMacPreviewStreaming;
+                    [owner startClipboard];
                     [owner startInputReceiver];
                 }
                 failed:^{ [weakSelf stopOnQueue]; }];
@@ -187,8 +197,33 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
         if (self.state == PLANKMacPreviewStreaming) {
             [self receiveControls];
             [self applyPendingBitrate];
+            [_clipboard tick];
         }
     }
+}
+
+- (void)startClipboard {
+    if (!_clipboardEnabled) return;
+    __weak typeof(self) weakSelf = self;
+    _clipboard = [[PLANKMacClipboardSync alloc] initWithQueue:_queue allowed:^BOOL {
+        typeof(self) owner = weakSelf;
+        PLANKMacAccountIdentity account = {0};
+        return owner && owner.state == PLANKMacPreviewStreaming &&
+            [owner->_sessions authorizeStreamLease:owner->_lease identity:&account] &&
+            account.uid == geteuid() && geteuid() != 0;
+    } send:^int32_t(NSData *frame) {
+        typeof(self) owner = weakSelf;
+        if (!owner || owner.state != PLANKMacPreviewStreaming) return PLANK_TRANSPORT_ERROR_INVALID_STATE;
+        NSMutableData *packet = [NSMutableData dataWithLength:PLANK_TRANSPORT_EVENT_HEADER_SIZE + frame.length];
+        size_t size = 0;
+        if (plank_transport_event_encode(PLANK_TRANSPORT_EVENT_CLIPBOARD_OFFER, frame.bytes, frame.length,
+                packet.mutableBytes, packet.length, &size)) return PLANK_TRANSPORT_ERROR_INVALID_ARGUMENT;
+        __block int32_t result = PLANK_TRANSPORT_ERROR_INVALID_STATE;
+        [owner->_sessions performWithStreamLease:owner->_lease action:^{
+            result = plank_transport_native_data_send(owner->_endpoint, packet.bytes, size);
+        }];
+        return result;
+    }];
 }
 
 - (void)startInputReceiver {
@@ -224,6 +259,12 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
                 if (!owner || owner.state != PLANKMacPreviewStreaming) return;
                 if (result == PLANK_TRANSPORT_TIMEOUT) { keepGoing = YES; return; }
                 if (result != PLANK_TRANSPORT_OK) { [owner stopOnQueue]; return; }
+                if (type == PLANK_TRANSPORT_INPUT_CLIPBOARD_OFFER) {
+                    if (!owner->_clipboard || ![owner->_clipboard receive:[NSData dataWithBytes:payload length:size]]) {
+                        [owner stopOnQueue]; return;
+                    }
+                    keepGoing = YES; return;
+                }
                 PLANKMacInputResult delivered = [owner->_input consumeType:type
                     payload:[NSData dataWithBytes:payload length:size] time:clock_gettime_nsec_np(CLOCK_UPTIME_RAW)];
                 if (delivered == PLANKMacInputMalformed || delivered == PLANKMacInputDenied || delivered == PLANKMacInputStopped) {
@@ -322,6 +363,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
 - (void)stopOnQueue {
     if (self.state == PLANKMacPreviewStopping || self.state == PLANKMacPreviewStopped) return;
     self.state = PLANKMacPreviewStopping;
+    [_clipboard stop];
     if (_repeatWatch) { dispatch_source_cancel(_repeatWatch); _repeatWatch = nil; }
     [_input stop]; // authorized releases first; never release into a replacement desktop
     [_inputDevice stopUserActivity]; // release even if capture/input startup failed
@@ -339,6 +381,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     _video = nil;
     _audio = nil;
     _input = nil; _inputDevice = nil;
+    _clipboard = nil;
     if (_endpoint) {
         PlankTransportNativeStats stats = {0}; stats.struct_size = sizeof(stats);
         if (plank_transport_native_endpoint_stats(_endpoint, &stats) == PLANK_TRANSPORT_OK)
@@ -353,6 +396,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     for (void (^callback)(void) in callbacks) callback();
 }
 - (void)dealloc {
+    [_clipboard stop];
     [_sessions endStreamLease:_lease];
     if (_watch) dispatch_source_cancel(_watch);
     if (_repeatWatch) dispatch_source_cancel(_repeatWatch);

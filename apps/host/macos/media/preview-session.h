@@ -42,6 +42,7 @@ typedef NS_ENUM(unsigned, PLANKMacPreviewState) {
                          capture:(id<PLANKMacPreviewCapture>)capture
                            input:(id<PLANKMacInputDevice>)input;
 @property(atomic, readonly) PLANKMacPreviewState state;
+@property(readonly) BOOL clipboardEnabled;
 // Secret for the authenticated HTTPS launch reply only; never log/persist.
 @property(atomic, readonly, copy) NSString *transportToken;
 - (void)start;

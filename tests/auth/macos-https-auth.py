@@ -108,7 +108,7 @@ def authenticate(tls, port, username, password, encoding_mode="hevc-10-420-video
     raw = ("GET /plank/topology HTTP/1.1\r\nHost: localhost\r\n"
            "Authorization: Bearer " + token + "\r\n\r\n").encode()
     status, topology = request(tls, port, {}, raw=raw)
-    assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 3670129
+    assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 7864433
     capture = topology["capture"]
     assert 2 <= capture["width"] <= 8192 and capture["width"] % 2 == 0
     assert 2 <= capture["height"] <= 8192 and capture["height"] % 2 == 0
@@ -124,7 +124,7 @@ def authenticate(tls, port, username, password, encoding_mode="hevc-10-420-video
 
 def preview(tls, port, token, topology, receiver, media, seconds=3):
     capture = topology["capture"]
-    body = {"schema_version": 2, "capture_generation": topology["generation"], "capture_id": capture["id"],
+    body = {"schema_version": 3, "clipboard": False, "capture_generation": topology["generation"], "capture_id": capture["id"],
             "width": capture["width"], "height": capture["height"], "encoding_mode": "hevc-10-420-videotoolbox",
             "frame_rate": 60, "bitrate_kbps": 50000, "max_udp_payload_size": 1200}
 
@@ -173,10 +173,10 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
             assert launch(body, token)[0] == 401
             token, _ = authenticate(tls, port, "synthetic", "test")
     status, reply = launch(body, token)
-    assert status == 200 and reply["schema_version"] == 2 and reply["state"] == "connecting"
+    assert status == 200 and reply["schema_version"] == 3 and reply["state"] == "connecting"
     assert reply["udp_port"] == port and reply["max_udp_payload_size"] == 1200
     assert reply["capture"] == capture and reply["transport_token"] != token
-    assert reply["services"] == {"audio": True, "input": True, "pen": "normalized", "cursor": "embedded"}
+    assert reply["services"] == {"audio": True, "input": True, "pen": "normalized", "cursor": "embedded", "clipboard": False}
     assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
     assert launch({"schema_version": 3, "width": 1920, "height": 1080, "scale": 1, "encoding_mode": "hevc-10-420-videotoolbox"}, token, "/plank/display")[0] == 401
     fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()

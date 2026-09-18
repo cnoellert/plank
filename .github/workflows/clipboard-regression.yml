@@ -32,4 +32,7 @@ jobs:
         shell: bash
         run: |
           source /opt/rh/gcc-toolset-14/enable
+          gcc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -Iprotocol/plank-transport/include tests/protocol/clipboard-wire.c -o /tmp/clipboard-wire
+          /tmp/clipboard-wire
           bash apps/host/linux/tests/clipboard/run-x11-backend.sh --negative-controls
