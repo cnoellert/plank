@@ -29,9 +29,9 @@ def fingerprint(root, dependency_root, toolchain):
     # Prepared .pc/CMake/dylib metadata has absolute build prefixes. Never reuse
     # it under a different path, SDK, compiler or OS image. App/version changes
     # deliberately do not invalidate these independent libraries.
-    target = os.environ.get('PLANK_MAC_CLIENT_MIN_MACOS', '27.0')
-    if target not in ('15.0', '27.0'):
-        raise ValueError('Unsupported Mac Client deployment target')
+    target = os.environ.get('PLANK_MAC_CLIENT_MIN_MACOS') or '15.0'
+    if target != '15.0':
+        raise ValueError('PLANK Client deployment target must be 15.0')
     data = {'schema': 1, 'deployment_target': target, 'inputs': hashes, 'source_root': str(root),
             'dependency_root': str(dependency_root), 'toolchain': toolchain}
     return KEY_PREFIX + hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()

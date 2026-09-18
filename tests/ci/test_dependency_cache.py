@@ -48,16 +48,17 @@ class DependencyCacheTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             self.key()
 
-    def test_deployment_targets_never_share_dependencies(self):
+    def test_unified_target_rejects_old_dependency_policy(self):
         with patch.dict(cache.os.environ, {}, clear=True):
             default = self.key()
-        with patch.dict(cache.os.environ, {'PLANK_MAC_CLIENT_MIN_MACOS': '27.0'}):
-            self.assertEqual(default, self.key())
         with patch.dict(cache.os.environ, {'PLANK_MAC_CLIENT_MIN_MACOS': '15.0'}):
-            self.assertNotEqual(default, self.key())
-        with patch.dict(cache.os.environ, {'PLANK_MAC_CLIENT_MIN_MACOS': '14.0'}):
-            with self.assertRaises(ValueError):
-                self.key()
+            self.assertEqual(default, self.key())
+        with patch.dict(cache.os.environ, {'PLANK_MAC_CLIENT_MIN_MACOS': ''}):
+            self.assertEqual(default, self.key())
+        for target in ('14.0', '27.0', 'unknown'):
+            with patch.dict(cache.os.environ, {'PLANK_MAC_CLIENT_MIN_MACOS': target}):
+                with self.assertRaises(ValueError):
+                    self.key()
 
     def test_toolchain_and_paths_are_exact(self):
         key = self.key()

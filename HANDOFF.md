@@ -161,7 +161,9 @@ tablet and held-button recovery are not new acceptance claims from this check.
 ## Experimental Mac Client review branch — 2026-09-17
 
 Root and Client `codex/macos15-pr-review` are draft contributions for the
-macOS 15 Client. The default macOS 27 target remains. The accepted local Client
+macOS Client. The operator now requests one Apple Silicon package for macOS15
+and macOS27: SDK27 or newer, deployment minimum15.0. The Host remains27-only.
+The accepted local Client
 and Linux Host installations are separate from this source branch. The Linux
 physical-display matching feature is in separate draft Client
 [#4](https://github.com/instinctual/plank-client/pull/4) and root
@@ -202,6 +204,26 @@ performed.
 See [the current integration review](docs/development/macos15-integration-review.md)
 and the chronological [Mac Client record](docs/development/macos15-client.md).
 The earlier mainline handoff is retained below as historical context.
+
+### Current maintainer follow-up
+
+- Client `a6faf27a` repairs Wacom focus/reconnect recovery after release timeouts.
+  Desired state survives the bounded UI wait, but input remains blocked until
+  the worker finishes physical release. Newer focus/reconnect/Quit requests
+  always take precedence. No protocol or Linux input changes.
+- Client `82436e5ada0e6139c967a167a5079d6ab1cbbdcd` adds the single15.0 minimum
+  and compile-time rejection of unguarded newer APIs. Parent build/bootstrap/
+  cache/DMG policy requires SDK27, invalidates older dependency caches, and
+  validates the complete app's deployment floor. Host source and target remain
+  unchanged; common-C stays `16a7a503b2cfafad12faeedbc67257f7a1c0deb8`.
+- Candidate base1.0.129. Wacom:11 Qt results,30 repeats and ASan/UBSan with leak
+  detection pass in an isolated Ubuntu26.04 container. Root:43 CI tests, six
+  CTest suites, seven fullscreen and three Quit guards pass. Native Mach-O
+  fixture is skipped on Linux and runs on the Mac builder.
+- Next: hosted unsigned compilation/package gates, then identical-package
+  qualification on macOS15 and27, especially delayed tablet release, reconnect,
+  focus changes, Quit and hotplug. Do not merge these draft PRs or claim a
+  release/hardware pass from the portable tests. No installations performed.
 
 Read AGENTS.md and the platform build runbook before work. Read the private
 notes' README before machine-specific work; deployment information stays outside Git.

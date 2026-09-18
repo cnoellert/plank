@@ -7,8 +7,10 @@ raw logs and recordings remain outside Git.
 
 ## Scope
 
-The Mac Client contribution adds a selectable macOS 15 build target while
-preserving the default macOS 27 target. It presents one decoded desktop across
+The Mac Client contribution uses one SDK27-built Apple Silicon package with a
+macOS15 deployment minimum, including when running on macOS27. Newer APIs use
+runtime availability checks; the build rejects unguarded newer API calls rather
+than removing modern features. The Host remains27-only. It presents one decoded desktop across
 two Metal windows using each display's actual backing pixels. Native fullscreen
 Spaces, camera-safe viewport sizing, secondary-window cleanup, captured drags
 and pointer/pen focus have targeted fixes. The Client forwards allowlisted USB
@@ -33,10 +35,10 @@ display policy. The separate display series uses `0x1000000` for matched modes;
 
 | Area | Behavior | Evidence and limit |
 | --- | --- | --- |
-| Build target | Explicit 15.0 minimum OS; default remains 27.0 | Dependency target, architecture, package and signature checks passed for local 15.0 candidates; 27.0 still needs final regression |
+| Build target | One SDK27-built Client, minimum OS15.0; Host stays27 | Portable target/cache guards pass; identical-package live validation on15 and27 remains open |
 | Two displays | Separate Metal surfaces crop one decoded stream with shared input geometry | Native GPU readback, mixed-density geometry and three Space exit/reentry cycles passed; longer pacing and color acceptance remain open |
 | Fullscreen | Native Spaces on both screens, early SDL policy, camera-safe viewport, secondary-window cleanup | Operator accepted dual fullscreen drag, right-click focus and windowed transition in earlier exact candidates |
-| Wacom | Exclusive allowlisted USB HID forwarding, timed asynchronous report I/O, bounded release waits, passive cursor and pen focus | A stalled-callback state test passes; Flame pressure and focus were accepted only on earlier candidates, and the new path needs live acceptance |
+| Wacom | Exclusive allowlisted USB HID forwarding, timed report I/O, remembered focus/reconnect intent after bounded release waits | Delayed-release, superseding-request and terminal-Quit tests pass; pressure/focus acceptance belongs to earlier candidates, not this repair |
 | Input queue | Adjacent absolute moves coalesce at enqueue; button/key events retain order | Existing drag fixture and new 150-position release fixture pass with the actual worker; the new fixture fails on the prior PR head |
 | Upstream behavior | Current MacApplication Quit/Command-Q, Linux capture policy and Wayland window lifecycle retained | Native Quit tests and platform source guards pass; Linux hardware remains untested |
 
@@ -59,6 +61,33 @@ includes, and retained both presentation and clipboard topology tests. Diff
 checks passed; the merged Client has not yet had a fresh Mac build or live
 tablet acceptance, so the results above remain tied to `397678e`.
 
+### Maintainer follow-up — 2026-09-17
+
+Client `a6faf27a` fixes the timeout latch rather than extending the two-second
+wait. Requested focus/reconnect state and release tickets share one lock.
+Forwarding becomes eligible only after the worker acknowledges every requested
+physical release. A late release resumes input without another focus event or
+reconnect callback, but cannot override a newer focus loss, reconnect, Quit or
+worker exit. Stale report epochs and worker-owned shutdown lifetime remain.
+This changes only the Mac raw-HID Client path, not Linux input or the wire format.
+
+The Qt6.10.2 Wacom suite passes all11 results (including init/cleanup),30 repeat
+runs and ASan/UBSan with leak detection in an isolated Ubuntu26.04 test container.
+These are portable state tests, not IOKit or physical-device fault injection.
+Five new cases cover delayed focus recovery, delayed reconnect completion,
+newer requests superseding older acknowledgments, focus loss during reconnect,
+and terminal shutdown/exit.
+
+Client `82436e5a` and the parent build changes select the unified15.0 minimum.
+SDK27 remains mandatory independently of deployment target. Dependency cache
+identity changes, application/dependency/DMG gates share the target policy, and
+every Mac build runs real Mach-O target-validation fixtures. The complete
+packaged app is checked again after Qt deployment. Portable validation passes:
+43 CI tests, six root CTest suites, seven fullscreen checks and three Quit
+guards. Native Mach-O execution is explicitly skipped on Linux. The new
+candidate version is1.0.129; hosted/native builds and live macOS15/macOS27 tablet
+acceptance are pending, not implied by these source-level checks.
+
 The earlier accepted Client 1.0.126 passed 84 Qt results, native input ordering,
 106 Mach-O checks, dependency closure and ad-hoc signature checks. Three native
 AppKit cycles and 14 Metal readback cases passed. Live testing confirmed
@@ -76,7 +105,7 @@ Those observations do not establish the final review head as live-accepted.
   the Mac-specific implementation and the common-C pin. Its current review
   branch is limited to the Mac scope.
 - [root PR #4](https://github.com/instinctual/plank/pull/4) coordinates the
-  Client pin, optional target build paths, focused tests and this evidence.
+  Client pin, unified target build paths, focused tests and this evidence.
 - [libvirtualhid PR #1](https://github.com/instinctual/plank-libvirtualhid/pull/1)
   was merged as a separate Pause-key correction for Linux; it is not a Mac
   Client dependency. The Linux Host dependency pin is in
