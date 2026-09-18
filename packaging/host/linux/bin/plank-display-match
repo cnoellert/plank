@@ -164,13 +164,13 @@ def ensure_restored_mutter_output(primary):
     active = [item for item in outputs(command([XRANDR, "--query"])) if item["rect"]]
     if not active:
         raise ValueError("Restored NVIDIA layout has no active physical output")
+    expected = {item["name"]: item["rect"] for item in active}
     single = active[0] if len(active) == 1 else None
     def visible(geometry):
-        if single is None:
-            return bool(geometry)
-        reported = geometry.get(single["name"])
-        return bool(reported and reported[:4] == single["rect"] and
-                    (primary != single["name"] or reported[6]))
+        restored = {name: rect[:4] for name, rect in geometry.items()}
+        selected_primary = [name for name, rect in geometry.items() if rect[6]]
+        return (restored == expected and
+                (primary == "none" or selected_primary == [primary]))
 
     deadline = time.monotonic() + 6
     while True:

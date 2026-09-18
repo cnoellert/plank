@@ -222,6 +222,30 @@ class DisplayMatchTest(unittest.TestCase):
                 match.ensure_restored_mutter_output("DP-0")
             recover.assert_not_called()
 
+    def test_restored_multi_output_requires_exact_gnome_layout(self):
+        dual = QUERY.replace("DP-2 connected (", "DP-2 connected 2560x1440+2560+0 (")
+        correct = {"DP-0": (2560, 1440, 0, 0, 1.0, 0, True),
+                   "DP-2": (2560, 1440, 2560, 0, 1.0, 0, False)}
+        with patch.object(match, "command", return_value=dual), \
+             patch.object(match, "mutter_geometry", return_value=correct):
+            match.ensure_restored_mutter_output("DP-0")
+
+        invalid = {
+            "missing output": {"DP-0": correct["DP-0"]},
+            "stale geometry": {**correct, "DP-2": (1280, 720, 2560, 0, 1.0, 0, False)},
+            "wrong primary": {"DP-0": (*correct["DP-0"][:6], False),
+                              "DP-2": (*correct["DP-2"][:6], True)},
+        }
+        for description, geometry in invalid.items():
+            with self.subTest(description=description), \
+                 patch.object(match, "command", return_value=dual), \
+                 patch.object(match, "mutter_geometry", return_value=geometry), \
+                 patch.object(match, "recover_single_mutter_output") as recover, \
+                 patch.object(match.time, "monotonic", side_effect=[0, 7]):
+                with self.assertRaisesRegex(ValueError, "invalid logical monitor layout"):
+                    match.ensure_restored_mutter_output("DP-0")
+                recover.assert_not_called()
+
     def test_single_mutter_request_uses_exact_advertised_mode(self):
         mode = ("2560x1440@59.950550079345703", 2560, 1440, 59.95, 1.0, [1.0], {})
         state = (233, [(('DP-0', 'LNX', 'Linux XGA', 'Linux #0'), [mode], {})], [], {})
