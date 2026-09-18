@@ -18,7 +18,8 @@ int main(int argc, char** argv)
     CHECK(topologyFile.open(QIODevice::ReadOnly));
     CHECK(requestFile.open(QIODevice::ReadOnly));
     const auto rawTopology = QJsonDocument::fromJson(topologyFile.readAll()).object();
-    const auto expected = QJsonDocument::fromJson(requestFile.readAll()).object();
+    auto expected = QJsonDocument::fromJson(requestFile.readAll()).object();
+    expected["clipboard"] = NvOutputTopology::PlatformClipboardSyncFeature != 0;
     NvOutputTopology topology;
     CHECK(NvOutputTopology::fromJson(rawTopology, topology));
     CHECK(MacPreviewLaunch::request(topology, expected.value("bitrate_kbps").toInt(),
@@ -30,10 +31,10 @@ int main(int argc, char** argv)
     CHECK(!MacPreviewLaunch::request(topology, 150000, 65527).isEmpty());
     CHECK(MacPreviewLaunch::request({}, 10000, 1200).isEmpty());
     const QJsonObject valid {
-        {"schema_version", 2}, {"state", "connecting"}, {"udp_port", 28989},
+        {"schema_version", 3}, {"state", "connecting"}, {"udp_port", 28989},
         {"max_udp_payload_size", 1200}, {"capture", rawTopology.value("capture")},
         {"transport_token", QString::fromLatin1(QByteArray(32, 'x').toBase64())},
-        {"services", QJsonObject {{"audio", true}, {"input", true}, {"pen", "normalized"}, {"cursor", "embedded"}}}
+        {"services", QJsonObject {{"audio", true}, {"input", true}, {"pen", "normalized"}, {"cursor", "embedded"}, {"clipboard", false}}}
     };
     MacPreviewLaunch::Reply parsed;
     CHECK(MacPreviewLaunch::parseReply(valid, topology, 28989, 1200, parsed));
@@ -48,6 +49,14 @@ int main(int argc, char** argv)
     CHECK(parsed.configuration.opusConfiguration.mapping[1] == 1);
     CHECK(parsed.configuration.negotiatedVideoFormat == VIDEO_FORMAT_H265_MAIN10);
     CHECK(parsed.configuration.sessionPort == 28989);
+    CHECK(!parsed.clipboard);
+    auto clipboardReply = valid;
+    auto clipboardServices = valid.value("services").toObject();
+    clipboardServices["clipboard"] = true;
+    clipboardReply["services"] = clipboardServices;
+    CHECK(MacPreviewLaunch::parseReply(clipboardReply, topology, 28989, 1200, parsed) ==
+          (NvOutputTopology::PlatformClipboardSyncFeature != 0));
+    if (NvOutputTopology::PlatformClipboardSyncFeature) CHECK(parsed.clipboard);
     auto reject = [&](const QJsonObject& bad) {
         CHECK(MacPreviewLaunch::parseReply(valid, topology, 28989, 1200, parsed));
         CHECK(!MacPreviewLaunch::parseReply(bad, topology, 28989, 1200, parsed));
@@ -69,6 +78,10 @@ int main(int argc, char** argv)
     bad = valid; bad["transport_token"] = QString::fromLatin1(QByteArray(31, 'x').toBase64()); reject(bad);
     for (const char* service : {"audio", "input", "pen", "cursor"}) {
         auto services = valid.value("services").toObject(); services[service] = false;
+        bad = valid; bad["services"] = services; reject(bad);
+    }
+    for (const QJsonValue value : {QJsonValue(), QJsonValue(1), QJsonValue("true")}) {
+        auto services = valid.value("services").toObject(); services["clipboard"] = value;
         bad = valid; bad["services"] = services; reject(bad);
     }
     auto capture = rawTopology.value("capture").toObject();

@@ -764,7 +764,10 @@ for required_loss_ui_token in \
   '(clampedLoss - 5.0) / 5.0' \
   'QString("%1%").arg(m_PacketLossPercent' \
   'QRect(174, 16, 52, 17)' \
-  'return toolbarLeft() + 229'; do
+  'return toolbarLeft() + PlankToolbarStats::EncoderTargetLeft' \
+  'Network RTT: %s' \
+  'PlankToolbarStats::networkRttText(stats.lastRtt)' \
+  'PlankToolbarStats::networkRttText(m_NetworkRttMs)'; do
   rg -Fq "$required_loss_ui_token" \
     "$source_dir/app/streaming/session.cpp" \
     "$source_dir/app/streaming/session.h" \
@@ -1698,7 +1701,7 @@ cleanup_bookmark_test() {
   fi
 }
 trap cleanup_bookmark_test EXIT
-for bookmark_test in outputtopology hostchoices; do
+for bookmark_test in outputtopology hostchoices planktoolbarlogic; do
   mkdir "$bookmark_test_build/$bookmark_test"
   qmake6 "$source_dir/tests/$bookmark_test/$bookmark_test.pro" \
     -o "$bookmark_test_build/$bookmark_test/Makefile"

@@ -131,6 +131,43 @@ the app to Trash. Host installation/permissions are separate and unchanged.
 
 ## Known failure signatures
 
+- macOS system shortcuts require the Client's Accessibility authorization when
+  Capture system keyboard shortcuts is enabled. The session-scoped public
+  Core Graphics modifying tap queues keyboard input for the existing input
+  handler; it does not post synthetic OS input or change global preferences.
+  Native stream focus, the fullscreen/always policy, and capture release gate
+  activation. Missing permission prompts once per process in the ordinary
+  launcher at startup (only if shortcut capture is enabled), or when enabled
+  later in Settings. CLI autoconnect never prompts; open the ordinary launcher
+  first to authorize it. Session creation, focus changes and permission
+  revocation never display permission UI. A silent one-second main-run-loop
+  check detects authorization changes. Revocation, tap timeout,
+  focus loss, queue failure and teardown discard pending input and release
+  remote keys. Capture is retried only after rechecking permission and focus.
+  The authorized tap stays registered during ordinary focus loss; background
+  keys pass through untouched before their key data is inspected. Returning to
+  the stream re-arms forwarding on the first key using native AppKit focus and
+  active-Space state, not cached SDL focus or a later timer tick. Do not disable
+  the tap on every focus loss: that prevents first-key recovery after a Spaces
+  swipe. Explicit capture release and revoked permission still block re-arm;
+  teardown/revocation remove the tap. Test repeated three-finger swipe-away and
+  return without an intervening click, not just the first connected shortcut.
+  Ctrl+Alt+Shift+Z remains the release toggle; mouse/trackpad gestures, Fn/media
+  controls and explicit menu/Dock Quit stay local. Keys are never logged.
+  The `mackeyboardcapture` native suite exercises the production callback and
+  bounded queue without installing an OS tap or requesting permission. It is
+  not proof of live TCC, Command-Tab/Command-Space or Spaces behavior: test the
+  signed app with permission granted/denied/revoked and focus changes on both
+  supported Mac OS versions. Do not enable SDL's optional private CGS grab
+  path or restore global hotkey suppression as an alternative.
+- A visible toolbar flashing during a stats update can be a Metal overlay
+  publication race. Build/upload the replacement before exchanging the texture
+  under the overlay lock, and preserve the old image on allocation failure.
+  Do not publish an empty slot except for an explicit hide. Every Mac Client
+  build runs `macmetaloverlay` against the production updater with deterministic
+  allocation/upload stalls, allocation failure, concurrent readers and lifetime
+  checks. The test uses Metal resource doubles without a desktop/GPU; it does
+  not replace the native GPU presentation probe or live flicker acceptance.
 - Command-Q reaching the Host and also quitting PLANK is duplicate native
   shortcut handling, not a transport disconnect. SDL queues the key before
   AppKit can activate the local Quit menu. The shortcut guard prevents local

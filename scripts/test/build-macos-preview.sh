@@ -29,7 +29,7 @@ sources=(apps/host/macos/auth/authentication-session.m apps/host/macos/auth/grap
     apps/host/macos/session/host-runtime.m
     apps/host/macos/control/http-request.m apps/host/macos/control/server-information.m
     apps/host/macos/control/fixed-capture.m apps/host/macos/control/https-auth-server.m
-    apps/host/macos/media/native-video.m apps/host/macos/media/preview-session.m apps/host/macos/media/screen-capture.m
+    apps/host/macos/media/native-video.m apps/host/macos/media/preview-session.m apps/host/macos/media/clipboard-sync.m apps/host/macos/media/screen-capture.m
     apps/host/macos/media/native-audio.m apps/host/macos/media/opus-encoder.m apps/host/macos/media/audio-tap.m
     apps/host/macos/input/input-events.m apps/host/macos/input/native-input.m apps/host/macos/input/quartz-input.m
     probes/macos/https-auth.m)

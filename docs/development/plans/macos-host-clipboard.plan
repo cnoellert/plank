@@ -1,0 +1,72 @@
+# Authenticated plain-text clipboard
+
+Branch: macos-host-clipboard. Baseline: release 1.0.135.
+
+Status: the operator accepted 1.0.136-macos-host-clipboard and authorized merge.
+The maintained dependency branches, Client/Host main and parent main contain
+the tested implementation. Mainline release 1.0.137 is published with four fresh
+Host/Client packages; build evidence and provenance are in HANDOFF and the
+release notes. No deployment was performed.
+The validation matrix below is retained; acceptance is not evidence that each
+individual stress case was exercised.
+
+## Scope
+
+Add macOS Host ↔ macOS Client plain UTF-8 clipboard, retaining Mac Client ↔
+Linux X11 Host. No files, images, rich text, new ports, Linux Client backend,
+login-screen clipboard or permission bypass. Maximum encoded text: 512 KiB.
+
+## Implementation
+
+1. Share bounded wire/UTF-8 validation across the native Mac Host and existing
+   endpoints. Keep platform clipboard ownership separate from transport.
+2. Reject oversize, embedded NUL and invalid UTF-8 before outgoing allocation;
+   never truncate or log contents. Retry queue pressure from the unsent chunk,
+   without restarting a generation or disconnecting video.
+3. Bound clipboard work per transport turn. Preserve reliable input ordering,
+   particularly clipboard completion before a following paste keystroke.
+4. Negotiate clipboard explicitly in the Mac launch contract. Only a negotiated,
+   authenticated desktop worker for the active account may access NSPasteboard.
+   A Linux Client still connects without negotiating clipboard.
+5. Scope pending work to the session; revoke on logout, takeover and teardown.
+   Clear only remotely owned pasteboard data, preserving later local copies.
+   Do not block capture/input lifecycle on an AppKit permission prompt.
+
+## Validation and handoff
+
+Test Unicode, multiline, exact/over-limit input, malformed chunks, independent
+generations, partial-send retry, queue pressure, repeated A→B→A, newer local
+ownership, background focus and session replacement. Keep existing Xvfb and
+native Client regressions. Add Mac Host native tests with an isolated pasteboard
+and fake session authority; never overwrite a runner/user's general clipboard.
+
+Build branch-qualified Host/Client candidates on hosted builders. Compilation
+is not live acceptance: paired Mac copy/paste, Linux regression, Spaces, user
+transitions and permission denial require interactive qualification. Do not
+merge or publish a release before acceptance.
+
+Include an immediate paste after a new copy, both at ordinary size and the
+512 KiB limit. Reliable chunk ordering is preserved, but completion of a native
+pasteboard write is asynchronous and the protocol has no applied-write
+acknowledgment. Queue-pressure tests prove transfer resumption, not atomic
+ordering between that write and a following paste keystroke. Do not claim that
+stronger guarantee from isolated tests.
+
+## Paired acceptance procedure
+
+- Install the matching candidate Mac Host and Mac Client. This is a coordinated
+  launch-schema update, not an old-peer compatibility test.
+- Copy multiline Unicode text from a local editor, return to the stream and
+  paste into a remote editor. Reverse the direction, leaving the stream with
+  the normal Spaces gesture before pasting into the local editor.
+- Repeat A→B→A, immediate copy/paste, a 512 KiB UTF-8 copy and a 512 KiB+1 copy.
+  Exact-limit text must arrive intact; oversize text must not be truncated or
+  partly replace the destination clipboard.
+- Disconnect/reconnect and log out/in. No clipboard traffic is negotiated for
+  LoginWindow; a desktop stream resumes normal behavior. Remotely owned text
+  is cleared on teardown, while text newly copied locally remains.
+- With matching Linux Host installed, repeat both Mac↔Linux directions. Verify
+  the Linux Client still connects to the Mac Host with clipboard disabled.
+- Confirm video, audio, keyboard/Spaces shortcuts, mouse and Wacom behavior
+  remain unchanged. Record native clipboard permission prompts or denial as
+  observed results, not as permission to bypass platform policy.

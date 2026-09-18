@@ -22,7 +22,8 @@ jobs:
             --repofrompath=ci-appstream,https://dl.rockylinux.org/vault/rocky/9.7/AppStream/x86_64/os/ \
             --repofrompath=ci-crb,https://dl.rockylinux.org/vault/rocky/9.7/CRB/x86_64/os/ \
             --enablerepo=ci-baseos --enablerepo=ci-appstream --enablerepo=ci-crb \
-            install -y git gcc-toolset-14-gcc-c++ pkgconf-pkg-config libX11-devel libxcb-devel libXfixes-devel xorg-x11-server-Xvfb
+            install -y git gcc-toolset-14-gcc-c++ gcc-toolset-14-libasan-devel gcc-toolset-14-libubsan-devel \
+              pkgconf-pkg-config libX11-devel libxcb-devel libXfixes-devel xorg-x11-server-Xvfb
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -32,4 +33,7 @@ jobs:
         shell: bash
         run: |
           source /opt/rh/gcc-toolset-14/enable
+          gcc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -Iprotocol/plank-transport/include tests/protocol/clipboard-wire.c -o /tmp/clipboard-wire
+          /tmp/clipboard-wire
           bash apps/host/linux/tests/clipboard/run-x11-backend.sh --negative-controls

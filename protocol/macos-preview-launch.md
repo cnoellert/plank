@@ -1,4 +1,4 @@
-# Authenticated macOS preview launch (schema 2)
+# Authenticated macOS preview launch (schema 3)
 
 Experimental, on `macos-host` only. The actual Host advertises HEVC Main10 and
 fixed capture; component-only fixtures still advertise zero capabilities.
@@ -16,7 +16,7 @@ After authentication, both display preparation and launch check the graphical
 worker's current, non-prompting screen/input permissions before changing modes
 or creating a transport lease. Missing permission returns HTTP 403 with exactly
 `{"state":"denied","error":"host_permissions_required"}`. This is an error
-extension, not a change to the schema-2 success manifest or transport ABI.
+extension, not a change to the schema-3 success manifest or transport ABI.
 Unauthenticated callers still receive 401 without permission details. The Client
 maps only this fixed code to local instructions; arbitrary Host text is not
 displayed. Permission denial does not alter display topology. Failed launch
@@ -56,11 +56,12 @@ Disconnect cancels the paused worker. Login/logout recovery otherwise remains
 automatic. These rules do not apply credentials to bookmark discovery polls.
 
 The body has exactly the nine fields in
-`tests/protocol/macos-preview-launch-v2.json`:
+`tests/protocol/macos-preview-launch-v3.json`:
 
 | Field | Required value |
 | --- | --- |
-| `schema_version` | Integer 2 |
+| `schema_version` | Integer 3 |
+| `clipboard` | Boolean Client opt-in; false on Linux Clients |
 | `capture_generation` | Current authenticated topology generation |
 | `capture_id` | Current fixed-capture identifier |
 | `width`, `height` | Exact advertised even pixel dimensions, 2–8192 |
@@ -75,13 +76,18 @@ existing route policy; accepting a numeric value does not prove that path MTU.
 Unknown fields, booleans as integers, wrong profiles and stale geometry fail.
 There is no resize, profile substitution, implicit takeover or fallback port.
 
-A successful response has schema 2, `state: "connecting"`, an independent
+A successful response has schema 3, `state: "connecting"`, an independent
 one-use `transport_token`, `udp_port`, the exact `max_udp_payload_size`, the
 selected `capture` descriptor and:
 
 ```json
-"services": {"audio": true, "input": true, "pen": "normalized", "cursor": "embedded"}
+"services": {"audio": true, "input": true, "pen": "normalized", "cursor": "embedded", "clipboard": false}
 ```
+
+Clipboard is true only when explicitly requested by a capable Client and
+launched in the authenticated user's own desktop worker. It is false at
+LoginWindow and for Linux Clients. See `clipboard-sync.md`; the Client must use
+this negotiated result, not discovery alone, before accessing a pasteboard.
 
 The UDP port is the same number as the approved HTTPS control port. QUIC uses
 the same leaf certificate; the Client pins the certificate it approved for
@@ -126,7 +132,7 @@ See `tests/protocol/macos-display-v3.json`. Width and height are even backing
 pixel counts from 2 through 8192; scale is integer 1 or 2. Logical desktop
 dimensions are pixels divided by scale and may be odd. Booleans, fractional
 values, missing/extra fields and prior schemas are rejected. Matching Host and
-Client builds are required; no silent 1x downgrade. Launch remains schema 2
+Client builds are required; no silent 1x downgrade. Launch remains schema 3
 and fixed-capture topology remains schema 13 (already carrying both geometries).
 
 For macOS Clients, Match Client reads the current CoreGraphics mode's backing

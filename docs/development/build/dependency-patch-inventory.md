@@ -34,6 +34,21 @@ fail-closed contract before configuring a package build.
 `scripts/build/verify-host-dependency-patches.sh` also proves that the generated
 dependency worktrees contain exactly the tracked files named by those patches,
 with no additional tracked source modifications or patch residue.
+The Loader source copy intentionally omits its upstream `tests/` directory;
+the verifier allows only tracked deletions there, not modified tests or deleted
+production source. NUL-delimited Git paths preserve upstream Unicode filenames.
+
+Vulkan Loader 1.4.362 requires
+`patches/FFmpeg/Vulkan-Loader/01-handle-id-filter-allocation-failure.patch`.
+It propagates ID-filter allocation failure as `VK_ERROR_OUT_OF_HOST_MEMORY`
+through both physical-device enumeration APIs and their cleanup paths. It is
+applied even when optional FFmpeg patches are disabled. Bootstrap, cache and
+package preflight independently verify the generated Loader source; the separate
+upstream-framework test patch is not applied to production dependency sources.
+Run `tests/packaging/test-host-dependency-patches.py` to check that stale,
+unpatched, incompatible or unexpectedly modified prepared sources are rejected.
+See [the qualification record](../reviews/vulkan-loader-qualification.md) for
+the original clean build, fault-injection tests and hardware-check limits.
 
 The active selection is controlled by the pinned build-deps CMake options and
 therefore may include patches for FFmpeg CBS, AMF, Vulkan, x264 integration,

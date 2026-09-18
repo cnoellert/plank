@@ -1,8 +1,8 @@
 # Clipboard sync v1
 
-Status: implemented for the PLANK macOS Client and Linux X11 Host. The
-feature remains candidate-scoped until a clean paired package passes live
-qualification.
+Status: Mac Client ↔ Linux X11 Host and Mac Client ↔ Mac Host support, including
+the 512 KiB hardening, are operator-accepted and merged. Large/interrupted
+transfer and lifecycle stress qualification remain separate from broad acceptance.
 
 ## Scope
 
@@ -12,6 +12,8 @@ Bidirectional UTF-8 plain text clipboard during an authenticated stream:
 |---|---|---|
 | Mac | Linux / Flame | `Ctrl+V` in the remote session |
 | Linux / Flame | Mac | `Cmd+V` on macOS |
+| Mac Client | Mac Host desktop | `Cmd+V` in the remote session |
+| Mac Host desktop | Mac Client | `Cmd+V` in a local application |
 
 Images, files, HTML, RTF, Flame-internal formats, and clipboard transfer across
 disconnect are outside v1.
@@ -27,10 +29,18 @@ disconnect are outside v1.
   negotiated the bit.
 - If absent, no automatic synchronization occurs. The inherited text-injection
   key combination remains available.
+- Mac launch schema 3 requires a boolean `clipboard` opt-in. Its `services`
+  reply explicitly enables or disables clipboard for that stream. Only the
+  authenticated desktop user's worker enables it; the root LoginWindow worker
+  returns false. Linux Clients request false, even when discovery advertises
+  the Host capability. There is no login-screen clipboard or cross-user lease.
 
 ## Transport
 
-`PLANK_CLIPBOARD_WIRE_HEADER` is defined in `moonlight-common-c/src/plank.h`.
+`PLANK_CLIPBOARD_WIRE_HEADER` is retained in both common-C header branches.
+`plank_clipboard_wire.h` in the native transport include directory provides
+platform-independent framing and UTF-8 validation; static assertions prevent
+the maintained C header size/limit from drifting.
 All header fields use little-endian byte order.
 
 | Lane / type | Direction |
@@ -47,7 +57,7 @@ Receivers must:
 - reject zero-length chunks, unknown flags, nonzero reserved fields, and
   generation zero;
 - accept only ordered, contiguous chunks from one generation;
-- reject text over 1 MiB;
+- reject text over 512 KiB (524288 UTF-8 bytes, not characters);
 - reject malformed UTF-8, overlong encodings, surrogate code points, values
   above U+10FFFF, and embedded NUL;
 - keep inbound and outbound generation counters independent;
@@ -69,7 +79,10 @@ The client deduplicates repeated Host text only while it still owns that
 pasteboard change count; a newer local copy is not suppressed by matching text.
 It never compares Host
 generations against its independent outbound generation. Failed transport
-sends remain pending for the next poll; failure to queue a Host offer on the
+sends retain the exact unsent chunk and generation for the next poll; newer
+local copies supersede unfinished offers. Oversize or embedded-NUL copies are
+not truncated, transmitted or reported as successful. One copy is bounded to
+65 input chunks. Failure to queue a Host offer on the
 SDL event loop terminates the affected session.
 
 ## Host behavior
@@ -82,11 +95,24 @@ clipboard thread performs all selection reads and writes over a dedicated XCB
 connection. New conversions are limited to one per 250 ms. During an active
 conversion, X11 events wake the worker immediately, so deletion-acknowledged
 INCR chunks do not each incur a 250 ms sleep. Transfers retain the five-second
-total deadline and 1 MiB size bound. Waiting is bounded to 250 ms for client
+total deadline and 512 KiB size bound. Waiting is bounded to 250 ms for client
 offers and shutdown; if several client offers arrive meanwhile, the newest wins.
 
 Session teardown releases any synthetic selection ownership, destroys the X11
 window, and closes the display after clipboard workers stop.
+
+Host outgoing delivery retains one in-flight offer plus the latest local
+replacement, sends at most two event chunks per control turn and resumes after
+transient native queue pressure. It does not restart a generation or disconnect
+video merely because that queue is full.
+
+The Mac Host uses NSPasteboard on the main queue of the existing authorized
+desktop worker. At most one AppKit operation is queued; transport and capture
+never wait for it. Native permission policy remains in force (no TCC writes or
+permission bypass). Scope revocation blocks queued access and transmission.
+Teardown clears remotely written text only if its pasteboard change count is
+still owned; a later local copy, even of identical text, survives disconnect.
+All transfer/assembly state belongs to that one authenticated stream.
 
 ## Security and diagnostics
 

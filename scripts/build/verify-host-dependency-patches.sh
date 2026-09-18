@@ -27,9 +27,12 @@ patch_count=0
 verify_patch_group() {
   local generated_repo=$1
   local product_patch_dir=$2
+  local omitted_directory=${3:-}
   local git_dir
   local patch_file
   local patched_path
+  local change_status
+  local group_patch_count=0
   local -A expected_paths=()
   local -a actual_paths=()
 
@@ -49,6 +52,7 @@ verify_patch_group() {
       exit 1
     fi
     ((patch_count += 1))
+    ((group_patch_count += 1))
     printf 'host_dependency_patch=present:%s\n' \
       "${patch_file#"${patch_root}/"}"
     while IFS= read -r patched_path; do
@@ -56,15 +60,30 @@ verify_patch_group() {
     done < <(sed -n -e 's#^+++ b/##p' -e 's#^--- a/##p' "$patch_file")
   done < <(find "$product_patch_dir" -type f -name '*.patch' -print0 | sort -z)
 
+  ((group_patch_count > 0)) || {
+    echo "required Host dependency patch group is empty: ${product_patch_dir}" >&2
+    exit 1
+  }
+
   git_dir=$(git -C "$generated_repo" rev-parse --absolute-git-dir)
-  mapfile -t actual_paths < <(
+  while IFS= read -r -d '' change_status && IFS= read -r -d '' patched_path; do
+    # Dependency preparation intentionally omits the upstream Loader tests.
+    # Permit only deletions there, not modified/added test files or missing
+    # production source. Never exclude the entire path from verification.
+    if [[ -n $omitted_directory && $change_status == D &&
+          $patched_path == "$omitted_directory/"* ]]; then
+      continue
+    fi
+    [[ -n $patched_path ]] && actual_paths+=("$patched_path")
+  done < <(
     git --git-dir="$git_dir" --work-tree="$generated_repo" \
-      diff --name-only | sort -u
+      diff --no-renames --name-status -z
   )
   ((${#actual_paths[@]} == ${#expected_paths[@]})) || {
     echo "prepared dependency has an unexpected tracked modification count: ${generated_repo}" >&2
     printf 'expected=%s actual=%s\n' \
       "${#expected_paths[@]}" "${#actual_paths[@]}" >&2
+    printf 'actual_modified_path=%q\n' "${actual_paths[@]}" >&2
     exit 1
   }
   for patched_path in "${actual_paths[@]}"; do
@@ -87,6 +106,9 @@ verify_patch_group \
 verify_patch_group \
   "${build_dir}/FFmpeg/x265_git" \
   "${patch_root}/FFmpeg/x265_git"
+verify_patch_group \
+  "${build_dir}/FFmpeg/Vulkan-Loader" \
+  "${patch_root}/FFmpeg/Vulkan-Loader" tests
 
 ((patch_count > 0)) || {
   echo "no active Host dependency patches were verified" >&2

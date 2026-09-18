@@ -40,7 +40,7 @@ NSDictionary *PLANKMacFixedCaptureDescription(NSString *generation, NSString *id
         fabs(bounds.origin.x) > 65536 || fabs(bounds.origin.y) > 65536 ||
         bounds.size.width <= 0 || bounds.size.height <= 0 ||
         bounds.size.width > 65536 || bounds.size.height > 65536) return nil;
-    return @{@"schema_version": @13, @"feature_flags": @3670129, @"generation": generation,
+    return @{@"schema_version": @13, @"feature_flags": @7864433, @"generation": generation,
         @"capture": @{@"id": identifier, @"width": @(width), @"height": @(height),
             @"logical_bounds": @{@"x": @(bounds.origin.x), @"y": @(bounds.origin.y),
                 @"width": @(bounds.size.width), @"height": @(bounds.size.height)},

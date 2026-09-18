@@ -77,17 +77,17 @@ callers, both lockfiles and documented repairs together. Never remove that path
 override merely to make a bot PR compile. The vendored crate's own Cargo.lock
 is not the production dependency lockfile.
 
-The qualified Vulkan Loader is 1.4.357, commit
-`5f157b62e333c63260d05d81bf66faa216ab0fb8`. It predates the dynamic-filter
-allocation failure found during review of 1.4.362. A future Vulkan upgrade must
-prove out-of-memory handling for layer/extension filter parsing and both
-enumeration paths; do not assume a newer Loader is safer. The reviewed repair
-returned `VK_ERROR_OUT_OF_HOST_MEMORY` and propagated failure through cleanup.
-Its twelve fault-injection cases failed on the unpatched candidate and passed
-with the repair; the repaired candidate passed 713 Loader tests. This is upgrade
-evidence, not qualification of a new PLANK package. Retain/reproduce those
-negative-control checks before adopting a version with the changed allocation
-code. Do not apply that repair to the unaffected current Loader.
+The pinned Vulkan Loader is 1.4.362, commit
+`b8b96a2862bff1eed468e602d43f706beae89cf1`, with the required ID-filter
+allocation repair in build-deps. It returns `VK_ERROR_OUT_OF_HOST_MEMORY` and
+propagates failure through both enumeration APIs and cleanup. Bootstrap, cache
+validation and package preflight require that patch; a newer Loader must not
+silently drop it. Twelve fault-injection cases failed on the unpatched candidate
+and passed with the repair; the repaired candidate passed 713 Loader tests.
+Retain/reproduce those negative controls when upgrading the changed allocation
+code. The [qualification record](reviews/vulkan-loader-qualification.md) records
+the clean Host build and hardware checks without implying new Vulkan encoding
+support or complete interactive acceptance. NVIDIA remains capped at 595.91.07.
 
 ## Upgrade sequence and acceptance
 

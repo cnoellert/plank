@@ -23,6 +23,11 @@ if(BUILD_TESTING)
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/test/check-repository-layout.py")
   add_test(NAME bootstrap-inputs
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-bootstrap-inputs.py")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Exercise the real Host verifier, which requires Linux's Bash/GNU tools.
+    add_test(NAME host-dependency-patches
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/packaging/test-host-dependency-patches.py")
+  endif()
   add_test(NAME private-information
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/security/test-private-information.py")
 endif()

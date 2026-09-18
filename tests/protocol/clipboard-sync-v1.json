@@ -2,7 +2,7 @@
   "protocol": "PLANK clipboard sync",
   "version": 1,
   "byte_order": "little",
-  "maximum_text_bytes": 1048576,
+  "maximum_text_bytes": 524288,
   "maximum_host_event_chunk_bytes": 49152,
   "maximum_client_input_chunk_bytes": 8160,
   "vectors": [
