@@ -12,6 +12,15 @@ case $role in
     mkdir -p "$PLANK_SOURCE_ROOT/apps/host/linux/cmake-build-ffmpeg-x264rgb-install" "$PLANK_WORK_ROOT/tmp"
     ln -s "$PLANK_HOST_FFMPEG_ROOT" "$PLANK_SOURCE_ROOT/apps/host/linux/cmake-build-ffmpeg-x264rgb-install/ffmpeg"
     TMPDIR="$PLANK_WORK_ROOT/tmp" bash "$PLANK_SOURCE_ROOT/scripts/package/build-host-rpm.sh" "$PLANK_WORK_ROOT/host-build" "$PLANK_WORK_ROOT/host-package"
+    # Qualification branch only: compile the reviewed Host binding regression.
+    cmake -S "$PLANK_SOURCE_ROOT/apps/host/linux" -B "$PLANK_WORK_ROOT/host-build" -DBUILD_TESTS=ON
+    cmake --build "$PLANK_WORK_ROOT/host-build" --target test_sunshine --parallel 2
+    (
+      cd "$PLANK_WORK_ROOT/host-build"
+      ./tests/test_sunshine --gtest_filter=PlankTopology.PhysicalLeaseKeepsItsNonFirstPrimaryConnector
+    )
+    python3 "$PLANK_SOURCE_ROOT/tests/display/test-display-match.py" -q
+    bash "$PLANK_SOURCE_ROOT/tests/display/test-display-prepare.sh"
     ;;
   linux-client)
     bash "$PLANK_SOURCE_ROOT/scripts/build/build-client-package-binaries.sh" \
