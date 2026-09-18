@@ -101,8 +101,8 @@ class DependencyCacheTests(unittest.TestCase):
 
     def test_workflow_has_exact_restore_and_trusted_save(self):
         workflow = (ROOT / '.github/workflows/build.yml').read_text()
-        self.assertEqual(workflow.count('actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25'), 4)
-        self.assertEqual(workflow.count('actions/cache/save@caa296126883cff596d87d8935842f9db880ef25'), 4)
+        self.assertEqual(workflow.count('actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'), 4)
+        self.assertEqual(workflow.count('actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'), 4)
         self.assertNotIn('restore-keys:', workflow)
         self.assertEqual(workflow.count('test "$MATCHED_KEY" = "$CACHE_KEY"'), 4)
         unsigned = workflow.split('  macos-signed:')[0]

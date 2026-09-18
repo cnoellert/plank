@@ -82,7 +82,7 @@ Those observations do not establish the final review head as live-accepted.
   Client dependency. The Linux Host dependency pin is in
   [Host PR #7](https://github.com/instinctual/plank-host-linux/pull/7).
 
-Upstream Client `86682b5` and root `cb01cfe` were merged into the review
+Upstream Client `0544586` and root `7dd2c1a` were merged into the review
 branches. The upstream Quit implementation replaced the earlier bridge; Mac
 capture/fullscreen changes remain macOS-scoped, while Linux/Wayland behavior
 retains its upstream policy. No upstream merge or release has occurred.

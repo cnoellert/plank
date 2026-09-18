@@ -7,6 +7,8 @@
   covers the experimental fork, evidence, regression risks and linked PR plan.
   [GitHub-hosted builds](development/build/github-builds.md) covers CI scope,
   artifacts and signing boundaries.
+  [Dependency maintenance](development/dependency-maintenance.md) covers update
+  automation, script-pinned inputs and upgrade qualification.
 - [Security](security/): threat models and security-focused contracts.
   [Private information policy](security/private-information.md) defines the
   boundary between public development material and private operational notes.
