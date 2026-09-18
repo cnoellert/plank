@@ -149,18 +149,16 @@ if [[ ${1:-} = --filesystem ]]; then
     }
     trap cleanup EXIT
     /bin/chmod 755 "$fixture"
+    /usr/bin/cc -std=c11 -Wall -Wextra -Werror \
+        "$root/tests/packaging/macos-log-access.c" -o "$fixture/log-access"
     state="$fixture/state"; logs="$fixture/logs"
     initialize_state
     [[ $(/usr/bin/stat -f '%Su:%Sg:%Lp' "$logs") = root:admin:750 ]]; ok
     for name in host-machine.log host-sign-in.log; do
         [[ $(/usr/bin/stat -f '%Su:%Sg:%Lp' "$logs/$name") = root:admin:640 ]]; ok
-        # Exercise actual group access without creating accounts or changing
-        # membership: this short-lived unprivileged process uses admin as GID.
-        /usr/bin/sudo -n -u nobody -g admin /bin/test -r "$logs/$name"; ok
-        /usr/bin/sudo -n -u nobody -g admin /bin/test ! -w "$logs/$name"; ok
-        /usr/bin/sudo -n -u nobody -g wheel /bin/test ! -r "$logs/$name"; ok
+        "$fixture/log-access" "$logs" "$logs/$name" "$state/SignIn/key.pem" admin; ok
+        "$fixture/log-access" "$logs" "$logs/$name" "$state/SignIn/key.pem" wheel; ok
     done
-    /usr/bin/sudo -n -u nobody -g admin /bin/test ! -r "$state/SignIn/key.pem"; ok
     [[ $(/usr/libexec/PlistBuddy -c 'Print :Address' "$state/host.plist") = 0.0.0.0 ]]; ok
     [[ $(/usr/libexec/PlistBuddy -c 'Print :Port' "$state/host.plist") = 28989 ]]; ok
     /usr/bin/plutil -replace Port -integer 29999 "$state/host.plist"
