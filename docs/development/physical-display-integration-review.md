@@ -216,8 +216,9 @@ The physical-display PR series now omits the virtual-primary capability,
 connector reassignment and fullscreen slice adjustment. Those changes have
 separate draft Host #9, Client #6 and root #10 PRs. The physical series retains
 the temporary real-display mode helper, physical primary selection, restoration
-checks and matching controls. Each series needs its own exact-source build and
-live qualification before merge.
+checks and matching controls. A focused Host binding test now also checks the physical non-first primary
+path. Each series needs its own exact-source build and live qualification
+before merge.
 
 ### Maintainer review follow-up — September 18
 
