@@ -149,7 +149,7 @@ if [[ ${1:-} = --filesystem ]]; then
     }
     trap cleanup EXIT
     /bin/chmod 755 "$fixture"
-    /usr/bin/cc -std=c11 -Wall -Wextra -Werror \
+    /usr/bin/cc -std=gnu11 -Wall -Wextra -Werror \
         "$root/tests/packaging/macos-log-access.c" -o "$fixture/log-access"
     state="$fixture/state"; logs="$fixture/logs"
     initialize_state
