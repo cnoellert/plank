@@ -15,16 +15,28 @@ actual outgoing policy and check reconstructed payloads/order through controlled
 receiver-side loss. Package builds run unit/native/C ABI tests with the same
 features as the Host archive and verify a fast-send binary marker.
 
-Initial implementation root is
-`94e3009f1bb6e2e59bfed12a851cc37c3ce2d9b7`, pushed to the feature branch.
-All 48 local CI-policy tests, seven portable CTest suites, shell syntax and
-whitespace/privacy checks pass. In hosted run 35367054974, both Clients and Mac
-Host passed. Linux Host compiled and passed all 24 selected Rust unit tests,
-but its native loopback still unconditionally required an application pacing
-delay. That assertion now applies only when the selected policy attaches a
-pacer. Loss-matrix/C ABI/package gates were not reached; no RPM was produced.
-Rebuild the corrected Linux candidate before collecting it. No submodule pin
-changed, and live performance/FEC acceptance remains pending.
+Candidate package-source root is
+`e2f4af4e7fdaedd2c6869a253deea8ad2aa38e0e`, pushed to the feature branch.
+Hosted Linux Host run [35369233130](https://github.com/instinctual/plank/actions/runs/35369233130)
+passed cold dependency bootstrap, compilation, all 24 Rust unit tests for each
+policy, native lane/loss loopbacks, active/setup-promoted C ABI checks, fast-send
+binary marker and RPM gates. The old timing assertion now requires a delay only
+when the selected policy actually attaches a pacer. Both policies reconstructed
+all 300 frames byte-for-byte and in order through the five one-second loss
+phases, with zero unrecovered symbols. See the plan for measured counters.
+
+Both Clients and Mac Host passed hosted run 35367054974 at implementation root
+`94e3009f1bb6e2e59bfed12a851cc37c3ce2d9b7`; the subsequent code change only
+corrected that native-test timing assertion. All 48 local CI-policy tests,
+seven portable CTest suites and whitespace/privacy checks pass. No submodule
+pin changed; the exact recursive pins remain those recorded below for 1.0.137.
+
+Verified package (not installed):
+`artifacts/packages/candidates/1.0.138-linux-fast-send/linux/plank-host-1.0.138-0.linux_fast_send.1.el9.x86_64.rpm`
+(8,581,318 bytes), SHA256
+`1961f8927bd65a25d6412f17ed3aead55fa43b24cf44000995d63e523072e1ba`.
+Catalog provenance, RPM version/digests and root-owned mode-0700 log directory
+were checked after transfer. No Client upgrade is needed for this experiment.
 
 No hardware installation, live acceptance, merge or release has occurred.
 The operator has been asked to identify an available Host/Client pair for
