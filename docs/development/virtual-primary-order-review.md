@@ -112,11 +112,23 @@ The Client and Linux Host branches were then merged with their released
 1.0.143 main branches, and the root integration was merged with 1.0.143 while
 pinning those combined revisions. The subrepository merges were conflict-free:
 the released Client contributes its absolute-coordinate edge correction and
-the released Host contributes immediate Linux mouse-button delivery. An
-exact-source hosted build and repeat hardware check are required before the
-results above qualify the refreshed revisions.
+the released Host contributes immediate Linux mouse-button delivery.
 
-Before merge, the refreshed source needs its exact hosted build, hardware
-smoke test, sleep/reconnect and Wacom pointer mapping on the hardware-test
-Host. The same Client package needs live macOS 27 acceptance. Unavailable
-macOS 27 hardware is an open gate, not a passed test.
+The first refreshed exact-source hosted build exposed an intermittent failure
+in the Linux Host's progressive transport-loss test at 3% and 5% loss. Repeated
+Rocky 9.7 diagnostics isolated the failure from the display changes: the
+fast-send congestion controller admitted only 64 datagrams per flight while a
+protected frame required about 318. KyProto could expire the incomplete frame
+after 50 ms before later acknowledgement rounds delivered its repair packets.
+Kernel UDP receive-buffer errors and Quinn datagram queue evictions remained
+zero. Raising only the Host fast-send minimum to 512 datagrams recovered every
+frame in 12 of 12 repeated Rocky 9.7 runs across 0%, 0.5%, 1%, 3% and 5%
+progressive loss. The independent correction is reviewed in
+[root PR #11](https://github.com/instinctual/plank/pull/11) and is included in
+this integration candidate until that dependency is accepted upstream.
+
+An exact-source hosted build and repeat hardware check are still required
+before the earlier results qualify the refreshed revisions. Before merge, the
+refreshed source also needs sleep/reconnect and Wacom pointer mapping on the
+hardware-test Host. The same Client package needs live macOS 27 acceptance.
+Unavailable macOS 27 hardware is an open gate, not a passed test.
