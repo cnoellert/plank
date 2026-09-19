@@ -12,6 +12,7 @@ case $role in
     mkdir -p "$PLANK_SOURCE_ROOT/apps/host/linux/cmake-build-ffmpeg-x264rgb-install" "$PLANK_WORK_ROOT/tmp"
     ln -s "$PLANK_HOST_FFMPEG_ROOT" "$PLANK_SOURCE_ROOT/apps/host/linux/cmake-build-ffmpeg-x264rgb-install/ffmpeg"
     TMPDIR="$PLANK_WORK_ROOT/tmp" bash "$PLANK_SOURCE_ROOT/scripts/package/build-host-rpm.sh" "$PLANK_WORK_ROOT/host-build" "$PLANK_WORK_ROOT/host-package"
+    bash "$PLANK_SOURCE_ROOT/scripts/ci/test-linux-host-input.sh" "$PLANK_WORK_ROOT/host-build"
     ;;
   linux-client)
     bash "$PLANK_SOURCE_ROOT/scripts/build/build-client-package-binaries.sh" \
@@ -23,6 +24,9 @@ case $role in
   macos-host)
     source "$PLANK_SOURCE_ROOT/scripts/package/package-version.sh"
     plank_load_package_version "$PLANK_SOURCE_ROOT"
+    # Isolated installer filesystem fixture only; never install the product or
+    # start its services on a builder. This also checks administrator log access.
+    sudo -n /bin/bash "$PLANK_SOURCE_ROOT/tests/packaging/macos-pkg-scripts.sh" --filesystem
     PLANK_MACOS_SOURCE_FIRST=1 bash "$PLANK_SOURCE_ROOT/scripts/build/build-macos-transport.sh" "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/transport"
     if [[ ${PLANK_CI_SIGNED:-false} = true ]]; then
       bash "$PLANK_SOURCE_ROOT/scripts/package/build-macos-host-pkg.sh" "$PLANK_SOURCE_ROOT" "$PLANK_WORK_ROOT/host-package" "$PLANK_WORK_ROOT/transport/release/libplank_transport.a"

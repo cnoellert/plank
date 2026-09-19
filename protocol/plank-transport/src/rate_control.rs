@@ -4,9 +4,10 @@
 //!
 //! KyProto remains responsible for media packetization and RaptorQ. This
 //! module turns the requested encoder rate into a FEC-inclusive wire budget,
-//! shares that budget with Kynet's pre-Quinn DATAGRAM pacer, and supplies a
-//! Quinn controller whose window does not collapse on isolated repairable
-//! loss.
+//! optionally paces submissions before Quinn, and supplies a Quinn controller
+//! whose window does not collapse on isolated repairable loss. Fast-send Host
+//! builds bypass only the application pacer and floor the window's rate input;
+//! Quinn still schedules transmission. Encoder rate, FEC and queues are unchanged.
 
 use kynet::quinn::DatagramPacer;
 use quinn_proto::RttEstimator;
@@ -25,6 +26,11 @@ const STEADY_WINDOW_NUMERATOR: u64 = 3;
 const STEADY_WINDOW_DENOMINATOR: u64 = 2;
 const MAX_WINDOW_RTT: Duration = Duration::from_millis(100);
 const INITIAL_WINDOW_RTT: Duration = Duration::from_millis(200);
+const FAST_SEND_BUDGET_FLOOR_BPS: u64 = 1_000_000_000;
+const HOST_FAST_SEND: bool = cfg!(any(
+    all(feature = "macos-fast-send", target_os = "macos"),
+    all(feature = "linux-fast-send", target_os = "linux"),
+));
 
 fn video_to_wire_bps(video_bps: u64) -> u64 {
     video_bps
@@ -80,11 +86,11 @@ impl TransportRatePolicy {
 
     pub fn active_wire_bps(&self) -> u64 {
         let budget = video_to_wire_bps(self.active_peak_video_bps.load(Ordering::Acquire));
-        // Authorized experiment: decouple the window budget from the encoder
-        // target without enlarging any queue or changing the actual encoder.
-        #[cfg(all(feature = "macos-fast-send", target_os = "macos"))]
-        let budget = budget.max(1_000_000_000);
-        budget
+        if HOST_FAST_SEND {
+            budget.max(FAST_SEND_BUDGET_FLOOR_BPS)
+        } else {
+            budget
+        }
     }
 
     pub fn pacer(&self) -> Arc<DatagramPacer> {
@@ -92,13 +98,10 @@ impl TransportRatePolicy {
     }
 
     pub fn outgoing_pacer(&self) -> Option<Arc<DatagramPacer>> {
-        #[cfg(all(feature = "macos-fast-send", target_os = "macos"))]
-        {
-            eprintln!("PLANK sender experiment: application-pacer=off controller-budget-floor-bps=1000000000");
+        if HOST_FAST_SEND {
+            eprintln!("PLANK sender: application-pacer=off controller-budget-floor-bps=1000000000");
             None
-        }
-        #[cfg(not(all(feature = "macos-fast-send", target_os = "macos")))]
-        {
+        } else {
             Some(self.pacer())
         }
     }
@@ -222,10 +225,7 @@ impl PlankRateControllerFactory {
 
 impl ControllerFactory for PlankRateControllerFactory {
     fn build(self: Arc<Self>, _now: Instant, current_mtu: u16) -> Box<dyn Controller> {
-        Box::new(PlankRateController::new(
-            self.policy.clone(),
-            current_mtu,
-        ))
+        Box::new(PlankRateController::new(self.policy.clone(), current_mtu))
     }
 }
 
@@ -240,21 +240,73 @@ mod tests {
     }
 
     #[test]
-    fn combined_experiment_does_not_change_encoder_target() {
+    fn host_send_policy_does_not_change_encoder_target() {
         let policy = TransportRatePolicy::new(50_000_000);
         policy.set_requested_video_bps(50_000_000, 100_000_000);
         assert_eq!(policy.requested_video_bps(), 50_000_000);
         assert_eq!(policy.active_video_bps(), 50_000_000);
-        #[cfg(all(feature = "macos-fast-send", target_os = "macos"))]
-        {
+        if HOST_FAST_SEND {
             assert_eq!(policy.active_wire_bps(), 1_000_000_000);
             assert!(policy.outgoing_pacer().is_none());
-        }
-        #[cfg(not(all(feature = "macos-fast-send", target_os = "macos")))]
-        {
+        } else {
             assert_eq!(policy.active_wire_bps(), 136_000_000);
             assert!(policy.outgoing_pacer().is_some());
         }
+    }
+
+    #[test]
+    fn host_send_policy_is_enabled_only_for_its_target() {
+        assert_eq!(
+            HOST_FAST_SEND,
+            (cfg!(target_os = "linux") && cfg!(feature = "linux-fast-send"))
+                || (cfg!(target_os = "macos") && cfg!(feature = "macos-fast-send"))
+        );
+    }
+
+    #[test]
+    fn rate_floor_survives_slider_changes_without_capping_higher_rates() {
+        let policy = TransportRatePolicy::new(150_000_000);
+        for (requested, peak) in [
+            (10_000_000, 15_000_000),
+            (150_000_000, 225_000_000),
+            (1_000_000_000, 1_500_000_000),
+        ] {
+            policy.set_requested_video_bps(requested, peak);
+            assert_eq!(policy.active_video_bps(), requested);
+            assert_eq!(policy.requested_video_bps(), requested);
+            let wire = video_to_wire_bps(peak);
+            assert_eq!(
+                policy.active_wire_bps(),
+                if HOST_FAST_SEND {
+                    wire.max(FAST_SEND_BUDGET_FLOOR_BPS)
+                } else {
+                    wire
+                }
+            );
+            assert_eq!(policy.outgoing_pacer().is_none(), HOST_FAST_SEND);
+        }
+    }
+
+    #[test]
+    fn controller_window_uses_selected_budget_and_stays_rtt_bounded() {
+        let policy = TransportRatePolicy::new(100_000_000);
+        let mut controller = PlankRateController::new(policy, 1_344);
+        controller.update_window(Duration::from_millis(20));
+        assert_eq!(
+            controller.window(),
+            if HOST_FAST_SEND { 3_750_000 } else { 510_000 }
+        );
+        controller.update_window(Duration::from_secs(10));
+        assert_eq!(
+            controller.window(),
+            if HOST_FAST_SEND {
+                18_750_000
+            } else {
+                2_550_000
+            }
+        );
+        controller.update_window(Duration::from_micros(1));
+        assert_eq!(controller.window(), MIN_WINDOW_PACKETS * 1_344);
     }
 
     #[test]

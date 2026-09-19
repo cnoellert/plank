@@ -11,7 +11,11 @@ probe_port=${PLANK_TRANSPORT_PORT:-47489}
 target_dir=${CARGO_TARGET_DIR:-"$crate_dir/target"}
 trap 'rm -rf -- "$probe_tmp"' EXIT
 
-cargo build --locked --offline --release --manifest-path "$crate_dir/Cargo.toml"
+cargo_feature_args=()
+if [[ -n ${PLANK_TRANSPORT_CARGO_FEATURES:-} ]]; then
+  cargo_feature_args+=(--features "$PLANK_TRANSPORT_CARGO_FEATURES")
+fi
+cargo build --locked --offline --release "${cargo_feature_args[@]}" --manifest-path "$crate_dir/Cargo.toml"
 cc -std=c11 -Wall -Wextra -Wpedantic -Werror \
   -DPLANK_LOOPBACK_CLIENT_MTU="${PLANK_LOOPBACK_CLIENT_MTU:-0}" \
   -I"$crate_dir/include" \

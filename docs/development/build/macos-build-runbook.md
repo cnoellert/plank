@@ -21,15 +21,21 @@ on the dedicated Mac. Read `docs/development/plans/macos-installer.plan` for unc
 The destination Mac needs neither Python nor developer tools. The package owns
 the app payload at `/Applications/PLANK Host.app` and three system launchd
 entries. Bash pre/post-install scripts create administrator configuration,
-private identity and logs. Private state is not a payload and survives uninstall.
+private identity and administrator-readable system logs. Private state is not a
+payload and survives uninstall.
 There is no compiled installer helper or persistent installation service.
 Prepare/validate persistent state and logs in preinstall, before worker shutdown.
 The .82 real install found root-owned logs changed to directory0744/files0644;
 the postinstall-only strict mode check stopped after replacing the app. The
-installer now narrows safe existing log permissions to0700/0600, preserving
-contents, and rejects foreign owners, links and objects writable by non-root before
-shutdown. Do not use recursive chmod/chown or weaken private-key checks.
-The isolated filesystem test reproduces this exact permission drift.
+installer validates existing logs before shutdown, preserves their contents,
+and sets `/Library/Logs/PLANK` to root:admin mode0750 and its machine/sign-in
+logs to root:admin mode0640. Administrators can read these logs without sudo;
+only root can write, and other users have no access. Upgrades apply the same
+policy to previously root-only logs. Foreign owners, links and objects writable
+by non-root remain rejected. Do not use recursive chmod/chown or weaken
+private-key checks. Per-user `~/Library/Logs/PLANK` remains0700/files0600.
+The isolated filesystem test covers clean creation, permission drift, upgrade
+from0700/0600, unchanged contents/private keys, and unsafe-object rejection.
 All three launchd definitions must carry `AssociatedBundleIdentifiers` pointing
 to `la.instinctual.PLANK.Host`. Otherwise Background App Activity falls back to
 the signing certificate's publisher name rather than PLANK Host. Keep the

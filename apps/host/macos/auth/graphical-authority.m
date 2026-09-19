@@ -44,7 +44,6 @@ static BOOL readGraphical(PLANKMacGraphicalPhase phase, PLANKMacAccountIdentity 
     BOOL _notified;
     dispatch_source_t _watch;
     NSMutableArray *_workspaceObservers;
-    id _lockObserver;
 }
 
 - (instancetype)init { return nil; }
@@ -54,9 +53,10 @@ static BOOL readGraphical(PLANKMacGraphicalPhase phase, PLANKMacAccountIdentity 
     if (!self) return nil;
     _revoked = YES;
     _initial.phase = phase;
-    // Subscribe before sampling. Notifications can only revoke, never grant.
-    // The distributed lock notification is defense-in-depth, not proof of an
-    // unlocked session or a supported substitute for LoginWindow qualification.
+    // Subscribe before sampling. User switching and sleep revoke; locking the
+    // current console does not end its authenticated remote connection. The OS
+    // still owns the lock screen and requires its normal unlock credentials.
+    // Never use screen-unlock notifications to grant or re-arm authority.
     __weak typeof(self) weakSelf = self;
     _workspaceObservers = [NSMutableArray array];
     for (NSNotificationName name in @[NSWorkspaceSessionDidResignActiveNotification, NSWorkspaceWillSleepNotification]) {
@@ -66,9 +66,6 @@ static BOOL readGraphical(PLANKMacGraphicalPhase phase, PLANKMacAccountIdentity 
             }];
         [_workspaceObservers addObject:observer];
     }
-    _lockObserver = [NSDistributedNotificationCenter.defaultCenter
-        addObserverForName:@"com.apple.screenIsLocked" object:nil queue:nil
-        usingBlock:^(NSNotification *notification) { (void)notification; [weakSelf revoke]; }];
     @synchronized(self) {
         if (!_notified && readGraphical(phase, &_initial.account, &_sessionID) &&
             SecRandomCopyBytes(kSecRandomDefault, sizeof(_initial.generation),
@@ -103,6 +100,5 @@ static BOOL readGraphical(PLANKMacGraphicalPhase phase, PLANKMacAccountIdentity 
     if (_watch) dispatch_source_cancel(_watch);
     for (id observer in _workspaceObservers)
         [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:observer];
-    if (_lockObserver) [NSDistributedNotificationCenter.defaultCenter removeObserver:_lockObserver];
 }
 @end

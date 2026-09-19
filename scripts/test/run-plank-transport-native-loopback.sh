@@ -23,11 +23,14 @@ cargo_profile_args=()
 if [[ ${SC_NATIVE_CARGO_PROFILE:-debug} == release ]]; then
   cargo_profile_args+=(--release)
 fi
+if [[ -n ${PLANK_TRANSPORT_CARGO_FEATURES:-} ]]; then
+  cargo_profile_args+=(--features "$PLANK_TRANSPORT_CARGO_FEATURES")
+fi
 
 cargo test "${cargo_profile_args[@]}" --locked --offline --manifest-path "$crate_dir/Cargo.toml" \
   native::tests::native_kyproto_round_trip_preserves_all_initial_lanes \
-  -- --ignored --exact
+  -- --ignored --exact --nocapture
 
 cargo test "${cargo_profile_args[@]}" --locked --offline --manifest-path "$crate_dir/Cargo.toml" \
   native::tests::native_raptorq_survives_progressive_transport_loss_at_150_mbps \
-  -- --ignored --exact
+  -- --ignored --exact --nocapture

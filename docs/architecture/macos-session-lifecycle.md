@@ -203,6 +203,17 @@ Neither an absent desktop nor root Background grants access. Notifications and
 per-read checks latch revocation; no object can switch roles. Input/capture
 consent and topology remain separate checks, not implied by this object.
 
+Starting the screen saver or locking the same console is not logout: retain
+the existing PLANK connection while macOS presents its own lock/unlock UI.
+The distributed screen-lock notification no longer tears down the authority.
+Session resignation (user switching), system sleep, loss of on-console graphic
+access, account/audit-session replacement and explicit revocation remain
+terminal. Unlock notifications never restore a revoked lease. This policy does
+not suppress the saver, type credentials, bypass OS unlock or transfer authority
+to another account. Synthetic lifecycle tests exercise the actual authority and
+authentication lease against simulated OS state and process-local notifications;
+live capture/input during lock/unlock remains a separate qualification gate.
+
 macOS 27 initial boot uses a second, positively qualified sign-in representation:
 the graphical UID resolves to the local `_windowserver` account (not a hardcoded
 UID), username `unknown`, on-console true and login-done false. There is no named

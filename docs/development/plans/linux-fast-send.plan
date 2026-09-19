@@ -1,0 +1,85 @@
+# Linux Host fast-send qualification
+
+Branch: linux-fast-send. Baseline: published 1.0.137.
+Candidate: 1.0.138-linux-fast-send. Built; not merged or live-accepted.
+
+The operator subsequently requested inclusion in the combined
+1.0.141-mouse-edge-recovery candidate with Client bounds, Mac logging and Linux
+mouse-button cleanup. It is integrated there, not yet merged to main or
+live-accepted. Prior isolated evidence below remains component evidence only.
+
+## Scope
+
+Apply the two accepted macOS Host sender-policy changes to Linux Host: bypass
+the application DATAGRAM pacer and floor the rate input to the Quinn controller's
+window calculation at 1,000,000,000 bits/s. This is transport headroom, not a
+fixed encoder rate, measured capacity, unlimited queue, or strict wire-rate cap.
+Quinn still schedules transmission; the existing RTT/window bounds remain.
+
+Use the shared rate policy with a Linux-only compile selection. Do not change
+the macOS feature selection or Client defaults. Linux does not enable macOS
+source-first FEC, extra diagnostics, a new congestion controller, different
+queues, or different MTU. No protocol/ABI or Client upgrade is required.
+Keep the paced selection available for controlled comparison until acceptance;
+do not add a user preference or global configuration key.
+
+## Build and automated gates
+
+- Linux Host package default: quinn-telemetry,linux-fast-send. The existing
+  quinn-telemetry-only selection is the baseline, not the candidate default.
+- Prove that slider changes still reach the encoder unchanged, budget flooring
+  does not cap higher rates, windows remain RTT-bounded, and other platform/
+  default-feature builds retain their prior policy.
+- Rust transport unit tests, real encrypted native protocol loopback and C ABI
+  active/setup-promoted loopback use the exact package's Cargo feature set.
+  The loss fixture must select outgoing_pacer(), not force a paced connection.
+  Candidate packaging also repeats unit/native loss tests with the paced
+  baseline, then restores the selected archive for the C ABI checks.
+- The receiver-side loopback proxy omits evenly distributed encrypted datagrams
+  at 0/0.5/1/3/5%; check all 300 reconstructed synthetic frames byte-for-byte,
+  in order, plus pre/post-FEC counters. This is not random WAN qualification.
+- Hosted Rocky build uses existing pinned dependencies and the complete CUDA
+  architecture set. Require package/feature-marker/version/provenance gates.
+  Mac compile/tests guard unchanged behavior; no signed Mac package is needed.
+
+## Live qualification before merge
+
+Use an authorized, idle hardware test Host and an existing matching Client.
+Do not interrupt an operator's live session or deploy to an End-User Client.
+Record installed package hash/version and the sender policy startup marker.
+
+Compare the released paced Host and the new candidate at the same profile,
+resolution, content, encoder target and network route. Use ten-minute baseline
+and candidate soaks at 150 Mbps, including moving footage and large keyframes.
+Then inject loss at the receiver at 0.5/1/3/5%, removing it after each run and on
+failure. Track sender queue evictions, frame delivery gaps, RTT, pre/post-FEC
+loss, audio continuity and input/Wacom responsiveness. Repeat on constrained or
+WAN paths: bypassing application pacing may move bursts/drops downstream.
+
+No improvement claim from synthetic loopback alone. Keep this branch isolated
+until live evidence supports merging; retain 1.0.137 as the rollback package.
+
+## Automated evidence
+
+Package-source root: e2f4af4e7fdaedd2c6869a253deea8ad2aa38e0e.
+Hosted Linux Host run 35369233130 passed. Each policy passed 24 Rust unit tests,
+the real encrypted lane loopback and the receiver-side controlled-loss matrix.
+Each loss phase lasted about one second at approximately 150 Mbps; these are
+regression fixtures, not ten-minute soaks or random WAN-loss qualification.
+
+| Policy | Exact ordered frames | Source symbols | Missing before FEC | Unrecovered |
+| --- | --- | --- | --- | --- |
+| Fast-send candidate | 300/300 | 73,200 | 1,481 | 0 |
+| Paced baseline | 300/300 | 73,200 | 1,423 | 0 |
+
+Both C ABI trust paths passed video, audio, input, bidirectional control,
+setup promotion and peer closure. The final archive and packaged Host were
+verified as fast-send, not the baseline archive compiled for comparison.
+RPM payload/log-directory/version/provenance checks passed. See HANDOFF for
+the artifact path and checksum. Both Clients and Mac Host also compiled and
+passed their existing gates at the unchanged runtime implementation commit.
+
+Hardware playback, constrained/WAN paths, ten-minute soaks, large keyframe
+bursts, audio/input/Wacom responsiveness and live loss tests remain pending.
+No hardware package installation has occurred. Select an available test pair
+with the operator before beginning those tests.

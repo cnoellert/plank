@@ -103,10 +103,10 @@ user and membership UUID. An SSH invocation correctly receives no authority.
 
 Each authority gets a random, nonzero lifetime generation. Every snapshot checks
 the live OS state. A 250-ms watchdog and session-resignation/sleep notifications
-provide additional revocation. A distributed screen-lock notification can only
-revoke; it is defense-in-depth, not a public guarantee of lock-state detection
-or proof that a newly launched process is on an unlocked screen. Notifications
-cannot grant or reactivate authority. Once revoked or once identity diverges,
+provide additional revocation. Screen saver and lock notifications do not revoke
+an otherwise unchanged console session. The authenticated connection may show
+the OS lock screen; macOS still requires its normal unlock credentials. Unlock
+notifications cannot grant or reactivate authority. Once revoked or once identity diverges,
 the object never re-arms: replacement requires a fresh agent and authentication.
 
 This is a desktop-preview boundary, not the final machine-service/graphical-agent
