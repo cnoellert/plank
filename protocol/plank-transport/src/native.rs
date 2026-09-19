@@ -941,8 +941,8 @@ mod tests {
         );
         let expected_payload = payload.clone();
         let receiver = tokio::spawn(async move {
-            let mut frames = 0_u64;
-            while frames < 300 {
+            let mut received_pts = Vec::new();
+            loop {
                 let packet = client_video
                     .recv
                     .recv()
@@ -951,13 +951,15 @@ mod tests {
                     .expect("loss-test video receive failed");
                 if let AVPacket::Media(media) = packet {
                     if !media.header.is_config {
-                        assert_eq!(media.header.pts, frames * 1_500);
                         assert_eq!(media.payload, expected_payload);
-                        frames += 1;
+                        received_pts.push(media.header.pts);
+                        if media.header.pts == 302 * 1_500 {
+                            break;
+                        }
                     }
                 }
             }
-            frames
+            received_pts
         });
 
         let mut frame_number = 0_u64;
@@ -995,27 +997,76 @@ mod tests {
             }
             eprintln!(
                 "fec_loss_phase_basis_points={loss} frames=60 elapsed_ms={} dropped_datagrams={}",
-                phase_start.elapsed().as_millis(), dropped - dropped_after_phase
+                phase_start.elapsed().as_millis(),
+                dropped - dropped_after_phase
             );
             dropped_after_phase = dropped;
         }
-        let received_frames = tokio::time::timeout(Duration::from_secs(5), receiver)
+
+        // Three loss-free tail frames force the receiver's 50 ms ordering
+        // deadline to settle even when the final qualified frame is absent.
+        // They are diagnostic sentinels and are excluded from the matrix.
+        server_loss_basis_points.store(0, Ordering::Release);
+        for frame_number in 300_u64..303 {
+            server_video
+                .send
+                .send(AVPacket::Media(MediaPacket {
+                    header: MediaPacketHeader {
+                        is_config: false,
+                        is_key: false,
+                        pts: frame_number * 1_500,
+                        size: payload.len() as u32,
+                    },
+                    payload: payload.clone(),
+                }))
+                .await
+                .expect("failed to send diagnostic tail frame");
+        }
+
+        let received_pts = tokio::time::timeout(Duration::from_secs(5), receiver)
             .await
             .expect("loss-test receiver timed out")
             .expect("loss-test receiver task failed");
-        assert_eq!(received_frames, 300);
+        let qualified_pts = received_pts
+            .into_iter()
+            .filter(|pts| *pts < 300 * 1_500)
+            .collect::<Vec<_>>();
+        let expected_pts = (0_u64..300).map(|frame| frame * 1_500).collect::<Vec<_>>();
+        let missing_pts = expected_pts
+            .iter()
+            .copied()
+            .filter(|pts| !qualified_pts.contains(pts))
+            .collect::<Vec<_>>();
         assert!(forwarded_server_packets.load(Ordering::Relaxed) > 20_000);
         assert!(dropped_server_packets.load(Ordering::Relaxed) > 500);
         let fec = client_connection.protocol_stats();
-        let source = fec.video_fec_source_symbols.expect("missing FEC denominator");
-        let missing = fec.video_fec_source_symbols_missing.expect("missing pre-FEC counter");
+        let source = fec
+            .video_fec_source_symbols
+            .expect("missing FEC denominator");
+        let missing = fec
+            .video_fec_source_symbols_missing
+            .expect("missing pre-FEC counter");
         assert!(source > 0 && missing > 0 && missing <= source);
-        assert_eq!(fec.video_fec_source_symbols_unrecovered, Some(0));
-        eprintln!("fec_loss_matrix_frames=300 source={source} missing={missing} unrecovered=0");
+        let unrecovered = fec.video_fec_source_symbols_unrecovered;
+        eprintln!(
+            "fec_loss_diagnostic received={} missing_pts={missing_pts:?} ordered={} source={source} missing={missing} unrecovered={unrecovered:?} protocol_dropped={} proxy_forwarded={} proxy_dropped={}",
+            qualified_pts.len(),
+            qualified_pts.windows(2).all(|pair| pair[0] < pair[1]),
+            client_connection
+                .protocol_stats()
+                .dropped_packets
+                .unwrap_or_default(),
+            forwarded_server_packets.load(Ordering::Relaxed),
+            dropped_server_packets.load(Ordering::Relaxed),
+        );
 
         server_connection.close();
         client_connection.close();
         server.close(0, "loss test complete");
         proxy_task.abort();
+        if std::env::var_os("SC_NATIVE_DIAGNOSTIC_NONFATAL").is_none() {
+            assert_eq!(qualified_pts, expected_pts);
+            assert_eq!(unrecovered, Some(0));
+        }
     }
 }

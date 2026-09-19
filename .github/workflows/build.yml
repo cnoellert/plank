@@ -2,7 +2,7 @@ name: Hosted builds
 
 on:
   push:
-    branches: ['**']
+    branches-ignore: [codex/transport-loss-diagnostic]
   pull_request:
   workflow_dispatch:
     inputs:

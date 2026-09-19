@@ -1,0 +1,70 @@
+name: Linux transport loss diagnostic
+
+on:
+  push:
+    branches: [codex/transport-loss-diagnostic]
+
+permissions:
+  contents: read
+
+jobs:
+  loss-matrix:
+    runs-on: ubuntu-24.04
+    container: rockylinux/rockylinux:9.7@sha256:53f4c6dcb34e1403bd93207351f0af9a593610faeb7165cb8a037346765199b0
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install diagnostic tools
+        run: |
+          dnf --disablerepo='*' \
+            --repofrompath=ci-baseos,https://dl.rockylinux.org/vault/rocky/9.7/BaseOS/x86_64/os/ \
+            --repofrompath=ci-appstream,https://dl.rockylinux.org/vault/rocky/9.7/AppStream/x86_64/os/ \
+            --enablerepo=ci-baseos --enablerepo=ci-appstream \
+            install -y ca-certificates curl gcc git openssl tar gzip
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Initialize exact transport source
+        run: git submodule update --init third_party/kyber-kymux
+      - name: Install pinned Rust toolchain
+        run: |
+          curl --fail --location \
+            https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init \
+            -o /tmp/rustup-init
+          curl --fail --location \
+            https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init.sha256 \
+            -o /tmp/rustup-init.sha256
+          (cd /tmp; sha256sum -c rustup-init.sha256)
+          chmod 0755 /tmp/rustup-init
+          RUSTUP_INIT_SKIP_PATH_CHECK=yes /tmp/rustup-init -y --no-modify-path \
+            --profile minimal --default-toolchain 1.89.0
+          test "$("$HOME/.cargo/bin/rustc" --version)" = \
+            'rustc 1.89.0 (29483883e 2025-08-04)'
+      - name: Run twelve nonfatal loss observations
+        env:
+          CARGO_HOME: /github/home/.cargo
+          RUSTUP_HOME: /github/home/.rustup
+          SC_NATIVE_DIAGNOSTIC_NONFATAL: '1'
+        run: |
+          export PATH="$CARGO_HOME/bin:$PATH"
+          tmp=$(mktemp -d /tmp/plank-loss-diagnostic.XXXXXX)
+          trap 'rm -rf -- "$tmp"' EXIT
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=localhost' -keyout "$tmp/key.pem" -out "$tmp/cert.pem" \
+            >/dev/null 2>&1
+          openssl x509 -in "$tmp/cert.pem" -outform DER -out "$tmp/cert.der"
+          export SC_NATIVE_TEST_CERTIFICATE="$tmp/cert.pem"
+          export SC_NATIVE_TEST_PRIVATE_KEY="$tmp/key.pem"
+          hash=$(sha256sum "$tmp/cert.der")
+          export SC_NATIVE_TEST_CERTIFICATE_SHA256=${hash%% *}
+          for attempt in $(seq 1 12); do
+            echo "transport_loss_diagnostic_attempt=$attempt"
+            cargo test --release --locked \
+              --features quinn-telemetry,linux-fast-send \
+              --manifest-path protocol/plank-transport/Cargo.toml \
+              native::tests::native_raptorq_survives_progressive_transport_loss_at_150_mbps \
+              -- --ignored --exact --nocapture
+          done
