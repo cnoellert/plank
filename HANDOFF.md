@@ -26,9 +26,19 @@ new service, token transfer, cross-user authority, or Client/Linux change.
 
 The focused policy and synthetic OS-callback tests cover repeated exits,
 completion races, user/audit changes, stop, timeout and finite exhaustion.
-Local 48 CI-policy tests, shell syntax and whitespace checks pass. Native Mac
-build/tests remain pending on the hosted runner. Signing authorization remains
-main-only and must not be broadened. Before claiming acceptance, test the actual
+Local 48 CI-policy tests, 27 account-policy cases, 23 installer-script checks,
+version contract, shell syntax and whitespace checks pass. Hosted Mac build
+[35468169313](https://github.com/instinctual/plank/actions/runs/35468169313)
+passed at `c19eef4967a41fef19fb6ffb97cf36783fe3fb52`, reusing verified dependencies.
+The recovery policy and 98 scheduler checks passed, together with 509
+authentication checks, 190 graphical-lifecycle checks, 726 session checks across
+24 synthetic-capture/real-QUIC scenarios, and existing input/audio/clipboard and
+bundle-permission gates. Two expected hardware-dependent Rust tests were ignored;
+unchanged Quinn telemetry dead-code warnings remain. This was an unsigned
+build/assembly, not a distributable installer or a live installation test.
+The code is committed and pushed on the feature branch, not merged.
+Signing authorization remains main-only and must not be broadened.
+Before claiming acceptance, test the actual
 cross-user sign-in handoff on an authorized signed installation; the Host must
 stay available while requiring fresh authorization for the new desktop owner.
 See [recovery plan](docs/development/plans/macos-listener-recovery.plan).
