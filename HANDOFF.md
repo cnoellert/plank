@@ -14,14 +14,39 @@ not downloaded or generated from commit messages. The installed version remains
 dynamic, including branch qualifiers. Keep notes updated through the release
 runbook; do not list an unmerged fix. Both Client build paths run the new QML
 interaction test (click, keyboard, Close, focus return, scrolling, narrow window,
-modal isolation and missing-note fallback). Native Qt validation is pending.
-No installation, main merge or release is performed by this task.
+modal isolation and missing-note fallback).
+
+Root `31d353def56c15c5edc39084da46b28587459cc3` pins Client
+`4c6a3cdb6be60c08082baac3deddb4842e0ce3a6`; all other release pins below are
+unchanged. Both branches are committed/pushed. Hosted validation passed:
+
+- Ubuntu Client [35469086452](https://github.com/instinctual/plank/actions/runs/35469086452):
+  changelog interaction and existing Client tests, build, exact linked runtime,
+  version, dependency/patch and DEB/no-autostart gates.
+- Mac Client [35469087970](https://github.com/instinctual/plank/actions/runs/35469087970):
+  build and all Client tests including the changelog interaction fixture.
+  Verified dependency cache restored. Unsigned only, not a distributable DMG.
+
+Initial runs 35468917799/35468919210 failed the new test's byte comparison of
+Markdown after Qt normalization. The corrected test compares the rendered
+document before/after typing; it retains read-only and all interaction checks.
+No runtime workaround or weakened product gate was added. Mac offscreen tests
+retain the existing font-alias warning; no QML-engine warnings occurred in the
+passing dialog fixture. Local CI-policy (48), shell syntax, version contract and
+privacy checks pass. No installation, main merge or release is performed.
+
+The verified Ubuntu package is retained in
+`artifacts/packages/candidates/1.0.145-client-changelog/linux/plank-client_1.0.145-client-changelog_amd64.deb`,
+15,452,240 bytes, SHA256
+`3818e338d1162847eae02a830d02f9f6aff1c0d8fd2e2c7c869e693264b15bfa`.
+The collector records package validation separately from live acceptance.
 
 The operator also asked whether macOS system-shortcut capture is dormant. It is
 not: Off/Fullscreen/Always controls the existing Accessibility event tap and
 focused-stream ownership, with preferences copied at connection start. Proposed
-UI simplification (Never/Fullscreen/While stream is focused) is discussion only;
-do not change capture behavior or remove the preference without approval.
+UI simplification or always capturing while a stream is focused is discussion
+only. Accessibility grants permission; it does not supersede the preference.
+Do not change capture behavior or remove the preference without approval.
 
 ## Separate Mac listener recovery, not merged
 
