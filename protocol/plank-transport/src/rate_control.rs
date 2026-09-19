@@ -6,8 +6,8 @@
 //! module turns the requested encoder rate into a FEC-inclusive wire budget,
 //! optionally paces submissions before Quinn, and supplies a Quinn controller
 //! whose window does not collapse on isolated repairable loss. Fast-send Host
-//! builds bypass only the application pacer and floor the window's rate input;
-//! Quinn still schedules transmission. Encoder rate, FEC and queues are unchanged.
+//! builds floor both the application pacer and the window's rate input; Quinn
+//! still schedules transmission. Encoder rate, FEC and queues are unchanged.
 
 use kynet::quinn::DatagramPacer;
 use quinn_proto::RttEstimator;
@@ -66,11 +66,16 @@ impl TransportRatePolicy {
     pub fn new(requested_video_bps: u64) -> Arc<Self> {
         let requested_video_bps = requested_video_bps.max(MIN_VIDEO_BITRATE_BPS);
         let wire_bps = video_to_wire_bps(requested_video_bps);
+        let pacing_bps = if HOST_FAST_SEND {
+            wire_bps.max(FAST_SEND_BUDGET_FLOOR_BPS)
+        } else {
+            wire_bps
+        };
         Arc::new(Self {
             requested_video_bps: AtomicU64::new(requested_video_bps),
             active_video_bps: AtomicU64::new(requested_video_bps),
             active_peak_video_bps: AtomicU64::new(requested_video_bps),
-            pacer: Arc::new(DatagramPacer::new(wire_bps, Duration::from_millis(2), 0)),
+            pacer: Arc::new(DatagramPacer::new(pacing_bps, Duration::from_millis(2), 0)),
             repairable_congestion_events: AtomicU64::new(0),
             persistent_congestion_events: AtomicU64::new(0),
         })
@@ -99,11 +104,12 @@ impl TransportRatePolicy {
 
     pub fn outgoing_pacer(&self) -> Option<Arc<DatagramPacer>> {
         if HOST_FAST_SEND {
-            eprintln!("PLANK sender: application-pacer=off controller-budget-floor-bps=1000000000");
-            None
-        } else {
-            Some(self.pacer())
+            eprintln!(
+                "PLANK sender: application-pacer-bps={} controller-budget-floor-bps=1000000000",
+                self.pacer.target_bps()
+            );
         }
+        Some(self.pacer())
     }
 
     pub fn set_requested_video_bps(&self, requested_video_bps: u64, peak_video_bps: u64) {
@@ -115,7 +121,7 @@ impl TransportRatePolicy {
             .store(requested_video_bps, Ordering::Release);
         self.active_peak_video_bps
             .store(peak_video_bps, Ordering::Release);
-        self.pacer.set_target_bps(video_to_wire_bps(peak_video_bps));
+        self.pacer.set_target_bps(self.active_wire_bps());
     }
 }
 
@@ -247,11 +253,10 @@ mod tests {
         assert_eq!(policy.active_video_bps(), 50_000_000);
         if HOST_FAST_SEND {
             assert_eq!(policy.active_wire_bps(), 1_000_000_000);
-            assert!(policy.outgoing_pacer().is_none());
         } else {
             assert_eq!(policy.active_wire_bps(), 136_000_000);
-            assert!(policy.outgoing_pacer().is_some());
         }
+        assert!(policy.outgoing_pacer().is_some());
     }
 
     #[test]
@@ -283,7 +288,7 @@ mod tests {
                     wire
                 }
             );
-            assert_eq!(policy.outgoing_pacer().is_none(), HOST_FAST_SEND);
+            assert!(policy.outgoing_pacer().is_some());
         }
     }
 
@@ -327,7 +332,14 @@ mod tests {
         policy.set_requested_video_bps(150_000_000, 225_000_000);
         assert_eq!(policy.requested_video_bps(), 150_000_000);
         assert_eq!(policy.active_video_bps(), 150_000_000);
-        assert_eq!(policy.pacer().target_bps(), 304_750_000);
+        assert_eq!(
+            policy.pacer().target_bps(),
+            if HOST_FAST_SEND {
+                1_000_000_000
+            } else {
+                304_750_000
+            }
+        );
     }
 
     #[test]
