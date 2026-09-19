@@ -115,17 +115,19 @@ the released Client contributes its absolute-coordinate edge correction and
 the released Host contributes immediate Linux mouse-button delivery.
 
 The first refreshed exact-source hosted build exposed an intermittent failure
-in the Linux Host's progressive transport-loss test at 3% and 5% loss. Repeated
-Rocky 9.7 diagnostics isolated the failure from the display changes: the
-fast-send congestion controller admitted only 64 datagrams per flight while a
-protected frame required about 318. KyProto could expire the incomplete frame
-after 50 ms before later acknowledgement rounds delivered its repair packets.
-Kernel UDP receive-buffer errors and Quinn datagram queue evictions remained
-zero. Raising only the Host fast-send minimum to 512 datagrams recovered every
-frame in 12 of 12 repeated Rocky 9.7 runs across 0%, 0.5%, 1%, 3% and 5%
-progressive loss. The independent correction is reviewed in
-[root PR #11](https://github.com/instinctual/plank/pull/11) and is included in
-this integration candidate until that dependency is accepted upstream.
+in the Linux Host's existing progressive transport-loss test at 3% and 5%
+loss. Rocky 9.7 diagnostics isolated the failure from the display changes.
+Kernel UDP receive-buffer errors and Quinn outgoing-datagram evictions remained
+zero, while failed observations ended with roughly one frame's datagrams not
+yet forwarded and KyProto advanced past an incomplete frame. Larger Quinn send
+and receive buffers, 512- and 1024-datagram minimum congestion windows, a
+100 ms FEC ordering deadline and a 1 Gbps application pacer all reproduced a
+skipped frame in the unchanged production test. A 12-run instrumented test
+passed only after its receiver and timing behavior had changed, so it is not
+acceptance evidence. [Root PR #11](https://github.com/instinctual/plank/pull/11)
+remains a draft diagnostic record. Its unproven transport change has been
+removed from this display integration; this candidate uses the released
+1.0.143 transport code.
 
 An exact-source hosted build and repeat hardware check are still required
 before the earlier results qualify the refreshed revisions. Before merge, the
