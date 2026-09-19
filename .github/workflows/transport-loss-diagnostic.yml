@@ -30,8 +30,6 @@ jobs:
       - name: Initialize exact transport source
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config submodule.third_party/kyber-kymux.url \
-            https://github.com/cnoellert/plank-kymux.git
           git submodule update --init third_party/kyber-kymux
       - name: Install pinned Rust toolchain
         run: |
