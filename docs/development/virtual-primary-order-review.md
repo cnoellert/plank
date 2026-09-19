@@ -13,10 +13,11 @@ trial; it does not require changing physical outputs.
 
 ## Candidate behavior
 
-This series begins at released 1.0.137 main and uses the existing qualified
-virtual-mode allowlist. The Client discovers its primary display, translates
-it into left/right desktop order, and sends `plankPrimaryOutput` only when an
-authenticated virtual-startup Host advertises capability `0x2000000`. Both
+This series is refreshed onto released 1.0.143 main and uses the existing
+qualified virtual-mode allowlist. The Client discovers its primary display,
+translates it into left/right desktop order, and sends `plankPrimaryOutput`
+only when an authenticated virtual-startup Host advertises capability
+`0x2000000`. Both
 manual two-output and Match Client bookmarks use that ordering. Manual mode
 sizes still come from the bookmark. Native two-screen presentation uses the
 Host output sizes for its stream boundaries when Mac panel pixel sizes differ.
@@ -36,7 +37,7 @@ case and failure restoration are reviewed.
 
 ## Evidence and gates
 
-On 2026-09-18, the exact root, Host and Client pins in this series passed the
+On 2026-09-18, the preceding 1.0.137-based root, Host and Client pins passed the
 [hosted build](https://github.com/cnoellert/plank/actions/runs/35382202995),
 including Rocky Host, Ubuntu Client, SDK 27 Mac Client and Mac Host jobs. A
 separate [SDK 27 development-bundle run](https://github.com/cnoellert/plank/actions/runs/35386142008)
@@ -107,6 +108,15 @@ on `1920×1200`. The operator confirmed the chooser appeared on the Eizo.
 This qualifies persistence through a clean Host reboot and one authenticated
 GDM-to-user handoff on this hardware.
 
-Before merge, sleep/reconnect and Wacom pointer mapping on the hardware-test
-Host remain open. The same Client package needs live macOS 27 acceptance.
-Unavailable macOS 27 hardware is an open gate, not a passed test.
+The Client and Linux Host branches were then merged with their released
+1.0.143 main branches, and the root integration was merged with 1.0.143 while
+pinning those combined revisions. The subrepository merges were conflict-free:
+the released Client contributes its absolute-coordinate edge correction and
+the released Host contributes immediate Linux mouse-button delivery. An
+exact-source hosted build and repeat hardware check are required before the
+results above qualify the refreshed revisions.
+
+Before merge, the refreshed source needs its exact hosted build, hardware
+smoke test, sleep/reconnect and Wacom pointer mapping on the hardware-test
+Host. The same Client package needs live macOS 27 acceptance. Unavailable
+macOS 27 hardware is an open gate, not a passed test.
