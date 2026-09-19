@@ -22,9 +22,6 @@ const FEC_AND_PACKET_SCALE_NUMERATOR: u64 = 27;
 const FEC_AND_PACKET_SCALE_DENOMINATOR: u64 = 20;
 const AUDIO_AND_CONTROL_RESERVE_BPS: u64 = 1_000_000;
 const MIN_WINDOW_PACKETS: u64 = 64;
-// Fast-send removes the application pacer, so a low-RTT path must admit one
-// complete protected video-frame burst without waiting for multiple ACK rounds.
-const FAST_SEND_MIN_WINDOW_PACKETS: u64 = 512;
 const STEADY_WINDOW_NUMERATOR: u64 = 3;
 const STEADY_WINDOW_DENOMINATOR: u64 = 2;
 const MAX_WINDOW_RTT: Duration = Duration::from_millis(100);
@@ -51,12 +48,7 @@ fn window_for_rate(rate_bps: u64, rtt: Duration, mtu: u16) -> u64 {
         .saturating_mul(STEADY_WINDOW_NUMERATOR as u128)
         .div_ceil(STEADY_WINDOW_DENOMINATOR as u128)
         .min(u64::MAX as u128) as u64;
-    let minimum_packets = if HOST_FAST_SEND {
-        FAST_SEND_MIN_WINDOW_PACKETS
-    } else {
-        MIN_WINDOW_PACKETS
-    };
-    target.max(minimum_packets.saturating_mul(mtu as u64))
+    target.max(MIN_WINDOW_PACKETS.saturating_mul(mtu as u64))
 }
 
 /// Shared requested rate and pacing state for one native media connection.
@@ -314,14 +306,7 @@ mod tests {
             }
         );
         controller.update_window(Duration::from_micros(1));
-        assert_eq!(
-            controller.window(),
-            if HOST_FAST_SEND {
-                FAST_SEND_MIN_WINDOW_PACKETS * 1_344
-            } else {
-                MIN_WINDOW_PACKETS * 1_344
-            }
-        );
+        assert_eq!(controller.window(), MIN_WINDOW_PACKETS * 1_344);
     }
 
     #[test]
@@ -332,11 +317,7 @@ mod tests {
         );
         assert_eq!(
             window_for_rate(200_000_000, Duration::from_micros(100), 1_344),
-            if HOST_FAST_SEND {
-                FAST_SEND_MIN_WINDOW_PACKETS * 1_344
-            } else {
-                MIN_WINDOW_PACKETS * 1_344
-            }
+            MIN_WINDOW_PACKETS * 1_344
         );
     }
 
