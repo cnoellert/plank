@@ -33,21 +33,53 @@ BOOL PLANKMacDesktopStartObserve(PLANKMacDesktopStartState *state, NSDictionary 
 BOOL PLANKMacDesktopStartNext(PLANKMacDesktopStartState *state) {
     if (!state->uid || !state->audit || state->finished || state->attempts >= 10) return NO;
     ++state->attempts;
+    state->workerExited = NO;
     return YES;
+}
+
+void PLANKMacDesktopStartComplete(PLANKMacDesktopStartState *state, uint32_t uid, uint32_t audit, BOOL success) {
+    if (state->uid != uid || state->audit != audit) return;
+    // A successful kickstart is not listener readiness. In particular, it must
+    // not erase an exit delivered before launchctl's completion callback.
+    state->finished = success && !state->workerExited;
+}
+
+BOOL PLANKMacDesktopStartExited(PLANKMacDesktopStartState *state, uint32_t uid, uint32_t audit) {
+    if (!uid || !audit || state->uid != uid || state->audit != audit) return NO;
+    state->workerExited = YES;
+    state->finished = NO;
+    return YES;
+}
+
+unsigned PLANKMacDesktopStartRetrySeconds(const PLANKMacDesktopStartState *state) {
+    if (!state->uid || !state->audit || state->finished || state->attempts >= 10) return 0;
+    // One bounded budget per console/audit session, including launch races and
+    // admitted workers that fail to bind. Allow old TCP state time to expire
+    // without busy restarting, overlapping owners or enabling SO_REUSEPORT.
+    unsigned shift = state->attempts ? state->attempts - 1 : 0;
+    return 1u << MIN(shift, 4u);
 }
 
 @implementation PLANKMacDesktopStart {
     SCDynamicStoreRef _store;
     PLANKMacDesktopStartState _state;
     NSTask *_task;
-    BOOL _stopped;
+    BOOL _stopped, _retryPending;
+    uint64_t _retryGeneration;
+}
+
+- (void)observeConsole {
+    NSDictionary *console = CFBridgingRelease(SCDynamicStoreCopyValue(_store, CFSTR("State:/Users/ConsoleUser")));
+    if (PLANKMacDesktopStartObserve(&_state, console)) {
+        ++_retryGeneration;
+        _retryPending = NO;
+    }
 }
 
 - (void)refresh {
     if (_stopped) return;
-    NSDictionary *console = CFBridgingRelease(SCDynamicStoreCopyValue(_store, CFSTR("State:/Users/ConsoleUser")));
-    PLANKMacDesktopStartObserve(&_state, console);
-    if (_task || !PLANKMacDesktopStartNext(&_state)) return;
+    [self observeConsole];
+    if (_task || _retryPending || !PLANKMacDesktopStartNext(&_state)) return;
     uint32_t uid = _state.uid, audit = _state.audit;
     NSTask *task = [NSTask new];
     task.executableURL = [NSURL fileURLWithPath:@"/bin/launchctl"];
@@ -63,10 +95,10 @@ BOOL PLANKMacDesktopStartNext(PLANKMacDesktopStartState *state) {
             typeof(self) owner = weakSelf;
             if (!owner || owner->_stopped || owner->_task != ended) return;
             owner->_task = nil;
-            NSDictionary *current = CFBridgingRelease(SCDynamicStoreCopyValue(owner->_store, CFSTR("State:/Users/ConsoleUser")));
-            PLANKMacDesktopStartObserve(&owner->_state, current);
+            [owner observeConsole];
             if (owner->_state.uid == uid && owner->_state.audit == audit) {
-                owner->_state.finished = ended.terminationReason == NSTaskTerminationReasonExit && ended.terminationStatus == 0;
+                PLANKMacDesktopStartComplete(&owner->_state, uid, audit,
+                    ended.terminationReason == NSTaskTerminationReasonExit && ended.terminationStatus == 0);
                 if (owner->_state.finished || owner->_state.attempts == 10)
                     NSLog(@"PLANK desktop agent start uid=%u audit=%u attempts=%u status=%d", uid, audit,
                         owner->_state.attempts, ended.terminationStatus);
@@ -93,9 +125,28 @@ BOOL PLANKMacDesktopStartNext(PLANKMacDesktopStartState *state) {
 }
 
 - (void)retry {
-    if (_stopped || !_state.uid || _state.finished || _state.attempts >= 10) return;
+    unsigned delay = PLANKMacDesktopStartRetrySeconds(&_state);
+    if (_stopped || _task || _retryPending || !delay) return;
+    _retryPending = YES;
+    uint64_t generation = ++_retryGeneration;
     __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), dispatch_get_main_queue(), ^{ [weakSelf refresh]; });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)delay * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        typeof(self) owner = weakSelf;
+        if (!owner || owner->_stopped || owner->_retryGeneration != generation) return;
+        owner->_retryPending = NO;
+        [owner refresh];
+    });
+}
+
+- (void)desktopProcessExitedForUID:(uint32_t)uid audit:(uint32_t)audit {
+    dispatch_assert_queue(dispatch_get_main_queue());
+    if (_stopped || !_store) return;
+    [self observeConsole];
+    if (!PLANKMacDesktopStartExited(&_state, uid, audit)) return;
+    unsigned delay = PLANKMacDesktopStartRetrySeconds(&_state);
+    NSLog(@"PLANK desktop worker exit: startup attempts=%u/10 retry-in-seconds=%u exhausted=%d",
+        _state.attempts, delay, delay == 0);
+    [self retry];
 }
 
 static void consoleChanged(SCDynamicStoreRef store, CFArrayRef keys, void *context) {
@@ -116,6 +167,8 @@ static void consoleChanged(SCDynamicStoreRef store, CFArrayRef keys, void *conte
 
 - (void)stop {
     _stopped = YES;
+    ++_retryGeneration;
+    _retryPending = NO;
     if (_store) { SCDynamicStoreSetDispatchQueue(_store, NULL); CFRelease(_store); _store = NULL; }
     if (_task.running) [_task terminate];
     _task = nil;

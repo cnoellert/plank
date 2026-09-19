@@ -1,5 +1,38 @@
 # PLANK handoff
 
+## Active macOS listener recovery
+
+Work is on `macos-listener-recovery`, based on main `458f1f6`, in the existing
+`build/worktrees/mouse-edge-recovery` worktree. Preserve the unrelated dirty
+primary `rk3576-client` checkout. Version is `1.0.144-macos-listener-recovery`;
+all dependency gitlinks below are unchanged. No new package is installed.
+
+After PLANK sign-in authorization as one account and macOS desktop login as a
+different account, the new desktop worker failed binding its control listener
+with POSIX EADDRINUSE. The previous sign-in process had exited. launchd deferred
+KeepAlive in an on-demand-only Aqua domain, and the coordinator's successful
+kickstart was considered final. A targeted, authorized kickstart restored the
+existing Host: loopback discovery returned HTTP 200. This establishes recovery,
+not the exact socket state at the original conflict. Private machine evidence
+stays outside Git.
+
+The fix reuses the existing coordinator. After kernel-observed desktop exit
+and exact lease release, re-arm only the current UID/audit session's existing
+ten-attempt budget, with 1/2/4/8/16-second capped backoff. Duplicate notifications
+cannot replenish it; delayed work from old console sessions is invalidated.
+An exit before launchctl completion cannot be lost to a late success callback.
+Numeric listener failures now go to the product log. No socket-sharing option,
+new service, token transfer, cross-user authority, or Client/Linux change.
+
+The focused policy and synthetic OS-callback tests cover repeated exits,
+completion races, user/audit changes, stop, timeout and finite exhaustion.
+Local 48 CI-policy tests, shell syntax and whitespace checks pass. Native Mac
+build/tests remain pending on the hosted runner. Signing authorization remains
+main-only and must not be broadened. Before claiming acceptance, test the actual
+cross-user sign-in handoff on an authorized signed installation; the Host must
+stay available while requiring fresh authorization for the new desktop owner.
+See [recovery plan](docs/development/plans/macos-listener-recovery.plan).
+
 ## Mainline 1.0.143 release
 
 The operator accepted the combined fixes, reports no further “Waiting for
@@ -186,7 +219,7 @@ Unmerged physical-mode/Retina dropdown PRs and Mac Host pre-27 support are exclu
 
 ## Workspace and build policy
 
-Work in `build/worktrees/mouse-edge-recovery`, now checked out on main.
+Work in `build/worktrees/mouse-edge-recovery`, now on `macos-listener-recovery`.
 The primary checkout is unrelated dirty `rk3576-client` research; preserve it.
 Other retained review/candidate worktrees are not authorization for broad cleanup.
 

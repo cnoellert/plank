@@ -356,7 +356,6 @@
     __weak typeof(self) weakSelf = self;
     nw_listener_set_new_connection_handler(_listener, ^(nw_connection_t connection) { [weakSelf accept:connection]; });
     nw_listener_set_state_changed_handler(_listener, ^(nw_listener_state_t state, nw_error_t error) {
-        (void)error;
         typeof(self) owner = weakSelf;
         if (!owner || owner->_stopped) return;
         if (state == nw_listener_state_ready) {
@@ -366,7 +365,14 @@
             if (!owner->_serverInformationXML) { [owner stop]; if (failed) failed(); return; }
             ready(boundPort);
         }
-        else if (state == nw_listener_state_failed) { [owner stop]; if (failed) failed(); }
+        else if (state == nw_listener_state_failed) {
+            // Numeric OS diagnostics only; never log TLS identities, request
+            // contents or framework error descriptions with peer metadata.
+            NSLog(@"PLANK Host control listener failed: port=%u error-domain=%d error-code=%d",
+                port, error ? (int)nw_error_get_error_domain(error) : 0,
+                error ? nw_error_get_error_code(error) : 0);
+            [owner stop]; if (failed) failed();
+        }
     });
     // One watchdog for at most eight admitted requests. Do not retain a timer
     // closure for every completed/rejected connection during a request flood.

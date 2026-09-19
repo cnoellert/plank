@@ -65,6 +65,10 @@ xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
     -Iapps/host/macos/session tests/auth/macos-desktop-start.m apps/host/macos/session/desktop-start.m \
     -framework Foundation -framework SystemConfiguration -o "$output/desktop-start-test"
 "$output/desktop-start-test"
+xcrun clang -mmacosx-version-min=27.0 -fobjc-arc -Wall -Wextra -Werror \
+    -Iapps/host/macos/session tests/auth/macos-desktop-start-scheduling.m \
+    -framework Foundation -framework SystemConfiguration -o "$output/desktop-start-scheduling-test"
+"$output/desktop-start-scheduling-test"
 xcrun clang -std=c11 -mmacosx-version-min=27.0 -Wall -Wextra -Werror \
     -Iapps/host/macos/media tests/audio/macos-audio-tap-buffer.c -o "$output/audio-tap-buffer-test"
 "$output/audio-tap-buffer-test"

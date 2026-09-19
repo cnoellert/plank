@@ -47,14 +47,29 @@ The machine coordinator observes the OS console-session key and requests
 session, including on coordinator startup. This is necessary during first-user
 Setup Assistant: macOS can defer RunAtLoad/KeepAlive agents in an on-demand-only
 Aqua domain. An explicit demand starts the agent without skipping onboarding.
-Registration races receive at most ten attempts, spaced one second apart;
-unchanged notifications do not replenish that budget. The request is asynchronous
-and its launchctl child is terminated after five seconds if still pending.
+Registration races and admitted-worker exits share at most ten explicit start
+attempts per console/audit session. Retries back off by 1, 2, 4, 8, then at most
+16 seconds (95 seconds of delays across all ten attempts). Unchanged notifications
+and duplicate exits do not replenish that budget. A successful `kickstart` is
+only a start request, not listener readiness: a later kernel-observed desktop
+process exit re-arms the remaining budget after its exact lease is released.
+This recovers a transient control-port bind failure even when launchd defers
+KeepAlive in an on-demand-only domain. A changed console/audit session discards
+stale retry callbacks; an old user's exit cannot re-arm the current user. A
+worker exit received before launchctl completion cannot be lost to a late success.
+The request is asynchronous and its launchctl child is terminated after five
+seconds if still pending. Only one delayed retry is pending at a time.
 There is no `-k`, enable, job bootstrap, shell, new helper service or TCC change.
 The existing worker still validates graphical ownership, signed coordinator
 admission and capture/input permissions. Starting the job grants no remote
 access. Root/LoginWindow, incomplete login records and stale session retries
 do not select a desktop agent.
+
+Control-listener failures log the configured port and numeric error domain/code
+to the product log. Startup recovery does not enable shared-port binding, kill
+another listener, change ports, reset permissions or reuse another user's
+authentication. A persistent bind failure exhausts the bounded startup budget;
+it must be diagnosed rather than hidden by an unlimited restart loop.
 
 The explicit `--graphical MACH_SERVICE desktop|sign-in PRIVATE_DIRECTORY`
 entry remains for isolated role-private qualification fixtures, not installed
