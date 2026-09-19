@@ -22,7 +22,7 @@ jobs:
             --repofrompath=ci-baseos,https://dl.rockylinux.org/vault/rocky/9.7/BaseOS/x86_64/os/ \
             --repofrompath=ci-appstream,https://dl.rockylinux.org/vault/rocky/9.7/AppStream/x86_64/os/ \
             --enablerepo=ci-baseos --enablerepo=ci-appstream \
-            install -y ca-certificates curl gcc git openssl tar gzip
+            install -y ca-certificates gcc git openssl tar gzip
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
