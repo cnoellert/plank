@@ -129,8 +129,48 @@ remains a draft diagnostic record. Its unproven transport change has been
 removed from this display integration; this candidate uses the released
 1.0.143 transport code.
 
-An exact-source hosted build and repeat hardware check are still required
-before the earlier results qualify the refreshed revisions. Before merge, the
-refreshed source also needs sleep/reconnect and Wacom pointer mapping on the
-hardware-test Host. The same Client package needs live macOS 27 acceptance.
+The refreshed root head `686847f` then passed the complete
+[upstream hosted build](https://github.com/instinctual/plank/actions/runs/35414725644):
+policy, Rocky 9.7 Host, Ubuntu Client, SDK 27 Mac Client and SDK 27 Mac Host.
+The fork's exact-head
+[build](https://github.com/cnoellert/plank/actions/runs/35414723019) passed the
+same jobs on its unchanged second attempt after the existing loss test skipped
+one frame on the first. The locally signed macOS 15
+[development-bundle run](https://github.com/cnoellert/plank/actions/runs/35414858597)
+used that root head and the same Client `eea44a2` and Host `c927e2b` pins. Its
+packaging gate checked 106 product Mach-O deployment targets, its archive hash
+matched the manifest, and the extracted app passed strict deep signature
+verification with the operator's Developer ID identity. It remains an
+unnotarized local test build.
+
+The upstream Host artifact targeted Rocky 9.7 and recorded the tested PR merge
+commit `485d3b8`, whose second parent is exact root head `686847f`. Its manifest
+pins Client `eea44a2`, Host `c927e2b` and released Kymux `6f3df8e`. The RPM's
+SHA-256 was `88ed093b95364864acd7bba320100ef9edcc681cab41c5a9c02cdcf7ef9250b8`.
+It was installed on flame-01 after that workstation was upgraded to Rocky 9.7.
+The existing Host configuration checksum was unchanged, both Host services
+restarted active and enabled, and the pre-session GDM layout remained one
+1920x1080 primary DP-0 output.
+
+From that single-output login state, the exact signed Client authenticated with
+Match Client displays. The user X server came up as a 4480x1440 canvas with
+1920x1200 DP-2 on the left and primary 2560x1440 DP-0 on the right. NVIDIA's
+MetaMode listed the primary DPY-0 first. The stream negotiated 4480x1440 at
+60 Hz, 50 Mbps. The operator confirmed both Mac windows and Flame placement.
+Flame 2026.2.1 independently logged `Main UI position:1920,0 size:2560x1440`
+and `Alt UI position:0,240 size:1920x1200`, placing its main UI on the Eizo.
+
+An XInput trace of the exact session recorded the stylus across root X
+coordinates 466 through 3875, covering both outputs. It recorded 11 matched
+tip press/release pairs, two matched side-button press/release pairs, and
+pressure from 0 through 59,413. The operator confirmed pointer placement,
+clicks and visible pressure response. Mouse and stylus buttons all read up
+afterward. During a subsequent Portofino sleep/wake, the Host reused the stable
+raw-HID endpoints as generation 8. The operator confirmed the session resumed;
+90 Host-side samples retained the same canvas, positions and primary output,
+and both Host services and released input state remained healthy.
+
+The refreshed source is therefore qualified on Portofino macOS 15.7.4 against
+flame-01 Rocky 9.7 for display ordering, Flame placement, Wacom input and
+sleep/reconnect. The same Client package still needs live macOS 27 acceptance.
 Unavailable macOS 27 hardware is an open gate, not a passed test.
