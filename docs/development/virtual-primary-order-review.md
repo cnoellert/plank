@@ -32,8 +32,9 @@ Hosts. The private worker-to-supervisor display record advances from
 
 No physical-display helper, temporary mode lease, Retina size setting, codec,
 input path, or administrator policy changes belong to this series. The
-separate physical-display PRs remain draft while their hybrid-workstation use
-case and failure restoration are reviewed.
+separate physical-display PRs were closed on 2026-09-19 after the virtual route
+met the headless flame-01 workflow. Their branches and evidence remain parked
+for later hybrid-workstation testing.
 
 ## Evidence and gates
 
