@@ -29,9 +29,34 @@ fail when the original `<` comparison is restored. The final source is `<=`.
 CI-policy tests pass (50). Hosted bootstrap fetches the separately locked vendor
 test dependencies; Host builds run their boundary/accounting tests first.
 
-Next: commit/push this candidate and build on GitHub-hosted workers. Hosted
-results, exact package source and artifact hashes are not recorded yet. No
-1.0.147 package or live hardware acceptance is claimed.
+Candidate source `9afebe0ca7905259fd114a8423fc46aa733f235b` is committed and
+pushed. Hosted run [35474124195](https://github.com/instinctual/plank/actions/runs/35474124195)
+passed all four products on its first attempt. Build policy, privacy
+run 35474124177 and clipboard run 35474124191 also passed. The Linux Host passed
+all six 150 Mbps matrices with all 300 frames recovered each time, zero
+unrecovered source symbols and zero unintended proxy kernel drops. The hosted
+proxy's effective receive buffer was 2,097,152 bytes. No retries or relaxed
+assertions. Native C ABI tests, RPM gates and 25 shuffled input-suite iterations
+passed (13 tests per iteration; three `/dev/uhid`-dependent tests explicitly
+skipped). Production RPM remains `BUILD_TESTS=OFF`.
+
+Mac checks were unsigned compile/test qualification, not distribution installers
+or hardware acceptance. Existing compiler warnings remain. No signing policy,
+machine settings or installed products changed. All four dependency caches were
+rebuilt for the changed pinned test inputs and saved after success.
+
+Checksum-verified packages and manifest are collected under
+`artifacts/packages/candidates/1.0.147-quinn-mtu-boundary/`:
+
+| Package | Bytes | SHA256 |
+| --- | ---: | --- |
+| `linux/plank-host-1.0.147-0.quinn_mtu_boundary.1.el9.x86_64.rpm` | 8579573 | `30cd5f08a5f30fc6c863763616451ff50a657d84596d900dabfc4b7ac6de8c43` |
+| `linux/plank-client_1.0.147-quinn-mtu-boundary_amd64.deb` | 15453156 | `971e050cf747b6438e679161f40179ec1bab8fe69f924f83b20320570c69cf30` |
+
+The RPM version/branch and root-owned `0700` log directory were independently
+verified after download. Candidate is ready for authorized hardware testing;
+it is not merged, installed or published. A later mainline release must be
+rebuilt from main, never relabeled.
 
 ## Unified 1.0.146 test packages
 
