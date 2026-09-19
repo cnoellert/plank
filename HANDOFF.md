@@ -1,12 +1,45 @@
 # PLANK handoff
 
-## Active unified 1.0.146 build
+## Unified 1.0.146 test packages
 
 The operator requested one matching test release combining the Client changelog
-and macOS Host listener recovery. Merge both into main and rebuild all four
-public Host/Client packages on GitHub-hosted builders. Signing stays main-only.
-No installation, GitHub release publication or branch deletion is requested.
-Combined package gates are pending at this checkpoint.
+and macOS Host listener recovery. Both are merged and pushed to main. Exact
+package source is `00113c59ee2561564c2014808428a2b26457861d`. Builds run only on
+GitHub-hosted builders; signing stays main-only. No installation, GitHub release
+publication or branch deletion is requested.
+
+The signed Mac Host [35470297121](https://github.com/instinctual/plank/actions/runs/35470297121)
+and Mac Client [35470298554](https://github.com/instinctual/plank/actions/runs/35470298554)
+passed build/tests, package, Developer ID, notarization, stapling and signing-key
+cleanup gates. Ubuntu Client and both unsigned Mac jobs also passed in ordinary
+run [35470297050](https://github.com/instinctual/plank/actions/runs/35470297050).
+Privacy run 35470297027 and clipboard run 35470297054 passed. All four product
+dependency caches restored and independently verified. Existing compiler warnings
+remain; no claim of warning-free compilation or live hardware acceptance.
+
+Linux Host compiled, but both ordinary attempts failed the strict transport loss
+test at 5% induced loss. Attempt 1 expected PTS 390000 and received 391500
+(frame 260/261); the single unchanged rerun expected 438000 and received 439500
+(frame 292/293). Both passed the preceding 0/0.5/1/3% phases and failed
+`native.rs:954` in
+`native_raptorq_survives_progressive_transport_loss_at_150_mbps`, before RPM
+assembly. These are timestamp sequence failures, not frame-size mismatches.
+Transport code, test and dependency pin are unchanged from 1.0.143, but the
+repeated failure is unresolved: do not call it a runner flake, bypass the test,
+keep rerunning until green, or silently change transport as part of this build.
+Linux Host packaging is blocked pending a focused investigation.
+
+Three packages are checksum-verified and collected with source provenance under
+`artifacts/packages/releases/1.0.146/`; no 1.0.146 Linux Host RPM was produced:
+
+| Package | Bytes | SHA256 |
+| --- | ---: | --- |
+| `linux/plank-client_1.0.146_amd64.deb` | 15453276 | `7e6a50bda1485ee4f94e5504d0c5d9025538cef17f8ff506824465a1ab59696f` |
+| `macos/plank-host_1.0.146_arm64.pkg` | 6621783 | `c76120659b216c921260725c904cd255e2d1fb4401a008762b025b514cd03b5f` |
+| `macos/plank-client_1.0.146_arm64.dmg` | 84584642 | `88a7544314bb6fa6e19d7d3278a4c07370f005723b916af67efe41b82883ae4f` |
+
+The operator has been told the signed Mac pair and Ubuntu DEB are ready to test.
+The manifest distinguishes passing package gates from functional acceptance.
 
 Work in `build/worktrees/mouse-edge-recovery`, now on root main. Preserve the
 primary checkout's unrelated dirty `rk3576-client` work. Do not relabel the
@@ -58,8 +91,9 @@ Runtime source `c19eef4967a41fef19fb6ffb97cf36783fe3fb52` passed unsigned Mac ru
 [35468169313](https://github.com/instinctual/plank/actions/runs/35468169313):
 recovery policy, 98 callback checks, 509 auth checks, 190 authority checks and
 726 session checks across 24 synthetic-capture/real-QUIC scenarios, plus existing
-input/audio/clipboard/bundle checks. Two hardware-dependent Rust tests remain
-ignored; existing Quinn telemetry dead-code warnings are unchanged.
+input/audio/clipboard/bundle checks. Two opt-in native transport tests are
+excluded from the default Rust unit invocation; they are not hardware tests.
+Existing Quinn telemetry dead-code warnings are unchanged.
 See [recovery plan](docs/development/plans/macos-listener-recovery.plan).
 
 Live acceptance is still needed after installing the signed combined build:

@@ -17,7 +17,7 @@ the OS unified log contained it.
 
 ## Scope and implementation
 
-Use branch `macos-listener-recovery`, based on the released mainline. Keep the
+Developed on `macos-listener-recovery`, based on the released mainline. Keep the
 existing root coordinator and launchd jobs; add no service or persistent watcher.
 
 - After the exact admitted desktop process exits and its lease is released,
@@ -49,6 +49,10 @@ Reference: https://developer.apple.com/documentation/network/nwparametersprovide
 - Retest the actual sign-in-to-different-desktop-account sequence on an
   authorized installation. An unsigned CI assembly is not deployment acceptance.
 
-No Linux/Client/protocol change, automatic deployment, merge or release is part
-of this fix before validation and operator acceptance. The separate Wallpaper
-settings hover-lag investigation remains deferred.
+The operator subsequently requested a unified test build with the Client
+changelog. Both are merged into main for matching 1.0.146 packages; signing
+authorization remains main-only. This recovery code itself changes no Linux,
+Client or protocol behavior. Automated gates pass; live handoff acceptance
+remains pending. No automatic deployment or GitHub release publication is part
+of the unified test build. The separate Wallpaper hover-lag investigation
+remains deferred.
