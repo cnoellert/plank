@@ -28,7 +28,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Initialize exact transport source
-        run: git submodule update --init third_party/kyber-kymux
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git submodule update --init third_party/kyber-kymux
       - name: Install pinned Rust toolchain
         run: |
           curl --fail --location \
