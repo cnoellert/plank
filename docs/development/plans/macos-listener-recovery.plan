@@ -1,0 +1,54 @@
+# macOS listener handoff recovery
+
+## Observed failure
+
+An operator authenticated to PLANK at the sign-in screen, then selected a
+different macOS desktop account. The old sign-in worker exited. The new,
+admitted desktop worker received POSIX EADDRINUSE while binding the TLS control
+port and exited cleanly. No listener remained afterward. launchd deferred its
+KeepAlive restart because the Aqua domain was on-demand-only. The existing
+coordinator had already marked its successful kickstart request finished.
+
+An explicitly authorized kickstart of only the current desktop job restored
+discovery without a reboot, installation or permission change. The exact old
+socket state at bind failure was not captured; TCP TIME_WAIT is a hypothesis,
+not established evidence. Product logs lacked the numeric listener failure;
+the OS unified log contained it.
+
+## Scope and implementation
+
+Use branch `macos-listener-recovery`, based on the released mainline. Keep the
+existing root coordinator and launchd jobs; add no service or persistent watcher.
+
+- After the exact admitted desktop process exits and its lease is released,
+  re-arm the existing startup budget for the same current UID/audit session.
+- Share ten explicit starts across launch races and worker failures. Retry
+  delays are 1, 2, 4, 8 and at most 16 seconds; never reset the budget on an
+  unchanged notification or duplicate exit.
+- Serialize delayed retries. Discard callbacks for superseded sessions. Preserve
+  a worker exit that arrives before the kickstart completion callback.
+- Log numeric listener failure and bounded recovery/exhaustion in product logs.
+- Preserve console ownership, signing, PAM/account verification, permissions,
+  TLS, exclusive graphical ownership and retirement checks. Different-user
+  desktop access still requires authentication as that desktop's owner.
+
+Do not enable Network.framework's shared-endpoint reuse as an untested shortcut:
+Apple documents that it includes both SO_REUSEADDR and SO_REUSEPORT. Recovery
+must not permit overlapping listeners or kill an unrelated port owner.
+Reference: https://developer.apple.com/documentation/network/nwparametersprovider/localendpointreuseallowed(_:)
+
+## Validation
+
+- Extend the real startup scheduling policy tests: success followed by bind
+  failure/exit, exit before completion, wrong user/audit, duplicate notifications,
+  finite retry exhaustion and fresh-session reset.
+- Exercise delayed callback cancellation and duplicate scheduling with a
+  synthetic coordinator fixture; never change launchd on a hosted builder.
+- Build the native Mac Host on GitHub with all existing authentication,
+  lifecycle, input, clipboard, transport and packaging assembly gates.
+- Retest the actual sign-in-to-different-desktop-account sequence on an
+  authorized installation. An unsigned CI assembly is not deployment acceptance.
+
+No Linux/Client/protocol change, automatic deployment, merge or release is part
+of this fix before validation and operator acceptance. The separate Wallpaper
+settings hover-lag investigation remains deferred.

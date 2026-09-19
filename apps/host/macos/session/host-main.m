@@ -111,6 +111,7 @@ static int machine(const char *service) {
     NSString *requirement = PLANKMacOwnSigningRequirement();
     __block __weak PLANKMacAgentRegistry *weakRegistry;
     __block dispatch_source_t exitWatch = nil;
+    PLANKMacDesktopStart *desktopStart = [PLANKMacDesktopStart new];
     PLANKMacAgentRegistry *registry = [[PLANKMacAgentRegistry alloc]
         initWithQueue:dispatch_get_main_queue() requirement:requirement
         scope:^PLANKMacAgentPhase(PLANKMacAgentPeer peer) { return PLANKMacObserveAgentScope(peer); }
@@ -127,6 +128,8 @@ static int machine(const char *service) {
                 BOOL removed = [weakRegistry completeRetirement:lease];
                 dispatch_source_cancel(exitWatch); exitWatch = nil;
                 NSLog(@"PLANK Host graphical process exited; ownership released=%d", removed);
+                if (removed && lease.phase == PLANKMacAgentDesktop)
+                    [desktopStart desktopProcessExitedForUID:lease.peer.uid audit:lease.peer.auditSession];
             });
             dispatch_resume(exitWatch);
         }];
@@ -139,7 +142,6 @@ static int machine(const char *service) {
         if (xpc_get_type(peer) == XPC_TYPE_CONNECTION) [registry accept:peer];
     });
     xpc_connection_activate(listener);
-    PLANKMacDesktopStart *desktopStart = [PLANKMacDesktopStart new];
     if (![desktopStart start]) {
         [registry stop]; xpc_connection_cancel(listener);
         return startupFailure("desktop-start-observer");
