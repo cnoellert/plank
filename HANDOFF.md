@@ -1,5 +1,47 @@
 # PLANK handoff
 
+## Active Client changelog
+
+Work on root and Client branch `client-changelog`, based on main `458f1f6`, in
+`build/worktrees/mouse-edge-recovery`. Preserve the primary checkout's unrelated
+dirty RK3576 work. Candidate version is `1.0.145-client-changelog` (1.0.144 is
+reserved for the separate Mac listener fix below).
+
+The main-window version opens an offline, modal, scrollable release-notes
+dialog. Each release groups short plain-language bullets under Client and Host;
+empty sections are omitted. Notes are bundled from Client `app/res/changelog.md`,
+not downloaded or generated from commit messages. The installed version remains
+dynamic, including branch qualifiers. Keep notes updated through the release
+runbook; do not list an unmerged fix. Both Client build paths run the new QML
+interaction test (click, keyboard, Close, focus return, scrolling, narrow window,
+modal isolation and missing-note fallback). Native Qt validation is pending.
+No installation, main merge or release is performed by this task.
+
+The operator also asked whether macOS system-shortcut capture is dormant. It is
+not: Off/Fullscreen/Always controls the existing Accessibility event tap and
+focused-stream ownership, with preferences copied at connection start. Proposed
+UI simplification (Never/Fullscreen/While stream is focused) is discussion only;
+do not change capture behavior or remove the preference without approval.
+
+## Separate Mac listener recovery, not merged
+
+Root branch `macos-listener-recovery` is committed/pushed through `c0e17cb`.
+Its runtime source `c19eef4967a41fef19fb6ffb97cf36783fe3fb52` passed hosted Mac run
+[35468169313](https://github.com/instinctual/plank/actions/runs/35468169313),
+including recovery policy, 98 callback checks, 509 auth checks, 190 authority
+checks and 726 session checks. It reuses the coordinator to restart a failed
+desktop worker after exact process-exit/lease release, within a bounded
+same-user/audit retry budget. Product logs retain numeric listener failures.
+The existing affected installation was restored by an authorized kickstart,
+without an upgrade or reboot. Raw machine evidence remains private.
+
+That branch has no distributable signed package or live fix acceptance yet;
+signing authorization remains main-only and must not be broadened. Reproduce
+sign-in authorization as one account followed by OS login as a different
+account before claiming live acceptance: the Host must remain reachable without
+carrying authorization into another user's desktop. See that branch's HANDOFF
+and listener-recovery plan. This Client branch does not contain that fix.
+
 ## Mainline 1.0.143 release
 
 The operator accepted the combined fixes, reports no further “Waiting for
@@ -186,7 +228,7 @@ Unmerged physical-mode/Retina dropdown PRs and Mac Host pre-27 support are exclu
 
 ## Workspace and build policy
 
-Work in `build/worktrees/mouse-edge-recovery`, now checked out on main.
+Work in `build/worktrees/mouse-edge-recovery`, now on `client-changelog`.
 The primary checkout is unrelated dirty `rk3576-client` research; preserve it.
 Other retained review/candidate worktrees are not authorization for broad cleanup.
 

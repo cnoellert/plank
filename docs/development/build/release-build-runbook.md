@@ -1163,6 +1163,15 @@ retained qualification reports during candidate cleanup.
 
 ## Release recording
 
+Keep the Client's bundled `apps/client/app/res/changelog.md` current. Use short,
+plain-language bullets under separate Client and Host headings for each version;
+omit empty sections. The current candidate's notes may use "This build" until
+the release version is final. When releasing, name that section with the final
+version and preserve prior release summaries. These are user-facing highlights,
+not a Git log or a validation report. Do not list unmerged fixes or promise
+unqualified hardware support. The version-button dialog uses this bundled file
+offline; both Client build gates exercise its modal, keyboard and scrolling UI.
+
 For macOS PKG signing, keep the authenticated interactive SSH session open
 from `security unlock-keychain` through `build-macos-host-pkg.sh`; enter the
 keychain password only at its hidden prompt. On the dedicated Mac, unlocking
