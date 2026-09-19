@@ -845,6 +845,20 @@ mod tests {
         let proxy_socket = tokio::net::UdpSocket::bind("127.0.0.1:0")
             .await
             .expect("failed to bind deterministic loss proxy");
+        const REQUESTED_PROXY_RECEIVE_BUFFER: usize = 8 * 1024 * 1024;
+        let proxy_socket_ref = socket2::SockRef::from(&proxy_socket);
+        let initial_proxy_receive_buffer = proxy_socket_ref
+            .recv_buffer_size()
+            .expect("failed to read deterministic loss proxy receive buffer");
+        proxy_socket_ref
+            .set_recv_buffer_size(REQUESTED_PROXY_RECEIVE_BUFFER)
+            .expect("failed to enlarge deterministic loss proxy receive buffer");
+        let effective_proxy_receive_buffer = proxy_socket_ref
+            .recv_buffer_size()
+            .expect("failed to confirm deterministic loss proxy receive buffer");
+        eprintln!(
+            "fec_loss_proxy_receive_buffer initial={initial_proxy_receive_buffer} requested={REQUESTED_PROXY_RECEIVE_BUFFER} effective={effective_proxy_receive_buffer}"
+        );
         let proxy_address = proxy_socket
             .local_addr()
             .expect("loss proxy has no local address");
@@ -943,19 +957,21 @@ mod tests {
         let receiver = tokio::spawn(async move {
             let mut received_pts = Vec::new();
             loop {
-                let packet = client_video
-                    .recv
-                    .recv()
-                    .await
-                    .expect("loss-test video endpoint closed")
-                    .expect("loss-test video receive failed");
+                let packet = match tokio::time::timeout(
+                    Duration::from_millis(500),
+                    client_video.recv.recv(),
+                )
+                .await
+                {
+                    Ok(Ok(Some(packet))) => packet,
+                    Ok(Ok(None)) => panic!("loss-test video endpoint closed"),
+                    Ok(Err(error)) => panic!("loss-test video receive failed: {error}"),
+                    Err(_) => break,
+                };
                 if let AVPacket::Media(media) = packet {
                     if !media.header.is_config {
                         assert_eq!(media.payload, expected_payload);
                         received_pts.push(media.header.pts);
-                        if media.header.pts == 302 * 1_500 {
-                            break;
-                        }
                     }
                 }
             }
@@ -1049,7 +1065,7 @@ mod tests {
         assert!(source > 0 && missing > 0 && missing <= source);
         let unrecovered = fec.video_fec_source_symbols_unrecovered;
         eprintln!(
-            "fec_loss_diagnostic received={} missing_pts={missing_pts:?} ordered={} source={source} missing={missing} unrecovered={unrecovered:?} protocol_dropped={} proxy_forwarded={} proxy_dropped={}",
+            "fec_loss_diagnostic received={} missing_pts={missing_pts:?} ordered={} source={source} missing={missing} unrecovered={unrecovered:?} protocol_dropped={} proxy_forwarded={} proxy_dropped={} proxy_receive_buffer={effective_proxy_receive_buffer}",
             qualified_pts.len(),
             qualified_pts.windows(2).all(|pair| pair[0] < pair[1]),
             client_connection
