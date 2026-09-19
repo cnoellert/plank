@@ -170,6 +170,16 @@ raw-HID endpoints as generation 8. The operator confirmed the session resumed;
 90 Host-side samples retained the same canvas, positions and primary output,
 and both Host services and released input state remained healthy.
 
+A final normal Client disconnect removed the authenticated PLANK login while
+retaining the exact 4480x1440 XRandR and NVIDIA layout. Both Host services
+remained active, Flame was closed, and all mouse and stylus buttons read up.
+The transport summary recorded zero QUIC packet loss, zero KyProto drops and
+zero audio or video send-queue drops. After explicitly recording the Client's
+clean-disconnect request, the Host still emitted the previously observed
+nonfatal NvFBC context-release and native-endpoint-ended messages; asynchronous
+encoder teardown completed. That shutdown log noise remains visible rather
+than being treated as a clean diagnostic result.
+
 The refreshed source is therefore qualified on Portofino macOS 15.7.4 against
 flame-01 Rocky 9.7 for display ordering, Flame placement, Wacom input and
 sleep/reconnect. The same Client package still needs live macOS 27 acceptance.
