@@ -1,5 +1,38 @@
 # PLANK handoff
 
+## Active: Quinn MTU-boundary repair, 1.0.147 candidate
+
+Work is on `quinn-mtu-boundary` in `build/worktrees/mouse-edge-recovery`, based
+on main `dd6fb04`. Preserve the primary checkout's unrelated dirty RK3576 work.
+The operator authorized fixing and testing the Linux Host build blocker. Do not
+merge, publish a release, install packages, or alter signing permissions yet.
+
+The failure was reproduced with a trace showing MTU black-hole recovery dropping
+254 queued datagrams exactly equal to the unchanged legal maximum (1,306 bytes).
+Quinn's `drop_oversized` used `<`, inconsistent with the inclusive send limit.
+It now uses `<=`; genuinely oversized packets are still discarded and counted
+separately from queue-capacity evictions. This shared transport code affects all
+platforms. No encoder/FEC/MTU/queue-capacity/pacing policy changed.
+
+The loss fixture now drains its receiver-side UDP proxy on a dedicated test
+thread and reports unintended per-socket Linux kernel drops separately. It
+requests a larger proxy-only receive buffer subject to the existing OS cap;
+no system tuning or product buffer changes. Original frame-order, byte-for-byte
+payload and zero-unrecovered-data assertions remain mandatory. Extra kernel
+drops are reported honestly, not represented as exact controlled loss.
+
+Local validation passed: all 272 vendored Quinn unit tests; 26 transport tests
+under each sender policy (two opt-in tests run separately); three consecutive
+150 Mbps matrices per policy at 0/0.5/1/3/5% loss, each recovering all 300 frames;
+and native C ABI video/audio/input/control loopbacks. Both new boundary tests
+fail when the original `<` comparison is restored. The final source is `<=`.
+CI-policy tests pass (50). Hosted bootstrap fetches the separately locked vendor
+test dependencies; Host builds run their boundary/accounting tests first.
+
+Next: commit/push this candidate and build on GitHub-hosted workers. Hosted
+results, exact package source and artifact hashes are not recorded yet. No
+1.0.147 package or live hardware acceptance is claimed.
+
 ## Unified 1.0.146 test packages
 
 The operator requested one matching test release combining the Client changelog
@@ -24,10 +57,10 @@ test at 5% induced loss. Attempt 1 expected PTS 390000 and received 391500
 `native.rs:954` in
 `native_raptorq_survives_progressive_transport_loss_at_150_mbps`, before RPM
 assembly. These are timestamp sequence failures, not frame-size mismatches.
-Transport code, test and dependency pin are unchanged from 1.0.143, but the
-repeated failure is unresolved: do not call it a runner flake, bypass the test,
-keep rerunning until green, or silently change transport as part of this build.
-Linux Host packaging is blocked pending a focused investigation.
+Transport code, test and dependency pin were unchanged from 1.0.143. The focused
+investigation and candidate repair are above. Do not call it a runner flake,
+bypass the test or keep rerunning unchanged code until green. These 1.0.146
+attempts did not produce a Linux Host package.
 
 Three packages are checksum-verified and collected with source provenance under
 `artifacts/packages/releases/1.0.146/`; no 1.0.146 Linux Host RPM was produced:
@@ -41,8 +74,7 @@ Three packages are checksum-verified and collected with source provenance under
 The operator has been told the signed Mac pair and Ubuntu DEB are ready to test.
 The manifest distinguishes passing package gates from functional acceptance.
 
-Work in `build/worktrees/mouse-edge-recovery`, now on root main. Preserve the
-primary checkout's unrelated dirty `rk3576-client` work. Do not relabel the
+Preserve the primary checkout's unrelated dirty `rk3576-client` work. Do not relabel the
 separately built 1.0.144/1.0.145 feature candidates as a mainline release.
 
 ### Client changelog

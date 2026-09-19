@@ -451,7 +451,12 @@ pub async fn promote_setup_client(
 }
 
 #[cfg(test)]
+#[path = "test_loss_proxy.rs"]
+mod loss_proxy;
+
+#[cfg(test)]
 mod tests {
+    use super::loss_proxy::LossProxy;
     use super::*;
     use crate::rate_control::{PlankRateControllerFactory, TransportRatePolicy};
     use bytes::Bytes;
@@ -460,7 +465,7 @@ mod tests {
         MediaPacketHeader,
     };
     use std::path::PathBuf;
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::atomic::Ordering;
 
     fn test_certificate_paths() -> (PathBuf, PathBuf, String) {
         let certificate = std::env::var_os("SC_NATIVE_TEST_CERTIFICATE")
@@ -482,54 +487,6 @@ mod tests {
             .expect("loopback UDP socket has no address");
         drop(socket);
         address
-    }
-
-    async fn run_loss_proxy(
-        socket: tokio::net::UdpSocket,
-        server_address: SocketAddr,
-        server_loss_basis_points: Arc<AtomicU64>,
-        forwarded_server_packets: Arc<AtomicU64>,
-        dropped_server_packets: Arc<AtomicU64>,
-    ) {
-        let mut client_address = None;
-        let mut server_sequence = 0_u64;
-        let mut buffer = vec![0_u8; 65_535];
-        loop {
-            let Ok((size, source)) = socket.recv_from(&mut buffer).await else {
-                return;
-            };
-            if source == server_address {
-                let Some(client_address) = client_address else {
-                    continue;
-                };
-                server_sequence = server_sequence.wrapping_add(1);
-                // Evenly distributed, deterministic omissions at this receiver-
-                // side proxy, not a sender-side discard before Quinn sees data.
-                // This is a FEC regression fixture, not a random WAN-loss model.
-                let loss = server_loss_basis_points.load(Ordering::Acquire);
-                if (server_sequence % 10_000) * loss % 10_000 < loss {
-                    dropped_server_packets.fetch_add(1, Ordering::Relaxed);
-                    continue;
-                }
-                if socket
-                    .send_to(&buffer[..size], client_address)
-                    .await
-                    .is_err()
-                {
-                    return;
-                }
-                forwarded_server_packets.fetch_add(1, Ordering::Relaxed);
-            } else {
-                client_address = Some(source);
-                if socket
-                    .send_to(&buffer[..size], server_address)
-                    .await
-                    .is_err()
-                {
-                    return;
-                }
-            }
-        }
     }
 
     #[test]
@@ -842,22 +799,7 @@ mod tests {
             .await
             .expect("failed to load loopback private key");
         let server_address = unused_loopback_address();
-        let proxy_socket = tokio::net::UdpSocket::bind("127.0.0.1:0")
-            .await
-            .expect("failed to bind deterministic loss proxy");
-        let proxy_address = proxy_socket
-            .local_addr()
-            .expect("loss proxy has no local address");
-        let server_loss_basis_points = Arc::new(AtomicU64::new(0));
-        let forwarded_server_packets = Arc::new(AtomicU64::new(0));
-        let dropped_server_packets = Arc::new(AtomicU64::new(0));
-        let proxy_task = tokio::spawn(run_loss_proxy(
-            proxy_socket,
-            server_address,
-            server_loss_basis_points.clone(),
-            forwarded_server_packets.clone(),
-            dropped_server_packets.clone(),
-        ));
+        let mut proxy = LossProxy::start(server_address).expect("failed to start loss proxy");
 
         let options = NativeOptions {
             handshake_timeout: Duration::from_secs(5),
@@ -886,7 +828,7 @@ mod tests {
         let (server_protocols, client_protocols) = tokio::join!(
             accept_server(&server, token, options),
             connect_client(
-                proxy_address,
+                proxy.address,
                 "localhost",
                 Some(&certificate_sha256),
                 token,
@@ -963,7 +905,7 @@ mod tests {
         let mut frame_number = 0_u64;
         let mut dropped_after_phase = 0_u64;
         for loss in [0_u64, 50, 100, 300, 500] {
-            server_loss_basis_points.store(loss, Ordering::Release);
+            proxy.loss_basis_points.store(loss, Ordering::Release);
             let phase_start = tokio::time::Instant::now();
             for phase_frame in 0..60_u64 {
                 tokio::time::timeout(
@@ -987,7 +929,7 @@ mod tests {
                 )
                 .await;
             }
-            let dropped = dropped_server_packets.load(Ordering::Relaxed);
+            let dropped = proxy.dropped.load(Ordering::Relaxed);
             if loss == 0 {
                 assert_eq!(dropped, dropped_after_phase);
             } else {
@@ -999,13 +941,15 @@ mod tests {
             );
             dropped_after_phase = dropped;
         }
-        let received_frames = tokio::time::timeout(Duration::from_secs(5), receiver)
-            .await
+        let received_frames = tokio::time::timeout(Duration::from_secs(5), receiver).await;
+        // Report/validate the proxy even when the frame-order assertion failed.
+        proxy.finish();
+        let received_frames = received_frames
             .expect("loss-test receiver timed out")
             .expect("loss-test receiver task failed");
         assert_eq!(received_frames, 300);
-        assert!(forwarded_server_packets.load(Ordering::Relaxed) > 20_000);
-        assert!(dropped_server_packets.load(Ordering::Relaxed) > 500);
+        assert!(proxy.forwarded.load(Ordering::Relaxed) > 20_000);
+        assert!(proxy.dropped.load(Ordering::Relaxed) > 500);
         let fec = client_connection.protocol_stats();
         let source = fec.video_fec_source_symbols.expect("missing FEC denominator");
         let missing = fec.video_fec_source_symbols_missing.expect("missing pre-FEC counter");
@@ -1016,6 +960,5 @@ mod tests {
         server_connection.close();
         client_connection.close();
         server.close(0, "loss test complete");
-        proxy_task.abort();
     }
 }

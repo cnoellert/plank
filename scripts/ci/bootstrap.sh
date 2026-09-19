@@ -33,6 +33,10 @@ fi
 test "$(rustc --version)" = 'rustc 1.89.0 (29483883e 2025-08-04)'
 test "$(cargo --version)" = 'cargo 1.89.0 (c24e10642 2025-06-23)'
 cargo fetch --locked --target "$target" --manifest-path "$PLANK_SOURCE_ROOT/protocol/plank-transport/Cargo.toml"
+if [[ $role == linux-host ]]; then
+  # Standalone vendor unit tests have their own pinned test-only dependencies.
+  cargo fetch --locked --target "$target" --manifest-path "$PLANK_SOURCE_ROOT/third_party/quinn-proto-0.11.17/Cargo.toml"
+fi
 case $role in
   linux-host)
     boost="$PLANK_DEP_ROOT/boost-1.89.0"

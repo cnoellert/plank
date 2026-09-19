@@ -88,6 +88,11 @@ done
 cargo metadata --locked --offline --no-deps \
   --format-version 1 \
   --manifest-path "${plank_transport_dir}/Cargo.toml" >/dev/null
+# Run the vendored boundary/accounting regressions before compiling the Host.
+# This separate test archive is never linked into the product.
+CARGO_TARGET_DIR="$build_dir/quinn-tests" cargo test --release --locked --offline \
+  --manifest-path "$repo_dir/third_party/quinn-proto-0.11.17/Cargo.toml" \
+  --lib connection::datagrams::plank_tests
 rg -q '^#define PLANK_TRANSPORT_ABI_VERSION 13u$' \
   "${plank_transport_dir}/include/plank_transport.h" || {
   echo "host requires PLANK transport ABI 13" >&2

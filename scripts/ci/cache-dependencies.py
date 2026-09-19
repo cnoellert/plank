@@ -37,6 +37,8 @@ def fingerprint(root, deps, product, toolchain):
         paths.update(str(p.relative_to(root)) for p in (root / CLIENT_PATCHES).glob('*.patch'))
     elif product == 'linux-host':
         paths.add('scripts/build/verify-host-dependency-patches.sh')
+        paths.update(('third_party/quinn-proto-0.11.17/Cargo.toml',
+                      'third_party/quinn-proto-0.11.17/Cargo.lock'))
         # This dedicated submodule pins FFmpeg/x264/x265 sources, configuration,
         # patches and build commands independently of Host application changes.
         pins['host-build-deps'] = output(['git', '-C', str(root / HOST_DEPS), 'rev-parse', 'HEAD'])

@@ -144,7 +144,9 @@ impl DatagramState {
     /// queued but can't send it.
     pub(super) fn drop_oversized(&mut self, max_payload: usize) {
         self.outgoing.queue.retain(|datagram| {
-            let result = datagram.data.len() < max_payload;
+            // max_size() and send() include equality. Black-hole recovery can
+            // revisit an unchanged MTU; valid full-sized datagrams must survive.
+            let result = datagram.data.len() <= max_payload;
             if !result {
                 trace!(
                     "dropping {} byte datagram violating {} byte limit",
@@ -152,6 +154,12 @@ impl DatagramState {
                     max_payload
                 );
                 self.outgoing.payload_bytes -= datagram.data.len();
+                self.outgoing.mtu_dropped_datagrams =
+                    self.outgoing.mtu_dropped_datagrams.saturating_add(1);
+                self.outgoing.mtu_dropped_payload_bytes = self
+                    .outgoing
+                    .mtu_dropped_payload_bytes
+                    .saturating_add(datagram.data.len() as u64);
             }
             result
         });
@@ -193,6 +201,8 @@ pub(super) struct DatagramBuffer {
     high_water_memory_bytes: usize,
     evicted_datagrams: u64,
     evicted_payload_bytes: u64,
+    mtu_dropped_datagrams: u64,
+    mtu_dropped_payload_bytes: u64,
 }
 
 impl DatagramBuffer {
@@ -241,6 +251,8 @@ impl DatagramBuffer {
             high_water_memory_bytes: self.high_water_memory_bytes as u64,
             evicted_datagrams: self.evicted_datagrams,
             evicted_payload_bytes: self.evicted_payload_bytes,
+            mtu_dropped_datagrams: self.mtu_dropped_datagrams,
+            mtu_dropped_payload_bytes: self.mtu_dropped_payload_bytes,
         }
     }
 
@@ -262,11 +274,67 @@ pub(super) struct DatagramBufferTelemetry {
     pub(super) high_water_memory_bytes: u64,
     pub(super) evicted_datagrams: u64,
     pub(super) evicted_payload_bytes: u64,
+    pub(super) mtu_dropped_datagrams: u64,
+    pub(super) mtu_dropped_payload_bytes: u64,
 }
 
 #[cfg(test)]
 mod plank_tests {
     use super::*;
+
+    #[test]
+    fn unchanged_mtu_preserves_full_sized_datagrams() {
+        let mut state = DatagramState::default();
+        for _ in 0..318 {
+            state.outgoing.push_back(Datagram {
+                data: Bytes::from(vec![7; 1306]),
+            });
+        }
+        let before = state.outgoing.telemetry();
+        for _ in 0..3 {
+            state.drop_oversized(1306);
+            assert_eq!(state.outgoing.telemetry(), before);
+        }
+    }
+
+    #[test]
+    fn reduced_mtu_drops_only_above_limit_and_accounts_once() {
+        let mut state = DatagramState::default();
+        for size in [8, 7, 9, 6, 0] {
+            state.outgoing.push_back(Datagram {
+                data: Bytes::from(vec![size as u8; size]),
+            });
+        }
+        state.drop_oversized(7);
+        assert_eq!(
+            state
+                .outgoing
+                .queue
+                .iter()
+                .map(|d| d.data.len())
+                .collect::<Vec<_>>(),
+            [7, 6, 0]
+        );
+        let stats = state.outgoing.telemetry();
+        assert_eq!(stats.payload_bytes, 13);
+        assert_eq!(stats.memory_bytes, 13 + 3 * size_of::<Datagram>() as u64);
+        assert_eq!(stats.mtu_dropped_datagrams, 2);
+        assert_eq!(stats.mtu_dropped_payload_bytes, 17);
+        assert_eq!(stats.evicted_datagrams, 0);
+        assert_eq!(stats.evicted_payload_bytes, 0);
+        assert_eq!(stats.high_water_payload_bytes, 30);
+        state.drop_oversized(7);
+        assert_eq!(state.outgoing.telemetry(), stats);
+
+        // An empty payload is still legal at a zero payload limit.
+        state.drop_oversized(0);
+        assert_eq!(state.outgoing.queue.len(), 1);
+        assert_eq!(state.outgoing.payload_bytes, 0);
+        assert_eq!(state.outgoing.telemetry().mtu_dropped_payload_bytes, 30);
+        assert_eq!(state.outgoing.telemetry().mtu_dropped_datagrams, 4);
+        assert_eq!(state.outgoing.pop_front().unwrap().data.len(), 0);
+        assert_eq!(state.outgoing.memory_used(), 0);
+    }
 
     #[test]
     fn make_space_accounts_for_new_datagram_and_updates_payload_once() {

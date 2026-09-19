@@ -144,6 +144,24 @@ Distinguish `/usr/bin/plank-host` (launcher script) from
 
 ## Native transport lifecycle qualification
 
+The Linux Host build runs the vendored Quinn DATAGRAM boundary/accounting tests
+before compilation. Prepare its test-only dependencies with
+`cargo fetch --locked --target x86_64-unknown-linux-gnu --manifest-path third_party/quinn-proto-0.11.17/Cargo.toml`
+alongside the production transport fetch. Hosted bootstrap does this
+automatically. These use the vendor's separate lockfile and test archive, never
+the production link inputs.
+
+The 150 Mbps native loss matrix requires three consecutive passes per rate
+policy, with no retry after failure. Every pass requires all 300 payloads in
+order and zero unrecovered source symbols. Its dedicated test-only proxy reports
+the effective socket receive buffer and Linux per-socket kernel drops separately
+from deliberately injected loss. `controlled_loss_only=false` means extra local
+drops occurred (or the counter is unavailable on that OS); do not describe that
+run as an exact-loss measurement. A complete recovery pass still exercises at
+least the deliberate loss. Any frame failure remains a failure, regardless of
+proxy drops. Do not loosen assertions, add retries, tune machine-wide sysctls,
+or change product pacing/FEC/latency to hide a fixture limitation.
+
 For native transport lifecycle changes, run the Rust completion tests and the
 real C ABI stress runner on Linux and the dedicated Mac:
 `bash scripts/test/run-peer-close-stress.sh ABSOLUTE_ARCHIVE NEW_OUTPUT 50`.

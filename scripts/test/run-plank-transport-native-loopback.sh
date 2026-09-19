@@ -31,6 +31,10 @@ cargo test "${cargo_profile_args[@]}" --locked --offline --manifest-path "$crate
   native::tests::native_kyproto_round_trip_preserves_all_initial_lanes \
   -- --ignored --exact --nocapture
 
-cargo test "${cargo_profile_args[@]}" --locked --offline --manifest-path "$crate_dir/Cargo.toml" \
-  native::tests::native_raptorq_survives_progressive_transport_loss_at_150_mbps \
-  -- --ignored --exact --nocapture
+# Three required passes, not retries: set -e stops on the first failure.
+for loss_trial in 1 2 3; do
+  echo "native_loss_matrix_trial=$loss_trial"
+  cargo test "${cargo_profile_args[@]}" --locked --offline --manifest-path "$crate_dir/Cargo.toml" \
+    native::tests::native_raptorq_survives_progressive_transport_loss_at_150_mbps \
+    -- --ignored --exact --nocapture
+done

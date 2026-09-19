@@ -1294,7 +1294,7 @@ impl Connection {
                 "server"
             };
             eprintln!(
-                "PLANK QUIC telemetry controller={} side={} remote={} rtt_us={} rtt_latest_us={} rtt_min_us={} rtt_max_us={} rtt_var_us={} cwnd_bytes={} in_flight_bytes={} in_flight_packets={} effective_pacing_bps={} controller_pacing_bps={} bandwidth_estimate_bps={} congestion_events={} sent_packets={} sent_bytes={} lost_packets={} lost_bytes={} mtu={} queue_limit_bytes={} queue_datagrams={} queue_payload_bytes={} queue_memory_bytes={} queue_high_water_payload_bytes={} queue_high_water_memory_bytes={} queue_evicted_datagrams={} queue_evicted_payload_bytes={}",
+                "PLANK QUIC telemetry controller={} side={} remote={} rtt_us={} rtt_latest_us={} rtt_min_us={} rtt_max_us={} rtt_var_us={} cwnd_bytes={} in_flight_bytes={} in_flight_packets={} effective_pacing_bps={} controller_pacing_bps={} bandwidth_estimate_bps={} congestion_events={} sent_packets={} sent_bytes={} lost_packets={} lost_bytes={} mtu={} queue_limit_bytes={} queue_datagrams={} queue_payload_bytes={} queue_memory_bytes={} queue_high_water_payload_bytes={} queue_high_water_memory_bytes={} queue_evicted_datagrams={} queue_evicted_payload_bytes={} mtu_dropped_datagrams={} mtu_dropped_payload_bytes={}",
                 controller,
                 side,
                 self.path.remote,
@@ -1323,6 +1323,8 @@ impl Connection {
                 queue.high_water_memory_bytes,
                 queue.evicted_datagrams,
                 queue.evicted_payload_bytes,
+                queue.mtu_dropped_datagrams,
+                queue.mtu_dropped_payload_bytes,
             );
         }
 

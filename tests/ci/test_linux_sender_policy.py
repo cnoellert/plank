@@ -46,6 +46,15 @@ class LinuxSenderPolicyTests(unittest.TestCase):
             self.assertIn('--features "$PLANK_TRANSPORT_CARGO_FEATURES"', script)
             self.assertIn('--locked --offline', script)
 
+    def test_datagram_regressions_and_repetitions_are_required(self):
+        host = (ROOT / 'scripts/build/build-host-package-binaries.sh').read_text()
+        self.assertIn('--lib connection::datagrams::plank_tests', host)
+        bootstrap = (ROOT / 'scripts/ci/bootstrap.sh').read_text()
+        self.assertIn('third_party/quinn-proto-0.11.17/Cargo.toml', bootstrap)
+        script = (ROOT / 'scripts/test/run-plank-transport-native-loopback.sh').read_text()
+        self.assertIn('for loss_trial in 1 2 3;', script)
+        self.assertIn('set -euo pipefail', script)
+
 
 if __name__ == '__main__':
     unittest.main()

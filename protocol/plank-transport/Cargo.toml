@@ -31,6 +31,9 @@ rustls = { version = "0.23.31", default-features = false, features = ["logging",
 subtle = "2.6"
 tokio = { version = "1.47", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 
+[dev-dependencies]
+socket2 = "0.6"
+
 [patch.crates-io]
 # Keep the same narrowly repaired Quinn release shared by production and the
 # standalone probes. See third_party/quinn-proto-0.11.17/PLANK-PATCH.md.

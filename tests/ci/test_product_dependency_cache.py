@@ -23,6 +23,8 @@ class ProductDependencyCacheTests(unittest.TestCase):
         for name in (*cache.COMMON_INPUTS, cache.IDENTITY_PATCH,
                      'scripts/ci/install-linux-deps.sh', 'scripts/build/build-client-ffmpeg.sh',
                      'scripts/build/sanitize-ffmpeg-build-info.py',
+                     'third_party/quinn-proto-0.11.17/Cargo.toml',
+                     'third_party/quinn-proto-0.11.17/Cargo.lock',
                      'scripts/build/verify-host-dependency-patches.sh'):
             self.write(self.root / name, 'fixture')
         self.host_deps = self.root / cache.HOST_DEPS
@@ -72,6 +74,14 @@ class ProductDependencyCacheTests(unittest.TestCase):
         self.write(self.host_deps / 'CMakeLists.txt', 'fixture')
         with patch.object(cache, 'output', side_effect=lambda cmd: '0' * 40 if 'rev-parse' in cmd else '100644 ' + '1' * 40 + ' 0\tCMakeLists.txt'):
             self.assertNotEqual(key, self.key('linux-host'))
+
+    def test_host_vendor_test_dependencies_invalidate(self):
+        key = self.key('linux-host')
+        for name in ('Cargo.toml', 'Cargo.lock'):
+            path = self.root / 'third_party/quinn-proto-0.11.17' / name
+            self.write(path, 'changed')
+            self.assertNotEqual(key, self.key('linux-host'))
+            self.write(path, 'fixture')
 
     def test_host_gitlinks_are_pins_not_regular_files(self):
         with patch.object(cache, 'output', side_effect=lambda cmd: '0' * 40 if 'rev-parse' in cmd else '160000 ' + '1' * 40 + ' 0\tFFmpeg/source'):
