@@ -1064,6 +1064,11 @@ mod tests {
             .expect("missing pre-FEC counter");
         assert!(source > 0 && missing > 0 && missing <= source);
         let unrecovered = fec.video_fec_source_symbols_unrecovered;
+        // `quinn-telemetry` reports queue high-water and eviction totals when
+        // transport stats are sampled. Capture both sides before teardown so
+        // a skipped FEC object can be correlated with the responsible queue.
+        let _server_transport = server_connection.connection_stats().await;
+        let _client_transport = client_connection.connection_stats().await;
         eprintln!(
             "fec_loss_diagnostic received={} missing_pts={missing_pts:?} ordered={} source={source} missing={missing} unrecovered={unrecovered:?} protocol_dropped={} proxy_forwarded={} proxy_dropped={} proxy_receive_buffer={effective_proxy_receive_buffer}",
             qualified_pts.len(),
