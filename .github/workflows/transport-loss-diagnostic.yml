@@ -62,11 +62,29 @@ jobs:
           export SC_NATIVE_TEST_PRIVATE_KEY="$tmp/key.pem"
           hash=$(sha256sum "$tmp/cert.der")
           export SC_NATIVE_TEST_CERTIFICATE_SHA256=${hash%% *}
+          udp_receive_buffer_errors() {
+            awk '
+              $1 == "Udp:" && !header_seen {
+                for (field = 1; field <= NF; field++) {
+                  if ($field == "RcvbufErrors") error_field = field
+                }
+                header_seen = 1
+                next
+              }
+              $1 == "Udp:" && header_seen && error_field {
+                print $error_field
+                exit
+              }
+            ' /proc/net/snmp
+          }
           for attempt in $(seq 1 12); do
             echo "transport_loss_diagnostic_attempt=$attempt"
+            udp_errors_before=$(udp_receive_buffer_errors)
             cargo test --release --locked \
               --features quinn-telemetry,linux-fast-send \
               --manifest-path protocol/plank-transport/Cargo.toml \
               native::tests::native_raptorq_survives_progressive_transport_loss_at_150_mbps \
               -- --ignored --exact --nocapture
+            udp_errors_after=$(udp_receive_buffer_errors)
+            echo "transport_loss_udp_rcvbuf_errors before=$udp_errors_before after=$udp_errors_after delta=$((udp_errors_after - udp_errors_before))"
           done
