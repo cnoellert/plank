@@ -9,5 +9,6 @@
 - [macOS Client build](build/macos-client-build-runbook.md)
 - [Plans](plans/), [investigations](investigations/) and [reviews](reviews/)
 - [Evaluated upstream commits](upstream-commit-audit.md)
+- [Security and reliability backlog](security-reliability-backlog.md)
 
 Plans describe intended work; only recorded validation establishes acceptance.
