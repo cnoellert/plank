@@ -50,7 +50,7 @@ with a synthetic display, and Qt accept/cancel/Escape/timeout responsiveness.
 These tests must pass on the appropriate hosted builders; local syntax checks
 are not Mac execution or hardware acceptance.
 
-Local combined-source checks: all 59 CI-policy tests, Python syntax, shell
+Local combined-source checks: all 60 CI-policy tests, Python syntax, shell
 syntax and diff whitespace pass. Initial hosted runs 35662191961 and
 35662506372 were superseded/cancelled before completing product qualification
 to include final Client shutdown and authenticated-bookmark routing guards.
@@ -70,8 +70,16 @@ Linux Host job 106541725507 in run 35662745109 passed package/input-lifecycle
 gates and all six strict loss matrices: 5,400 frames, zero unrecovered symbols.
 Its RPM is collected in the matching `linux/` directory.
 SHA-256: `41622a46da5fe201c0e6da874551bf8a6d3b2edeaca3e51396cb350e5f4f5d3a`.
-The matching Client packages remain in progress; do not call the combined
-candidate ready or claim live acceptance yet.
+Signed Mac Client run 35664996000 passed all suites (including seven consent
+tests), signing, notarization, stapling and package validation. Its DMG is
+collected alongside the Mac Host.
+SHA-256: `9d8315dcd9121a534295d638cf2bf9ea80064325258cf5bd13fdb55b5f89aeeb`.
+Ubuntu Client run 35666009459 passed all source/runtime/package gates, including
+the seven consent tests, and its DEB is collected in `linux/`.
+SHA-256: `aff467c2444e3354c1c76429a54480e32b9314c8c553e2acfa25f878a096954a`.
+All four packages are ready for operator testing. The complete catalog's
+`SHA256SUMS` passes locally. Live acceptance is not recorded; no package was
+installed and no release was published.
 
 ## Source provenance and previous build evidence
 
@@ -81,17 +89,20 @@ Client attempts at root `b4d5ba6a2e8800e63eb026bf291ff1c3323f49cc` (Ubuntu run
 The consent test performed accept/cancel/Escape correctly but failed its
 zero-warning gate because its fixture lacked the dialog icons and used native
 Mac controls instead of the product's Material style. Those test inputs are now
-corrected; replacement builds are pending. Since `df06fd5`, changes only affect
+corrected; replacement builds passed. Since `df06fd5`, changes only affect
 test inputs, source-gate prerequisites and release-note prose exclusion; no Host
 or Client product implementation changed. Record each package's actual source
-commit, not a rewritten common provenance.
+commit, not a rewritten common provenance. The subsequent Ubuntu SVG dependency
+addition and CI cache-ordering change are separately documented below.
 
-Replacement Client builds use root `60b16b9a1744d9706e616f9c46f6535cee8484a9`:
-signed Mac run 35664996000 remains active. Ubuntu run 35664993625 exposed a
+Signed Mac run 35664996000 uses root `60b16b9a1744d9706e616f9c46f6535cee8484a9`.
+Ubuntu run 35664993625 exposed a
 missing SVG reader plugin: `qt6-svg-dev` does not provide the separate
 `qt6-svg-plugins` runtime with no-recommends installation. The CI/bootstrap
 dependency list, DEB Depends and finished-package gate now explicitly require
 that plugin. No product logic or test assertion changed for this correction.
+Replacement Ubuntu run 35666009459 uses root
+`a5c0de549a81044df53a36c43617b4aca30ceb1a`.
 
 The operator requested fixing cache-save ordering while builds continue. New
 workflow code saves independently verified dependencies immediately after a
@@ -100,6 +111,11 @@ and cache-save are separate credential-free steps; the signing helper no longer
 repeats bootstrap. Failure/PR/clean-bootstrap restrictions and exact fingerprints
 remain intact, with no product/signing caches. Existing running jobs use their
 original committed workflow and are not cancelled for this CI-only change.
+This change is pushed as `e23a7ae44f16cf2fe6aa029d606683386d681d03`.
+Hosted run 35666393155 passed the new unsigned Mac ordering: a one-second warm
+bootstrap, successful cache sealing/saving, then successful product build/tests.
+Signed workflow sequencing and cleanup after success/failure are covered by
+policy/unit tests; a signed package using the revised sequence is not yet run.
 
 The Client implementation is committed and pushed on its matching
 `macos-session-takeover` branch at `a29dad91987f1989dbcbfab11166879459d938f8`,
@@ -141,10 +157,9 @@ Use GitHub-hosted builders and read the release/hosted runbooks. No installation
 release publication or main merge is authorized for this candidate. Retain full
 CUDA coverage, exact dependency patches and all package/privacy gates. Signing
 was explicitly authorized for this candidate only. Temporary branch policy
-`60637043` in the `macos-signing` environment permits `macos-session-takeover`;
-delete that exact policy after the signed builds finish, preserving the main
-policy. No environment secrets or reviewer rules were changed. Ordinary branch
-Mac jobs compile/test but produce no signed end-user installers.
+`60637043` was deleted after both signed builds finished; `macos-signing` is
+main-only again. No environment secrets or reviewer rules were changed. Ordinary
+branch Mac jobs compile/test but produce no signed end-user installers.
 
 Collect exact package bytes with hashes/provenance in the versioned catalog;
 never relabel earlier packages. Feature package/visible versions include
