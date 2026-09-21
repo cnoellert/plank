@@ -21,6 +21,10 @@ https = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(https)
 
 
+class BindFailure(AssertionError):
+    pass
+
+
 def ready(process, timeout=3):
     if not select.select([process.stdout], [], [], timeout)[0]:
         raise AssertionError("handoff listener readiness exceeded three seconds")
@@ -30,6 +34,8 @@ def ready(process, timeout=3):
         _, errors = process.communicate(timeout=3)
         # Only numeric product diagnostics, never dump arbitrary framework logs.
         reasons = re.findall(rb"PLANK Host control listener failed: port=\d+ error-domain=\d+ error-code=\d+", errors)
+        if process.returncode == 2 and any(item.endswith(b"error-domain=1 error-code=48") for item in reasons):
+            raise BindFailure("EADDRINUSE")
         raise AssertionError(f"handoff listener failed (exit={process.returncode}, "
                              f"bind_errors={[item.decode() for item in reasons]})")
     return int(match[1])
@@ -52,6 +58,7 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--uid", type=int, required=True)
     parser.add_argument("--gid", type=int, required=True)
+    parser.add_argument("--expect-lingering-close", action="store_true")
     args = parser.parse_args()
     assert os.geteuid() == 0 and args.uid > 0 and args.gid > 0
     # Root's default Darwin per-user temp parent is not traversable by the
@@ -76,11 +83,17 @@ def main():
 
         try:
             # Multiple real cross-UID rebinds, without sleeps/retry-until-green.
-            for uid in [0, args.uid, 0, args.uid]:
+            for stage, uid in enumerate([0, args.uid, 0, args.uid]):
                 print(f"handoff_stage={'sign-in' if uid == 0 else 'desktop'}", flush=True)
                 began = time.monotonic()
                 server = start(uid, port)
-                assigned = ready(server)
+                try:
+                    assigned = ready(server)
+                except BindFailure:
+                    if args.expect_lingering_close and stage == 1:
+                        print("macos_https_handoff_negative_control=pass detected=EADDRINUSE", flush=True)
+                        return
+                    raise
                 assert not port or assigned == port
                 port = assigned
                 assert time.monotonic() - began < 3
@@ -103,6 +116,7 @@ def main():
                 for connection in held:
                     connection.close()
                 held.clear()
+            assert not args.expect_lingering_close, "regression fixture did not detect graceful-close mutation"
             print("macos_https_cross_uid_handoff=pass transitions=3 exclusive_listener=1 max_ready_seconds=3")
         finally:
             for connection in held:

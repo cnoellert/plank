@@ -43,6 +43,23 @@ if [[ ${4:-} = --synthetic-only ]]; then
     sudo -n "$(command -v python3)" tests/auth/macos-https-handoff.py \
         --server "$preview_build/preview-synthetic" --config probes/macos/https-cert.cnf \
         --uid "$(id -u)" --gid "$(id -g)"
+    # Fault injection: the same real server with graceful TCP cancellation
+    # restored MUST fail cross-UID rebind specifically with EADDRINUSE.
+    # This test-only binary and synthetic TLS identity are never packaged.
+    graceful_sources=()
+    for source_file in "${sources[@]}"; do
+        if [[ $source_file = apps/host/macos/control/https-auth-server.m ]]; then
+            graceful_sources+=(tests/auth/macos-https-graceful-close.m)
+        else
+            graceful_sources+=("$source_file")
+        fi
+    done
+    xcrun clang "${common[@]}" -DPLANK_MAC_PREVIEW_TEST -DPLANK_SYNTHETIC_AUTH_TEST \
+        "${graceful_sources[@]}" tests/input/macos-fake-input.m "$archive" -lpthread -lm \
+        -o "$preview_build/preview-graceful-close"
+    sudo -n "$(command -v python3)" tests/auth/macos-https-handoff.py \
+        --server "$preview_build/preview-graceful-close" --config probes/macos/https-cert.cnf \
+        --uid "$(id -u)" --gid "$(id -g)" --expect-lingering-close
     python3 tests/auth/macos-https-auth.py --server "$preview_build/preview-synthetic" \
         --config probes/macos/https-cert.cnf --preview-receiver "$preview_build/preview-receive"
     python3 tests/auth/macos-permission-admission.py --server "$preview_build/preview-synthetic"
