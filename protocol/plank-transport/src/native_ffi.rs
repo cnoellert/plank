@@ -750,8 +750,7 @@ async fn hold_client(shared: Arc<NativeShared>, protocols: NativeClientProtocols
     let stats_provider = protocols.connection().stats_provider();
     let (connection, video, audio, input, data, peer_certificate_der) = protocols.into_parts();
     *shared.peer_certificate.lock().unwrap() = peer_certificate_der;
-    if shared.peer_certificate_approval_required {
-        shared.set_state(EndpointState::PeerValidation);
+    if begin_peer_certificate_validation(&shared) {
         loop {
             if shared.peer_certificate_approved.load(Ordering::Acquire) {
                 break;
@@ -838,16 +837,17 @@ async fn hold_setup_client(
     let stats_provider = setup.connection().stats_provider();
     let (connection, data, peer_certificate_der) = setup.into_parts();
     *shared.peer_certificate.lock().unwrap() = peer_certificate_der;
-    shared.set_state(EndpointState::PeerValidation);
-    loop {
-        if shared.peer_certificate_approved.load(Ordering::Acquire) {
-            break;
-        }
-        tokio::select! {
-            _ = shared.peer_certificate_approved_notify.notified() => {},
-            _ = shared.stop_notify.notified() => return Ok(()),
-            result = connection.closed() => {
-                return result.context("setup KyProto connection closed during certificate validation");
+    if begin_peer_certificate_validation(&shared) {
+        loop {
+            if shared.peer_certificate_approved.load(Ordering::Acquire) {
+                break;
+            }
+            tokio::select! {
+                _ = shared.peer_certificate_approved_notify.notified() => {},
+                _ = shared.stop_notify.notified() => return Ok(()),
+                result = connection.closed() => {
+                    return result.context("setup KyProto connection closed during certificate validation");
+                }
             }
         }
     }
@@ -888,6 +888,14 @@ async fn hold_setup_client(
         result = &mut stats => result.context("native stats sampler failed"),
         result = connection.closed() => result.context("native KyProto connection closed"),
     }
+}
+
+fn begin_peer_certificate_validation(shared: &NativeShared) -> bool {
+    if !shared.peer_certificate_approval_required {
+        return false;
+    }
+    shared.set_state(EndpointState::PeerValidation);
+    true
 }
 
 async fn run_server(
@@ -1092,6 +1100,20 @@ fn finish_worker(shared: &NativeShared, result: Result<()>) {
 #[cfg(test)]
 mod completion_tests {
     use super::*;
+
+    #[test]
+    fn exact_fingerprint_setup_skips_manual_peer_approval() {
+        let shared = NativeShared::new(false, true, 150_000_000);
+        assert!(!begin_peer_certificate_validation(&shared));
+        assert_eq!(shared.state(), EndpointState::Idle);
+    }
+
+    #[test]
+    fn certificate_profile_setup_waits_for_manual_peer_approval() {
+        let shared = NativeShared::new(true, true, 150_000_000);
+        assert!(begin_peer_certificate_validation(&shared));
+        assert_eq!(shared.state(), EndpointState::PeerValidation);
+    }
 
     #[test]
     fn orderly_peer_close_fails_all_live_phases() {
