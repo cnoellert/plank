@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Toolchain only: crate downloads have their own cache and bootstrap.
+set -euo pipefail
+target=${1:?Rust target triple}
+export CARGO_HOME="$PLANK_CARGO_ROOT" RUSTUP_HOME="$PLANK_RUSTUP_ROOT"
+export PATH="$CARGO_HOME/bin:$PATH"
+if [[ ! -x "$CARGO_HOME/bin/rustup" ]]; then
+  installer="$PLANK_DEP_ROOT/rustup-bootstrap"
+  mkdir -p "$installer"
+  curl --fail --location "https://static.rust-lang.org/rustup/archive/1.28.2/$target/rustup-init" -o "$installer/rustup-init"
+  curl --fail --location "https://static.rust-lang.org/rustup/archive/1.28.2/$target/rustup-init.sha256" -o "$installer/rustup-init.sha256"
+  if [[ $target == *linux* ]]; then
+    (cd "$installer"; sha256sum -c rustup-init.sha256)
+  else
+    (cd "$installer"; shasum -a 256 -c rustup-init.sha256)
+  fi
+  chmod 0755 "$installer/rustup-init"
+  RUSTUP_INIT_SKIP_PATH_CHECK=yes "$installer/rustup-init" -y --no-modify-path --profile minimal --default-toolchain 1.89.0
+fi
+test "$(rustc --version)" = 'rustc 1.89.0 (29483883e 2025-08-04)'
+test "$(cargo --version)" = 'cargo 1.89.0 (c24e10642 2025-06-23)'

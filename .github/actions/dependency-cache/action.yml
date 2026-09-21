@@ -1,0 +1,121 @@
+name: Exact dependency caches
+description: Restore or save independent exact-input dependency caches.
+inputs:
+  operation:
+    description: restore before bootstrap, or save after successful build/cleanup
+    required: true
+  product:
+    description: linux-host, linux-client, macos-host, or macos-client
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Select dependency keys and paths
+      id: keys
+      shell: bash
+      env:
+        CACHE_OPERATION: ${{ inputs.operation }}
+        CACHE_PRODUCT: ${{ inputs.product }}
+      run: |
+        case "$CACHE_OPERATION" in restore|save) ;; *) exit 2;; esac
+        if [[ $CACHE_OPERATION == save && $GITHUB_EVENT_NAME == pull_request ]]; then
+          echo 'Pull requests cannot save dependency caches' >&2
+          exit 2
+        fi
+        python3 scripts/ci/cache-dependencies.py prepare --product "$CACHE_PRODUCT"
+    - name: Restore rust
+      if: ${{ inputs.operation == 'restore' && steps.keys.outputs.rust-key != '' }}
+      id: rust
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.rust-key }}
+        path: ${{ steps.keys.outputs.rust-paths }}
+    - name: Restore cargo
+      if: ${{ inputs.operation == 'restore' && steps.keys.outputs.cargo-key != '' }}
+      id: cargo
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.cargo-key }}
+        path: ${{ steps.keys.outputs.cargo-paths }}
+    - name: Restore ffmpeg
+      if: ${{ inputs.operation == 'restore' && steps.keys.outputs.ffmpeg-key != '' }}
+      id: ffmpeg
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.ffmpeg-key }}
+        path: ${{ steps.keys.outputs.ffmpeg-paths }}
+    - name: Restore boost
+      if: ${{ inputs.operation == 'restore' && steps.keys.outputs.boost-key != '' }}
+      id: boost
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.boost-key }}
+        path: ${{ steps.keys.outputs.boost-paths }}
+    - name: Restore native
+      if: ${{ inputs.operation == 'restore' && steps.keys.outputs.native-key != '' }}
+      id: native
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.native-key }}
+        path: ${{ steps.keys.outputs.native-paths }}
+    - name: Restore qt
+      if: ${{ inputs.operation == 'restore' && steps.keys.outputs.qt-key != '' }}
+      id: qt
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.qt-key }}
+        path: ${{ steps.keys.outputs.qt-paths }}
+    - name: Verify exact restored dependencies
+      if: ${{ inputs.operation == 'restore' }}
+      shell: bash
+      env:
+        CACHE_PRODUCT: ${{ inputs.product }}
+        CACHE_MATCHED_RUST: ${{ steps.rust.outputs.cache-matched-key }}
+        CACHE_MATCHED_CARGO: ${{ steps.cargo.outputs.cache-matched-key }}
+        CACHE_MATCHED_FFMPEG: ${{ steps.ffmpeg.outputs.cache-matched-key }}
+        CACHE_MATCHED_BOOST: ${{ steps.boost.outputs.cache-matched-key }}
+        CACHE_MATCHED_NATIVE: ${{ steps.native.outputs.cache-matched-key }}
+        CACHE_MATCHED_QT: ${{ steps.qt.outputs.cache-matched-key }}
+      run: python3 scripts/ci/cache-dependencies.py verify --product "$CACHE_PRODUCT"
+    - name: Seal successful dependencies
+      if: ${{ inputs.operation == 'save' }}
+      shell: bash
+      env:
+        CACHE_PRODUCT: ${{ inputs.product }}
+      run: python3 scripts/ci/cache-dependencies.py seal --product "$CACHE_PRODUCT"
+    - name: Save rust
+      if: ${{ inputs.operation == 'save' && steps.keys.outputs.rust-key != '' && steps.keys.outputs.rust-hit != 'true' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.rust-key }}
+        path: ${{ steps.keys.outputs.rust-paths }}
+    - name: Save cargo
+      if: ${{ inputs.operation == 'save' && steps.keys.outputs.cargo-key != '' && steps.keys.outputs.cargo-hit != 'true' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.cargo-key }}
+        path: ${{ steps.keys.outputs.cargo-paths }}
+    - name: Save ffmpeg
+      if: ${{ inputs.operation == 'save' && steps.keys.outputs.ffmpeg-key != '' && steps.keys.outputs.ffmpeg-hit != 'true' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.ffmpeg-key }}
+        path: ${{ steps.keys.outputs.ffmpeg-paths }}
+    - name: Save boost
+      if: ${{ inputs.operation == 'save' && steps.keys.outputs.boost-key != '' && steps.keys.outputs.boost-hit != 'true' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.boost-key }}
+        path: ${{ steps.keys.outputs.boost-paths }}
+    - name: Save native
+      if: ${{ inputs.operation == 'save' && steps.keys.outputs.native-key != '' && steps.keys.outputs.native-hit != 'true' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.native-key }}
+        path: ${{ steps.keys.outputs.native-paths }}
+    - name: Save qt
+      if: ${{ inputs.operation == 'save' && steps.keys.outputs.qt-key != '' && steps.keys.outputs.qt-hit != 'true' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+      with:
+        key: ${{ steps.keys.outputs.qt-key }}
+        path: ${{ steps.keys.outputs.qt-paths }}

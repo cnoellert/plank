@@ -73,38 +73,20 @@ jobs:
           persist-credentials: false
       - run: python3 scripts/ci/context.py
       - run: bash scripts/ci/install-linux-deps.sh host
-      - name: Select exact dependency inputs
+      - name: Restore and verify dependencies
         if: ${{ !inputs.clean_bootstrap }}
-        id: deps-key
-        run: python3 scripts/ci/cache-dependencies.py prepare --product linux-host
-      - name: Restore dependencies
-        if: ${{ !inputs.clean_bootstrap }}
-        id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
-      - name: Verify exact restored dependencies
-        if: ${{ steps.deps-cache.outputs.cache-matched-key != '' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-          MATCHED_KEY: ${{ steps.deps-cache.outputs.cache-matched-key }}
-        run: |
-          test "$MATCHED_KEY" = "$CACHE_KEY"
-          python3 scripts/ci/cache-dependencies.py verify --product linux-host --key "$CACHE_KEY"
+          operation: restore
+          product: linux-host
       - run: bash scripts/ci/bootstrap.sh linux-host
       - run: bash scripts/ci/build.sh linux-host
-      - name: Seal successful dependencies
-        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-        run: python3 scripts/ci/cache-dependencies.py seal --product linux-host --key "$CACHE_KEY"
       - name: Save dependencies
-        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' }}
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
+          operation: save
+          product: linux-host
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-host-${{ github.run_id }}-${{ github.run_attempt }}
@@ -130,38 +112,20 @@ jobs:
           persist-credentials: false
       - run: python3 scripts/ci/context.py
       - run: bash scripts/ci/install-linux-deps.sh client
-      - name: Select exact dependency inputs
+      - name: Restore and verify dependencies
         if: ${{ !inputs.clean_bootstrap }}
-        id: deps-key
-        run: python3 scripts/ci/cache-dependencies.py prepare --product linux-client
-      - name: Restore dependencies
-        if: ${{ !inputs.clean_bootstrap }}
-        id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
-      - name: Verify exact restored dependencies
-        if: ${{ steps.deps-cache.outputs.cache-matched-key != '' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-          MATCHED_KEY: ${{ steps.deps-cache.outputs.cache-matched-key }}
-        run: |
-          test "$MATCHED_KEY" = "$CACHE_KEY"
-          python3 scripts/ci/cache-dependencies.py verify --product linux-client --key "$CACHE_KEY"
+          operation: restore
+          product: linux-client
       - run: bash scripts/ci/bootstrap.sh linux-client
       - run: bash scripts/ci/build.sh linux-client
-      - name: Seal successful dependencies
-        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-        run: python3 scripts/ci/cache-dependencies.py seal --product linux-client --key "$CACHE_KEY"
       - name: Save dependencies
-        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' }}
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
+          operation: save
+          product: linux-client
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-client-${{ github.run_id }}-${{ github.run_attempt }}
@@ -196,38 +160,20 @@ jobs:
           command -v cmake
           command -v ninja
       - run: python3 scripts/ci/context.py
-      - name: Select exact dependency inputs
+      - name: Restore and verify dependencies
         if: ${{ !inputs.clean_bootstrap }}
-        id: deps-key
-        run: python3 scripts/ci/cache-dependencies.py prepare --product macos-${{ matrix.product }}
-      - name: Restore dependencies
-        if: ${{ !inputs.clean_bootstrap }}
-        id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
-      - name: Verify exact restored dependencies
-        if: ${{ steps.deps-cache.outputs.cache-matched-key != '' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-          MATCHED_KEY: ${{ steps.deps-cache.outputs.cache-matched-key }}
-        run: |
-          test "$MATCHED_KEY" = "$CACHE_KEY"
-          python3 scripts/ci/cache-dependencies.py verify --product macos-${{ matrix.product }} --key "$CACHE_KEY"
+          operation: restore
+          product: macos-${{ matrix.product }}
       - run: bash scripts/ci/bootstrap.sh macos-${{ matrix.product }}
       - run: bash scripts/ci/build.sh macos-${{ matrix.product }}
-      - name: Seal successful dependencies
-        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-        run: python3 scripts/ci/cache-dependencies.py seal --product macos-${{ matrix.product }} --key "$CACHE_KEY"
       - name: Save dependencies
-        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' }}
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
+          operation: save
+          product: macos-${{ matrix.product }}
       - name: Explain unsigned build scope
         run: echo 'Unsigned compile/test only. No distributable macOS package, signing credentials, or hardware acceptance.' >> "$GITHUB_STEP_SUMMARY"
       - name: Report disk usage
@@ -255,25 +201,12 @@ jobs:
           test "$(sw_vers -productVersion | cut -d . -f 1)" -ge 27
           test "$(xcrun --sdk macosx --show-sdk-version | cut -d . -f 1)" -ge 27
           python3 scripts/ci/context.py
-      - name: Select exact dependency inputs
+      - name: Restore and verify dependencies
         if: ${{ inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap }}
-        id: deps-key
-        run: python3 scripts/ci/cache-dependencies.py prepare --product "$PLANK_CI_PRODUCT"
-      - name: Restore dependencies
-        if: ${{ inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap }}
-        id: deps-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
-      - name: Verify exact restored dependencies
-        if: ${{ steps.deps-cache.outputs.cache-matched-key != '' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-          MATCHED_KEY: ${{ steps.deps-cache.outputs.cache-matched-key }}
-        run: |
-          test "$MATCHED_KEY" = "$CACHE_KEY"
-          python3 scripts/ci/cache-dependencies.py verify --product "$PLANK_CI_PRODUCT" --key "$CACHE_KEY"
+          operation: restore
+          product: ${{ inputs.product }}
       - name: Build, sign, notarize and verify
         env:
           PLANK_DEVELOPER_ID_APPLICATION_P12: ${{ secrets.PLANK_DEVELOPER_ID_APPLICATION_P12 }}
@@ -287,17 +220,12 @@ jobs:
       - name: Remove temporary signing material
         if: always()
         run: python3 scripts/ci/sign-macos.py --cleanup
-      - name: Seal successful dependencies
-        if: ${{ success() && inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap && steps.deps-cache.outputs.cache-hit != 'true' }}
-        env:
-          CACHE_KEY: ${{ steps.deps-key.outputs.key }}
-        run: python3 scripts/ci/cache-dependencies.py seal --product "$PLANK_CI_PRODUCT" --key "$CACHE_KEY"
       - name: Save dependencies
-        if: ${{ success() && inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap && steps.deps-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0, Node24
+        if: ${{ success() && inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap }}
+        uses: ./.github/actions/dependency-cache
         with:
-          key: ${{ steps.deps-key.outputs.key }}
-          path: ${{ steps.deps-key.outputs.paths }}
+          operation: save
+          product: ${{ inputs.product }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signed-${{ inputs.product }}-${{ github.run_id }}-${{ github.run_attempt }}

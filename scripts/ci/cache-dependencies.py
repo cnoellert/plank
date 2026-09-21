@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact-input hosted dependency caches; never application or signing state."""
+"""Exact, independent dependency caches; never application or signing state."""
 import argparse
 import hashlib
 import json
@@ -8,39 +8,62 @@ from pathlib import Path
 import platform
 import re
 import subprocess
-import sys
 
-PRODUCTS = ('linux-host', 'linux-client', 'macos-host', 'macos-client')
-COMMON_INPUTS = (
-    'scripts/ci/cache-dependencies.py', 'scripts/ci/bootstrap.sh',
-    'scripts/build/build-paths.sh', 'rust-toolchain.toml',
-    'protocol/plank-transport/Cargo.lock',
-    'protocol/plank-transport/Cargo.toml',
-)
+# Keep jointly-built trees together. In particular the Mac native libraries
+# share an install prefix; separate caches must never restore overlapping paths.
+COMPONENTS = {
+    'linux-host': ('rust', 'cargo', 'ffmpeg', 'boost'),
+    'linux-client': ('rust', 'cargo', 'ffmpeg'),
+    'macos-host': ('rust', 'cargo'),
+    'macos-client': ('rust', 'cargo', 'native', 'qt'),
+}
+PRODUCTS = tuple(COMPONENTS)
+ALL_COMPONENTS = ('rust', 'cargo', 'ffmpeg', 'boost', 'native', 'qt')
 HOST_DEPS = 'apps/host/linux/third-party/build-deps'
 CLIENT_PATCHES = 'apps/client/app/deploy/linux/ffmpeg-patches'
 IDENTITY_PATCH = CLIENT_PATCHES + '/0001-hevc-enable-hwaccel-for-identity-gbr.patch'
+RECIPES = 'scripts/ci/dependencies/'
 
 
 def output(command):
     return subprocess.check_output(command, text=True).strip()
 
 
-def fingerprint(root, deps, product, toolchain):
-    paths = set(COMMON_INPUTS)
+def dependency_inputs(root, product, component):
+    if component not in COMPONENTS[product]:
+        raise ValueError('Dependency does not belong to this product')
+    paths = {'scripts/ci/cache-dependencies.py'}
     pins = {}
-    if product.startswith('linux-'):
-        paths.add('scripts/ci/install-linux-deps.sh')
-    if product == 'linux-client':
-        paths.update(('scripts/build/build-client-ffmpeg.sh',
+    if component == 'rust':
+        paths.update((RECIPES + 'rust.sh', 'rust-toolchain.toml'))
+    elif component == 'cargo':
+        paths.update((RECIPES + 'cargo.sh', 'protocol/plank-transport/Cargo.lock',
+                      'protocol/plank-transport/Cargo.toml'))
+        if product == 'linux-host':
+            paths.update(('third_party/quinn-proto-0.11.17/Cargo.toml',
+                          'third_party/quinn-proto-0.11.17/Cargo.lock'))
+    elif component == 'boost':
+        paths.add(RECIPES + 'boost.sh')
+    elif component == 'qt':
+        paths.update((RECIPES + 'qt.sh', 'scripts/build/macos-client-target.sh'))
+    elif component == 'native':
+        paths.update((RECIPES + 'macos-libraries.sh',
+                      'scripts/build/bootstrap-macos-client-deps.sh',
+                      'scripts/build/macos-client-target.sh',
+                      'scripts/build/build-paths.sh',
+                      'scripts/build/relocate-openssl-pc.py',
                       'scripts/build/sanitize-ffmpeg-build-info.py', IDENTITY_PATCH))
         paths.update(str(p.relative_to(root)) for p in (root / CLIENT_PATCHES).glob('*.patch'))
-    elif product == 'linux-host':
-        paths.add('scripts/build/verify-host-dependency-patches.sh')
-        paths.update(('third_party/quinn-proto-0.11.17/Cargo.toml',
-                      'third_party/quinn-proto-0.11.17/Cargo.lock'))
-        # This dedicated submodule pins FFmpeg/x264/x265 sources, configuration,
-        # patches and build commands independently of Host application changes.
+    elif product == 'linux-client':
+        paths.update((RECIPES + 'client-ffmpeg.sh',
+                      'scripts/build/build-client-ffmpeg.sh',
+                      'scripts/build/build-paths.sh',
+                      'scripts/build/sanitize-ffmpeg-build-info.py', IDENTITY_PATCH))
+        paths.update(str(p.relative_to(root)) for p in (root / CLIENT_PATCHES).glob('*.patch'))
+    else:
+        paths.update((RECIPES + 'host-ffmpeg.sh',
+                      'scripts/build/verify-host-dependency-patches.sh'))
+        # FFmpeg/x264/x265 are one jointly-built source/install tree.
         pins['host-build-deps'] = output(['git', '-C', str(root / HOST_DEPS), 'rev-parse', 'HEAD'])
         for entry in output(['git', '-C', str(root / HOST_DEPS), 'ls-files', '--stage']).splitlines():
             metadata, name = entry.split('\t', 1)
@@ -51,75 +74,117 @@ def fingerprint(root, deps, product, toolchain):
                 pins[name] = revision
             else:
                 paths.add(HOST_DEPS + '/' + name)
+    return paths, pins
+
+
+def fingerprint(root, deps, product, component, toolchain):
+    paths, pins = dependency_inputs(root, product, component)
     hashes = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in sorted(paths)}
-    data = {'schema': 1, 'product': product, 'inputs': hashes, 'pins': pins,
-            'source_root': str(root), 'dependency_root': str(deps), 'toolchain': toolchain}
-    return f'plank-{product}-deps-v1-' + hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+    # Rust downloads and Boost sources do not depend on the C/C++ compiler,
+    # installed Qt, CUDA or SDK. Compiled libraries still match those exactly.
+    tools = {'platform': toolchain['platform']}
+    if component in ('ffmpeg', 'native'):
+        tools['compiled'] = toolchain['compiled']
+    if component == 'cargo':
+        tools['rust'] = fingerprint(root, deps, product, 'rust', toolchain)
+    data = {'schema': 2, 'product': product, 'component': component,
+            'inputs': hashes, 'pins': pins, 'source_root': str(root),
+            'dependency_root': str(deps), 'toolchain': tools}
+    if component in ('native', 'qt'):
+        target = os.environ.get('PLANK_MAC_CLIENT_MIN_MACOS') or '15.0'
+        if target != '15.0':
+            raise ValueError('PLANK Client deployment target must be 15.0')
+        data['deployment_target'] = target
+    return f'plank-{product}-{component}-v2-' + hashlib.sha256(
+        json.dumps(data, sort_keys=True).encode()).hexdigest()
 
 
-def cache_paths(root, deps, product):
-    # Narrow Cargo allowlist: no credentials.toml, config, targets, or app
-    # sources. Rust and downloaded crates are public, pinned bootstrap inputs.
-    paths = [deps / name for name in (
-        'rustup', 'cargo/bin', 'cargo/registry/cache', 'cargo/registry/index',
-        'cargo/registry/src', 'cargo/git/db', 'cargo/git/checkouts')]
-    if product == 'linux-host':
-        paths += [deps / 'host-ffmpeg', deps / 'boost-1.89.0', root / HOST_DEPS / 'build']
-    elif product == 'linux-client':
-        paths += [deps / 'client-ffmpeg/install', deps / 'client-ffmpeg/ffmpeg-9.0.1',
-                  deps / 'client-ffmpeg/ffmpeg-9.0.1.tar.xz']
-    paths.append(deps / (product + '-cache-receipt.json'))
+def cache_paths(root, deps, product, component):
+    if component not in COMPONENTS[product]:
+        raise ValueError('Dependency does not belong to this product')
+    paths = []
+    if component == 'rust':
+        paths = [deps / 'rustup', deps / 'cargo/bin']
+    elif component == 'cargo':
+        # Never include credentials.toml, config or compiled Cargo targets.
+        paths = [deps / name for name in ('cargo/registry/cache', 'cargo/registry/index',
+                 'cargo/registry/src', 'cargo/git/db', 'cargo/git/checkouts')]
+    elif component == 'boost':
+        paths = [deps / 'boost-1.89.0']
+    elif component == 'qt':
+        paths = [deps / 'qt']
+    elif component == 'native':
+        paths = [deps / 'macos-client' / name for name in ('install', 'src', 'downloads')]
+    elif product == 'linux-host':
+        paths = [deps / 'host-ffmpeg', root / HOST_DEPS / 'build']
+    else:
+        paths = [deps / 'client-ffmpeg' / name for name in
+                 ('install', 'ffmpeg-9.0.1', 'ffmpeg-9.0.1.tar.xz')]
+    paths.append(deps / 'cache-receipts' / f'{product}-{component}.json')
     return paths
 
 
-def key_valid(key, product):
-    return re.fullmatch(f'plank-{re.escape(product)}-deps-v1-[0-9a-f]{{64}}', key or '') is not None
+def key_valid(key, product, component):
+    return re.fullmatch(
+        f'plank-{re.escape(product)}-{re.escape(component)}-v2-[0-9a-f]{{64}}',
+        key or '') is not None
 
 
-def verify_receipt(root, deps, product, key):
-    if not key_valid(key, product):
+def verify_receipt(root, deps, product, component, key):
+    if not key_valid(key, product, component):
         raise ValueError('Invalid dependency cache key')
-    receipt = json.loads(cache_paths(root, deps, product)[-1].read_text())
-    if receipt != {'schema': 1, 'key': key}:
+    receipt = json.loads(cache_paths(root, deps, product, component)[-1].read_text())
+    if receipt != {'schema': 2, 'key': key}:
         raise ValueError('Restored dependency cache does not match exact inputs')
 
 
-def check_prepared(root, deps, product):
-    required = ['cargo/bin/rustup', 'rustup/settings.toml']
-    if product == 'linux-host':
-        required += ['host-ffmpeg/lib/libavcodec.a', 'host-ffmpeg/lib/libavutil.a',
-                     'boost-1.89.0/CMakeLists.txt']
-    elif product == 'linux-client':
-        # Packaging extracts the original checksum-verified archive to compare
-        # the entire prepared source, not just the selected patch hunks.
-        required += ['client-ffmpeg/ffmpeg-9.0.1.tar.xz']
-        required += ['client-ffmpeg/install/lib/' + name + '.so'
-                     for name in ('libavcodec', 'libavutil', 'libswscale', 'libswresample')]
+def check_prepared(root, deps, product, component):
+    if component not in COMPONENTS[product]:
+        raise ValueError('Dependency does not belong to this product')
+    required = {
+        'rust': ['cargo/bin/rustup', 'rustup/settings.toml'],
+        'cargo': [],  # Locked fetch always runs; registry/Git sources may be absent.
+        'boost': ['boost-1.89.0/CMakeLists.txt'],
+        'qt': ['qt/6.10.2/macos/bin/qmake'],
+        'native': ['macos-client/install/lib/' + name + '.dylib' for name in
+                   ('libavcodec', 'libavutil', 'libswscale', 'libswresample',
+                    'libssl', 'libcrypto', 'libSDL3', 'libSDL3_ttf', 'libopus', 'libfreetype')],
+        'ffmpeg': (['host-ffmpeg/lib/libavcodec.a', 'host-ffmpeg/lib/libavutil.a']
+                   if product == 'linux-host' else
+                   ['client-ffmpeg/ffmpeg-9.0.1.tar.xz'] +
+                   ['client-ffmpeg/install/lib/' + name + '.so' for name in
+                    ('libavcodec', 'libavutil', 'libswscale', 'libswresample')]),
+    }[component]
     if any(not (deps / name).is_file() for name in required):
         raise ValueError('Incomplete prepared dependency cache')
-    if product == 'linux-host':
+    if component == 'ffmpeg' and product == 'linux-host':
         subprocess.run(['bash', str(root / 'scripts/build/verify-host-dependency-patches.sh'),
                         str(root / HOST_DEPS / 'build')], check=True)
-    elif product == 'linux-client':
+    elif component == 'native' or (component == 'ffmpeg' and product == 'linux-client'):
+        source = ('macos-client/src/ffmpeg-9.0.1' if component == 'native'
+                  else 'client-ffmpeg/ffmpeg-9.0.1')
         with (root / IDENTITY_PATCH).open('rb') as patch:
-            subprocess.run(['patch', '--batch', '--reverse', '--dry-run', '-p1', '-d',
-                            str(deps / 'client-ffmpeg/ffmpeg-9.0.1')], stdin=patch, check=True)
+            subprocess.run(['patch', '--batch', '--reverse', '--dry-run', '-p1',
+                            '-d', str(deps / source)], stdin=patch, check=True)
 
 
 def toolchain_inputs(product):
+    system = 'Linux' if product.startswith('linux-') else 'Darwin'
+    architecture = 'x86_64' if system == 'Linux' else 'arm64'
+    if platform.system() != system or platform.machine() != architecture:
+        raise ValueError('Cache requires the qualified product builder')
+    identity = {'architecture': architecture, 'runner_image': os.environ.get('ImageVersion', ''),
+                'os': Path('/etc/os-release').read_text() if system == 'Linux'
+                else output(['sw_vers', '-productVersion']) + '/' + output(['sw_vers', '-buildVersion'])}
     commands = [['cmake', '--version'], ['ninja', '--version'], ['python3', '--version']]
+    packages = []
     if product == 'macos-host':
-        if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-            raise ValueError('Mac cache requires Apple Silicon')
-        commands += [['sw_vers', '-productVersion'], ['sw_vers', '-buildVersion'],
-                     ['xcodebuild', '-version'], ['xcrun', '--sdk', 'macosx', '--show-sdk-version'],
+        return {'platform': identity}  # Only downloaded Rust inputs are cached.
+    if product == 'macos-client':
+        commands += [['xcodebuild', '-version'], ['xcrun', '--sdk', 'macosx', '--show-sdk-version'],
                      ['xcrun', '--sdk', 'macosx', '--show-sdk-build-version'], ['xcrun', 'clang', '--version']]
     else:
-        if platform.system() != 'Linux' or platform.machine() != 'x86_64':
-            raise ValueError('Linux cache requires the qualified x86_64 builder')
         commands += [['nasm', '-v'], ['make', '--version']]
-        # Include exact installed versions, not a moving runner label. Sort the
-        # inventory to avoid invalidation caused only by query ordering.
         if product == 'linux-host':
             commands += [['/opt/rh/gcc-toolset-14/root/usr/bin/gcc', '--version'],
                          ['/usr/local/cuda/bin/nvcc', '--version']]
@@ -127,51 +192,83 @@ def toolchain_inputs(product):
         else:
             commands += [['gcc', '--version'], ['qmake6', '-query', 'QT_VERSION']]
             packages = output(['dpkg-query', '-W', '-f=${Package}=${Version}\n']).splitlines()
-    return {'architecture': platform.machine(), 'runner_image': os.environ.get('ImageVersion', ''),
-            'os': Path('/etc/os-release').read_text() if product.startswith('linux-') else 'macOS',
-            'packages': sorted(packages) if product.startswith('linux-') else [],
-            'tools': [output(command) for command in commands]}
+    return {'platform': identity, 'compiled': {
+        'packages': sorted(packages), 'tools': [output(command) for command in commands]}}
+
+
+def prepare_sources(root, product):
+    if product == 'linux-host':
+        subprocess.run(['git', '-C', str(root), 'submodule', 'update', '--init', 'apps/host/linux'], check=True)
+        # Restored build trees contain relative .git pointers to these sources.
+        subprocess.run(['git', '-C', str(root / 'apps/host/linux'), 'submodule', 'update',
+                        '--init', '--recursive', 'third-party/build-deps'], check=True)
+    elif product.endswith('-client'):
+        subprocess.run(['git', '-C', str(root), 'submodule', 'update', '--init', 'apps/client'], check=True)
+
+
+def hits_path(deps, product):
+    # Job-local state, deliberately outside every restored cache.
+    return deps / f'{product}-cache-hits.json'
+
+
+def emit_plan(root, deps, product, keys, hits, result):
+    for component, key in keys.items():
+        paths = '\n'.join(str(p) for p in cache_paths(root, deps, product, component))
+        result.write(f'{component}-key={key}\n{component}-paths<<PLANK_CACHE_PATHS\n'
+                     f'{paths}\nPLANK_CACHE_PATHS\n'
+                     f'{component}-hit={str(hits.get(component) == key).lower()}\n')
+
+
+def verify_restored(root, deps, product, keys, matches):
+    hits = {}
+    for component, matched in matches.items():
+        if not matched:
+            continue
+        if component not in keys or matched != keys[component]:
+            raise ValueError('Restored dependency key is not an exact match')
+        verify_receipt(root, deps, product, component, matched)
+        check_prepared(root, deps, product, component)
+        hits[component] = matched
+    return hits
+
+
+def seal(root, deps, product, keys):
+    for component, key in keys.items():
+        check_prepared(root, deps, product, component)
+        receipt = cache_paths(root, deps, product, component)[-1]
+        receipt.parent.mkdir(parents=True, exist_ok=True)
+        receipt.write_text(json.dumps({'schema': 2, 'key': key}, sort_keys=True) + '\n')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=('prepare', 'verify', 'seal'))
     parser.add_argument('--product', required=True, choices=PRODUCTS)
-    parser.add_argument('--key')
     args = parser.parse_args()
-    if args.product == 'macos-client':
-        # Keep the already-qualified Mac Client cache/key format unchanged.
-        command = [sys.executable, str(Path(__file__).with_name('cache-macos-client.py')), args.operation]
-        if args.key:
-            command += ['--key', args.key]
-        os.execv(sys.executable, command)
     root = Path(os.environ['PLANK_SOURCE_ROOT']).resolve()
     deps = Path(os.environ['PLANK_DEP_ROOT']).resolve()
+    if any(c in str(root) + str(deps) for c in ('\n', '\r')):
+        raise ValueError('Invalid builder path')
     if args.operation == 'prepare':
-        if args.product == 'linux-host':
-            subprocess.run(['git', '-C', str(root), 'submodule', 'update', '--init', 'apps/host/linux'], check=True)
-            # The generated FFmpeg/x265 trees keep relative .git pointers to
-            # these recursive sources. Restore requires them before patch checks.
-            subprocess.run(['git', '-C', str(root / 'apps/host/linux'), 'submodule', 'update',
-                            '--init', '--recursive', 'third-party/build-deps'], check=True)
-        elif args.product == 'linux-client':
-            subprocess.run(['git', '-C', str(root), 'submodule', 'update', '--init', 'apps/client'], check=True)
-        key = fingerprint(root, deps, args.product, toolchain_inputs(args.product))
-        if any(c in str(root) + str(deps) for c in ('\n', '\r')):
-            raise ValueError('Invalid builder path')
-        paths = '\n'.join(str(p) for p in cache_paths(root, deps, args.product))
-        with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
-            result.write(f'key={key}\npaths<<PLANK_CACHE_PATHS\n{paths}\nPLANK_CACHE_PATHS\n')
-        print('dependency_cache_key=' + key)
-        return
-    if not key_valid(args.key, args.product):
-        raise ValueError('Exact dependency key required')
+        prepare_sources(root, args.product)
+    tools = toolchain_inputs(args.product)
+    keys = {component: fingerprint(root, deps, args.product, component, tools)
+            for component in COMPONENTS[args.product]}
+    state = hits_path(deps, args.product)
     if args.operation == 'verify':
-        verify_receipt(root, deps, args.product, args.key)
-    check_prepared(root, deps, args.product)
-    if args.operation == 'seal':
-        cache_paths(root, deps, args.product)[-1].write_text(
-            json.dumps({'schema': 1, 'key': args.key}, sort_keys=True) + '\n')
+        matches = {component: os.environ.get('CACHE_MATCHED_' + component.upper(), '')
+                   for component in ALL_COMPONENTS}
+        hits = verify_restored(root, deps, args.product, keys, matches)
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(json.dumps(hits, sort_keys=True) + '\n')
+    elif args.operation == 'seal':
+        seal(root, deps, args.product, keys)
+    else:
+        hits = json.loads(state.read_text()) if state.exists() else {}
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
+            emit_plan(root, deps, args.product, keys, hits, result)
+        for component, key in keys.items():
+            print(f'dependency_cache_key[{component}]={key}')
     print('dependency_cache_' + args.operation + '=pass')
 
 

@@ -130,37 +130,62 @@ standard runner is insufficient; record the resource limitation first.
 ### Exact-input dependency caches
 
 All four products support dependency caching (including unsigned and signed
-Mac jobs). Cold-save/warm-restore qualification is recorded below; local policy
-tests alone do not prove a hosted speedup.
+Mac jobs). Version 2 uses independent exact keys, receipts, restore and save
+operations for each dependency group. A Cargo lockfile change must not rebuild
+FFmpeg or Boost, and a Mac FFmpeg patch must not redownload Qt.
 
-| Product | Cached inputs |
+| Product | Independent cache groups |
 | --- | --- |
-| Linux Host | Prepared FFmpeg, its dependency-only build/source tree for independent patch verification, Boost sources, Rust toolchain and Cargo downloads |
-| Ubuntu Client | Prepared FFmpeg, patched source and pristine archive for the source audit, Rust toolchain and Cargo downloads |
-| macOS Host | Rust toolchain and Cargo downloads; capture/encoding/audio use Apple frameworks |
-| macOS Client | Prepared libraries, patched sources, downloads and Qt (existing qualified cache) |
+| Linux Host | Rust toolchain; Cargo downloads (including vendor-test dependencies); FFmpeg/codec build tree; Boost sources |
+| Ubuntu Client | Rust toolchain; Cargo downloads; FFmpeg libraries, patched source and pristine archive |
+| macOS Host | Rust toolchain; Cargo downloads (capture/encoding/audio use Apple frameworks) |
+| macOS Client | Rust toolchain; Cargo downloads; native-library install/source/download tree; Qt |
 
-Rust caches contain only toolchains, Cargo tool binaries and downloaded registry/
-Git sources. They exclude Cargo credentials/configuration and target objects.
-Linux keys include exact installed package versions and compiler/build-tool
-versions after prerequisite installation. The Host build-deps Git pin and its
-tracked files cover all dependency source pins, flags and patches. Client keys
-include the FFmpeg build script and all FFmpeg patches. Every new key also
-includes bootstrap scripts, Rust pins/lockfile, architecture and absolute
-source/dependency paths. Source updates that do not affect dependencies reuse
-the cache; dependency changes produce a cold build. OS packages are still
-installed by the package manager on each disposable runner, not restored from
-a copied system root. CUDA architecture coverage is unchanged.
+The Linux Host FFmpeg/x264/x265 build tree is one coupled cache. Mac FFmpeg,
+OpenSSL, SDL, FreeType, Opus and pkgconf also remain a coupled group because
+their current bootstrap shares one installation prefix. Never restore
+overlapping directories from independent keys. Qt is outside that prefix.
+
+`scripts/ci/dependencies/` contains the existing build recipes, split so each
+fingerprint hashes only its own preparation commands, versions, flags and
+required patches. Keep such inputs in the relevant recipe, not in the shared
+`bootstrap.sh` orchestration wrapper. The Host FFmpeg group additionally hashes
+the build-deps Git pin, tracked files and source gitlinks. Both Client library
+groups retain all FFmpeg patch inputs and build-path/sanitization helpers.
+
+Rust toolchain changes invalidate Rust and Cargo downloads; transport and
+vendor-test manifests/locks invalidate only their Cargo group. Native library
+keys still include exact installed Linux packages or Mac SDK/compiler/build
+tools. Downloads/source-only groups do not depend on those C/C++ build tools.
+All keys remain product/platform/path-specific; Mac Client native/Qt keys
+retain the explicit deployment-target policy. Changes to the shared cache
+implementation itself invalidate all groups conservatively. Application-only
+changes do not invalidate dependency keys. OS packages are still installed by
+the package manager on each disposable runner; CUDA architecture coverage and
+all dependency versions/build flags are unchanged.
+
+The composite action `.github/actions/dependency-cache` handles the same
+restore/verify and seal/save sequence for all four products. Each group can hit
+or miss independently. Save skips exact hits, and job-local hit bookkeeping is
+not cached. The narrow Rust/Cargo allowlist excludes credentials/configuration
+and compiled target objects. There are no application, package or signing caches.
 
 Mac Host's cache avoids Rust installation/downloads, not application or
 transport compilation. Do not promise the same improvement as caching FFmpeg.
 Cache selection is exact, with no fallback restore keys. A receipt must match
 the selected key, required outputs must exist, and Linux FFmpeg patches are
-checked independently before bootstrap. Existing package/source gates still
+checked independently before bootstrap (including Mac FFmpeg). Existing package/source gates still
 run. A mismatched/incomplete cache fails closed rather than silently using
 unverified dependencies. Use a clean-bootstrap build to diagnose such a failure.
 
-#### Four-product qualification
+The new `plank-<product>-<dependency>-v2-<digest>` keys intentionally cannot
+restore the old monolithic v1 caches. The first build needs to populate them
+once; subsequent changes invalidate only affected groups. Local isolation,
+mixed-hit, receipt and workflow-policy tests pass. Hosted cold/warm and partial-
+hit build qualification of v2 is still pending; do not infer measured speedups
+or platform build acceptance from those local tests.
+
+#### Historical v1 four-product qualification
 
 All listed runs passed full application build/tests after dependency bootstrap;
 Linux jobs also passed package gates. Mac runs here were unsigned, not deployment
@@ -190,16 +215,12 @@ source audit: patched sources and libraries alone are insufficient. Always
 retain the original checksum-verified FFmpeg archive, which packaging extracts
 for its full-source comparison. Do not disable that audit to accept a cache hit.
 
-#### Existing Mac Client qualification
+#### Historical v1 Mac Client qualification
 
-After successful cold-build qualification, Mac Client jobs may reuse prepared
-libraries, their sources (needed for licenses and patch verification), downloads,
-and Qt. The exact key includes dependency bootstrap scripts and all Client FFmpeg
-patches, source/dependency paths, architecture, runner image, OS, SDK, compiler,
-and build-tool versions. Application-only changes do not invalidate it.
-There are no fallback restore keys. A restored receipt must match the exact key;
-the mandatory FFmpeg patch is independently verified before use. Normal build
-and package dependency checks still run. Missing or mismatched inputs fail.
+The original Mac Client cache bundled native libraries and Qt under one key.
+The historical runs below qualified that layout, not the new split groups.
+Sources needed for licenses and independent patch verification are still
+retained by v2; normal build and package checks remain mandatory.
 
 GitHub also scopes cache access by branch. A cache saved only on one feature
 branch is not available to a sibling feature branch, even with an identical
