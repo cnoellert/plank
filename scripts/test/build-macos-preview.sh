@@ -38,6 +38,11 @@ xcrun clang "${common[@]}" -DPLANK_MAC_PREVIEW_TEST -DPLANK_SYNTHETIC_AUTH_TEST 
 xcrun clang "${common[@]}" probes/macos/preview-receive.m "$archive" -lpthread -lm \
     -o "$preview_build/preview-receive"
 if [[ ${4:-} = --synthetic-only ]]; then
+    # Root is confined to synthetic loopback children and ephemeral identities;
+    # no installation, real authentication, display or input is exercised.
+    sudo -n "$(command -v python3)" tests/auth/macos-https-handoff.py \
+        --server "$preview_build/preview-synthetic" --config probes/macos/https-cert.cnf \
+        --uid "$(id -u)" --gid "$(id -g)"
     python3 tests/auth/macos-https-auth.py --server "$preview_build/preview-synthetic" \
         --config probes/macos/https-cert.cnf --preview-receiver "$preview_build/preview-receive"
     python3 tests/auth/macos-permission-admission.py --server "$preview_build/preview-synthetic"

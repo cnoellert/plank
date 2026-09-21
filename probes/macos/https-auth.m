@@ -5,6 +5,7 @@
 #import "fixed-capture.h"
 #include <sys/resource.h>
 #include <unistd.h>
+#include <signal.h>
 #ifdef PLANK_MAC_PREVIEW_TEST
 #import "host-runtime.h"
 #import "screen-capture.h"
@@ -168,18 +169,34 @@ int main(int argc, const char *argv[]) {
             printf("macos_https_auth_ready port=%u desktop_active=%d\n", port, snapshot().active);
             fflush(stdout);
         };
-#ifdef PLANK_MAC_PREVIEW_TEST
-        if (![runtime startOnPort:0 ready:ready failed:^{ exit(2); }]) return 2;
-#else
-        if (![server startOnAddress:@"127.0.0.1" port:0 ready:ready]) return 2;
+        uint16_t listenPort = 0;
+#ifdef PLANK_SYNTHETIC_AUTH_TEST
+        // Cross-UID handoff fixture only. Always loopback; no installed job,
+        // real credentials, persistent account or graphical session involved.
+        NSString *requestedPort = NSProcessInfo.processInfo.environment[@"PLANK_TEST_LISTEN_PORT"];
+        if (requestedPort) {
+            unsigned long long value = 0; NSScanner *scanner = [NSScanner scannerWithString:requestedPort];
+            if (![scanner scanUnsignedLongLong:&value] || !scanner.isAtEnd || value > UINT16_MAX) return 2;
+            listenPort = (uint16_t)value;
+        }
 #endif
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 60 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+#ifdef PLANK_MAC_PREVIEW_TEST
+        if (![runtime startOnPort:listenPort ready:ready failed:^{ exit(2); }]) return 2;
+#else
+        if (![server startOnAddress:@"127.0.0.1" port:listenPort ready:ready failed:^{ exit(2); }]) return 2;
+#endif
+        void (^stop)(void) = ^{
 #ifdef PLANK_MAC_PREVIEW_TEST
             [runtime stopWithCompletion:^{ puts("macos_host_runtime_drained=1"); exit(0); }];
 #else
             [server stopWithCompletion:^{ exit(0); }];
 #endif
-        });
+        };
+        signal(SIGTERM, SIG_IGN);
+        dispatch_source_t termination = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGTERM, 0, dispatch_get_main_queue());
+        dispatch_source_set_event_handler(termination, stop);
+        dispatch_resume(termination);
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 60 * NSEC_PER_SEC), dispatch_get_main_queue(), stop);
         // Aqua notifications and the authority watcher require the main run loop.
         [[NSRunLoop mainRunLoop] run];
     }
