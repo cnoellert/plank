@@ -1,6 +1,143 @@
 # PLANK handoff
 
-## Active: Quinn MTU-boundary repair, 1.0.147 candidate
+## Active: logging, dependency-cache and loss-performance review fixes
+
+The operator authorized detailed-frame-tracing cleanup, moving logging outside
+the QUIC connection lock, splitting dependency-cache fingerprints, and
+strengthening the loss-test performance gate from the read-only code review.
+Work is on `macos-frame-tracing` in
+`build/worktrees/mouse-edge-recovery`, branched from `quinn-mtu-boundary` at
+`1f0a1a63d061734de208c2d0d05ad00f99e0195b`. The earlier MTU changes are retained
+in that base, not merged to main. Preserve the primary checkout's dirty RK3576
+work. Other review findings are not part of these changes.
+
+The operator now authorized commit/push and hosted branch builds, explicitly
+not a merge. Candidate version is `1.0.148-macos-frame-tracing`. All four
+ordinary hosted jobs will run; Mac jobs remain unsigned compile/test checks
+under the main-only signing policy. Do not install or publish a release.
+
+### Strict loss-test performance gate
+
+The test-only matrix now sends 900 exact payloads at 150 Mbps/60 fps, with
+180 frames (three seconds) at each 0/0.5/1/3/5% loss level. One continuous
+availability schedule prevents backpressure from lowering the offered load or
+resetting latency at phase boundaries. Every phase requires at least 142.5 Mbps
+submitted/received payload throughput, p95 delivery <=50 ms, maximum scheduled
+submission/delivery <=100 ms and receive gaps <=100 ms. Absolute timeouts and
+measured completion times both enforce the bounds. Original exact bytes, PTS
+order and zero unrecovered FEC assertions remain. The loopback runner defaults
+to release mode; three required passes stop on the first failure, not retries.
+The release runbook documents measurement semantics and loopback limitations.
+No product sender, FEC, buffer, MTU or system settings changed for this work.
+
+Validation: eight deterministic metric tests cover slow senders, catch-up stalls,
+per-phase tail latency, boundary gaps, incomplete/invalid samples, delayed send
+completion, exact limits and nominal load. All 34 ordinary transport tests pass
+with telemetry disabled and with each telemetry-enabled sender policy; four
+logger tests pass with each enabled policy.
+Both real all-lane loopbacks pass. Linux fast-send passed all three strengthened
+matrices: 2,700 frames recovered, zero unrecovered symbols and zero proxy kernel
+drops. Every phase sustained 150 Mbps/60 fps; worst per-phase p95 delivery was
+12.224 ms, worst delivery 17.323 ms and worst receive gap 26.219 ms.
+
+**The paced baseline failed the first strengthened matrix.** Frame 329 missed
+its 100 ms scheduled submission deadline, about 5.59 seconds into the matrix
+(0.5% phase). The preceding zero-loss phase already finished 51 ms late; proxy
+cleanup reported zero kernel drops. The failure is retained, not retried or
+waived. It demonstrates a schedule/backpressure failure that the earlier short,
+recovery-only test could pass; it does not by itself establish the root cause.
+Since Host packaging requires both policies, package qualification is blocked
+until the paced policy is investigated/resolved or its supported scope is
+explicitly reconsidered. Do not silently skip it or relax the bounds. No hosted
+or hardware performance qualification has been performed for the new gate.
+All 56 CI-policy tests, runner shell syntax and whitespace checks pass.
+
+### Independent dependency-cache fingerprints
+
+Hosted jobs now restore/verify and seal/save independent v2 groups for Rust,
+Cargo downloads, Linux FFmpeg, Boost, Mac native libraries and Qt, as applicable
+to each product. Cargo manifest/lock changes no longer invalidate FFmpeg/Boost;
+Mac FFmpeg patches no longer invalidate Qt. Rust changes also invalidate Cargo.
+The Linux Host's jointly built codec tree and the Mac native libraries' shared
+install prefix remain coupled groups; independent archives never overlap.
+Mac Client now caches Rust/Cargo downloads too, not only native libraries/Qt.
+
+Existing bootstrap commands were extracted, without version or build-flag
+changes, into independently hashed `scripts/ci/dependencies/` recipes. Shared
+bootstrap only sequences them. One local composite action handles all four
+products and skips saves for individual exact hits. The old Mac-only cache
+helper was removed in favor of the common implementation. Narrow allowlists,
+exact receipts, required patch checks, pristine Client FFmpeg archive, fresh app
+builds, clean-bootstrap bypass, public-PR no-save and signing-cleanup-before-save
+rules are preserved. No fallback restore keys or signing-policy changes.
+
+Validation: all 55 CI-policy tests pass, including per-input invalidation,
+mixed hits/misses, CLI prepare/seal/verify, corrupt/incomplete restore rejection,
+non-overlapping cache paths and deployment/signing boundaries. Bootstrap and
+all recipe shell syntax checks pass; workflow/composite YAML parse and diff
+whitespace checks pass. No platform dependencies were compiled/downloaded for
+these tests. Hosted cold/warm and partial-hit build qualification remains a gate,
+not a claimed speedup. New v2 namespaces need one initial cold population;
+old v1 caches are not restored or deleted. The build runbook documents the
+groups and labels previous v1 timings as historical evidence only.
+
+### QUIC logging outside the connection lock
+
+Vendored Quinn's `stats()` now only copies an owned telemetry snapshot under
+the connection lock. The Kynet adapter enqueues it after Quinn returns and
+releases the guard. One process-wide writer formats and writes the unchanged
+log line off the media task, using an eight-snapshot bounded queue. Producers
+never wait for queue space or perform fallback I/O; slow/full/failed logging
+drops diagnostic samples. Teardown never joins the writer, so final diagnostic
+samples are best-effort. RTT/loss statistics, counter values, wire format, FEC,
+MTU, pacing and queue-capacity policy are unchanged. Feature-disabled builds
+have no snapshot fields or writer. The vendor patch notes document the paired
+Quinn/Kynet dependency and tests.
+
+Validation: 273 vendored Quinn tests; 26 transport tests with telemetry disabled
+and under each telemetry-enabled sender policy; four logger tests under each
+enabled policy (blocked sink, bounded queue, failed sink, preserved format and
+bounded arithmetic); native Rust/C ABI loopbacks; and three consecutive 150 Mbps
+loss matrices per sender policy at 0/0.5/1/3/5% before the gate was strengthened.
+Each earlier matrix recovered all 300
+frames with zero unrecovered symbols and zero unintended proxy kernel drops.
+The two normally ignored live transport tests were explicitly run by the
+loopback runner. CI-policy tests pass (51). Host package preflight now also runs
+the vendor snapshot regression; ordinary transport tests exercise the real
+adapter logger through the product lockfile. No new dependencies or lockfile
+changes. These are local portable tests, not platform-package/hardware acceptance.
+
+Kynet changes are committed and pushed on `macos-frame-tracing` at
+`158719b67f83e3d83e8bfba1588420ed84a65cab`, before the parent gitlink.
+Client `270a55cdf5af2f5308fb23537ea3e196e81fda0a` and Linux Host
+`cd738510c6588aa086746cf00dca93c17c6bea73` pins are unchanged. Keep the new
+adapter logger and root integration test with the vendor snapshot change.
+
+### Opt-in macOS capture frame tracing
+
+`PLANK_MACOS_FRAME_TIMING=1` in the capture worker's runtime environment is now
+required to allocate the bounded trace. Unset/empty/other values disable it.
+The setting is read once per capture session. Default capture skips trace-only
+timestamp sampling and the detailed shutdown dump; normal capture summary and
+error logs remain unchanged. Enabled format, 8,192-record/120-second bounds and
+post-callback-drain lifetime are preserved. No encoder, transport, audio or
+Client policy changes. The macOS build runbook documents activation/removal.
+
+The existing portable frame-timing test now covers default-off, ten disabled
+values, exact opt-in, silent disabled output, per-session lifetime, limits and
+the original dump format. GCC C11 warnings-as-errors and Clang ASan/UBSan runs
+pass locally. The regular macOS Host build already runs this test. No macOS
+Objective-C build or live capture test has run for this change yet.
+All four fixes are committed for the authorized branch build:
+`bf526c3` (frame tracing), `85a3e1f` (QUIC logging), `d2f5960` (dependency caches),
+and `e70ef7b` (loss-performance gate). The next push includes those commits,
+version 1.0.148 and these notes;
+there is no merge, installation or signing-policy change. The existing 1.0.147
+artifacts below do not contain these fixes. Hosted qualification of 1.0.148 is
+pending. The paced-baseline performance failure above remains an unresolved
+package gate, not permission to relax assertions or bypass that comparison.
+
+## Pending: Quinn MTU-boundary repair, 1.0.147 candidate
 
 Work is on `quinn-mtu-boundary` in `build/worktrees/mouse-edge-recovery`, based
 on main `dd6fb04`. Preserve the primary checkout's unrelated dirty RK3576 work.
