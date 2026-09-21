@@ -76,6 +76,8 @@ use spaces::{PacketNumberFilter, PacketSpace, SendableFrames, SentPacket, ThinRe
 
 mod stats;
 pub use stats::{ConnectionStats, FrameStats, PathStats, UdpStats};
+#[cfg(feature = "plank-telemetry")]
+pub use stats::PlankTelemetry;
 
 mod streams;
 #[cfg(fuzzing)]
@@ -1270,17 +1272,6 @@ impl Connection {
         {
             let controller_metrics = self.path.congestion.metrics();
             let queue = self.datagrams.outgoing.telemetry();
-            let rtt_nanos = stats.path.rtt.as_nanos();
-            let effective_pacing_bps = if rtt_nanos == 0 {
-                0
-            } else {
-                let bits_per_second = u128::from(stats.path.cwnd)
-                    .saturating_mul(8)
-                    .saturating_mul(1_000_000_000)
-                    .saturating_mul(5)
-                    / rtt_nanos.saturating_mul(4);
-                bits_per_second.min(u128::from(u64::MAX)) as u64
-            };
             let controller = if cfg!(feature = "plank-bbr-default") {
                 "bbr"
             } else if controller_metrics.pacing_rate.is_some() {
@@ -1293,39 +1284,29 @@ impl Connection {
             } else {
                 "server"
             };
-            eprintln!(
-                "PLANK QUIC telemetry controller={} side={} remote={} rtt_us={} rtt_latest_us={} rtt_min_us={} rtt_max_us={} rtt_var_us={} cwnd_bytes={} in_flight_bytes={} in_flight_packets={} effective_pacing_bps={} controller_pacing_bps={} bandwidth_estimate_bps={} congestion_events={} sent_packets={} sent_bytes={} lost_packets={} lost_bytes={} mtu={} queue_limit_bytes={} queue_datagrams={} queue_payload_bytes={} queue_memory_bytes={} queue_high_water_payload_bytes={} queue_high_water_memory_bytes={} queue_evicted_datagrams={} queue_evicted_payload_bytes={} mtu_dropped_datagrams={} mtu_dropped_payload_bytes={}",
+            stats.plank_telemetry = Some(PlankTelemetry {
                 controller,
                 side,
-                self.path.remote,
-                stats.path.rtt.as_micros(),
-                self.path.rtt.latest().as_micros(),
-                self.path.rtt.min().as_micros(),
-                self.path.rtt.max().as_micros(),
-                self.path.rtt.variance().as_micros(),
-                stats.path.cwnd,
-                self.path.in_flight.bytes,
-                self.path.in_flight.ack_eliciting,
-                effective_pacing_bps,
-                controller_metrics.pacing_rate.unwrap_or_default(),
-                controller_metrics.bandwidth_estimate.unwrap_or_default(),
-                stats.path.congestion_events,
-                stats.path.sent_packets,
-                stats.udp_tx.bytes,
-                stats.path.lost_packets,
-                stats.path.lost_bytes,
-                stats.path.current_mtu,
-                self.config.datagram_send_buffer_size,
-                queue.datagrams,
-                queue.payload_bytes,
-                queue.memory_bytes,
-                queue.high_water_payload_bytes,
-                queue.high_water_memory_bytes,
-                queue.evicted_datagrams,
-                queue.evicted_payload_bytes,
-                queue.mtu_dropped_datagrams,
-                queue.mtu_dropped_payload_bytes,
-            );
+                remote: self.path.remote,
+                rtt_latest: self.path.rtt.latest(),
+                rtt_min: self.path.rtt.min(),
+                rtt_max: self.path.rtt.max(),
+                rtt_var: self.path.rtt.variance(),
+                in_flight_bytes: self.path.in_flight.bytes,
+                in_flight_packets: self.path.in_flight.ack_eliciting,
+                controller_pacing_bps: controller_metrics.pacing_rate.unwrap_or_default(),
+                bandwidth_estimate_bps: controller_metrics.bandwidth_estimate.unwrap_or_default(),
+                queue_limit_bytes: self.config.datagram_send_buffer_size,
+                queue_datagrams: queue.datagrams,
+                queue_payload_bytes: queue.payload_bytes,
+                queue_memory_bytes: queue.memory_bytes,
+                queue_high_water_payload_bytes: queue.high_water_payload_bytes,
+                queue_high_water_memory_bytes: queue.high_water_memory_bytes,
+                queue_evicted_datagrams: queue.evicted_datagrams,
+                queue_evicted_payload_bytes: queue.evicted_payload_bytes,
+                mtu_dropped_datagrams: queue.mtu_dropped_datagrams,
+                mtu_dropped_payload_bytes: queue.mtu_dropped_payload_bytes,
+            });
         }
 
         stats

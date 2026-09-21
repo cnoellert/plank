@@ -11,7 +11,7 @@ crate-type = ["staticlib", "rlib"]
 [features]
 default = []
 quinn-bbr = ["quinn-proto/plank-bbr-default"]
-quinn-telemetry = ["quinn-proto/plank-telemetry"]
+quinn-telemetry = ["kynet/quinn-telemetry"]
 sender-timing = ["kynet/sender-timing", "kyproto/sender-timing"]
 # Host-only build selections; neither changes the wire contract or encoder rate.
 macos-fast-send = ["sender-timing"]

@@ -171,4 +171,39 @@ pub struct ConnectionStats {
     pub frame_rx: FrameStats,
     /// Statistics related to the current transmission path
     pub path: PathStats,
+    /// Optional owned snapshot for logging after the caller releases its connection lock.
+    #[cfg(feature = "plank-telemetry")]
+    pub plank_telemetry: Option<PlankTelemetry>,
+}
+
+/// PLANK diagnostic fields not present in upstream connection statistics.
+///
+/// Collecting this snapshot performs no formatting, allocation, or I/O. The
+/// adapter may enqueue it for best-effort logging after `Connection::stats()`
+/// returns. It contains no connection references or lock guards.
+#[cfg(feature = "plank-telemetry")]
+#[derive(Debug, Copy, Clone)]
+#[allow(missing_docs)]
+pub struct PlankTelemetry {
+    pub controller: &'static str,
+    pub side: &'static str,
+    pub remote: std::net::SocketAddr,
+    pub rtt_latest: Duration,
+    pub rtt_min: Duration,
+    pub rtt_max: Duration,
+    pub rtt_var: Duration,
+    pub in_flight_bytes: u64,
+    pub in_flight_packets: u64,
+    pub controller_pacing_bps: u64,
+    pub bandwidth_estimate_bps: u64,
+    pub queue_limit_bytes: usize,
+    pub queue_datagrams: u64,
+    pub queue_payload_bytes: u64,
+    pub queue_memory_bytes: u64,
+    pub queue_high_water_payload_bytes: u64,
+    pub queue_high_water_memory_bytes: u64,
+    pub queue_evicted_datagrams: u64,
+    pub queue_evicted_payload_bytes: u64,
+    pub mtu_dropped_datagrams: u64,
+    pub mtu_dropped_payload_bytes: u64,
 }

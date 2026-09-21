@@ -51,6 +51,8 @@ pub use crate::connection::{
 };
 #[cfg(feature = "qlog")]
 pub use connection::qlog::QlogStream;
+#[cfg(feature = "plank-telemetry")]
+pub use connection::PlankTelemetry;
 
 #[cfg(feature = "rustls")]
 pub use rustls;

@@ -1895,6 +1895,42 @@ fn datagram_send_recv() {
     assert_matches!(pair.server_datagrams(server_ch).recv(), None);
 }
 
+#[cfg(feature = "plank-telemetry")]
+#[test]
+fn plank_telemetry_snapshot_is_owned_and_preserves_queue_counters() {
+    let _guard = subscribe();
+    let mut pair = Pair::default();
+    let (client_ch, server_ch) = pair.connect();
+    let data = Bytes::from_static(b"telemetry snapshot");
+    pair.client_datagrams(client_ch)
+        .send(data.clone(), true)
+        .unwrap();
+    let snapshot = pair.client_conn_mut(client_ch).stats();
+    let extra = snapshot.plank_telemetry.unwrap();
+    assert_eq!(extra.side, "client");
+    assert_eq!(
+        extra.remote,
+        pair.client_conn_mut(client_ch).remote_address()
+    );
+    assert_eq!(extra.queue_datagrams, 1);
+    assert_eq!(extra.queue_payload_bytes, data.len() as u64);
+    assert!(extra.queue_memory_bytes > extra.queue_payload_bytes);
+    assert!(extra.queue_high_water_payload_bytes >= extra.queue_payload_bytes);
+    assert!(extra.queue_high_water_memory_bytes >= extra.queue_memory_bytes);
+    assert_eq!(extra.queue_evicted_datagrams, 0);
+    assert_eq!(extra.queue_evicted_payload_bytes, 0);
+    assert_eq!(extra.mtu_dropped_datagrams, 0);
+    assert_eq!(extra.mtu_dropped_payload_bytes, 0);
+    pair.drive();
+    assert_eq!(pair.server_datagrams(server_ch).recv().unwrap(), data);
+    let after = pair.client_conn_mut(client_ch).stats();
+    assert_eq!(after.plank_telemetry.unwrap().queue_datagrams, 0);
+    assert_eq!(after.plank_telemetry.unwrap().queue_payload_bytes, 0);
+    // The writer may still own this earlier snapshot after transport advances.
+    assert_eq!(snapshot.plank_telemetry.unwrap().queue_datagrams, 1);
+    assert!(after.udp_tx.bytes > snapshot.udp_tx.bytes);
+}
+
 #[test]
 fn datagram_recv_buffer_overflow() {
     let _guard = subscribe();

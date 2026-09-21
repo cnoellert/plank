@@ -31,8 +31,31 @@ order and byte/memory accounting. Genuine MTU discards have separate
 mistaken for send-queue capacity evictions. No MTU policy, window, FEC percentage,
 queue limit, ordering deadline or pacer behavior is changed.
 
-Linux Host packaging runs `connection::datagrams::plank_tests` using this crate's
-own locked test dependencies and an archive never linked into the product.
+With `plank-telemetry`, `Connection::stats()` now copies diagnostic fields into
+an owned `ConnectionStats::plank_telemetry` snapshot instead of formatting and
+writing stderr while Quinn holds its connection-state mutex. Snapshot capture
+does not allocate, log, start threads or alter protocol counters. The Kynet
+adapter's `quinn-telemetry` feature forwards this feature and consumes the
+snapshot only after the public Quinn `stats()` call returns and releases its
+guard. Keep the adapter and this vendor change together.
+
+The adapter uses one process-wide logging thread and an eight-snapshot bounded
+queue. It performs a non-waiting enqueue, with no synchronous logging fallback.
+Slow/full/failed logging can discard diagnostic samples, never block media on
+disk I/O or accumulate an unbounded log backlog. Session teardown does not join
+the writer; final samples are best-effort. Existing log fields, queue/MTU-drop
+counters and the effective-pacing calculation are retained; live RTT/loss
+statistics do not depend on successful logging. Feature-disabled builds contain
+neither the snapshot fields nor logging worker. No transport ABI or wire change.
+
+Vendor tests check owned snapshots and real queue/drain accounting. The product
+`protocol/plank-transport/tests/quinn-telemetry.rs` includes the actual adapter
+logger so its blocked/failed-sink, queue-bound and output-format tests run with
+the product's lockfile and patched Quinn, not a separately resolved Kyber build.
+
+Linux Host packaging runs `connection::datagrams::plank_tests` and the
+feature-enabled telemetry snapshot test using this crate's own locked test
+dependencies and an archive never linked into the product.
 Hosted bootstrap fetches those inputs before the offline build; the dependency
 cache includes this manifest and lockfile. The real native transport loss matrix
 also runs three times for each Host rate policy, stopping on the first failure.
