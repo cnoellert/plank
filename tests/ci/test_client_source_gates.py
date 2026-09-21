@@ -9,6 +9,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ClientSourceGateTests(unittest.TestCase):
+    def test_svg_reader_is_an_explicit_build_and_runtime_dependency(self):
+        for filename in ('scripts/ci/install-linux-deps.sh',
+                         'docs/development/build/builder-vm-bootstrap.md',
+                         'packaging/client/linux/deb/control.in',
+                         'scripts/package/build-client-deb.sh'):
+            with self.subTest(filename=filename):
+                self.assertIn('qt6-svg-plugins', (ROOT / filename).read_text())
+        self.assertIn('QT_INSTALL_PLUGINS)/imageformats/libqsvg.so',
+                      (ROOT / 'scripts/ci/install-linux-deps.sh').read_text())
+
     def packet_size_gate(self, files):
         self.assertIsNotNone(shutil.which('rg'), 'source-gate tests require ripgrep')
         script = (ROOT / 'scripts/build/build-client-package-binaries.sh').read_text()

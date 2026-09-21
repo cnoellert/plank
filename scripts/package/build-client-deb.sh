@@ -245,6 +245,7 @@ for required_package in \
   qml6-module-qtquick-controls \
   qml6-module-qtquick-layouts \
   qml6-module-qtquick-window \
+  qt6-svg-plugins \
   udev; do
   dpkg-deb --field "$deb_file" Depends | grep -Fq "$required_package" || {
     echo "client DEB is missing required dependency: ${required_package}" >&2

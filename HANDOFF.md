@@ -50,7 +50,7 @@ with a synthetic display, and Qt accept/cancel/Escape/timeout responsiveness.
 These tests must pass on the appropriate hosted builders; local syntax checks
 are not Mac execution or hardware acceptance.
 
-Local combined-source checks: all 58 CI-policy tests, Python syntax, shell
+Local combined-source checks: all 59 CI-policy tests, Python syntax, shell
 syntax and diff whitespace pass. Initial hosted runs 35662191961 and
 35662506372 were superseded/cancelled before completing product qualification
 to include final Client shutdown and authenticated-bookmark routing guards.
@@ -66,8 +66,12 @@ Signed Mac Host run 35663307341 passed signing, notarization, stapling and
 package validation. Its exact package is collected under
 `artifacts/packages/candidates/1.0.149-macos-session-takeover/macos/`.
 SHA-256: `58f91ddd57f2ee80c4a6726fb35c5a459c466d0adb1d8044e7c35e62c2e6176e`.
-The matching Client packages and Linux Host build remain in progress; do not
-call the combined candidate ready or claim live acceptance yet.
+Linux Host job 106541725507 in run 35662745109 passed package/input-lifecycle
+gates and all six strict loss matrices: 5,400 frames, zero unrecovered symbols.
+Its RPM is collected in the matching `linux/` directory.
+SHA-256: `41622a46da5fe201c0e6da874551bf8a6d3b2edeaca3e51396cb350e5f4f5d3a`.
+The matching Client packages remain in progress; do not call the combined
+candidate ready or claim live acceptance yet.
 
 ## Source provenance and previous build evidence
 
@@ -81,6 +85,18 @@ corrected; replacement builds are pending. Since `df06fd5`, changes only affect
 test inputs, source-gate prerequisites and release-note prose exclusion; no Host
 or Client product implementation changed. Record each package's actual source
 commit, not a rewritten common provenance.
+
+Replacement Client builds use root `60b16b9a1744d9706e616f9c46f6535cee8484a9`:
+signed Mac run 35664996000 remains active. Ubuntu run 35664993625 exposed a
+missing SVG reader plugin: `qt6-svg-dev` does not provide the separate
+`qt6-svg-plugins` runtime with no-recommends installation. The CI/bootstrap
+dependency list, DEB Depends and finished-package gate now explicitly require
+that plugin. No product logic or test assertion changed for this correction.
+
+Build-time follow-up: dependency caches currently save only after product tests
+pass, so failed test fixtures lose newly bootstrapped dependencies on disposable
+runners. Consider saving independently verified dependency caches immediately
+after successful bootstrap; do not cache product binaries or signing material.
 
 The Client implementation is committed and pushed on its matching
 `macos-session-takeover` branch at `a29dad91987f1989dbcbfab11166879459d938f8`,
