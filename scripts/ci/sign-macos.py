@@ -92,19 +92,18 @@ def main():
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
     try:
-        # Check required secrets first, then bootstrap with them removed from
-        # the child environment and before creating any signing keychain.
+        # Product dependencies were bootstrapped and cached by credential-free
+        # workflow steps. Never repeat bootstrap after receiving signing inputs.
+        # The standalone diagnostic probe has no dependency bootstrap/cache.
         root = Path(os.environ["PLANK_SOURCE_ROOT"])
         probe = role == "macos-fullscreen-probe"
         probe_script = root / "scripts/package/build-macos-fullscreen-probe.sh"
         probe_output = str(Path(os.environ["PLANK_WORK_ROOT"]) / "fullscreen-probe") if probe else ""
         if probe:
             Path(os.environ["PLANK_WORK_ROOT"]).mkdir(parents=True, exist_ok=True)
-        prepare = (["bash", str(probe_script), "--build", str(root), probe_output] if probe else
-                   ["bash", str(root / "scripts/ci/bootstrap.sh"), role])
-        result = subprocess.run(prepare)
-        if result.returncode:
-            raise SigningError(f"Credential-free dependency bootstrap failed (exit {result.returncode})")
+            result = subprocess.run(["bash", str(probe_script), "--build", str(root), probe_output])
+            if result.returncode:
+                raise SigningError(f"Credential-free probe build failed (exit {result.returncode})")
         previous = shlex.split(command("read keychain search list", ["security", "list-keychains", "-d", "user"]))
         state = directory / "search-list.json"
         state.write_text(json.dumps(previous))

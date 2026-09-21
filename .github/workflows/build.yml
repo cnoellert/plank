@@ -82,13 +82,13 @@ jobs:
           operation: restore
           product: linux-host
       - run: bash scripts/ci/bootstrap.sh linux-host
-      - run: bash scripts/ci/build.sh linux-host
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' }}
         uses: ./.github/actions/dependency-cache
         with:
           operation: save
           product: linux-host
+      - run: bash scripts/ci/build.sh linux-host
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-host-${{ github.run_id }}-${{ github.run_attempt }}
@@ -121,13 +121,13 @@ jobs:
           operation: restore
           product: linux-client
       - run: bash scripts/ci/bootstrap.sh linux-client
-      - run: bash scripts/ci/build.sh linux-client
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' }}
         uses: ./.github/actions/dependency-cache
         with:
           operation: save
           product: linux-client
+      - run: bash scripts/ci/build.sh linux-client
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-client-${{ github.run_id }}-${{ github.run_attempt }}
@@ -169,13 +169,13 @@ jobs:
           operation: restore
           product: macos-${{ matrix.product }}
       - run: bash scripts/ci/bootstrap.sh macos-${{ matrix.product }}
-      - run: bash scripts/ci/build.sh macos-${{ matrix.product }}
       - name: Save dependencies
         if: ${{ !inputs.clean_bootstrap && github.event_name != 'pull_request' }}
         uses: ./.github/actions/dependency-cache
         with:
           operation: save
           product: macos-${{ matrix.product }}
+      - run: bash scripts/ci/build.sh macos-${{ matrix.product }}
       - name: Explain unsigned build scope
         run: echo 'Unsigned compile/test only. No distributable macOS package, signing credentials, or hardware acceptance.' >> "$GITHUB_STEP_SUMMARY"
       - name: Report disk usage
@@ -209,6 +209,15 @@ jobs:
         with:
           operation: restore
           product: ${{ inputs.product }}
+      - name: Bootstrap dependencies without signing credentials
+        if: ${{ inputs.product != 'macos-fullscreen-probe' }}
+        run: bash scripts/ci/bootstrap.sh "$PLANK_CI_PRODUCT"
+      - name: Save dependencies
+        if: ${{ inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap }}
+        uses: ./.github/actions/dependency-cache
+        with:
+          operation: save
+          product: ${{ inputs.product }}
       - name: Build, sign, notarize and verify
         env:
           PLANK_DEVELOPER_ID_APPLICATION_P12: ${{ secrets.PLANK_DEVELOPER_ID_APPLICATION_P12 }}
@@ -222,12 +231,6 @@ jobs:
       - name: Remove temporary signing material
         if: always()
         run: python3 scripts/ci/sign-macos.py --cleanup
-      - name: Save dependencies
-        if: ${{ success() && inputs.product != 'macos-fullscreen-probe' && !inputs.clean_bootstrap }}
-        uses: ./.github/actions/dependency-cache
-        with:
-          operation: save
-          product: ${{ inputs.product }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signed-${{ inputs.product }}-${{ github.run_id }}-${{ github.run_attempt }}

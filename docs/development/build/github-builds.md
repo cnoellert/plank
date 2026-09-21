@@ -85,9 +85,9 @@ Keep Developer ID distinct from Apple Development and Mac App Store identities.
 After a clean committed/pushed source is qualified, request signing with
 `bash scripts/ci/dispatch.sh macos-host true` (or `macos-client true`). The job
 starts without a separate approval prompt on an allowed branch. Only its
-signing step receives secrets. The helper
-checks presence before bootstrap and removes them from child environments. It
-bootstraps dependencies without credentials, then imports into a temporary 0700 runner
+signing step receives secrets. Separate credential-free steps bootstrap and
+save verified dependencies first. The signing helper checks secret presence and
+removes secrets from child environments, then imports into a temporary 0700 runner
 directory/keychain with narrowly allowed Apple signing tools, and stores
 notarization credentials in that keychain. It restores the prior search list
 and deletes temporary material on completion/failure; an always-run cleanup step
@@ -239,9 +239,14 @@ or change dependency pins to work around a normal scope miss.
 PLANK and its tests build fresh. Application build trees, packages, Cargo objects,
 signing material and credentials are not cached. Public pull requests may read
 dependency caches but cannot save them through this workflow. Trusted jobs save
-only after a successful build; signed jobs first clean their temporary keychain.
-All product jobs save only successful dependency state; cold-bootstrap bypass
-applies to every product. The standalone fullscreen probe has no dependency cache.
+immediately after successful dependency bootstrap and independent cache sealing,
+before application compilation, tests or packaging. A later product/test/notary
+failure must not discard already verified dependencies. A failed bootstrap or
+failed dependency verification still prevents saving; this is not an always-run
+failure cache. Signed jobs bootstrap and save before injecting signing secrets
+or creating a keychain, then retain their always-run signing cleanup. The signing
+helper does not repeat product bootstrap. Cold-bootstrap bypass applies to every
+product. The standalone fullscreen probe has no dependency cache.
 
 To prove a fresh bootstrap, dispatch with `clean_bootstrap=true`, or use:
 

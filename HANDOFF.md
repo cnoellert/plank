@@ -93,10 +93,13 @@ missing SVG reader plugin: `qt6-svg-dev` does not provide the separate
 dependency list, DEB Depends and finished-package gate now explicitly require
 that plugin. No product logic or test assertion changed for this correction.
 
-Build-time follow-up: dependency caches currently save only after product tests
-pass, so failed test fixtures lose newly bootstrapped dependencies on disposable
-runners. Consider saving independently verified dependency caches immediately
-after successful bootstrap; do not cache product binaries or signing material.
+The operator requested fixing cache-save ordering while builds continue. New
+workflow code saves independently verified dependencies immediately after a
+successful bootstrap, before product build/tests/signing. Signed Mac bootstrap
+and cache-save are separate credential-free steps; the signing helper no longer
+repeats bootstrap. Failure/PR/clean-bootstrap restrictions and exact fingerprints
+remain intact, with no product/signing caches. Existing running jobs use their
+original committed workflow and are not cancelled for this CI-only change.
 
 The Client implementation is committed and pushed on its matching
 `macos-session-takeover` branch at `a29dad91987f1989dbcbfab11166879459d938f8`,

@@ -27,16 +27,21 @@ class DependencyCacheTests(unittest.TestCase):
             saves = block.split('- name: Save dependencies')[1].split('- ')[0]
             self.assertIn('!inputs.clean_bootstrap', restores)
             self.assertIn('!inputs.clean_bootstrap', saves)
+            self.assertNotIn('always()', saves)
+            self.assertNotIn('failure()', saves)
+            self.assertLess(block.index('Restore and verify dependencies'), block.index('bash scripts/ci/bootstrap.sh'))
+            self.assertLess(block.index('bash scripts/ci/bootstrap.sh'), block.index('Save dependencies'))
             if job == 'macos-signed':
                 self.assertIn("inputs.product != 'macos-fullscreen-probe'", restores)
                 self.assertIn("inputs.product != 'macos-fullscreen-probe'", saves)
-                self.assertIn('success()', saves)
-                self.assertLess(block.index('Remove temporary signing material'), block.index('Save dependencies'))
-                self.assertLess(block.index('Restore and verify dependencies'), block.index('Build, sign, notarize and verify'))
+                self.assertLess(block.index('Save dependencies'), block.index('Build, sign, notarize and verify'))
+                self.assertLess(block.index('Build, sign, notarize and verify'), block.index('Remove temporary signing material'))
+                before_signing = block.split('- name: Build, sign, notarize and verify')[0]
+                self.assertNotIn('secrets.', before_signing)
+                self.assertIn('if: always()', block.split('- name: Remove temporary signing material')[1])
             else:
                 self.assertIn("github.event_name != 'pull_request'", saves)
-                self.assertLess(block.index('Restore and verify dependencies'), block.index('bash scripts/ci/bootstrap.sh'))
-                self.assertLess(block.index('bash scripts/ci/build.sh'), block.index('Save dependencies'))
+                self.assertLess(block.index('Save dependencies'), block.index('bash scripts/ci/build.sh'))
 
     def test_composite_uses_independent_exact_keys_and_skips_existing_entries(self):
         action = (ROOT / '.github/actions/dependency-cache/action.yml').read_text()

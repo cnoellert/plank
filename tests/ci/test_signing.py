@@ -94,6 +94,41 @@ class SigningTests(unittest.TestCase):
             self.assertEqual(calls[1][2], '--package')
             self.assertFalse(directory.exists())
 
+    def test_products_do_not_repeat_bootstrap_and_cleanup_after_build_failure(self):
+        for role in ('macos-host', 'macos-client'):
+            for build_status in (0, 1):
+                with self.subTest(role=role, build_status=build_status), tempfile.TemporaryDirectory() as temporary:
+                    directory = Path(temporary) / 'plank-macos-signing'
+                    env = {name: 'Zml4dHVyZQ==' for name in signing.SECRET_NAMES}
+                    env.update(PLANK_CI_PRODUCT=role, PLANK_MACOS_TEAM_ID='ABCDEFGHIJ',
+                               PLANK_SOURCE_ROOT='/example/source')
+
+                    def run(args):
+                        self.assertFalse(set(signing.SECRET_NAMES) & set(os.environ))
+                        self.assertEqual(args, ['bash', '/example/source/scripts/ci/build.sh', role])
+                        return subprocess.CompletedProcess(args, build_status)
+
+                    def command(stage, args):
+                        if stage == 'read keychain search list':
+                            return '"/example/login.keychain-db"'
+                        if stage == 'validate signing identities':
+                            return ('A'*40 + ' "Developer ID Application: Example (ABCDEFGHIJ)"\n' +
+                                    'B'*40 + ' "Developer ID Installer: Example (ABCDEFGHIJ)"')
+                        return ''
+
+                    with patch.dict(os.environ, env, clear=True), \
+                            patch.object(signing, 'runner_directory', return_value=directory), \
+                            patch.object(signing.sys, 'argv', ['sign-macos.py']), \
+                            patch.object(signing, 'command', side_effect=command), \
+                            patch.object(signing.subprocess, 'run', side_effect=run) as subprocess_run:
+                        if build_status:
+                            with self.assertRaises(signing.SigningError):
+                                signing.main()
+                        else:
+                            signing.main()
+                        subprocess_run.assert_called_once()
+                    self.assertFalse(directory.exists())
+
 
 if __name__ == '__main__':
     unittest.main()

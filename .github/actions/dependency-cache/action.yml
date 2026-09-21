@@ -2,7 +2,7 @@ name: Exact dependency caches
 description: Restore or save independent exact-input dependency caches.
 inputs:
   operation:
-    description: restore before bootstrap, or save after successful build/cleanup
+    description: restore before bootstrap, or verify and save after successful bootstrap
     required: true
   product:
     description: linux-host, linux-client, macos-host, or macos-client
