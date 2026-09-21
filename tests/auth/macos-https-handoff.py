@@ -26,7 +26,12 @@ def ready(process, timeout=3):
         raise AssertionError("handoff listener readiness exceeded three seconds")
     line = process.stdout.readline()
     match = re.fullmatch(rb"macos_https_auth_ready port=(\d+) desktop_active=1\n", line)
-    assert match, "handoff listener failed to bind after old worker exit"
+    if not match:
+        _, errors = process.communicate(timeout=3)
+        # Only numeric product diagnostics, never dump arbitrary framework logs.
+        reasons = re.findall(rb"PLANK Host control listener failed: port=\d+ error-domain=\d+ error-code=\d+", errors)
+        raise AssertionError(f"handoff listener failed (exit={process.returncode}, "
+                             f"bind_errors={[item.decode() for item in reasons]})")
     return int(match[1])
 
 
@@ -49,7 +54,9 @@ def main():
     parser.add_argument("--gid", type=int, required=True)
     args = parser.parse_args()
     assert os.geteuid() == 0 and args.uid > 0 and args.gid > 0
-    with tempfile.TemporaryDirectory(prefix="plank-https-handoff-") as temporary:
+    # Root's default Darwin per-user temp parent is not traversable by the
+    # desktop UID. Keep the exact private fixture directory in /private/tmp.
+    with tempfile.TemporaryDirectory(prefix="plank-https-handoff-", dir="/private/tmp") as temporary:
         certificate = https.create_identity(temporary, args.config)
         # Fixture credentials only. Each tested UID can read the same ephemeral
         # identity without making any private key world-readable.
@@ -63,13 +70,14 @@ def main():
             process = subprocess.Popen([str(args.server), temporary],
                 env={**os.environ, "PLANK_TEST_LISTEN_PORT": str(requested)},
                 user=uid, group=args.gid if uid else 0, extra_groups=[],
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             processes.append(process)
             return process
 
         try:
             # Multiple real cross-UID rebinds, without sleeps/retry-until-green.
             for uid in [0, args.uid, 0, args.uid]:
+                print(f"handoff_stage={'sign-in' if uid == 0 else 'desktop'}", flush=True)
                 began = time.monotonic()
                 server = start(uid, port)
                 assigned = ready(server)
@@ -85,8 +93,13 @@ def main():
                 # Pending TLS and incomplete HTTP must not leave lingering
                 # sockets during retirement, nor wait for the admission timer.
                 held.append(socket.create_connection(("127.0.0.1", port), timeout=2))
-                stop(server)
-                assert server.returncode == 0
+                with https.exchange(certificate, port,
+                        b"GET /serverinfo HTTP/1.1\r\nHost: localhost\r\n\r\n") as (_, response):
+                    assert response.startswith(b"HTTP/1.1 200 ")
+                    # Keep a completed response's client open across stop too.
+                    # This must not wait for its normal five-second deadline.
+                    stop(server)
+                    assert server.returncode == 0
                 for connection in held:
                     connection.close()
                 held.clear()

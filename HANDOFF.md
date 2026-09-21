@@ -1,5 +1,32 @@
 # PLANK handoff
 
+## In progress: 1.0.150 Mac login socket handoff
+
+The operator installed the 1.0.149 Host and Ubuntu Client, then reported being
+disconnected during login. Read-only diagnosis identified a cross-user TCP
+port handoff failure: the sign-in worker exited, but the kernel attributed the
+replacement's EADDRINUSE to an old accepted connection. The existing recovery
+eventually restored the listener after approximately31seconds. Private evidence
+is outside Git; no production restart, configuration or installation was done.
+The Client log has not been collected, so its exact reconnect terminal path is
+not yet established. This listener-close path predates1.0.149.
+
+The operator authorized a fix. Continue on `macos-session-takeover`, retaining
+all149 changes. Root version150 is Host-only; Client149 remains compatible.
+The change awaits client completion of successful Content-Length replies,
+immediately cancels failed/retiring sockets, and waits for cancellation before
+worker retirement. It does not enable shared-port reuse or change TCP timers,
+account policy, protocol, media/encoder settings or Client retry behavior.
+See the updated macos-listener-recovery plan. No merge/release/install yet.
+
+Test-first commit `88370c0` adds the real cross-UID loopback handoff gate.
+Hosted baseline run35668453106 failed at replacement-listener readiness against
+the old implementation. Its fixture hid stderr and used root's default temporary
+parent, so this failure alone is not proof of the expected socket conflict.
+The fixture now uses an explicitly traversable temporary parent (private keys
+remain owner-only) and reports numeric listener errors. Record fixed results
+and an unambiguous old-code reproduction before claiming the regression gate.
+
 ## Active combined candidate: 1.0.149-macos-session-takeover
 
 The operator requested a fix for connecting from a second client while an

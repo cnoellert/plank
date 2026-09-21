@@ -36,6 +36,7 @@
     BOOL _stopped;
     BOOL _authBusy;
     dispatch_source_t _expiryTimer;
+    dispatch_group_t _socketDrain;
 }
 
 - (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions
@@ -55,6 +56,7 @@
         _requests = [NSMutableSet set];
         _networkQueue = dispatch_queue_create("la.instinctual.PLANK.Host.https", DISPATCH_QUEUE_SERIAL);
         _authQueue = dispatch_queue_create("la.instinctual.PLANK.Host.authentication", DISPATCH_QUEUE_SERIAL);
+        _socketDrain = dispatch_group_create();
     }
     return self;
 }
@@ -65,9 +67,12 @@
     atomic_store(&request->cancelled, true);
     [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
     request.bytes = nil;
-    nw_connection_set_state_changed_handler(request.connection, NULL);
-    nw_connection_cancel(request.connection);
-    [_requests removeObject:request];
+    // Graceful server-first TCP close leaves a root-owned TIME_WAIT socket
+    // which can deny the replacement desktop UID the port for 2*MSL. Abort
+    // only cancelled/failed requests or connections whose peer has finished
+    // receiving the complete Content-Length response (see replyBytes).
+    // Keep the request until Network.framework confirms actual cancellation.
+    nw_connection_force_cancel(request.connection);
 }
 
 - (void)replyBytes:(NSData *)bytes type:(NSString *)type token:(NSString *)token
@@ -89,7 +94,19 @@
             typeof(self) owner = weakSelf;
             if (error && owner && token)
                 dispatch_async(owner->_authQueue, ^{ [owner->_sessions revokeToken:token]; });
-            [owner finish:request];
+            if (!owner || request.finished) return;
+            if (error) { [owner finish:request]; return; }
+            // Send completion means queued, NOT acknowledged. Do not reset
+            // here: that can truncate a valid authentication reply on a WAN.
+            // With Content-Length and Connection: close the HTTP client knows
+            // when its response is complete and closes its side. Await that
+            // EOF; the existing request deadline bounds an uncooperative peer.
+            // No second/pipelined request is admitted on this connection.
+            nw_connection_receive(request.connection, 1, 1,
+                ^(dispatch_data_t data, nw_content_context_t context, bool complete, nw_error_t receiveError) {
+                    (void)data; (void)context; (void)complete; (void)receiveError;
+                    [weakSelf finish:request];
+                });
         });
 }
 
@@ -309,7 +326,7 @@
 }
 
 - (void)accept:(nw_connection_t)connection {
-    if (_stopped || _requests.count >= 8) { nw_connection_cancel(connection); return; }
+    if (_stopped || _requests.count >= 8) { nw_connection_force_cancel(connection); return; }
     nw_endpoint_t endpoint = nw_connection_copy_endpoint(connection);
     const struct sockaddr *address = nw_endpoint_get_address(endpoint);
     NSData *peer = nil;
@@ -320,19 +337,29 @@
         peer = IN6_IS_ADDR_V4MAPPED(ip) ? [NSData dataWithBytes:ip->s6_addr + 12 length:4] :
             [NSData dataWithBytes:ip length:16];
     }
-    if (!peer) { nw_connection_cancel(connection); return; }
+    if (!peer) { nw_connection_force_cancel(connection); return; }
     PLANKMacHTTPSRequest *request = [PLANKMacHTTPSRequest new];
     request.connection = connection;
     request.peer = peer;
     request.bytes = [NSMutableData data];
     request.deadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 5 * NSEC_PER_SEC;
     [_requests addObject:request];
+    dispatch_group_enter(_socketDrain);
     nw_connection_set_queue(connection, _networkQueue);
     __weak typeof(self) weakSelf = self;
     nw_connection_set_state_changed_handler(connection, ^(nw_connection_state_t state, nw_error_t error) {
         (void)error;
-        if (state == nw_connection_state_ready) [weakSelf receive:request];
-        else if (state == nw_connection_state_failed || state == nw_connection_state_cancelled) [weakSelf finish:request];
+        typeof(self) owner = weakSelf;
+        if (!owner) return;
+        if (state == nw_connection_state_cancelled) {
+            // Also detach the handler's request reference to break its cycle.
+            nw_connection_set_state_changed_handler(connection, NULL);
+            if ([owner->_requests containsObject:request]) {
+                [owner->_requests removeObject:request];
+                dispatch_group_leave(owner->_socketDrain);
+            }
+        } else if (state == nw_connection_state_ready && !request.finished) [owner receive:request];
+        else if (state == nw_connection_state_failed) [owner finish:request];
     });
     nw_connection_start(connection);
 }
@@ -356,12 +383,19 @@
         [NSString stringWithFormat:@"%u", port].UTF8String));
     _listener = nw_listener_create(parameters);
     if (!_listener) return NO;
+    dispatch_group_enter(_socketDrain);
     nw_listener_set_queue(_listener, _networkQueue);
     __weak typeof(self) weakSelf = self;
     nw_listener_set_new_connection_handler(_listener, ^(nw_connection_t connection) { [weakSelf accept:connection]; });
     nw_listener_set_state_changed_handler(_listener, ^(nw_listener_state_t state, nw_error_t error) {
         typeof(self) owner = weakSelf;
-        if (!owner || owner->_stopped) return;
+        if (!owner) return;
+        if (state == nw_listener_state_cancelled) {
+            nw_listener_set_state_changed_handler(owner->_listener, NULL);
+            dispatch_group_leave(owner->_socketDrain);
+            return;
+        }
+        if (owner->_stopped) return;
         if (state == nw_listener_state_ready) {
             uint16_t boundPort = nw_listener_get_port(owner->_listener);
             owner->_controlPort = boundPort;
@@ -408,7 +442,12 @@
             [self->_sessions revokeAll];
             // Auth work may already have queued a reply back to the network
             // lane. Drain that lane too before allowing the owner to retire.
-            dispatch_async(self->_networkQueue, ^{ if (completion) completion(); });
+            // A queue hop is not proof that asynchronous socket cancellation
+            // has completed. Retire only after both listener and accepted
+            // connections report cancelled, including incomplete TLS peers.
+            dispatch_group_notify(self->_socketDrain, self->_networkQueue, ^{
+                if (completion) completion();
+            });
         });
     });
 }
@@ -419,7 +458,7 @@
     for (PLANKMacHTTPSRequest *request in _requests) {
         [request.bytes resetBytesInRange:NSMakeRange(0, request.bytes.length)];
         nw_connection_set_state_changed_handler(request.connection, NULL);
-        nw_connection_cancel(request.connection);
+        nw_connection_force_cancel(request.connection);
     }
 }
 @end

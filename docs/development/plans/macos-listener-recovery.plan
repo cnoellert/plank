@@ -17,6 +17,46 @@ the OS unified log contained it.
 
 ## Scope and implementation
 
+### Cross-UID socket cleanup correction (1.0.150 candidate)
+
+A later live login proved the remaining cause: the kernel attributed desktop
+bind failures to an accepted TCP connection of the exited sign-in worker. The
+listener itself had closed. Recovery occurred approximately two TCP maximum
+segment lifetimes later. Process exit alone is not proof of port availability.
+The previous bounded restart policy prevented permanent offline state but did
+not eliminate this outage. This was not an explicit session takeover conflict.
+
+The correction keeps the existing single-request HTTP interface and exclusive
+listener, TLS/account/graphical-ownership rules and request deadlines:
+
+- After sending the Content-Length-delimited reply, await the client's close
+  instead of initiating a graceful server-side close. The existing deadline
+  bounds clients that never close; no pipelined second request is accepted.
+- Use immediate connection cancellation for cancelled/failed requests, peer
+  completion and worker retirement, avoiding a server-owned lingering close.
+- Do not cancel a successful reply merely because its send callback fired:
+  Network.framework reports processing, not peer receipt. Preserve delivery.
+- Wait asynchronously for listener and admitted-connection cancellation, plus
+  the existing authentication queue drain, before completing worker retirement.
+- Do not enable shared-endpoint reuse, change system TCP timers, add listeners,
+  move account/media work into root, or change Client retry policy.
+
+The regression fixture starts the real TLS server in isolated processes,
+alternating root and the builder UID on the same loopback port, without delays
+or retry-until-success. It includes completed HTTP replies and incomplete TLS
+connections during retirement. Each replacement must listen within three
+seconds, and a concurrent same-UID listener must still be rejected. Synthetic
+accounts/keys only; no installed service, TCC or graphical-session change.
+Existing authentication, malformed framing, slow-request and admission-capacity
+tests continue to apply. Their terminal TLS client now consumes Content-Length
+and closes itself, matching a real HTTP client rather than waiting for EOF.
+
+References: Apple's [send completion semantics](https://developer.apple.com/documentation/network/nw_connection_send(_:_:_:_:_:))
+and [immediate cancellation](https://developer.apple.com/documentation/network/nw_connection_force_cancel(_:)).
+Hosted fixtures do not replace live login/logout and takeover acceptance.
+
+### Earlier bounded recovery
+
 Developed on `macos-listener-recovery`, based on the released mainline. Keep the
 existing root coordinator and launchd jobs; add no service or persistent watcher.
 

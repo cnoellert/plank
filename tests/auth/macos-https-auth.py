@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Loopback TLS/auth qualification. Synthetic credentials only by default."""
 import argparse
+from contextlib import contextmanager
 import getpass
 import hashlib
 import http.client
@@ -40,16 +41,59 @@ class ResponseBytes:
         return io.BytesIO(self.value)
 
 
+def read_framed_reply(process, timeout=7):
+    """Consume Content-Length like Qt, not EOF from openssl's terminal client."""
+    deadline = time.monotonic() + timeout
+    data = bytearray()
+    total = None
+    while total is None or len(data) < total:
+        remaining = deadline - time.monotonic()
+        assert remaining > 0 and select.select([process.stdout], [], [], remaining)[0], "TLS response timed out"
+        chunk = os.read(process.stdout.fileno(), 65536)
+        assert chunk, "TLS response ended before its complete Content-Length body"
+        data.extend(chunk)
+        assert len(data) <= 65536, "oversized fixture reply"
+        if total is None and b"\r\n\r\n" in data:
+            head, _ = data.split(b"\r\n\r\n", 1)
+            sizes = re.findall(rb"(?im)^Content-Length: ([0-9]+)\r?$", head)
+            assert len(sizes) == 1 and int(sizes[0]) <= 60000
+            total = len(head) + 4 + int(sizes[0])
+    assert len(data) == total, "unexpected trailing response bytes"
+    return bytes(data)
+
+
+@contextmanager
+def exchange(tls, port, message):
+    # -quiet otherwise implies -ign_eof. Keep stdin OPEN until the entire
+    # reply is read, then actively close TLS as the product HTTP client does.
+    process = subprocess.Popen(tls_command(tls, port) + ["-no_ign_eof"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+    try:
+        process.stdin.write(message)
+        process.stdin.flush()
+        yield process, read_framed_reply(process)
+    finally:
+        if process.stdin:
+            process.stdin.close()
+            process.stdin = None
+        try:
+            process.communicate(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate(timeout=3)
+            raise AssertionError("TLS client did not close after consuming its reply")
+
+
 def request(tls, port, body, path="/plank/auth/start", raw=None, xml=False):
     encoded = json.dumps(body).encode()
     message = raw if raw is not None else (
         f"POST {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
         f"Content-Length: {len(encoded)}\r\n\r\n".encode() + encoded
     )
-    result = subprocess.run(tls_command(tls, port), input=message, capture_output=True, timeout=7)
-    if result.returncode:
-        raise AssertionError(f"TLS request failed (exit {result.returncode}): " + result.stderr.decode(errors="replace")[-1000:])
-    reply = http.client.HTTPResponse(ResponseBytes(result.stdout))
+    with exchange(tls, port, message) as (process, response):
+        pass
+    assert process.returncode == 0, f"TLS request failed (exit {process.returncode})"
+    reply = http.client.HTTPResponse(ResponseBytes(response))
     reply.begin()
     assert reply.getheader("Cache-Control") == "no-store"
     assert reply.getheader("Connection") == "close"
