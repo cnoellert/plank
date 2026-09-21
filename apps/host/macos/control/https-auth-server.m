@@ -133,7 +133,10 @@
                         potentialClaim = token;
                         status = 503;
                         if ([path isEqual:@"/plank/display"]) {
-                            reply = self.prepareDisplay(value, token, request.peer, _controlPort, &status) ?: @{@"state": @"denied"};
+                            reply = self.prepareDisplay(value, token, request.peer, ^BOOL {
+                                return !atomic_load(&request->cancelled) &&
+                                    clock_gettime_nsec_np(CLOCK_MONOTONIC) < request.deadline;
+                            }, &status) ?: @{@"state": @"denied"};
                             if (![_sessions authorizeToken:token peer:request.peer identity:&identity]) {
                                 status = 401; reply = @{@"state": @"denied"};
                             }
@@ -145,7 +148,8 @@
                         // polled with the same setup context. Do not extend its
                         // expiry. Launch remains one-shot and all other failures
                         // revoke only after peer-bound authorization succeeded.
-                        BOOL readinessPending = [path isEqual:@"/plank/display"] && status == 503;
+                        BOOL readinessPending = [path isEqual:@"/plank/display"] &&
+                            (status == 503 || (status == 409 && [reply[@"error"] isEqual:@"session_active"]));
                         BOOL expiredRequest = atomic_load(&request->cancelled) ||
                             clock_gettime_nsec_np(CLOCK_MONOTONIC) >= request.deadline;
                         if ((status != 200 && !readinessPending) || expiredRequest) [_sessions revokeToken:token];

@@ -82,6 +82,42 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     NSMutableArray *_stopCallbacks;
     PLANKMacInputTiming _inputWaitTiming, _inputDeliveryTiming;
 }
+- (NSString *)sessionID {
+    @synchronized(self) {
+        if (!_sessionID) _sessionID = NSUUID.UUID.UUIDString.lowercaseString;
+        return _sessionID;
+    }
+}
+@synthesize sessionID = _sessionID;
+- (BOOL)mayBeTakenOverWithToken:(NSString *)token peer:(NSData *)peer {
+    return [_sessions authorizeTakeoverToken:token peer:peer lease:_lease];
+}
+- (BOOL)reserveTakeoverWithToken:(NSString *)token peer:(NSData *)peer {
+    return [_sessions reserveTakeoverToken:token peer:peer lease:_lease];
+}
+
+- (void)takeOverWithToken:(NSString *)token peer:(NSData *)peer
+                   valid:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion {
+    dispatch_async(_queue, ^{
+        if (!valid() || ![self mayBeTakenOverWithToken:token peer:peer]) {
+            completion(NO); return;
+        }
+        uint32_t reason = PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER;
+        uint8_t packet[12]; size_t size = 0;
+        if (plank_transport_control_encode(PLANK_TRANSPORT_CONTROL_HOST_TERMINATE,
+                &reason, 1, packet, sizeof(packet), &size) == 0)
+            plank_transport_native_data_send(self->_endpoint, packet, size);
+        // The normal stop path releases held input, revokes the lease and drains
+        // capture/encoder/transport before the replacement may change geometry.
+        [self->_stopCallbacks addObject:^{ completion(YES); }];
+        // Give the reliable control lane a bounded opportunity to deliver the
+        // terminal notice. Correctness does not depend on delivery: the Host's
+        // setup reservation also rejects the old Client's reconnect attempt.
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100*NSEC_PER_MSEC), self->_queue, ^{
+            [self stopOnQueueForReason:@"session-taken-over"];
+        });
+    });
+}
 - (instancetype)init { return nil; }
 - (instancetype)initWithSessions:(PLANKMacAuthenticationSession *)sessions
                            token:(NSString *)token peer:(NSData *)peer

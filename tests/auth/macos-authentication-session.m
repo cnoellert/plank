@@ -183,6 +183,22 @@ int main(void) {
         start = [sessions startForPeer:other username:@"test"];
         NSString *otherToken = respond(sessions, other, start[@"conversation_id"])[@"session_token"];
         CHECK(otherToken != nil && [sessions claimToken:otherToken peer:other] == nil);
+        CHECK([sessions authorizeTakeoverToken:otherToken peer:other lease:lease]);
+        CHECK(![sessions authorizeTakeoverToken:otherToken peer:peer lease:lease]);
+        CHECK(![sessions authorizeTakeoverToken:otherToken peer:other lease:[PLANKMacStreamLease new]]);
+        CHECK([sessions reserveTakeoverToken:otherToken peer:other lease:lease]);
+        // Same-account clients behind one relay share an IP. A reconnect must
+        // not invalidate the replacement's already-approved setup token.
+        start = [sessions startForPeer:other username:@"test"];
+        NSString *competing = respond(sessions, other, start[@"conversation_id"])[@"session_token"];
+        CHECK(competing != nil && [sessions authorizeToken:otherToken peer:other identity:&identity]);
+        CHECK(![sessions reserveTakeoverToken:competing peer:other lease:lease]);
+        [sessions setValue:@0 forKey:@"takeoverDeadline"];
+        CHECK([sessions reserveTakeoverToken:competing peer:other lease:lease]);
+        [sessions revokeToken:competing];
+        CHECK([sessions reserveTakeoverToken:otherToken peer:other lease:lease]);
+        [sessions revokeToken:otherToken];
+        CHECK(![sessions authorizeTakeoverToken:otherToken peer:other lease:lease]);
         CHECK([sessions authorizeStreamLease:lease identity:&identity]);
         start = [sessions startForPeer:peer username:@"test"];
         NSString *second = respond(sessions, peer, start[@"conversation_id"])[@"session_token"];
@@ -263,6 +279,9 @@ int main(void) {
         lease = [sessions claimToken:token peer:peer];
         CHECK([sessions activateStreamLease:lease]);
         CHECK([sessions performWithStreamLease:lease action:^{ ++enqueues; }]);
+        // At LoginWindow more than one account may authenticate. That must
+        // never permit transferring a different account's existing stream.
+        CHECK(![sessions authorizeTakeoverToken:samePeerOtherAccount peer:peer lease:lease]);
         // Any phase change ends access, even when the verified user becomes the
         // desktop owner and a faulty fixture reuses the generation.
         PLANKMacGraphicalIdentity signIn = desktop;

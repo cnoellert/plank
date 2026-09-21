@@ -1,0 +1,41 @@
+# macOS explicit session takeover
+
+Status: implementation and automated qualification; not merged or installed.
+
+An active first client continues streaming while the Mac is locked. A second
+client previously reached display preparation before launch and received a
+generic resolution HTTP 409. This is active ownership, not a stale lease or an
+unavailable display mode.
+
+Keep display preparation before Client decoder initialization. Return a typed
+active-session conflict containing a random per-stream UUID. Only an explicit
+fresh GUI sign-in may ask Take Over/Cancel. Wait on the authentication worker,
+never on the GUI; Cancel, shutdown and the two-minute consent deadline decline.
+CLI and automatic reconnect do not implicitly replace a stream.
+
+After consent, send that exact stream UUID with the existing authenticated
+display request. Require the current scope, peer-bound setup token and matching
+verified account UID/UUID. A delayed response must not replace a newer stream.
+The normal stop path releases held input and drains capture/encoder/QUIC before
+the replacement display is prepared. The old client receives the existing
+terminal takeover notice. A fifteen-second setup reservation prevents a racing
+reconnect from stealing the next launch or superseding its token behind NAT.
+Do not reset OS permissions, unlock the Mac, reboot or create another service.
+
+Automated gates:
+
+- Shared exact feature mask and topology fixture on Host and Client.
+- Authentication: same-account acceptance; wrong peer/account/lease denial;
+  reservation conflict, expiry, revocation and same-peer token preservation.
+- Real TLS/QUIC with synthetic display: conflict, no-consent unchanged state,
+  stale UUID denial, terminal old receiver, replacement geometry and launch.
+- Qt: strict conflict parsing, accept/cancel/Escape, late clicks/timeouts and
+  responsive UI while the worker awaits the user's choice.
+- Existing platform suites and combined transport/build-policy gates.
+
+Live acceptance remains separate: use two clients with different resolutions
+and Retina scales, with the Host both locked and unlocked. Cancel must leave the
+first stream untouched; takeover must preserve the logged-in account, stop old
+input and present the new size correctly. The old client must not reconnect over
+the replacement. Also test normal reconnect, login/logout and a rejected
+different-account takeover. Linux login/input behavior must remain unchanged.

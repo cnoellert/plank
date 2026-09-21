@@ -3,6 +3,7 @@
 #import "fixed-capture.h"
 #include <arpa/inet.h>
 #include <stdatomic.h>
+#include <time.h>
 
 @implementation PLANKMacHostRuntime {
     PLANKMacAuthenticationSession *_sessions;
@@ -15,6 +16,9 @@
     NSString *_address, *_certificate, *_privateKey;
     BOOL _started;
     atomic_bool _stopping;
+    NSString *_takeoverToken;
+    NSData *_takeoverPeer;
+    uint64_t _takeoverDeadline;
 }
 - (instancetype)init { return nil; }
 - (instancetype)initWithIdentity:(SecIdentityRef)identity
@@ -43,11 +47,10 @@
             return [owner launch:request token:token peer:peer port:port status:status];
         }];
     _server.prepareDisplay = ^NSDictionary *(NSDictionary *request, NSString *token, NSData *peer,
-                                             uint16_t port, unsigned *status) {
-        (void)port;
+                                             BOOL (^requestValid)(void), unsigned *status) {
         typeof(self) owner = weakSelf;
         if (!owner) { *status = 503; return nil; }
-        return [owner prepareDisplayRequest:request token:token peer:peer status:status];
+        return [owner prepareDisplayRequest:request token:token peer:peer valid:requestValid status:status];
     };
     _server.recoverTopology = ^BOOL(BOOL (^authorized)(void)) {
         typeof(self) owner = weakSelf;
@@ -68,15 +71,18 @@
     return _server ? self : nil;
 }
 - (NSDictionary *)prepareDisplayRequest:(NSDictionary *)request token:(NSString *)token
-                                  peer:(NSData *)peer status:(unsigned *)status {
+                                  peer:(NSData *)peer valid:(BOOL (^)(void))requestValid status:(unsigned *)status {
     @synchronized(self) {
         if (!self.prepareDisplay || atomic_load(&_stopping) || !_started) {
             NSLog(@"PLANK desktop preparation unavailable: provider=%d stopping=%d started=%d",
                 self.prepareDisplay != nil, atomic_load(&_stopping), _started);
             *status = 503; return nil;
         }
-        if (_stream && _stream.state != PLANKMacPreviewStopped) { *status = 409; return nil; }
-        if (request.count != 5 || !PLANKMacEncodingProfile(request[@"encoding_mode"])) { *status = 400; return nil; }
+        id takeover = request[@"takeover_session_id"];
+        if ((request.count != 5 && request.count != 6) ||
+                (request.count == 6 && (![takeover isKindOfClass:NSString.class] ||
+                 ![[[NSUUID alloc] initWithUUIDString:takeover].UUIDString.lowercaseString isEqual:takeover])) ||
+                !PLANKMacEncodingProfile(request[@"encoding_mode"])) { *status = 400; return nil; }
         for (NSString *key in @[@"schema_version", @"width", @"height", @"scale"]) {
             id number = request[key];
             if (![number isKindOfClass:NSNumber.class] ||
@@ -90,13 +96,46 @@
         PLANKMacGraphicalIdentity scope = _snapshot();
         BOOL (^valid)(void) = ^BOOL {
             PLANKMacAccountIdentity account = {0};
-            return !atomic_load(&self->_stopping) &&
+            return requestValid() && !atomic_load(&self->_stopping) &&
                 plank_macos_same_graphical_scope(scope, self->_snapshot()) &&
                 [self->_sessions authorizeToken:token peer:peer identity:&account];
         };
         if (!valid()) { *status = 401; return nil; }
         NSDictionary *permissionError = [self permissionError:status];
         if (permissionError) return permissionError;
+        if (takeover && ![takeover isEqual:_stream.sessionID]) {
+            *status = 409; return @{@"state": @"denied", @"error": @"session_changed"};
+        }
+        if ([self takeoverReservedForAnotherToken:token peer:peer] ||
+                (_stream && _stream.state != PLANKMacPreviewStopped &&
+                 ![takeover isEqual:_stream.sessionID])) {
+            *status = 409;
+            return @{@"state": @"conflict", @"error": @"session_active", @"session_id": _stream.sessionID};
+        }
+        if (_stream && _stream.state != PLANKMacPreviewStopped) {
+            // The authentication lane is serial. Reserve the next launch while
+            // normal asynchronous teardown releases input/capture/QUIC. Neither
+            // the GUI nor network queue waits for this bounded drain.
+            if (!_takeoverToken) {
+                if (![_stream reserveTakeoverWithToken:token peer:peer]) { *status = 403; return nil; }
+                _takeoverToken = [token copy]; _takeoverPeer = [peer copy];
+                _takeoverDeadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 15*NSEC_PER_SEC;
+                __block BOOL accepted = NO;
+                dispatch_semaphore_t drained = dispatch_semaphore_create(0);
+                [_stream takeOverWithToken:token peer:peer valid:valid completion:^(BOOL ok) {
+                    accepted = ok; dispatch_semaphore_signal(drained);
+                }];
+                if (dispatch_semaphore_wait(drained, dispatch_time(DISPATCH_TIME_NOW, 5*NSEC_PER_SEC)) != 0) {
+                    *status = 503; return nil;
+                }
+                if (!accepted || !valid()) {
+                    _takeoverToken = nil; _takeoverPeer = nil;
+                    *status = 403; return nil;
+                }
+                NSLog(@"PLANK authenticated session transfer drained; preparing replacement display");
+            }
+            if (_stream.state != PLANKMacPreviewStopped) { *status = 503; return nil; }
+        }
         if (!self.prepareDisplay(width, height, scale, request[@"encoding_mode"], valid) || !valid()) {
             NSLog(@"PLANK desktop preparation failed: %ux%u", width, height);
             *status = 503; return nil;
@@ -111,6 +150,14 @@
         }
         *status = 200; return topology;
     }
+}
+- (BOOL)takeoverReservedForAnotherToken:(NSString *)token peer:(NSData *)peer {
+    PLANKMacAccountIdentity account = {0};
+    if (_takeoverToken && (clock_gettime_nsec_np(CLOCK_MONOTONIC) >= _takeoverDeadline ||
+            ![_sessions authorizeToken:_takeoverToken peer:_takeoverPeer identity:&account])) {
+        _takeoverToken = nil; _takeoverPeer = nil;
+    }
+    return _takeoverToken && (![_takeoverToken isEqual:token] || ![_takeoverPeer isEqual:peer]);
 }
 - (BOOL)startOnPort:(uint16_t)port ready:(void (^)(uint16_t))ready failed:(void (^)(void))failed {
     @synchronized(self) {
@@ -137,6 +184,7 @@
             *status = 503; return nil;
         }
         NSDictionary *selected = _topology();
+        if ([self takeoverReservedForAnotherToken:token peer:peer]) { *status = 409; return nil; }
         if (!PLANKMacPreviewRequestMatchesTopology(request, selected)) { *status = 400; return nil; }
         if (_stream && _stream.state != PLANKMacPreviewStopped) { *status = 409; return nil; }
         NSDictionary *permissionError = [self permissionError:status];
@@ -152,6 +200,7 @@
         _stream = [[PLANKMacPreviewSession alloc] initWithSessions:_sessions token:token peer:peer
             request:request topology:_topology config:&config capture:_capture() input:_input()];
         if (!_stream) { *status = 503; return nil; }
+        _takeoverToken = nil; _takeoverPeer = nil;
         // Snapshot after endpoint creation as well. Do not put a later display
         // generation into a manifest for a stream created against an older one.
         NSString *transportToken = _stream.transportToken;

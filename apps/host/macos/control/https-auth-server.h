@@ -11,6 +11,8 @@
 // QUIC must bind the supplied control port and use the same certificate as TLS.
 typedef NSDictionary *(^PLANKMacLaunchHandler)(NSDictionary *request, NSString *token,
     NSData *peer, uint16_t port, unsigned *status);
+typedef NSDictionary *(^PLANKMacPrepareDisplayHandler)(NSDictionary *request, NSString *token,
+    NSData *peer, BOOL (^requestValid)(void), unsigned *status);
 
 // Native TLS 1.3 discovery/authentication/authorized-topology adapter.
 // No implicit streaming capability. A nil launch handler leaves launch absent.
@@ -23,7 +25,7 @@ typedef NSDictionary *(^PLANKMacLaunchHandler)(NSDictionary *request, NSString *
 @interface PLANKMacHTTPSAuthServer : NSObject
 // Configure before start. Runs on the bounded auth lane; authenticates before
 // dispatch and rechecks ownership before returning any display description.
-@property(copy) PLANKMacLaunchHandler prepareDisplay;
+@property(copy) PLANKMacPrepareDisplayHandler prepareDisplay;
 @property(copy) BOOL (^recoverTopology)(BOOL (^valid)(void));
 - (instancetype)initWithIdentity:(SecIdentityRef)identity sessions:(PLANKMacAuthenticationSession *)sessions
                     information:(PLANKMacServerInformation *)information

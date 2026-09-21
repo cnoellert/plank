@@ -46,8 +46,14 @@ typedef NS_ENUM(unsigned, PLANKMacPreviewState) {
 // Never contains credentials, clipboard contents or input payload values.
 @property(atomic, readonly, copy) NSString *stopReason;
 @property(readonly) BOOL clipboardEnabled;
+// Non-secret identity used to bind explicit takeover consent to this stream.
+@property(readonly, copy) NSString *sessionID;
 // Secret for the authenticated HTTPS launch reply only; never log/persist.
 @property(atomic, readonly, copy) NSString *transportToken;
 - (void)start;
+- (BOOL)mayBeTakenOverWithToken:(NSString *)token peer:(NSData *)peer;
+- (BOOL)reserveTakeoverWithToken:(NSString *)token peer:(NSData *)peer;
 - (void)stopWithCompletion:(void (^)(void))completion;
+- (void)takeOverWithToken:(NSString *)token peer:(NSData *)peer
+                   valid:(BOOL (^)(void))valid completion:(void (^)(BOOL))completion;
 @end

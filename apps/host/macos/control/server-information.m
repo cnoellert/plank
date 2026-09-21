@@ -48,7 +48,7 @@ static BOOL publicText(NSString *value, NSUInteger maximum) {
         @[@"PlankHostMetadataVersion", @"1"], @[@"PlankHostVersion", _version],
         @[@"PlankAuth", @"1"], @[@"ServerCodecModeSupport", _streaming ? @"1049088" : @"0"],
         @[@"PlankTopologyVersion", _streaming ? @"13" : @"0"],
-        @[@"PlankFeatureFlags", _streaming ? @"7864433" : @"0"],
+        @[@"PlankFeatureFlags", _streaming ? @"7897201" : @"0"],
         @[@"PairStatus", authorized ? @"1" : @"0"]
     ];
     for (NSArray *field in fields)

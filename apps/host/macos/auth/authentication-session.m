@@ -31,6 +31,8 @@
     PLANKMacStreamLease *_lease;
     uint64_t _revocationGeneration;
     BOOL _verifying;
+    NSString *_takeoverToken;
+    uint64_t _takeoverDeadline;
 }
 
 static uint64_t monotonicSeconds(void) {
@@ -79,6 +81,7 @@ enum { MaximumPendingChallenges = 16, MaximumSetupTokens = 4 };
                 [records removeObjectForKey:key];
         }
     }
+    if (_takeoverToken && (now >= _takeoverDeadline || !_tokens[_takeoverToken])) _takeoverToken = nil;
     if (_lease && ((!_lease.active && _lease.activateBefore <= now) ||
             !plank_macos_account_may_attach(_lease.record.account, _lease.record.scope, current))) {
         [self endStreamLease:_lease];
@@ -151,7 +154,7 @@ enum { MaximumPendingChallenges = 16, MaximumSetupTokens = 4 };
                 NSMutableArray<NSString *> *superseded = [NSMutableArray array];
                 for (NSString *key in _tokens) {
                     PLANKMacAuthRecord *old = _tokens[key];
-                    if ([old.peer isEqual:peer] && old.account.uid == account.uid &&
+                    if (![key isEqual:_takeoverToken] && [old.peer isEqual:peer] && old.account.uid == account.uid &&
                             !memcmp(old.account.uuid, account.uuid, sizeof(account.uuid)))
                         [superseded addObject:key];
                 }
@@ -193,6 +196,7 @@ enum { MaximumPendingChallenges = 16, MaximumSetupTokens = 4 };
         ++_revocationGeneration;
         [_pending removeAllObjects];
         [_tokens removeAllObjects];
+        _takeoverToken = nil;
         [self endStreamLease:_lease];
     }
 }
@@ -200,6 +204,7 @@ enum { MaximumPendingChallenges = 16, MaximumSetupTokens = 4 };
 - (void)revokeToken:(NSString *)token {
     @synchronized(self) {
         if ([token isKindOfClass:NSString.class]) {
+            if ([_takeoverToken isEqual:token]) _takeoverToken = nil;
             [_tokens removeObjectForKey:token];
             if ([_lease.claimedToken isEqual:token]) [self endStreamLease:_lease];
         }
@@ -251,6 +256,30 @@ enum { MaximumPendingChallenges = 16, MaximumSetupTokens = 4 };
         lease.claimedToken = nil;
         lease.record = nil;
         _lease = nil;
+    }
+}
+
+- (BOOL)authorizeTakeoverToken:(NSString *)token peer:(NSData *)peer
+                         lease:(PLANKMacStreamLease *)lease {
+    @synchronized(self) {
+        PLANKMacAccountIdentity account = {0};
+        return [self authorizeToken:token peer:peer identity:&account] &&
+            lease && lease == _lease && lease.record &&
+            account.uid == lease.record.account.uid &&
+            !memcmp(account.uuid, lease.record.account.uuid, sizeof(account.uuid));
+    }
+}
+
+- (BOOL)reserveTakeoverToken:(NSString *)token peer:(NSData *)peer
+                       lease:(PLANKMacStreamLease *)lease {
+    @synchronized(self) {
+        if (![self authorizeTakeoverToken:token peer:peer lease:lease] ||
+                (_takeoverToken && ![_takeoverToken isEqual:token])) return NO;
+        // Another reconnect behind the same relay/NAT must not supersede the
+        // setup token while the explicitly approved transfer drains the peer.
+        _takeoverToken = [token copy];
+        _takeoverDeadline = monotonicSeconds() + 15;
+        return YES;
     }
 }
 

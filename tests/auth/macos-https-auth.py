@@ -108,7 +108,7 @@ def authenticate(tls, port, username, password, encoding_mode="hevc-10-420-video
     raw = ("GET /plank/topology HTTP/1.1\r\nHost: localhost\r\n"
            "Authorization: Bearer " + token + "\r\n\r\n").encode()
     status, topology = request(tls, port, {}, raw=raw)
-    assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 7864433
+    assert status == 200 and topology["schema_version"] == 13 and topology["feature_flags"] == 7897201
     capture = topology["capture"]
     assert 2 <= capture["width"] <= 8192 and capture["width"] % 2 == 0
     assert 2 <= capture["height"] <= 8192 and capture["height"] % 2 == 0
@@ -179,6 +179,51 @@ def preview(tls, port, token, topology, receiver, media, seconds=3):
     assert reply["services"] == {"audio": True, "input": True, "pen": "normalized", "cursor": "embedded", "clipboard": False}
     assert launch(body, token)[0] == 401  # one-use HTTP token, before QUIC activation
     assert launch({"schema_version": 3, "width": 1920, "height": 1080, "scale": 1, "encoding_mode": "hevc-10-420-videotoolbox"}, token, "/plank/display")[0] == 401
+    if not media:
+        fingerprint = hashlib.sha256(Path(tls).with_name("cert.der").read_bytes()).hexdigest()
+        old = subprocess.Popen([str(receiver), fingerprint, "--wait-takeover"],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            old.stdin.write(json.dumps(reply).encode())
+            old.stdin.close()
+            assert select.select([old.stdout], [], [], 7)[0], "takeover receiver did not start"
+            assert old.stdout.readline() == b"takeover_receiver_ready=1\n"
+            replacement, original = authenticate(tls, port, "synthetic", "test")
+            change = dict(mode, width=1920, height=1080)
+            status, conflict = launch(change, replacement, "/plank/display")
+            assert status == 409 and conflict["error"] == "session_active"
+            session_id = conflict["session_id"]
+            assert str(uuid.UUID(session_id)) == session_id
+            # Cancel/no consent performs no mutation and does not revoke setup.
+            assert launch(change, replacement, "/plank/display") == (status, conflict)
+            assert old.poll() is None
+            status, stale = launch(dict(change, takeover_session_id=str(uuid.uuid4())), replacement, "/plank/display")
+            assert status == 409 and stale["error"] == "session_changed"
+            assert old.poll() is None
+            replacement, original = authenticate(tls, port, "synthetic", "test")
+            assert original == topology
+            status, resized = launch(dict(change, takeover_session_id=session_id), replacement, "/plank/display")
+            assert status == 200 and resized["capture"]["width"] == 1920
+            assert old.wait(timeout=7) == 0
+            assert old.stdout.read() == b"takeover_receiver_terminal=1\n"
+            # A fresh login from the displaced peer cannot invalidate the
+            # reserved setup or silently reclaim the display, even behind NAT.
+            competitor, _ = authenticate(tls, port, "synthetic", "test")
+            assert launch(change, competitor, "/plank/display")[0] == 409
+            new_body = dict(body, capture_generation=resized["generation"],
+                            width=1920, height=1080)
+            assert launch(new_body, competitor)[0] == 409
+            status, replacement_reply = launch(new_body, replacement)
+            assert status == 200
+            result = subprocess.run([str(receiver), fingerprint, "--no-media"],
+                                    input=json.dumps(replacement_reply).encode(), capture_output=True, timeout=15)
+            assert result.returncode == 0, "replacement stream failed"
+            print("macos_takeover=pass real_tls=1 real_quic=1 cancel_unchanged=1 same_peer_reservation=1 new_geometry=1")
+            return
+        finally:
+            if old.poll() is None:
+                old.terminate()
+                old.wait(timeout=5)
     fingerprint = hashlib.sha256(tls.with_name("cert.der").read_bytes()).hexdigest()
     command = [str(receiver), fingerprint] + (["--seconds", str(seconds)] if media else ["--no-media"])
     # No launch/transport credential in argv, environment, files or diagnostics.

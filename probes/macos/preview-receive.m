@@ -13,7 +13,9 @@
 int main(int argc, const char **argv) {
     unsigned seconds = 3;
     BOOL media = YES;
-    if (argc == 3 && !strcmp(argv[2], "--no-media")) media = NO;
+    BOOL takeover = argc == 3 && !strcmp(argv[2], "--wait-takeover");
+    if (takeover) { media = NO; seconds = 30; }
+    else if (argc == 3 && !strcmp(argv[2], "--no-media")) media = NO;
     else if (argc == 4 && !strcmp(argv[2], "--seconds")) {
         char *end = NULL; unsigned long value = strtoul(argv[3], &end, 10);
         if (!end || *end || value < 3 || value > 30) return 2;
@@ -48,6 +50,25 @@ int main(int argc, const char **argv) {
         token = nil; launch = nil;
         REQUIRE(plank_transport_native_endpoint_start(endpoint) == PLANK_TRANSPORT_OK);
         REQUIRE(plank_transport_native_endpoint_wait_ready(endpoint, 5000) == PLANK_TRANSPORT_OK);
+        if (takeover) {
+            puts("takeover_receiver_ready=1"); fflush(stdout);
+            const uint64_t deadline = clock_gettime_nsec_np(CLOCK_MONOTONIC) + 30*NSEC_PER_SEC;
+            for (;;) {
+                REQUIRE(clock_gettime_nsec_np(CLOCK_MONOTONIC) < deadline);
+                uint8_t packet[64]; size_t count = 0;
+                int32_t got = plank_transport_native_data_receive(endpoint, packet, sizeof(packet), &count, 1000);
+                if (got == PLANK_TRANSPORT_TIMEOUT) continue;
+                REQUIRE(got == PLANK_TRANSPORT_OK);
+                PlankTransportControlPacket control;
+                REQUIRE(!plank_transport_control_decode(packet, count, &control));
+                if (control.type == PLANK_TRANSPORT_CONTROL_VIDEO_BITRATE_APPLIED) continue;
+                REQUIRE(control.type == PLANK_TRANSPORT_CONTROL_HOST_TERMINATE && control.payload_size == 4);
+                REQUIRE(plank_transport_control_read_u32(control.payload) == PLANK_TRANSPORT_TERMINATION_SESSION_TAKEN_OVER);
+                break;
+            }
+            plank_transport_native_endpoint_destroy(endpoint);
+            puts("takeover_receiver_terminal=1"); return 0;
+        }
         uint64_t frames = 0, totalBytes = 0, lastPTS = 0, audioPackets = 0, lastAudioPTS = 0;
         double audioMaxAgeMs = 0, firstVideoMs = 0, firstAudioMs = 0;
         if (media) {

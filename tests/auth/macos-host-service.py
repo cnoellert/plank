@@ -117,7 +117,7 @@ def main():
                     assert version == plistlib.loads((args.binary.parents[2] / "Contents/Info.plist").read_bytes())["PLANKVersion"]
                 assert response.findtext("ServerCodecModeSupport") == "1049088"
                 assert response.findtext("PlankTopologyVersion") == "13"
-                assert response.findtext("PlankFeatureFlags") == "7864433"
+                assert response.findtext("PlankFeatureFlags") == "7897201"
                 assert fixture.request(certificate, port, {}, raw=b"GET /plank/topology HTTP/1.1\r\nHost: localhost\r\n\r\n")[0] == 401
                 assert fixture.request(certificate, port, {}, raw=b"GET /applist HTTP/1.1\r\nHost: localhost\r\n\r\n")[0] == 401
                 command("launchctl", "kill", "SIGTERM", graphical_job)

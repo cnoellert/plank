@@ -245,9 +245,10 @@ schema.
 The `macos-host` work adds `FixedCaptureFeature = 0x80000` within schema 13.
 This is a distinct fixed-capture description, **not** permission to relax the
 existing Linux topology requirements. Its exact current feature mask is
-`7864433` (`0x380071`): fixed capture, Mac desktop preparation, Mac encoding-profile
+`7897201` (`0x788071`): fixed capture, Mac desktop preparation, Mac encoding-profile
 selection (`0x200000`), output topology, topology generation,
-layout metadata and composite source geometry. All other bits are rejected
+layout metadata, composite source geometry, clipboard and explicit session
+takeover (`0x8000`). All other bits are rejected
 for this preview. It is deliberately excluded from the Client's Linux
 `SupportedFeatureFlags` launch mask.
 
@@ -269,7 +270,7 @@ no virtual modes; Linux bookmark layout changes are not allowed for it.
 
 `MacDesktopPreparationFeature = 0x100000` additionally requires authenticated
 `POST /plank/display` before constructing a streaming session. The exact JSON
-request is `{ "schema_version": 2, "width": 3840, "height": 2160,
+request is `{ "schema_version": 3, "width": 3840, "height": 2160, "scale": 1,
 "encoding_mode": "hevc-10-444-videotoolbox" }`; numeric values
 are integral, never booleans, and must identify a qualified bookmark mode.
 The Client first fetches authenticated topology to pin the certificate, then
@@ -281,7 +282,22 @@ the profile changes the topology generation even at unchanged dimensions.
 The Client rejects mismatched dimensions or profile and
 uses the returned geometry before video/window/input initialization. Preparing
 a display does not consume the authentication bearer; stream launch still does.
-An active stream rejects preparation (409); authority loss rejects it (401), and
+An active stream rejects preparation with HTTP409 and
+`{"state":"conflict","error":"session_active","session_id":"<UUID>"}`.
+The opaque non-secret stream identity binds consent to this exact stream.
+The peer-bound setup token remains valid without renewing its expiry. Cancel
+does not change the active stream. After explicit confirmation the Client may
+repeat the request with `takeover_session_id` equal to that identity. A stale
+identity returns409/`session_changed`; a different account cannot take over,
+including at LoginWindow. Both verified UID and account UUID must match.
+The Host drains normal input/capture/encoder/QUIC teardown before changing
+geometry. An approved setup has a 15-second reservation through launch, so a
+displaced peer cannot race the replacement, including behind a shared NAT.
+The displaced Client receives the existing terminal session-transfer notice;
+automatic reconnect also treats an active-stream conflict as terminal and
+never requests takeover. Interactive confirmation runs outside the GUI thread
+and expires after two minutes; CLI connections never implicitly take over.
+Authority loss rejects preparation (401), and
 an unavailable/failed mode returns 503 without starting a differently sized stream.
 
 The desktop agent owns one virtual display for its whole process lifetime and

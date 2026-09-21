@@ -35,6 +35,12 @@ typedef PLANKMacGraphicalIdentity (^PLANKMacGraphicalSnapshot)(void);
 // latches revocation; caller must stop the endpoint/capture on failure.
 - (BOOL)authorizeStreamLease:(PLANKMacStreamLease *)lease
                    identity:(PLANKMacAccountIdentity *)identity;
+// Explicit transfer only: the fresh peer-bound setup token must name the
+// same verified account as this exact lease, including at LoginWindow.
+- (BOOL)authorizeTakeoverToken:(NSString *)token peer:(NSData *)peer
+                         lease:(PLANKMacStreamLease *)lease;
+- (BOOL)reserveTakeoverToken:(NSString *)token peer:(NSData *)peer
+                       lease:(PLANKMacStreamLease *)lease;
 // Linearize a bounded, nonblocking media enqueue with revocation. Do not do
 // encoding, socket waits, callbacks into UI, or account verification in action.
 - (BOOL)performWithStreamLease:(PLANKMacStreamLease *)lease action:(void (^)(void))action;
