@@ -50,17 +50,40 @@ with a synthetic display, and Qt accept/cancel/Escape/timeout responsiveness.
 These tests must pass on the appropriate hosted builders; local syntax checks
 are not Mac execution or hardware acceptance.
 
-Local combined-source checks: all 56 CI-policy tests, Python syntax, shell
+Local combined-source checks: all 58 CI-policy tests, Python syntax, shell
 syntax and diff whitespace pass. Initial hosted runs 35662191961 and
 35662506372 were superseded/cancelled before completing product qualification
 to include final Client shutdown and authenticated-bookmark routing guards.
-Privacy and clipboard checks passed on the first revision. Final hosted
-candidate builds and live acceptance are pending. No 1.0.149 package is ready.
+Privacy and clipboard checks also passed at combined source `df06fd5`.
+Its unsigned Mac Host job in run 35662745109 passed 520 authentication checks
+and the real TLS/QUIC synthetic-display takeover scenario. The first Client
+attempts exposed a changelog false positive in the Linux source gate and an
+outdated Mac topology assertion; both are corrected. The added source-gate
+tests require ripgrep explicitly in the policy job (35663778957 caught the
+missing test prerequisite). No test was disabled or assertion relaxed.
+
+Signed Mac Host run 35663307341 passed signing, notarization, stapling and
+package validation. Its exact package is collected under
+`artifacts/packages/candidates/1.0.149-macos-session-takeover/macos/`.
+SHA-256: `58f91ddd57f2ee80c4a6726fb35c5a459c466d0adb1d8044e7c35e62c2e6176e`.
+The matching Client packages and Linux Host build remain in progress; do not
+call the combined candidate ready or claim live acceptance yet.
 
 ## Source provenance and previous build evidence
 
+Host builds use root `df06fd58cd0fe3c81c264fc37c0543c91e2672f7`.
+Client attempts at root `b4d5ba6a2e8800e63eb026bf291ff1c3323f49cc` (Ubuntu run
+35664009589, signed Mac run 35664012122) compiled and passed the topology suites.
+The consent test performed accept/cancel/Escape correctly but failed its
+zero-warning gate because its fixture lacked the dialog icons and used native
+Mac controls instead of the product's Material style. Those test inputs are now
+corrected; replacement builds are pending. Since `df06fd5`, changes only affect
+test inputs, source-gate prerequisites and release-note prose exclusion; no Host
+or Client product implementation changed. Record each package's actual source
+commit, not a rewritten common provenance.
+
 The Client implementation is committed and pushed on its matching
-`macos-session-takeover` branch at `def812165745f9168f691e8ae041c6343bc01130`,
+`macos-session-takeover` branch at `a29dad91987f1989dbcbfab11166879459d938f8`,
 based on `270a55cdf5af2f5308fb23537ea3e196e81fda0a`, before its parent gitlink.
 Current retained dependencies:
 
@@ -98,9 +121,11 @@ boundary drop. The latest published release remains 1.0.143.
 Use GitHub-hosted builders and read the release/hosted runbooks. No installation,
 release publication or main merge is authorized for this candidate. Retain full
 CUDA coverage, exact dependency patches and all package/privacy gates. Signing
-remains main-only unless the operator explicitly permits this candidate branch;
-a question requesting that narrow temporary permission is outstanding. Ordinary
-branch Mac jobs compile/test but produce no signed end-user installers.
+was explicitly authorized for this candidate only. Temporary branch policy
+`60637043` in the `macos-signing` environment permits `macos-session-takeover`;
+delete that exact policy after the signed builds finish, preserving the main
+policy. No environment secrets or reviewer rules were changed. Ordinary branch
+Mac jobs compile/test but produce no signed end-user installers.
 
 Collect exact package bytes with hashes/provenance in the versioned catalog;
 never relabel earlier packages. Feature package/visible versions include
