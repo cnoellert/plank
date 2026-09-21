@@ -4,8 +4,9 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-// Temporary bounded stutter diagnostic. Numeric metadata only; no frame bytes.
+// Opt-in bounded stutter diagnostic. Numeric metadata only; no frame bytes.
 // One owner queue reserves/updates records. Dump only after encoder drain so
 // there is no per-frame formatting or disk I/O during measured playback.
 #define PLANK_FRAME_TIMING_CAPACITY 8192
@@ -21,6 +22,14 @@ typedef struct {
     size_t count;
     PLANKFrameTimingRecord records[PLANK_FRAME_TIMING_CAPACITY];
 } PLANKFrameTiming;
+
+// Read once per capture session. Missing/invalid values leave tracing disabled;
+// allocation failure must never prevent normal capture or summary logging.
+static inline PLANKFrameTiming *PLANKFrameTimingCreate(void) {
+    const char *enabled = getenv("PLANK_MACOS_FRAME_TIMING");
+    if (!enabled || strcmp(enabled, "1") != 0) return NULL;
+    return calloc(1, sizeof(PLANKFrameTiming));
+}
 
 static inline PLANKFrameTimingRecord *PLANKFrameTimingAppend(PLANKFrameTiming *trace,
                                                             uint64_t now) {

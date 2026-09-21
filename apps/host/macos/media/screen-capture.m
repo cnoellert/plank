@@ -158,7 +158,7 @@
                    queue:(dispatch_queue_t)queue started:(void (^)(uint32_t))started failed:(void (^)(void))failed {
     if (_queue || !queue || !video || !audio || !started || !failed) { if (failed) failed(); return; }
     _queue = queue; _video = video; _audio = audio; _failed = [failed copy];
-    _timing = calloc(1, sizeof(*_timing)); // allocation failure must not affect capture
+    _timing = PLANKFrameTimingCreate();
     [self createAudioEncoder];
     if (_desktopAudioTap) [self createDesktopAudioTap];
     _lastPTS = kCMTimeInvalid;
@@ -296,12 +296,15 @@
         fprintf(stderr, "macos_capture_failure stage=video-sample\n"); _failed(); return;
     }
     _lastPTS = pts;
-    uint64_t captured = clock_gettime_nsec_np(CLOCK_MONOTONIC);
-    if (_timing && !_timing->origin_ns) {
-        _timing->origin_ns = captured;
-        _timing->wall_ns = clock_gettime_nsec_np(CLOCK_REALTIME);
+    PLANKFrameTimingRecord *timing = NULL;
+    if (_timing) {
+        uint64_t captured = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+        if (!_timing->origin_ns) {
+            _timing->origin_ns = captured;
+            _timing->wall_ns = clock_gettime_nsec_np(CLOCK_REALTIME);
+        }
+        timing = PLANKFrameTimingAppend(_timing, captured);
     }
-    PLANKFrameTimingRecord *timing = PLANKFrameTimingAppend(_timing, captured);
     if (timing) {
         timing->pts_ns = (uint64_t)CMTimeConvertScale(pts, 1000000000, kCMTimeRoundingMethod_RoundTowardZero).value;
         timing->in_flight = _inFlight;
@@ -326,8 +329,10 @@
         uint64_t completed = clock_gettime_nsec_np(CLOCK_MONOTONIC);
         if (output) CFRetain(output);
         dispatch_async(self->_queue, ^{
-            uint64_t handled = clock_gettime_nsec_np(CLOCK_MONOTONIC);
-            if (timing) { timing->completed_ns = completed; timing->handled_ns = handled; }
+            if (timing) {
+                timing->completed_ns = completed;
+                timing->handled_ns = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+            }
             --self->_inFlight;
             self->_maxEncodeNs = MAX(self->_maxEncodeNs, completed - submitted);
             self->_maxCallbackQueueNs = MAX(self->_maxCallbackQueueNs,

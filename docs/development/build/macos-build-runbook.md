@@ -117,6 +117,31 @@ only for this fixture. Compilation and signing remain unprivileged. It posts
 no input and changes no TCC settings or services. Do not skip the test, change
 the console login, or rebuild dependencies to work around the session boundary.
 
+### Opt-in capture frame timing
+
+Detailed ScreenCaptureKit/VideoToolbox frame tracing is disabled by default.
+For an authorized diagnostic, set `PLANK_MACOS_FRAME_TIMING=1` in the capture
+worker's process environment before starting it, then start a new stream.
+Only the exact value `1` enables tracing; unset, empty, `0` and other values
+leave it disabled. This is a runtime diagnostic, not a build option, Client
+preference or encoder setting. An export in an SSH shell does not modify an
+already-running launchd worker; configure the actual graphical worker's launch
+environment, not the machine coordinator or account verifier. Do not interrupt
+an active session to enable it without operator approval.
+
+The setting is sampled once per capture session. Enabled traces retain at most
+8,192 numeric records from the first 120 seconds, with no frame content. They
+are dumped to the worker's existing product log only after capture callbacks
+have drained. The existing `scripts/test/analyze-macos-frame-timing.py` consumes
+that format. Remove the diagnostic environment setting and restart the worker
+afterward; do not ship it enabled in a launchd definition.
+
+Default operation allocates no detailed trace buffer, performs no trace-only
+timestamp sampling and emits no frame-timing dump. Normal error logging and
+the compact `PLANK capture summary` remain enabled. The Host build runs
+`tests/video/macos-frame-timing.c` to check default-off/invalid values, explicit
+opt-in, silent disabled output, bounded recording and unchanged dump format.
+
 ### Non-prompting permission qualification
 
 Follow `macos-provisioning.plan`. The installed signed Host supports
