@@ -11,10 +11,51 @@ Work is on `macos-frame-tracing` in
 in that base, not merged to main. Preserve the primary checkout's dirty RK3576
 work. Other review findings are not part of these changes.
 
-The operator now authorized commit/push and hosted branch builds, explicitly
-not a merge. Candidate version is `1.0.148-macos-frame-tracing`. All four
-ordinary hosted jobs will run; Mac jobs remain unsigned compile/test checks
-under the main-only signing policy. Do not install or publish a release.
+The operator authorized commit/push and hosted branch builds, explicitly not a
+merge. Candidate `1.0.148-macos-frame-tracing` was committed and pushed at
+`ad1a4a40e429e7712a4c01dd1aa4d74e68e5c3bb`. All four ordinary hosted jobs run
+from that exact source. Mac jobs remain unsigned compile/test checks under the
+main-only signing policy. Do not install or publish a release.
+
+Hosted run [35654558827](https://github.com/instinctual/plank/actions/runs/35654558827)
+passed both Mac compile/test jobs. Ubuntu Client passed compilation and package
+gates but GitHub artifact finalization failed with an intermediary HTTP 403,
+after the upload completed. One same-source, Ubuntu-only recovery build,
+[35655809810](https://github.com/instinctual/plank/actions/runs/35655809810), passed
+including upload. Its Rust/Cargo/FFmpeg caches restored and independently
+verified; restore took 24 seconds and bootstrap two seconds. Application builds
+were fresh. This was an upload recovery, not a retry of the loss-performance
+failure. Linux Host passed build, transport qualification, RPM gates and upload
+on its first hosted attempt. The original all-product run remains red solely
+because of the first Ubuntu artifact-finalization failure; the separate Ubuntu
+recovery run is green. Both runs are complete; nothing is still building.
+Privacy run 35654558749 and clipboard run 35654558815 passed.
+
+The hosted Host passed all six strengthened loss matrices (three per policy):
+5,400 frames recovered, zero unrecovered FEC symbols and zero unintended proxy
+kernel drops. Across all phases, worst p95 delivery was 33.774 ms, worst
+delivery 34.196 ms, worst submission 36.137 ms and worst receive gap 19.311 ms.
+No assertion, policy or timeout was changed, and no loss test was retried.
+Both policies' 34 ordinary transport tests and four logger tests passed, along
+with native/C ABI loopbacks and the vendor boundary/snapshot regressions.
+The input suite passed 25 shuffled iterations (13 tests per iteration; three
+`/dev/uhid`-dependent cases explicitly skipped). Production RPM retains
+`BUILD_TESTS=OFF`, complete CUDA architectures and root-owned `0700` log directory.
+Mac Host's opt-in/default-off tracing test passed on SDK27; existing compiler
+warnings remain. These are build/portable-test results, not hardware acceptance.
+
+Checksum-verified packages are collected under
+`artifacts/packages/candidates/1.0.148-macos-frame-tracing/`:
+
+| Package | Bytes | SHA256 |
+| --- | ---: | --- |
+| `linux/plank-client_1.0.148-macos-frame-tracing_amd64.deb` | 15453724 | `1c9dbab7405f2b27509bb59814dd4c57e6c6a924a1d2c9fe7f870e30ae816f7a` |
+| `linux/plank-host-1.0.148-0.macos_frame_tracing.1.el9.x86_64.rpm` | 8599335 | `9bfc46ea8f96ee3a1415f735df743f269419e53be87d096a24bfa0737a50dd18` |
+
+The adjacent manifest records the exact root and product gitlinks. Package
+validation passed; functional validation remains `not-recorded`. There are no
+signed Mac installers from this branch build. Neither local builders nor
+hardware targets were used, and nothing was merged, installed or released.
 
 ### Strict loss-test performance gate
 
@@ -46,10 +87,12 @@ its 100 ms scheduled submission deadline, about 5.59 seconds into the matrix
 cleanup reported zero kernel drops. The failure is retained, not retried or
 waived. It demonstrates a schedule/backpressure failure that the earlier short,
 recovery-only test could pass; it does not by itself establish the root cause.
-Since Host packaging requires both policies, package qualification is blocked
-until the paced policy is investigated/resolved or its supported scope is
-explicitly reconsidered. Do not silently skip it or relax the bounds. No hosted
-or hardware performance qualification has been performed for the new gate.
+The later authorized hosted build passed both policies without changing the
+test, as recorded above. That qualifies those package gates on the hosted
+builder; it does not explain or erase this first local failure. Preserve both
+results and investigate the environment/performance difference before claiming
+portable timing reliability. Do not silently skip either policy or relax the
+bounds. Live hardware performance qualification has not been performed.
 All 56 CI-policy tests, runner shell syntax and whitespace checks pass.
 
 ### Independent dependency-cache fingerprints
@@ -76,8 +119,10 @@ mixed hits/misses, CLI prepare/seal/verify, corrupt/incomplete restore rejection
 non-overlapping cache paths and deployment/signing boundaries. Bootstrap and
 all recipe shell syntax checks pass; workflow/composite YAML parse and diff
 whitespace checks pass. No platform dependencies were compiled/downloaded for
-these tests. Hosted cold/warm and partial-hit build qualification remains a gate,
-not a claimed speedup. New v2 namespaces need one initial cold population;
+these local tests. The subsequent hosted builds above passed cold population
+for all four products and warm restore/verification for Ubuntu Client. Warm
+qualification of the other products and mixed-hit hosted builds remain gates.
+New v2 namespaces needed one initial cold population;
 old v1 caches are not restored or deleted. The build runbook documents the
 groups and labels previous v1 timings as historical evidence only.
 
@@ -128,14 +173,15 @@ values, exact opt-in, silent disabled output, per-session lifetime, limits and
 the original dump format. GCC C11 warnings-as-errors and Clang ASan/UBSan runs
 pass locally. The regular macOS Host build already runs this test. No macOS
 Objective-C build or live capture test has run for this change yet.
-All four fixes are committed for the authorized branch build:
+All four fixes are committed and pushed for the authorized branch build:
 `bf526c3` (frame tracing), `85a3e1f` (QUIC logging), `d2f5960` (dependency caches),
-and `e70ef7b` (loss-performance gate). The next push includes those commits,
-version 1.0.148 and these notes;
-there is no merge, installation or signing-policy change. The existing 1.0.147
-artifacts below do not contain these fixes. Hosted qualification of 1.0.148 is
-pending. The paced-baseline performance failure above remains an unresolved
-package gate, not permission to relax assertions or bypass that comparison.
+and `e70ef7b` (loss-performance gate). Candidate source and build results are
+above; there is no merge, installation or signing-policy change. The existing
+1.0.147 artifacts below do not contain these fixes. The local paced-baseline
+performance failure remains unexplained despite the hosted pass; it is not
+permission to relax assertions or bypass that comparison. Next: authorized
+hardware acceptance, investigation of that timing difference, and separate
+approval if signed Mac candidates or a merge are desired.
 
 ## Pending: Quinn MTU-boundary repair, 1.0.147 candidate
 

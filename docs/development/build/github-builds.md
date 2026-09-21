@@ -181,9 +181,17 @@ unverified dependencies. Use a clean-bootstrap build to diagnose such a failure.
 The new `plank-<product>-<dependency>-v2-<digest>` keys intentionally cannot
 restore the old monolithic v1 caches. The first build needs to populate them
 once; subsequent changes invalidate only affected groups. Local isolation,
-mixed-hit, receipt and workflow-policy tests pass. Hosted cold/warm and partial-
-hit build qualification of v2 is still pending; do not infer measured speedups
-or platform build acceptance from those local tests.
+mixed-hit, receipt and workflow-policy tests pass. Hosted v2 cold population
+passed for all four products at
+`ad1a4a40e429e7712a4c01dd1aa4d74e68e5c3bb` in
+[run 35654558827](https://github.com/instinctual/plank/actions/runs/35654558827).
+The Ubuntu package passed but artifact finalization returned HTTP 403. Its
+same-source [recovery run 35655809810](https://github.com/instinctual/plank/actions/runs/35655809810)
+restored and verified all three groups in 24 seconds, bootstrapped in two
+seconds and passed application/package checks and artifact upload. This proves
+Ubuntu warm reuse, not partial-hit or all-platform warm qualification. Linux
+Host passed packaging and all six strengthened loss matrices on its first
+hosted attempt; Mac results are unsigned, not distribution installers.
 
 #### Historical v1 four-product qualification
 
