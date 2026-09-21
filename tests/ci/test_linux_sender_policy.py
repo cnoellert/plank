@@ -49,11 +49,32 @@ class LinuxSenderPolicyTests(unittest.TestCase):
     def test_datagram_regressions_and_repetitions_are_required(self):
         host = (ROOT / 'scripts/build/build-host-package-binaries.sh').read_text()
         self.assertIn('--lib connection::datagrams::plank_tests', host)
-        bootstrap = (ROOT / 'scripts/ci/bootstrap.sh').read_text()
+        bootstrap = (ROOT / 'scripts/ci/dependencies/cargo.sh').read_text()
         self.assertIn('third_party/quinn-proto-0.11.17/Cargo.toml', bootstrap)
         script = (ROOT / 'scripts/test/run-plank-transport-native-loopback.sh').read_text()
         self.assertIn('for loss_trial in 1 2 3;', script)
         self.assertIn('set -euo pipefail', script)
+
+    def test_vendor_telemetry_snapshot_regression_is_required(self):
+        host = (ROOT / 'scripts/build/build-host-package-binaries.sh').read_text()
+        self.assertIn('--features plank-telemetry', host)
+        self.assertIn('--lib tests::plank_telemetry_snapshot_is_owned_and_preserves_queue_counters -- --exact', host)
+
+    def test_loss_performance_gate_is_wired_into_required_matrix(self):
+        native = (ROOT / 'protocol/plank-transport/src/native.rs').read_text()
+        matrix = native.split('async fn native_raptorq_survives_progressive_transport_loss_at_150_mbps()', 1)[1]
+        self.assertIn('PhasePerformance::measure(', matrix)
+        self.assertIn('metrics.violations()', matrix)
+        self.assertIn('performance_failures.is_empty()', matrix)
+        self.assertIn('tokio::time::timeout_at(', matrix)
+        self.assertIn('due + FRAME_DEADLINE', matrix)
+        self.assertIn('first.checked_sub(1).map(|index| received[index])', matrix)
+        self.assertIn('assert_eq!(media.payload, expected_payload)', matrix)
+        self.assertIn('assert_eq!(fec.video_fec_source_symbols_unrecovered, Some(0))', matrix)
+        script = (ROOT / 'scripts/test/run-plank-transport-native-loopback.sh').read_text()
+        self.assertIn('${SC_NATIVE_CARGO_PROFILE:-release}', script)
+        host = (ROOT / 'scripts/build/build-host-package-binaries.sh').read_text()
+        self.assertIn('SC_NATIVE_CARGO_PROFILE=release', host)
 
 
 if __name__ == '__main__':

@@ -455,7 +455,15 @@ pub async fn promote_setup_client(
 mod loss_proxy;
 
 #[cfg(test)]
+#[path = "test_loss_performance.rs"]
+mod loss_performance;
+
+#[cfg(test)]
 mod tests {
+    use super::loss_performance::{
+        FRAME_DEADLINE, FRAMES_PER_PHASE, LOSS_BASIS_POINTS, PAYLOAD_BYTES, PhasePerformance,
+        TOTAL_FRAMES, frame_offset,
+    };
     use super::loss_proxy::LossProxy;
     use super::*;
     use crate::rate_control::{PlankRateControllerFactory, TransportRatePolicy};
@@ -877,58 +885,67 @@ mod tests {
             .expect("failed to send loss-test config packet");
 
         let payload = Bytes::from(
-            (0..312_000)
+            (0..PAYLOAD_BYTES)
                 .map(|index| ((index * 29 + 7) & 0xff) as u8)
                 .collect::<Vec<_>>(),
         );
         let expected_payload = payload.clone();
-        let receiver = tokio::spawn(async move {
-            let mut frames = 0_u64;
-            while frames < 300 {
-                let packet = client_video
-                    .recv
-                    .recv()
+        // A single epoch across every phase prevents delayed sends from
+        // silently lowering the offered load or resetting accumulated latency.
+        let matrix_start = tokio::time::Instant::now();
+        let mut receiver = tokio::spawn(async move {
+            let mut received = Vec::with_capacity(TOTAL_FRAMES);
+            while received.len() < TOTAL_FRAMES {
+                let frame = received.len();
+                let deadline = matrix_start + frame_offset(frame) + FRAME_DEADLINE;
+                let packet = tokio::time::timeout_at(deadline, client_video.recv.recv())
                     .await
+                    .unwrap_or_else(|_| {
+                        panic!("loss-test receiver missed 100 ms scheduled deadline for frame {frame}")
+                    })
                     .expect("loss-test video endpoint closed")
                     .expect("loss-test video receive failed");
+                let received_at = matrix_start.elapsed();
                 if let AVPacket::Media(media) = packet {
                     if !media.header.is_config {
-                        assert_eq!(media.header.pts, frames * 1_500);
+                        assert_eq!(media.header.pts, frame as u64 * 1_500);
                         assert_eq!(media.payload, expected_payload);
-                        frames += 1;
+                        received.push(received_at);
                     }
                 }
             }
-            frames
+            received
         });
 
-        let mut frame_number = 0_u64;
+        let mut submitted = Vec::with_capacity(TOTAL_FRAMES);
         let mut dropped_after_phase = 0_u64;
-        for loss in [0_u64, 50, 100, 300, 500] {
+        for loss in LOSS_BASIS_POINTS {
             proxy.loss_basis_points.store(loss, Ordering::Release);
-            let phase_start = tokio::time::Instant::now();
-            for phase_frame in 0..60_u64 {
-                tokio::time::timeout(
-                    Duration::from_secs(5),
+            let phase_start = matrix_start + frame_offset(submitted.len());
+            for _ in 0..FRAMES_PER_PHASE {
+                let frame_number = submitted.len();
+                let due = matrix_start + frame_offset(frame_number);
+                tokio::time::sleep_until(due).await;
+                tokio::time::timeout_at(
+                    due + FRAME_DEADLINE,
                     server_video.send.send(AVPacket::Media(MediaPacket {
                         header: MediaPacketHeader {
                             is_config: false,
                             is_key: frame_number == 0,
-                            pts: frame_number * 1_500,
+                            pts: frame_number as u64 * 1_500,
                             size: payload.len() as u32,
                         },
                         payload: payload.clone(),
                     })),
                 )
                 .await
-                .expect("loss-test sender timed out")
+                .unwrap_or_else(|_| {
+                    panic!("loss-test sender missed 100 ms scheduled deadline for frame {frame_number}")
+                })
                 .expect("failed to send paced loss-test frame");
-                frame_number += 1;
-                tokio::time::sleep_until(
-                    phase_start + Duration::from_nanos((phase_frame + 1) * 1_000_000_000 / 60),
-                )
-                .await;
+                submitted.push(matrix_start.elapsed());
             }
+            tokio::time::sleep_until(matrix_start + frame_offset(submitted.len())).await;
             let dropped = proxy.dropped.load(Ordering::Relaxed);
             if loss == 0 {
                 assert_eq!(dropped, dropped_after_phase);
@@ -936,18 +953,49 @@ mod tests {
                 assert!(dropped > dropped_after_phase);
             }
             eprintln!(
-                "fec_loss_phase_basis_points={loss} frames=60 elapsed_ms={} dropped_datagrams={}",
+                "fec_loss_phase_basis_points={loss} frames={FRAMES_PER_PHASE} elapsed_ms={} dropped_datagrams={}",
                 phase_start.elapsed().as_millis(), dropped - dropped_after_phase
             );
             dropped_after_phase = dropped;
         }
-        let received_frames = tokio::time::timeout(Duration::from_secs(5), receiver).await;
+        let received = tokio::time::timeout_at(
+            matrix_start + frame_offset(TOTAL_FRAMES) + FRAME_DEADLINE,
+            &mut receiver,
+        )
+        .await;
+        if received.is_err() {
+            receiver.abort();
+        }
         // Report/validate the proxy even when the frame-order assertion failed.
         proxy.finish();
-        let received_frames = received_frames
+        let received = received
             .expect("loss-test receiver timed out")
             .expect("loss-test receiver task failed");
-        assert_eq!(received_frames, 300);
+        assert_eq!(received.len(), TOTAL_FRAMES);
+        let mut performance_failures = Vec::new();
+        for (phase, loss) in LOSS_BASIS_POINTS.into_iter().enumerate() {
+            let first = phase * FRAMES_PER_PHASE;
+            let end = first + FRAMES_PER_PHASE;
+            let metrics = PhasePerformance::measure(
+                first,
+                &submitted[first..end],
+                &received[first..end],
+                first.checked_sub(1).map(|index| received[index]),
+            )
+            .expect("invalid loss-test timing samples");
+            let violations = metrics.violations();
+            eprintln!(
+                "fec_loss_performance_basis_points={loss} frames={FRAMES_PER_PHASE} payload_bytes={PAYLOAD_BYTES} submitted_bps={} received_bps={} received_millifps={} submission_max_us={} delivery_p95_us={} delivery_max_us={} receive_gap_max_us={} completion_us={} pass={}",
+                metrics.submitted_bps, metrics.received_bps, metrics.received_millifps,
+                metrics.submission_max.as_micros(),
+                metrics.delivery_p95.as_micros(), metrics.delivery_max.as_micros(),
+                metrics.receive_gap_max.as_micros(), metrics.completion.as_micros(),
+                violations.is_empty(),
+            );
+            if !violations.is_empty() {
+                performance_failures.push((loss, violations));
+            }
+        }
         assert!(proxy.forwarded.load(Ordering::Relaxed) > 20_000);
         assert!(proxy.dropped.load(Ordering::Relaxed) > 500);
         let fec = client_connection.protocol_stats();
@@ -955,10 +1003,14 @@ mod tests {
         let missing = fec.video_fec_source_symbols_missing.expect("missing pre-FEC counter");
         assert!(source > 0 && missing > 0 && missing <= source);
         assert_eq!(fec.video_fec_source_symbols_unrecovered, Some(0));
-        eprintln!("fec_loss_matrix_frames=300 source={source} missing={missing} unrecovered=0");
+        eprintln!("fec_loss_matrix_frames={TOTAL_FRAMES} source={source} missing={missing} unrecovered=0");
 
         server_connection.close();
         client_connection.close();
         server.close(0, "loss test complete");
+        assert!(
+            performance_failures.is_empty(),
+            "loss-test performance gate failed: {performance_failures:?}"
+        );
     }
 }

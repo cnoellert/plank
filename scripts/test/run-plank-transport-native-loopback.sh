@@ -20,9 +20,13 @@ SC_NATIVE_TEST_CERTIFICATE_SHA256=$(sha256sum "$test_tmp/cert.der")
 export SC_NATIVE_TEST_CERTIFICATE_SHA256=${SC_NATIVE_TEST_CERTIFICATE_SHA256%% *}
 
 cargo_profile_args=()
-if [[ ${SC_NATIVE_CARGO_PROFILE:-debug} == release ]]; then
-  cargo_profile_args+=(--release)
-fi
+# Performance qualification uses optimized product code. Explicit debug runs
+# are still useful diagnostics, but are not release performance qualification.
+case ${SC_NATIVE_CARGO_PROFILE:-release} in
+  release) cargo_profile_args+=(--release) ;;
+  debug) ;;
+  *) echo "SC_NATIVE_CARGO_PROFILE must be release or debug" >&2; exit 2 ;;
+esac
 if [[ -n ${PLANK_TRANSPORT_CARGO_FEATURES:-} ]]; then
   cargo_profile_args+=(--features "$PLANK_TRANSPORT_CARGO_FEATURES")
 fi

@@ -151,9 +151,32 @@ alongside the production transport fetch. Hosted bootstrap does this
 automatically. These use the vendor's separate lockfile and test archive, never
 the production link inputs.
 
-The 150 Mbps native loss matrix requires three consecutive passes per rate
-policy, with no retry after failure. Every pass requires all 300 payloads in
-order and zero unrecovered source symbols. Its dedicated test-only proxy reports
+The native loss matrix requires three consecutive release-mode passes per rate
+policy, with no retry after failure. The loopback runner defaults to release;
+an explicitly requested debug run is diagnostic, not performance qualification.
+Each pass sends exactly 150 Mbps of payload at 60 fps: 312,500 bytes per frame,
+180 frames (three seconds) at each of 0/0.5/1/3/5% induced loss. Every pass
+requires all 900 payloads byte-for-byte in order and zero unrecovered source
+symbols, plus these fixed performance gates **at every loss level**:
+
+- Submitted and received payload throughput at least 142.5 Mbps (95% of nominal).
+- p95 scheduled-frame-to-complete-frame delivery at most 50 ms.
+- Maximum scheduled submission and delivery at most 100 ms.
+- Maximum receive gap at most 100 ms, including across loss-phase boundaries.
+
+One continuous 60 Hz schedule supplies the timing origin: a delayed send must
+not reset its deadline, lower the offered load, or disguise accumulated latency.
+Send/receive waits use absolute 100 ms deadlines; measured completion times also
+catch synchronous work that an async timeout cannot preempt. Per-phase output
+includes submitted/received payload rates, received frame rate, worst submission,
+p95/worst delivery, worst receive gap, completion duration and pass/fail. These
+are loopback regression bounds, not WAN or glass-to-glass latency guarantees;
+payload rates exclude FEC, QUIC and IP overhead. Deterministic unit tests prove
+that slow senders, catch-up stalls and delayed phases fail even when all frames
+eventually arrive. The matrix's fixed-size frames and evenly spaced proxy drops
+do not replace hardware, variable-keyframe, burst-loss or WAN soak testing.
+
+Its dedicated test-only proxy reports
 the effective socket receive buffer and Linux per-socket kernel drops separately
 from deliberately injected loss. `controlled_loss_only=false` means extra local
 drops occurred (or the counter is unavailable on that OS); do not describe that
