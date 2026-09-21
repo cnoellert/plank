@@ -1,5 +1,6 @@
 """Exercise source gates without compiling a client or preparing dependencies."""
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class ClientSourceGateTests(unittest.TestCase):
     def packet_size_gate(self, files):
+        self.assertIsNotNone(shutil.which('rg'), 'source-gate tests require ripgrep')
         script = (ROOT / 'scripts/build/build-client-package-binaries.sh').read_text()
         gate = script.split('# Native KyProto owns media packetization.', 1)[1]
         gate = gate[gate.index('if rg -n '):].split('for required_mtu_token', 1)[0]
