@@ -6,13 +6,13 @@ The operator installed the 1.0.149 Host and Ubuntu Client, then reported being
 disconnected during login. Read-only diagnosis identified a cross-user TCP
 port handoff failure: the sign-in worker exited, but the kernel attributed the
 replacement's EADDRINUSE to an old accepted connection. The existing recovery
-eventually restored the listener after approximately31seconds. Private evidence
+eventually restored the listener after approximately 31 seconds. Private evidence
 is outside Git; no production restart, configuration or installation was done.
 The Client log has not been collected, so its exact reconnect terminal path is
-not yet established. This listener-close path predates1.0.149.
+not yet established. This listener-close path predates 1.0.149.
 
 The operator authorized a fix. Continue on `macos-session-takeover`, retaining
-all149 changes. Root version150 is Host-only; Client149 remains compatible.
+all 1.0.149 changes. Root version 1.0.150 is Host-only; Client 1.0.149 remains compatible.
 The change awaits client completion of successful Content-Length replies,
 immediately cancels failed/retiring sockets, and waits for cancellation before
 worker retirement. It does not enable shared-port reuse or change TCP timers,
@@ -25,7 +25,24 @@ the old implementation. Its fixture hid stderr and used root's default temporary
 parent, so this failure alone is not proof of the expected socket conflict.
 The fixture now uses an explicitly traversable temporary parent (private keys
 remain owner-only) and reports numeric listener errors. Record fixed results
-and an unambiguous old-code reproduction before claiming the regression gate.
+and an unambiguous old-code reproduction before claiming the regression gate;
+that requirement is now satisfied by the negative control below.
+
+Fixed source `54cbebea12c62219ae546436c301bdfd48447693` passed unsigned hosted
+Mac Host run 35668815484: three cross-UID handoffs, exclusive-listener rejection,
+TLS/authentication/framing/admission tests, synthetic QUIC takeover and package
+assembly. Local CI-policy tests: 60 passed. Commit `0f08192` adds a test-only
+mutation restoring graceful cancellation; it must reproduce EADDRINUSE at the
+first root-to-desktop handoff. Run 35669295529 passed: fixed code completed all
+three handoffs, and the mutation reproduced POSIX EADDRINUSE on the first
+replacement. It also passed 520 authentication checks, 726 preview-session
+checks, 190 lifecycle checks, 98 startup-scheduling checks and the existing
+TLS, input, clipboard, audio and package-assembly gates. The mutation is never
+included in the installed Host. No retry or assertion relaxation was needed.
+
+Signing approval for this feature branch has been requested but not received.
+Do not change the signing environment without that approval. No installable
+1.0.150 package has been collected yet; unsigned assembly is not a test installer.
 
 ## Active combined candidate: 1.0.149-macos-session-takeover
 

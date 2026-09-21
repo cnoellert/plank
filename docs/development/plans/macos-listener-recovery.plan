@@ -47,9 +47,16 @@ or retry-until-success. It includes completed HTTP replies and incomplete TLS
 connections during retirement. Each replacement must listen within three
 seconds, and a concurrent same-UID listener must still be rejected. Synthetic
 accounts/keys only; no installed service, TCC or graphical-session change.
+An uninstalled negative-control binary compiles the same implementation with
+graceful cancellation restored. It must fail the first root-to-desktop bind
+specifically with POSIX EADDRINUSE, proving the fixture detects the regression.
 Existing authentication, malformed framing, slow-request and admission-capacity
 tests continue to apply. Their terminal TLS client now consumes Content-Length
 and closes itself, matching a real HTTP client rather than waiting for EOF.
+
+Hosted run 35669295529 passed both the corrected three-transition test and the
+negative control, as well as the full synthetic Mac Host qualification suite.
+Live login/logout and explicit-takeover acceptance are still required.
 
 References: Apple's [send completion semantics](https://developer.apple.com/documentation/network/nw_connection_send(_:_:_:_:_:))
 and [immediate cancellation](https://developer.apple.com/documentation/network/nw_connection_force_cancel(_:)).
