@@ -51,15 +51,16 @@ These tests must pass on the appropriate hosted builders; local syntax checks
 are not Mac execution or hardware acceptance.
 
 Local combined-source checks: all 56 CI-policy tests, Python syntax, shell
-syntax and diff whitespace pass. Initial hosted run 35662191961 used root
-`d41bd2a`; it is superseded by the Client shutdown-cancellation correction.
-Privacy and clipboard checks passed on that first revision. Final hosted
+syntax and diff whitespace pass. Initial hosted runs 35662191961 and
+35662506372 were superseded/cancelled before completing product qualification
+to include final Client shutdown and authenticated-bookmark routing guards.
+Privacy and clipboard checks passed on the first revision. Final hosted
 candidate builds and live acceptance are pending. No 1.0.149 package is ready.
 
 ## Source provenance and previous build evidence
 
 The Client implementation is committed and pushed on its matching
-`macos-session-takeover` branch at `441e2a676fbaf2ccbf9509a65853100e3cc930b7`,
+`macos-session-takeover` branch at `def812165745f9168f691e8ae041c6343bc01130`,
 based on `270a55cdf5af2f5308fb23537ea3e196e81fda0a`, before its parent gitlink.
 Current retained dependencies:
 

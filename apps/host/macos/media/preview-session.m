@@ -82,13 +82,6 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     NSMutableArray *_stopCallbacks;
     PLANKMacInputTiming _inputWaitTiming, _inputDeliveryTiming;
 }
-- (NSString *)sessionID {
-    @synchronized(self) {
-        if (!_sessionID) _sessionID = NSUUID.UUID.UUIDString.lowercaseString;
-        return _sessionID;
-    }
-}
-@synthesize sessionID = _sessionID;
 - (BOOL)mayBeTakenOverWithToken:(NSString *)token peer:(NSData *)peer {
     return [_sessions authorizeTakeoverToken:token peer:peer lease:_lease];
 }
@@ -135,6 +128,7 @@ BOOL PLANKMacPreviewRequestMatchesTopology(NSDictionary *request, NSDictionary *
     if (!PLANKMacPreviewRequestMatchesTopology(request, selected)) return nil;
     self = [super init];
     if (!self) return nil;
+    _sessionID = NSUUID.UUID.UUIDString.lowercaseString;
     _state = PLANKMacPreviewPrepared;
     _sessions = sessions;
     _selected = [selected copy]; _topology = [topology copy]; _capture = capture;
