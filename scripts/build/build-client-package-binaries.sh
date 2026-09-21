@@ -1469,9 +1469,10 @@ echo "client_relay_wake_gate=pass"
 
 # Native KyProto owns media packetization. Keep the retired GameStream packet
 # size preference and its misleading UI out of the Client.
+# Bundled release notes describe historical changes, not executable policy.
 if rg -n 'packet-size|SER_PACKETSIZE|\bpacketSize MEMBER|networkMtu|plank-network-mtu|videoPacketSizeForMtu|Determine network MTU|Physical path MTU|plankpacketsize' \
   "$source_dir/app" \
-  --glob '!**/languages/**'; then
+  --glob '!**/languages/**' --glob '!*.md'; then
   echo "legacy packet-size configuration is present in PLANK client" >&2
   exit 1
 fi
