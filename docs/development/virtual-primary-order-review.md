@@ -13,7 +13,7 @@ trial; it does not require changing physical outputs.
 
 ## Candidate behavior
 
-This series is refreshed onto released 1.0.143 main and uses the existing
+This series is rebased onto the frozen 1.0.151 mainline and uses the existing
 qualified virtual-mode allowlist. The Client discovers its primary display,
 translates it into left/right desktop order, and sends `plankPrimaryOutput`
 only when an authenticated virtual-startup Host advertises capability
@@ -109,11 +109,17 @@ on `1920×1200`. The operator confirmed the chooser appeared on the Eizo.
 This qualifies persistence through a clean Host reboot and one authenticated
 GDM-to-user handoff on this hardware.
 
-The Client and Linux Host branches were then merged with their released
+The Client and Linux Host branches were initially merged with their released
 1.0.143 main branches, and the root integration was merged with 1.0.143 while
 pinning those combined revisions. The subrepository merges were conflict-free:
 the released Client contributes its absolute-coordinate edge correction and
 the released Host contributes immediate Linux mouse-button delivery.
+
+For current review, the leaf branches were rebased onto the maintainer's frozen 1.0.151
+heads and the root was rebased onto the matching 1.0.151 root. The root now pins
+Client `280f517` and Host `ebf63ac`. The display patches applied without source
+conflicts; current hosted results remain the acceptance gate for these rebased
+commits.
 
 The first refreshed exact-source hosted build exposed an intermittent failure
 in the Linux Host's existing progressive transport-loss test at 3% and 5%
@@ -127,8 +133,9 @@ skipped frame in the unchanged production test. A 12-run instrumented test
 passed only after its receiver and timing behavior had changed, so it is not
 acceptance evidence. [Root PR #11](https://github.com/instinctual/plank/pull/11)
 remains a draft diagnostic record. Its unproven transport change has been
-removed from this display integration; this candidate uses the released
-1.0.143 transport code.
+removed from the qualified 1.0.143 display candidate. The current 1.0.151
+rebase takes the root's transport and Kymux pins unchanged and makes no
+transport edits.
 
 The refreshed root head `686847f` then passed the complete
 [upstream hosted build](https://github.com/instinctual/plank/actions/runs/35414725644):
@@ -181,7 +188,9 @@ nonfatal NvFBC context-release and native-endpoint-ended messages; asynchronous
 encoder teardown completed. That shutdown log noise remains visible rather
 than being treated as a clean diagnostic result.
 
-The refreshed source is therefore qualified on Portofino macOS 15.7.4 against
+The 1.0.143-based source was therefore qualified on Portofino macOS 15.7.4 against
 flame-01 Rocky 9.7 for display ordering, Flame placement, Wacom input and
 sleep/reconnect. The same Client package still needs live macOS 27 acceptance.
-Unavailable macOS 27 hardware is an open gate, not a passed test.
+Unavailable macOS 27 hardware was an open gate for that package, not a passed
+test. Those live results remain historical evidence; they do not replace
+exact-source validation of the current 1.0.151 rebase.
