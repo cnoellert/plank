@@ -21,10 +21,29 @@ exact source and verified dependency caching:
 
 | Product | Run | Status |
 | --- | --- | --- |
-| Linux Host RPM | 35672399119 | Building |
+| Linux Host RPM | 35672399119 | Blocked by paced-baseline latency gate; no RPM |
 | Ubuntu Client DEB | 35672399443 | Passed; collected and checksum verified |
 | Signed Mac Host PKG | 35672399113 | Passed; collected and checksum verified |
-| Signed Mac Client DMG | 35672399343 | Building |
+| Signed Mac Client DMG | 35672399343 | Passed; collected and checksum verified |
+
+Three exact-source packages are collected under
+`artifacts/packages/releases/1.0.151/`. Both Mac packages passed signing,
+notarization, stapling and package gates. No installation or publication occurred.
+
+Linux Host compilation succeeded, and its selected fast-send policy passed
+all three 0/0.5/1/3/5% loss matrices (2,700 frames). The additional paced
+baseline comparison recovered all 900 frames but failed the first trial's
+0.5% phase: p95 scheduled delivery 51.549 ms exceeds the unchanged 50 ms gate.
+Packaging stopped before producing an RPM. This is different from root PR
+#10's skipped-frame failure. Do not weaken assertions or retry until green.
+
+Compared with successful 1.0.149 Linux Host job 106541725507 at `df06fd58`,
+the Linux Host and Kymux pins, transport source, Host build script and loss
+test are unchanged. That build's three baseline 0.5% p95 results were
+19.402/26.418/22.138 ms. Current CI saves dependencies before product builds;
+this does not prove why latency differed. Runner/timer variability is plausible
+but unproven. Investigate the baseline comparison before another Host build;
+no transport code, gate or retry policy has been changed in response.
 
 ## Combined scope
 
