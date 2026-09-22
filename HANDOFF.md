@@ -1,192 +1,88 @@
 # PLANK handoff
 
-## Ready for testing: 1.0.150 Mac login socket handoff
+## Mainline 1.0.151 integration
 
-The operator installed the 1.0.149 Host and Ubuntu Client, then reported being
-disconnected during login. Read-only diagnosis identified a cross-user TCP
-port handoff failure: the sign-in worker exited, but the kernel attributed the
-replacement's EADDRINUSE to an old accepted connection. The existing recovery
-eventually restored the listener after approximately 31 seconds. Private evidence
-is outside Git; no production restart, configuration or installation was done.
-The Client log has not been collected, so its exact reconnect terminal path is
-not yet established. This listener-close path predates 1.0.149.
+The operator authorized committing, pushing and merging all combined work,
+then rebuilding all four Host/Client packages. This supersedes the previous
+candidate-only restriction. It does not authorize remote installation or
+GitHub release publication. Do not claim new live acceptance from merge approval.
 
-The operator authorized a fix. Continue on `macos-session-takeover`, retaining
-all 1.0.149 changes. Root version 1.0.150 is Host-only; Client 1.0.149 remains compatible.
-The change awaits client completion of successful Content-Length replies,
-immediately cancels failed/retiring sockets, and waits for cancellation before
-worker retirement. It does not enable shared-port reuse or change TCP timers,
-account policy, protocol, media/encoder settings or Client retry behavior.
-See the updated macos-listener-recovery plan. No merge/release/install yet.
+Work uses `build/worktrees/macos-session-takeover`; it will switch to main for
+the root merge and build dispatch. Preserve the unrelated dirty RK3576 plan,
+HANDOFF and diagnostic material in the primary checkout. Do not add private
+Relay/Wake Agent work or unrelated open PRs to this release.
 
-Test-first commit `88370c0` adds the real cross-UID loopback handoff gate.
-Hosted baseline run35668453106 failed at replacement-listener readiness against
-the old implementation. Its fixture hid stderr and used root's default temporary
-parent, so this failure alone is not proof of the expected socket conflict.
-The fixture now uses an explicitly traversable temporary parent (private keys
-remain owner-only) and reports numeric listener errors. Record fixed results
-and an unambiguous old-code reproduction before claiming the regression gate;
-that requirement is now satisfied by the negative control below.
+All committed root feature branches are ancestors of the combined branch.
+Client takeover work and its refreshed 1.0.151 changelog are pushed to Client
+main. Kymux's bounded asynchronous logging is pushed to its main. The Linux
+Host pin already matches its main. Root integration and hosted builds follow;
+record their exact commit and run IDs below when dispatched.
 
-Fixed source `54cbebea12c62219ae546436c301bdfd48447693` passed unsigned hosted
-Mac Host run 35668815484: three cross-UID handoffs, exclusive-listener rejection,
-TLS/authentication/framing/admission tests, synthetic QUIC takeover and package
-assembly. Local CI-policy tests: 60 passed. Commit `0f08192` adds a test-only
-mutation restoring graceful cancellation; it must reproduce EADDRINUSE at the
-first root-to-desktop handoff. Run 35669295529 passed: fixed code completed all
-three handoffs, and the mutation reproduced POSIX EADDRINUSE on the first
-replacement. It also passed 520 authentication checks, 726 preview-session
-checks, 190 lifecycle checks, 98 startup-scheduling checks and the existing
-TLS, input, clipboard, audio and package-assembly gates. The mutation is never
-included in the installed Host. No retry or assertion relaxation was needed.
+## Combined scope
 
-The operator authorized signing this candidate. Signed hosted run 35671124869
-passed at exact source `b0efdd685ab42fd1375b0bd4ab642528a03ee82d`, including
-both socket regression tests, the full Mac Host suite, signing, notarization,
-stapling, Gatekeeper, package permissions and temporary-keychain cleanup.
-Only documentation changed after the successful final unsigned run. The
-builder enforced Apple Silicon, macOS/SDK 27 and the Host's 27.0 target.
-Verified dependency restore took nine seconds, bootstrap one second and
-cache-save one second, all before signing credentials were injected. No local
-Mac was used for this build.
+- Preserve legal maximum-size QUIC datagrams during MTU recovery. No change
+  to MTU selection, FEC, encoder targets or send-queue capacities.
+- Disable detailed Mac frame timing unless `PLANK_MACOS_FRAME_TIMING=1`.
+- Snapshot QUIC telemetry and write it asynchronously outside connection locks;
+  bounded logging drops diagnostics instead of blocking media.
+- Separate exact-input dependency caches and save them after successful
+  verification/bootstrap, before product tests and signing.
+- Enforce 150 Mbps/60 fps throughput, delivery-delay and exact recovery gates
+  at 0/0.5/1/3/5% loss, three passes per policy, without retry-until-success.
+- Ask Take Over/Cancel before replacing another active session on the same
+  Mac account, including while locked. Prepare the replacement display before
+  decoder initialization; automatic reconnect cannot silently take over.
+- Release the displaced client's ordinary input/media path, retain exact
+  stream/account consent and reserve launch briefly for the approved client.
+- Include Ubuntu's separate Qt SVG image plugin for dialog icons.
+- Correct Mac login/desktop control-socket handoff, without sharing the port,
+  changing TCP timers, changing authentication policy or adding services.
 
-The exact installer is collected under
-`artifacts/packages/candidates/1.0.150-macos-session-takeover/macos/`:
-`plank-host_1.0.150-macos-session-takeover_arm64.pkg` (6,629,208 bytes).
-SHA-256: `b868107db92961d7e19dff6594c78e3bd6dcaa33ac5946517ff7c081d4cd2614`.
-The downloaded bytes match both the builder's hash and the catalog manifest.
-Temporary signing branch policy `60642471` was removed after success;
-`macos-signing` is main-only again. Secrets and reviewer rules are unchanged.
+See `docs/releases/1.0.151.md`, the Client's bundled changelog, and
+`docs/development/plans/macos-session-takeover.plan` /
+`macos-listener-recovery.plan` for contracts and test details.
 
-Next: operator installs this Mac Host candidate and tests login-screen to
-desktop, logout, reconnect and same-account takeover with Client 1.0.149.
-No new Client, Linux package, merge, release or remote installation is part
-of this Host-only correction. Live acceptance remains pending.
+## Prior qualification retained
 
-## Active combined candidate: 1.0.149-macos-session-takeover
+Full intermediate build failures, corrections, package hashes and provenance
+remain in HANDOFF at `936b3e2ea061840dd35fa0ad4465bb1bae1ada85`; do not
+reinterpret earlier candidate artifacts as new mainline packages.
 
-The operator requested a fix for connecting from a second client while an
-existing Mac session is locked, and explicitly requested combining it with all
-unmerged 1.0.148 review-hardening work. Work is in
-`build/worktrees/macos-session-takeover`, branch `macos-session-takeover`.
-Its base is the complete `macos-frame-tracing` branch at
-`23db130d087e81b8f853b42cf3716ccacc996ae0`, descended from main `dd6fb04`.
-Main is unchanged; do not merge until the operator accepts the candidate.
-Preserve unrelated dirty RK3576 research in the primary checkout.
+The 1.0.149 combined candidate passed all four package jobs:
+Mac Host 35663307341, Mac Client 35664996000, Ubuntu Client 35666009459,
+and Linux Host job 106541725507 in run 35662745109. The Linux Host passed
+all six strengthened loss matrices: 5,400 frames, zero unrecovered symbols.
+The earlier local paced-baseline failure at frame 329 remains unexplained;
+a later hosted pass does not erase it or establish WAN/hardware qualification.
+No assertion was relaxed to accept these runs.
 
-The unified source includes:
+Read-only investigation of a 1.0.149 login disconnect proved that the kernel
+attributed the desktop listener's EADDRINUSE to an accepted socket of the
+exited sign-in worker. Listener/process exit was insufficient; recovery took
+about 31 seconds. Private machine evidence remains outside Git. The Client
+log was not collected, so its exact terminal reconnect path is not proven.
 
-- Quinn's inclusive MTU-boundary correction: legal maximum-size datagrams are
-  not discarded when the path recovers. No MTU/FEC/buffer policy change.
-- Default-off detailed Mac frame timing, enabled only by
-  `PLANK_MACOS_FRAME_TIMING=1` in the capture worker environment.
-- Owned QUIC telemetry snapshots and bounded asynchronous logging outside the
-  connection lock. Full/failed logging drops samples, never blocks transport.
-- Independent verified dependency caches for Rust, Cargo, FFmpeg, Boost,
-  Mac native libraries and Qt, as applicable. No application/signing cache.
-- Strict 150 Mbps/60 fps loss gates at 0/0.5/1/3/5%, three passes per policy,
-  fixed throughput/latency/recovery assertions, no retries after a failure.
-- Explicit same-account Mac takeover before display preparation, with a
-  responsive Client confirmation and normal old-stream input/media teardown.
+The 1.0.150 correction awaits peer completion of successful Content-Length
+replies, immediately cancels retiring/failed connections and waits for actual
+listener/connection cancellation. Signed run 35671124869 at
+`b0efdd685ab42fd1375b0bd4ab642528a03ee82d` passed three cross-UID handoffs,
+concurrent-listener rejection and a negative control that restores graceful
+close and reproduces EADDRINUSE. The full Mac suite, signing, notarization,
+stapling, Gatekeeper, package permissions and signing cleanup passed too.
+The initial test-first failure had an ambiguous temporary-directory fixture;
+the later negative control supplies the unambiguous regression evidence.
 
-## Takeover implementation and qualification
+Candidate packages remain in `artifacts/packages/candidates/`.
+The 1.0.150 Mac Host SHA-256 is
+`b868107db92961d7e19dff6594c78e3bd6dcaa33ac5946517ff7c081d4cd2614`.
+No automatic installation occurred. Temporary signing policies were removed;
+the signing environment permits main only, with unchanged secrets/reviewer rules.
 
-The diagnosed Host was still actively streaming at the lock screen; the
-second connection hit the existing active-stream HTTP 409 before display
-preparation. It was not a stale token or a proven unsupported resolution.
-Private evidence remains outside Git. No machine was restarted or upgraded.
-
-The Client must prepare its final display size before decoder initialization.
-A typed conflict carries a random per-stream UUID, not account/host identity.
-Fresh GUI sign-in asks Take Over/Cancel. Consent waits only on the worker for
-at most two minutes. CLI and automatic reconnect never implicitly take over.
-The Host validates the same verified UID/UUID, peer, current graphical scope
-and exact existing stream UUID. It drains the ordinary stop path before
-changing geometry, with a fifteen-second replacement reservation to stop
-reconnect races, including shared-NAT setup-token supersession. Matching Host
-and Client are required by the synchronized feature-mask fixture.
-
-See [plan](docs/development/plans/macos-session-takeover.plan) and
-[release notes](docs/releases/1.0.149.md). New tests cover authentication denial,
-reservation expiry/revocation, exact-session consent, a real TLS/QUIC transfer
-with a synthetic display, and Qt accept/cancel/Escape/timeout responsiveness.
-These tests must pass on the appropriate hosted builders; local syntax checks
-are not Mac execution or hardware acceptance.
-
-Local combined-source checks: all 60 CI-policy tests, Python syntax, shell
-syntax and diff whitespace pass. Initial hosted runs 35662191961 and
-35662506372 were superseded/cancelled before completing product qualification
-to include final Client shutdown and authenticated-bookmark routing guards.
-Privacy and clipboard checks also passed at combined source `df06fd5`.
-Its unsigned Mac Host job in run 35662745109 passed 520 authentication checks
-and the real TLS/QUIC synthetic-display takeover scenario. The first Client
-attempts exposed a changelog false positive in the Linux source gate and an
-outdated Mac topology assertion; both are corrected. The added source-gate
-tests require ripgrep explicitly in the policy job (35663778957 caught the
-missing test prerequisite). No test was disabled or assertion relaxed.
-
-Signed Mac Host run 35663307341 passed signing, notarization, stapling and
-package validation. Its exact package is collected under
-`artifacts/packages/candidates/1.0.149-macos-session-takeover/macos/`.
-SHA-256: `58f91ddd57f2ee80c4a6726fb35c5a459c466d0adb1d8044e7c35e62c2e6176e`.
-Linux Host job 106541725507 in run 35662745109 passed package/input-lifecycle
-gates and all six strict loss matrices: 5,400 frames, zero unrecovered symbols.
-Its RPM is collected in the matching `linux/` directory.
-SHA-256: `41622a46da5fe201c0e6da874551bf8a6d3b2edeaca3e51396cb350e5f4f5d3a`.
-Signed Mac Client run 35664996000 passed all suites (including seven consent
-tests), signing, notarization, stapling and package validation. Its DMG is
-collected alongside the Mac Host.
-SHA-256: `9d8315dcd9121a534295d638cf2bf9ea80064325258cf5bd13fdb55b5f89aeeb`.
-Ubuntu Client run 35666009459 passed all source/runtime/package gates, including
-the seven consent tests, and its DEB is collected in `linux/`.
-SHA-256: `aff467c2444e3354c1c76429a54480e32b9314c8c553e2acfa25f878a096954a`.
-All four packages are ready for operator testing. The complete catalog's
-`SHA256SUMS` passes locally. Live acceptance is not recorded; no package was
-installed and no release was published.
-
-## Source provenance and previous build evidence
-
-Host builds use root `df06fd58cd0fe3c81c264fc37c0543c91e2672f7`.
-Client attempts at root `b4d5ba6a2e8800e63eb026bf291ff1c3323f49cc` (Ubuntu run
-35664009589, signed Mac run 35664012122) compiled and passed the topology suites.
-The consent test performed accept/cancel/Escape correctly but failed its
-zero-warning gate because its fixture lacked the dialog icons and used native
-Mac controls instead of the product's Material style. Those test inputs are now
-corrected; replacement builds passed. Since `df06fd5`, changes only affect
-test inputs, source-gate prerequisites and release-note prose exclusion; no Host
-or Client product implementation changed. Record each package's actual source
-commit, not a rewritten common provenance. The subsequent Ubuntu SVG dependency
-addition and CI cache-ordering change are separately documented below.
-
-Signed Mac run 35664996000 uses root `60b16b9a1744d9706e616f9c46f6535cee8484a9`.
-Ubuntu run 35664993625 exposed a
-missing SVG reader plugin: `qt6-svg-dev` does not provide the separate
-`qt6-svg-plugins` runtime with no-recommends installation. The CI/bootstrap
-dependency list, DEB Depends and finished-package gate now explicitly require
-that plugin. No product logic or test assertion changed for this correction.
-Replacement Ubuntu run 35666009459 uses root
-`a5c0de549a81044df53a36c43617b4aca30ceb1a`.
-
-The operator requested fixing cache-save ordering while builds continue. New
-workflow code saves independently verified dependencies immediately after a
-successful bootstrap, before product build/tests/signing. Signed Mac bootstrap
-and cache-save are separate credential-free steps; the signing helper no longer
-repeats bootstrap. Failure/PR/clean-bootstrap restrictions and exact fingerprints
-remain intact, with no product/signing caches. Existing running jobs use their
-original committed workflow and are not cancelled for this CI-only change.
-This change is pushed as `e23a7ae44f16cf2fe6aa029d606683386d681d03`.
-Hosted run 35666393155 passed the new unsigned Mac ordering: a one-second warm
-bootstrap, successful cache sealing/saving, then successful product build/tests.
-Signed workflow sequencing and cleanup after success/failure are covered by
-policy/unit tests; a signed package using the revised sequence is not yet run.
-
-The Client implementation is committed and pushed on its matching
-`macos-session-takeover` branch at `a29dad91987f1989dbcbfab11166879459d938f8`,
-based on `270a55cdf5af2f5308fb23537ea3e196e81fda0a`, before its parent gitlink.
-Current retained dependencies:
+## Dependency provenance
 
 | Input | Commit |
 | --- | --- |
+| Client | `536a2bfe` (full hash recorded with the new catalog) |
 | Kymux | `158719b67f83e3d83e8bfba1588420ed84a65cab` |
 | Linux Host | `cd738510c6588aa086746cf00dca93c17c6bea73` |
 | Client common-C | `060f6179f88343327b44d915007f1fb4cede71f1` |
@@ -194,51 +90,27 @@ Current retained dependencies:
 | Host libvirtualhid | `a0d3aa0cc4d53daa18bfa2f2fbdf848957b6d294` |
 | Host common-C | `3a97a58f215323753cfd1180af760ec7e3253538` |
 
-The full prior validation record is retained in HANDOFF at `23db130`, not
-duplicated here. 1.0.148 source `ad1a4a4` passed both unsigned Mac jobs and Linux
-Host packaging in [35654558827](https://github.com/instinctual/plank/actions/runs/35654558827).
-Ubuntu compiled/packaged there but artifact upload returned HTTP 403; the
-same-source Ubuntu-only [35655809810](https://github.com/instinctual/plank/actions/runs/35655809810)
-passed including upload. Packages and provenance remain under
-`artifacts/packages/candidates/1.0.148-macos-frame-tracing/linux/`.
-Those bytes do not contain this takeover work.
-
-All six hosted strengthened loss matrices passed: 5,400 recovered frames,
-zero unrecovered symbols and zero unintended proxy drops. Preserve the earlier
-local paced-baseline failure (frame 329 missed its 100 ms submission deadline):
-the hosted pass does not explain or erase it. Do not relax bounds, rerun until
-green or claim portable timing reliability. Live WAN/hardware remains untested.
-
-Main's 1.0.146 Mac pair and Ubuntu DEB are in
-`artifacts/packages/releases/1.0.146/`. Its Linux Host packaging failed the
-old loss gate; the MTU fix in this combined branch addresses the reproduced
-boundary drop. The latest published release remains 1.0.143.
-
-## Build and release boundary
-
-Use GitHub-hosted builders and read the release/hosted runbooks. No installation,
-release publication or main merge is authorized for this candidate. Retain full
-CUDA coverage, exact dependency patches and all package/privacy gates. Signing
-was explicitly authorized for this candidate only. Temporary branch policy
-`60637043` was deleted after both signed builds finished; `macos-signing` is
-main-only again. No environment secrets or reviewer rules were changed. Ordinary
-branch Mac jobs compile/test but produce no signed end-user installers.
-
-Collect exact package bytes with hashes/provenance in the versioned catalog;
-never relabel earlier packages. Feature package/visible versions include
-`macos-session-takeover`. Do not remove unrelated branches or worktrees.
+Use GitHub-hosted builders and the release/hosted runbooks. Reuse only verified
+exact-input dependencies; application compilation/tests/signing run fresh.
+Retain full CUDA coverage and every privacy/package gate. The new packages
+must be rebuilt from main, not renamed candidates, and collected under
+`artifacts/packages/releases/1.0.151/` with their actual source and hashes.
+The latest published release remains 1.0.143.
 
 ## Remaining acceptance and deferred work
 
-Test two clients with different resolutions/scales while the Mac is locked and
-unlocked. Cancel must leave the first session unchanged; accepted takeover must
-stop old input, retain the logged-in account, show the requested new dimensions
-and prevent the displaced client's automatic return. Recheck normal reconnect,
-login/logout, different-account denial, clipboard, audio and input cleanup.
-Follow the remaining [release gates](docs/development/acceptance-criteria.md).
+Recheck login-screen to desktop, logout, reconnect and same-account takeover
+using two clients with different resolutions/scales, locked and unlocked.
+Cancel must preserve the original stream; accepting must drain old input/media,
+retain the desktop account, apply the replacement geometry and prevent automatic
+take-back. Verify different-account denial, clipboard, audio and input cleanup.
+Follow `docs/development/acceptance-criteria.md`; hosted builds are not live tests.
 
-Wallpaper/Screen Saver settings hover lag remains deferred, not fixed. Linux
-physical-display provenance inconsistency remains unresolved; retain strict
-validation. Keyboard-capture preference removal is discussion only. Unrelated
-RK3576 research and private Relay/Wake Agent work are not part of this candidate.
-Keep private deployment information, credentials and raw captures outside Git.
+Wallpaper/Screen Saver settings hover lag remains deferred. Linux physical
+display provenance inconsistency remains unresolved; retain strict validation.
+Keyboard-capture preference removal is discussion only. RK3576 research and
+private infrastructure are outside this integration.
+
+The operator also requested a list of **open PRs authored by cnoellert** across
+PLANK repositories after the builds. This is a read-only inventory, not
+authorization to merge any of those PRs.
