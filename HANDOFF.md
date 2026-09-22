@@ -22,8 +22,8 @@ exact source and verified dependency caching:
 | Product | Run | Status |
 | --- | --- | --- |
 | Linux Host RPM | 35672399119 | Building |
-| Ubuntu Client DEB | 35672399443 | Building |
-| Signed Mac Host PKG | 35672399113 | Building |
+| Ubuntu Client DEB | 35672399443 | Passed; collected and checksum verified |
+| Signed Mac Host PKG | 35672399113 | Passed; collected and checksum verified |
 | Signed Mac Client DMG | 35672399343 | Building |
 
 ## Combined scope
@@ -119,6 +119,30 @@ display provenance inconsistency remains unresolved; retain strict validation.
 Keyboard-capture preference removal is discussion only. RK3576 research and
 private infrastructure are outside this integration.
 
-The operator also requested a list of **open PRs authored by cnoellert** across
-PLANK repositories after the builds. This is a read-only inventory, not
-authorization to merge any of those PRs.
+## Open PR review
+
+The operator requested a read-only merge-suitability review of all four open
+PRs authored by cnoellert. No comments, approvals or merges are authorized.
+All remain draft at review time:
+
+- Client #6 (`b868d251`), Linux Host #9 (`c927e2b8`) and root #10 (`597c4517`)
+  form one virtual-primary connector-ordering feature. Client #6 changes
+  Native presentation into per-output stretching and can send primary index 2
+  for a manual two-output bookmark on a three-display Client. Resolve those
+  issues before integrating. Root #10 also has a Client gitlink conflict with
+  current main; preserve the merged takeover fixes when refreshing its pin.
+- Client #7 (`af659dbc`) independently reconciles raw-Wacom ownership against
+  native AppKit focus. No blocking code defect found; macOS 27 live focus,
+  local-dialog release, reconnect and pressure checks remain outstanding.
+- The exact proposed display-preparation shell test, eight Host topology tests
+  and ten session-context tests passed locally. Existing pinned GoogleTest
+  source was used; no product package or hardware deployment was performed for
+  this review. Client Qt tests were inspected, not run locally.
+- Root #10 CI 35672091412 passed Ubuntu Client and both Mac builds, but its
+  Linux Host job failed the progressive-loss test at 5% loss (skipped frame).
+  Causation by the display changes is not established. Do not equate earlier
+  unchanged rerun passes with resolution of this failure.
+
+Recommended order: qualify Client #7 independently; repair Client #6, then
+integrate the paired display components and root pin on current main with a
+resolved CI gate and live macOS 27 validation.
