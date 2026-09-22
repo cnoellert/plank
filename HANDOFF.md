@@ -7,16 +7,24 @@ then rebuilding all four Host/Client packages. This supersedes the previous
 candidate-only restriction. It does not authorize remote installation or
 GitHub release publication. Do not claim new live acceptance from merge approval.
 
-Work uses `build/worktrees/macos-session-takeover`; it will switch to main for
-the root merge and build dispatch. Preserve the unrelated dirty RK3576 plan,
+Work uses `build/worktrees/macos-session-takeover`, now checked out on main.
+Preserve the unrelated dirty RK3576 plan,
 HANDOFF and diagnostic material in the primary checkout. Do not add private
 Relay/Wake Agent work or unrelated open PRs to this release.
 
 All committed root feature branches are ancestors of the combined branch.
 Client takeover work and its refreshed 1.0.151 changelog are pushed to Client
 main. Kymux's bounded asynchronous logging is pushed to its main. The Linux
-Host pin already matches its main. Root integration and hosted builds follow;
-record their exact commit and run IDs below when dispatched.
+Host pin already matches its main. Root main is pushed at
+`c14704801ffa8c5166961c03db8f4bf6c57b08d5`. All four hosted builds use that
+exact source and verified dependency caching:
+
+| Product | Run | Status |
+| --- | --- | --- |
+| Linux Host RPM | 35672399119 | Building |
+| Ubuntu Client DEB | 35672399443 | Building |
+| Signed Mac Host PKG | 35672399113 | Building |
+| Signed Mac Client DMG | 35672399343 | Building |
 
 ## Combined scope
 
@@ -82,7 +90,7 @@ the signing environment permits main only, with unchanged secrets/reviewer rules
 
 | Input | Commit |
 | --- | --- |
-| Client | `536a2bfe` (full hash recorded with the new catalog) |
+| Client | `536a2bfeac35a140d12a14403882572dd11d4d9b` |
 | Kymux | `158719b67f83e3d83e8bfba1588420ed84a65cab` |
 | Linux Host | `cd738510c6588aa086746cf00dca93c17c6bea73` |
 | Client common-C | `060f6179f88343327b44d915007f1fb4cede71f1` |
