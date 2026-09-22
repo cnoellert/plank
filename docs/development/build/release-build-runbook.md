@@ -151,8 +151,8 @@ alongside the production transport fetch. Hosted bootstrap does this
 automatically. These use the vendor's separate lockfile and test archive, never
 the production link inputs.
 
-The native loss matrix requires three consecutive release-mode passes per rate
-policy, with no retry after failure. The loopback runner defaults to release;
+The native loss matrix requires three consecutive release-mode passes for the
+selected shipping rate policy, with no retry after failure. The loopback runner defaults to release;
 an explicitly requested debug run is diagnostic, not performance qualification.
 Each pass sends exactly 150 Mbps of payload at 60 fps: 312,500 bytes per frame,
 180 frames (three seconds) at each of 0/0.5/1/3/5% induced loss. Every pass
@@ -650,8 +650,12 @@ No Client update is needed. Acceptance is tracked in
 
 Host packaging runs Rust unit tests and the real native/C ABI loopbacks against
 its selected Cargo features in the same `plank-transport-cargo` target directory.
-Fast-send packaging repeats unit/native tests with the paced baseline and
-restores the selected archive before the final C ABI checks.
+At the operator's direction, the additional paced-baseline comparison is
+suspended. Fast-send packaging requires its own Rust unit tests, all three
+native loss matrices with unchanged recovery/performance limits, and the C ABI
+checks. A failure in the shipping policy still stops packaging. The paced
+implementation remains available for an explicitly selected diagnostic build;
+do not reintroduce it as an automatic fast-send release gate.
 Standalone loopback runners also accept `PLANK_TRANSPORT_CARGO_FEATURES`; an
 unset value exercises default Cargo features, not the fast-send Host selection.
 The loss fixture uses controlled receiver-side omissions, not a real WAN.

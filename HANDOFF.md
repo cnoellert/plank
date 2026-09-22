@@ -42,8 +42,16 @@ the Linux Host and Kymux pins, transport source, Host build script and loss
 test are unchanged. That build's three baseline 0.5% p95 results were
 19.402/26.418/22.138 ms. Current CI saves dependencies before product builds;
 this does not prove why latency differed. Runner/timer variability is plausible
-but unproven. Investigate the baseline comparison before another Host build;
-no transport code, gate or retry policy has been changed in response.
+but unproven. The operator subsequently authorized ignoring the paced-baseline
+comparison for now and finishing the remaining build. Host packaging now gates
+only its selected policy, preserving all three fast-send loss matrices, their
+unchanged thresholds, unit tests and C ABI checks. Paced transport code remains
+intact for later review. No shipping transport, encoder or dependency changed.
+
+Rebuild only the missing Linux Host RPM on main. Retain 1.0.151 because no Host
+RPM was produced or collected for that version; do not replace the three
+already verified packages. Record the new Host root source separately in the
+catalog rather than claiming identical root provenance for all four products.
 
 ## Combined scope
 

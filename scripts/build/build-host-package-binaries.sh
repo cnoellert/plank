@@ -1096,17 +1096,12 @@ cmake --build "$build_dir" --parallel "$build_jobs" \
 # hardware-dependent C++ suite, not permission to skip transport qualification.
 (
   export CARGO_TARGET_DIR="$build_dir/plank-transport-cargo"
-  tested_policies=("$plank_transport_cargo_features")
-  if [[ $plank_transport_cargo_features == quinn-telemetry,linux-fast-send ]]; then
-    tested_policies+=(quinn-telemetry)
-  fi
-  for tested_features in "${tested_policies[@]}"; do
-    cargo test --locked --offline --release --features "$tested_features" \
-      --manifest-path "$plank_transport_dir/Cargo.toml"
-    PLANK_TRANSPORT_CARGO_FEATURES="$tested_features" SC_NATIVE_CARGO_PROFILE=release \
-      bash "$repo_dir/scripts/test/run-plank-transport-native-loopback.sh"
-  done
-  # Restore/build the selected archive after the paced baseline comparison.
+  # Qualify the shipping policy only. Paced comparisons remain explicitly
+  # selectable diagnostics, not an additional fast-send packaging gate.
+  cargo test --locked --offline --release --features "$plank_transport_cargo_features" \
+    --manifest-path "$plank_transport_dir/Cargo.toml"
+  PLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features" SC_NATIVE_CARGO_PROFILE=release \
+    bash "$repo_dir/scripts/test/run-plank-transport-native-loopback.sh"
   PLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features" \
     bash "$repo_dir/scripts/test/run-plank-transport-native-ffi-loopback.sh"
 )

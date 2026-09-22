@@ -31,11 +31,11 @@ class LinuxSenderPolicyTests(unittest.TestCase):
     def test_package_tests_match_compiled_features_and_target_directory(self):
         host = (ROOT / 'scripts/build/build-host-package-binaries.sh').read_text()
         self.assertIn('-DPLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features"', host)
-        self.assertIn('tested_policies=("$plank_transport_cargo_features")', host)
-        self.assertIn('tested_policies+=(quinn-telemetry)', host)
-        self.assertIn('--features "$tested_features"', host)
+        self.assertNotIn('tested_policies', host)
+        self.assertNotIn('tested_features', host)
+        self.assertIn('--features "$plank_transport_cargo_features"', host)
         self.assertIn('export CARGO_TARGET_DIR="$build_dir/plank-transport-cargo"', host)
-        self.assertIn('PLANK_TRANSPORT_CARGO_FEATURES="$tested_features"', host)
+        self.assertIn('PLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features" SC_NATIVE_CARGO_PROFILE=release', host)
         self.assertIn('PLANK_TRANSPORT_CARGO_FEATURES="$plank_transport_cargo_features" \\', host)
         self.assertIn('host_fast_send_binary_gate=pass', host)
 
