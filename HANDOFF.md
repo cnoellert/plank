@@ -40,8 +40,10 @@ checks, 190 lifecycle checks, 98 startup-scheduling checks and the existing
 TLS, input, clipboard, audio and package-assembly gates. The mutation is never
 included in the installed Host. No retry or assertion relaxation was needed.
 
-Signing approval for this feature branch has been requested but not received.
-Do not change the signing environment without that approval. No installable
+The operator authorized signing this candidate. Temporary `macos-signing`
+branch policy `60642471` allows only `macos-session-takeover` in addition to
+the existing main policy. Remove it after the signed Host build completes,
+including on failure; secrets and reviewer rules are unchanged. No installable
 1.0.150 package has been collected yet; unsigned assembly is not a test installer.
 
 ## Active combined candidate: 1.0.149-macos-session-takeover
