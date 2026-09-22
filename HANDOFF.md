@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## In progress: 1.0.150 Mac login socket handoff
+## Ready for testing: 1.0.150 Mac login socket handoff
 
 The operator installed the 1.0.149 Host and Ubuntu Client, then reported being
 disconnected during login. Read-only diagnosis identified a cross-user TCP
@@ -40,11 +40,28 @@ checks, 190 lifecycle checks, 98 startup-scheduling checks and the existing
 TLS, input, clipboard, audio and package-assembly gates. The mutation is never
 included in the installed Host. No retry or assertion relaxation was needed.
 
-The operator authorized signing this candidate. Temporary `macos-signing`
-branch policy `60642471` allows only `macos-session-takeover` in addition to
-the existing main policy. Remove it after the signed Host build completes,
-including on failure; secrets and reviewer rules are unchanged. No installable
-1.0.150 package has been collected yet; unsigned assembly is not a test installer.
+The operator authorized signing this candidate. Signed hosted run 35671124869
+passed at exact source `b0efdd685ab42fd1375b0bd4ab642528a03ee82d`, including
+both socket regression tests, the full Mac Host suite, signing, notarization,
+stapling, Gatekeeper, package permissions and temporary-keychain cleanup.
+Only documentation changed after the successful final unsigned run. The
+builder enforced Apple Silicon, macOS/SDK 27 and the Host's 27.0 target.
+Verified dependency restore took nine seconds, bootstrap one second and
+cache-save one second, all before signing credentials were injected. No local
+Mac was used for this build.
+
+The exact installer is collected under
+`artifacts/packages/candidates/1.0.150-macos-session-takeover/macos/`:
+`plank-host_1.0.150-macos-session-takeover_arm64.pkg` (6,629,208 bytes).
+SHA-256: `b868107db92961d7e19dff6594c78e3bd6dcaa33ac5946517ff7c081d4cd2614`.
+The downloaded bytes match both the builder's hash and the catalog manifest.
+Temporary signing branch policy `60642471` was removed after success;
+`macos-signing` is main-only again. Secrets and reviewer rules are unchanged.
+
+Next: operator installs this Mac Host candidate and tests login-screen to
+desktop, logout, reconnect and same-account takeover with Client 1.0.149.
+No new Client, Linux package, merge, release or remote installation is part
+of this Host-only correction. Live acceptance remains pending.
 
 ## Active combined candidate: 1.0.149-macos-session-takeover
 
