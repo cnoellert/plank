@@ -19,8 +19,16 @@ translates it into left/right desktop order, and sends `plankPrimaryOutput`
 only when an authenticated virtual-startup Host advertises capability
 `0x2000000`. Both
 manual two-output and Match Client bookmarks use that ordering. Manual mode
-sizes still come from the bookmark. Native two-screen presentation uses the
-Host output sizes for its stream boundaries when Mac panel pixel sizes differ.
+sizes still come from the bookmark. A manual bookmark omits the optional hint
+unless the Client has exactly two non-overlapping, horizontally arranged
+displays and exactly one primary. Additional, missing, stacked or mirrored
+local displays do not invalidate an otherwise usable manual bookmark.
+
+Connector ordering does not change presentation geometry. The Client retains
+its existing pixel canvas and aspect-preserving rendering/input mapping. The
+earlier Host-sized canvas override and its helper were removed: independently
+stretching each output to a differently shaped panel was not a connector-order
+requirement. Single-output, physical-layout and Scaled-Span paths are unchanged.
 
 The Host accepts only an in-range negotiated index. It checks both XRandR's
 primary flag and whether `DP-0` is on that side. Live and GDM transitions

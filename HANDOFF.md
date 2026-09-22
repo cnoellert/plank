@@ -1,6 +1,37 @@
 # PLANK handoff
 
-## Mainline 1.0.151 integration
+## Current task: virtual-primary PR repairs
+
+The operator authorized fixing the two Client findings in the coordinated
+Client #6 / Linux Host #9 / root #10 series. Work uses branch
+`virtual-primary-fixes` in `build/worktrees/virtual-primary-fixes` and its
+Client worktree. Root base is `db868b4a8930397628c3fb10949c61c1c9ad6a2d`;
+Client base is `280f517c44d4f602eb271e38e620f3863b0c69e0`.
+Main and the existing release packages remain unchanged. Do not merge or
+install without approval.
+
+- Removed the Host-sized presentation-canvas override and its unused helper;
+  primary connector ordering retains the existing aspect-preserving renderer
+  and matching input/cursor geometry.
+- Bound the optional primary hint to the requested output count and an
+  unambiguous horizontal layout. Manual bookmarks omit an unmappable hint
+  instead of sending index 2 or rejecting an otherwise valid connection.
+- Added unit coverage for 0–4 displays, every primary position, reversed
+  enumeration, negative origins, ambiguous layouts, differing Host/Client
+  aspect ratios and Retina logical input/cursor round trips.
+
+Client fixes are committed and pushed to Client #6 as
+`6580f794141b2073eae1110136d8665605eb3803`. Local CI policy checks pass (60).
+Exact-source hosted Client checks are pending. Candidate version is 1.0.152;
+mainline 1.0.151 packages remain intact.
+Client #7 remains a separate reviewed Wacom-focus proposal with live macOS 27
+acceptance outstanding; do not silently include it in this repair.
+
+## Mainline 1.0.151 integration (historical base snapshot)
+
+All four 1.0.151 packages subsequently passed and were collected; see main's
+HANDOFF at `652718632be33b355df5e1fce989018c9df49f3a` for completion and exact
+package provenance. The following base snapshot predates that completion.
 
 The operator authorized committing, pushing and merging all combined work,
 then rebuilding all four Host/Client packages. This supersedes the previous
@@ -148,16 +179,14 @@ private infrastructure are outside this integration.
 
 ## Open PR review
 
-The operator requested a read-only merge-suitability review of all four open
-PRs authored by cnoellert. No comments, approvals or merges are authorized.
-All remain draft at review time:
+The initial four-PR review was read-only. The operator subsequently authorized
+repairing the two Client findings (see current task above), but not merging.
+All four PRs remain draft; Client #7 and Host #9 have no newer revisions:
 
-- Client #6 (`b868d251`), Linux Host #9 (`c927e2b8`) and root #10 (`597c4517`)
-  form one virtual-primary connector-ordering feature. Client #6 changes
-  Native presentation into per-output stretching and can send primary index 2
-  for a manual two-output bookmark on a three-display Client. Resolve those
-  issues before integrating. Root #10 also has a Client gitlink conflict with
-  current main; preserve the merged takeover fixes when refreshing its pin.
+- Client #6, Linux Host #9 (`ebf63ac9`) and root #10 form one virtual-primary
+  connector-ordering feature. Root #10's `db868b4a` rebase preserves mainline
+  takeover fixes and includes the selected-policy Host test gate. Client #6's
+  two findings are repaired at `6580f794`; hosted validation remains pending.
 - Client #7 (`af659dbc`) independently reconciles raw-Wacom ownership against
   native AppKit focus. No blocking code defect found; macOS 27 live focus,
   local-dialog release, reconnect and pressure checks remain outstanding.
@@ -170,6 +199,6 @@ All remain draft at review time:
   Causation by the display changes is not established. Do not equate earlier
   unchanged rerun passes with resolution of this failure.
 
-Recommended order: qualify Client #7 independently; repair Client #6, then
-integrate the paired display components and root pin on current main with a
-resolved CI gate and live macOS 27 validation.
+Recommended order: qualify Client #7 independently; validate repaired Client #6,
+then integrate the paired display components with live macOS 27 validation and
+explicit merge approval.

@@ -228,7 +228,11 @@ On a virtual-startup Host, a Client negotiating `0x2000000` may send
 to the requested left/right mode order. The Host places its first virtual
 connector (`DP-0`, shown as PLK Display 1) on that side and marks it primary.
 This lets applications that choose the first connector, including Flame,
-open on the same screen as the Mac primary display. Omitting the index keeps
+open on the same screen as the Mac primary display. The Client only sends the
+hint when its local displays map one-to-one to the requested horizontal virtual
+outputs. Manual bookmarks omit it for mismatched display counts or ambiguous
+layouts; they do not reject the connection or clamp an unrelated display index.
+This hint does not change client presentation scaling. Omitting the index keeps
 the earlier DP-0-left behavior. A single-output request accepts only `0`;
 unnegotiated or out-of-range values are rejected.
 
