@@ -16,21 +16,34 @@ All committed root feature branches are ancestors of the combined branch.
 Client takeover work and its refreshed 1.0.151 changelog are pushed to Client
 main. Kymux's bounded asynchronous logging is pushed to its main. The Linux
 Host pin already matches its main. Root main is pushed at
-`c14704801ffa8c5166961c03db8f4bf6c57b08d5`. All four hosted builds use that
-exact source and verified dependency caching:
+`c14704801ffa8c5166961c03db8f4bf6c57b08d5`. The initial four hosted builds used
+that exact source and verified dependency caching. The missing Host RPM was
+rebuilt at `aa885d0f5b86f4e9101cff97d22c2caa9aeab66c`, which changes only
+Host gate selection and its tests/documentation:
 
 | Product | Run | Status |
 | --- | --- | --- |
-| Linux Host RPM | 35672399119 | Blocked by paced-baseline latency gate; no RPM |
+| Linux Host RPM | 35674515126 | Passed; collected and checksum verified |
 | Ubuntu Client DEB | 35672399443 | Passed; collected and checksum verified |
 | Signed Mac Host PKG | 35672399113 | Passed; collected and checksum verified |
 | Signed Mac Client DMG | 35672399343 | Passed; collected and checksum verified |
 
-Three exact-source packages are collected under
+All four mainline packages are collected under
 `artifacts/packages/releases/1.0.151/`. Both Mac packages passed signing,
 notarization, stapling and package gates. No installation or publication occurred.
 
-Linux Host compilation succeeded, and its selected fast-send policy passed
+The completed Linux Host run passed three 150 Mbps/60 fps loss matrices at
+0/0.5/1/3/5% loss: 2,700 frames, zero unrecovered symbols, p95 delivery
+6.300–7.832 ms. The native C ABI probes, packaged fast-send binary check,
+RPM ownership/log-directory gates and 25 repeated input-lifecycle suites passed.
+The RPM is built with `BUILD_TESTS=OFF`; the input suite is built afterward and
+does not replace the packaged binary. These are hosted gates, not live hardware
+or WAN acceptance. RPM SHA-256:
+`ad4bc8e74d8f17167eab63a2a92d62d0ed17b5fa7407484f42df9ed8c55ed579`.
+The local catalog's manifest records exact source per package; all four hashes
+were rechecked after collection.
+
+In initial run 35672399119, Linux Host compilation succeeded and fast-send passed
 all three 0/0.5/1/3/5% loss matrices (2,700 frames). The additional paced
 baseline comparison recovered all 900 frames but failed the first trial's
 0.5% phase: p95 scheduled delivery 51.549 ms exceeds the unchanged 50 ms gate.
@@ -48,10 +61,10 @@ only its selected policy, preserving all three fast-send loss matrices, their
 unchanged thresholds, unit tests and C ABI checks. Paced transport code remains
 intact for later review. No shipping transport, encoder or dependency changed.
 
-Rebuild only the missing Linux Host RPM on main. Retain 1.0.151 because no Host
-RPM was produced or collected for that version; do not replace the three
-already verified packages. Record the new Host root source separately in the
-catalog rather than claiming identical root provenance for all four products.
+Only the missing Linux Host RPM was rebuilt. Version 1.0.151 was retained
+because the initial run produced no Host RPM; the three previously verified
+packages were not replaced. Do not claim identical root provenance for all four
+products or relabel an existing package.
 
 ## Combined scope
 
@@ -128,7 +141,7 @@ the signing environment permits main only, with unchanged secrets/reviewer rules
 Use GitHub-hosted builders and the release/hosted runbooks. Reuse only verified
 exact-input dependencies; application compilation/tests/signing run fresh.
 Retain full CUDA coverage and every privacy/package gate. The new packages
-must be rebuilt from main, not renamed candidates, and collected under
+were rebuilt from main, not renamed candidates, and collected under
 `artifacts/packages/releases/1.0.151/` with their actual source and hashes.
 The latest published release remains 1.0.143.
 
@@ -152,12 +165,14 @@ The operator requested a read-only merge-suitability review of all four open
 PRs authored by cnoellert. No comments, approvals or merges are authorized.
 All remain draft at review time:
 
-- Client #6 (`b868d251`), Linux Host #9 (`c927e2b8`) and root #10 (`597c4517`)
+- Client #6 (`280f517c`), Linux Host #9 (`ebf63ac9`) and root #10 (`39201242`)
   form one virtual-primary connector-ordering feature. Client #6 changes
   Native presentation into per-output stretching and can send primary index 2
   for a manual two-output bookmark on a three-display Client. Resolve those
-  issues before integrating. Root #10 also has a Client gitlink conflict with
-  current main; preserve the merged takeover fixes when refreshing its pin.
+  issues before integrating. The latest rebase preserves mainline takeover
+  fixes and resolves the prior root Client-gitlink conflict. Range-diff proves
+  the Client and Host feature patches themselves are unchanged; the two
+  Client findings therefore remain. The root merges cleanly with current main.
 - Client #7 (`af659dbc`) independently reconciles raw-Wacom ownership against
   native AppKit focus. No blocking code defect found; macOS 27 live focus,
   local-dialog release, reconnect and pressure checks remain outstanding.
@@ -169,6 +184,13 @@ All remain draft at review time:
   Linux Host job failed the progressive-loss test at 5% loss (skipped frame).
   Causation by the display changes is not established. Do not equate earlier
   unchanged rerun passes with resolution of this failure.
+- Refreshed root #10 CI 35674359734 passed Ubuntu Client and both Mac builds.
+  Its Linux Host passed all three selected fast-send loss matrices, then failed
+  the additional paced baseline at 1/3/5% loss (p95 51.127/53.450/53.417 ms;
+  zero unrecovered symbols). It does not yet include main's operator-authorized
+  gate-selection change. This failure is distinct from the previous skipped
+  frame and does not establish a display regression. No PR was modified,
+  approved or merged.
 
 Recommended order: qualify Client #7 independently; repair Client #6, then
 integrate the paired display components and root pin on current main with a
