@@ -222,6 +222,20 @@ authoritative. Qualify at least one current descriptor-driven Intuos Pro and
 one first-generation PTH-x51 fallback device. Where practical, repeat with
 different tablet sizes on the Host and Client.
 
+Before each macOS raw-HID tablet trial, keep the exact signed Client candidate
+connected and run `python3 scripts/test/check-macos-wacom-preflight.py`. The
+machine-readable result must pass all six gates: negotiated raw-HID capability,
+negotiated focus-suspend capability, Input Monitoring for that Client identity,
+exclusive ownership of a supported physical USB device, attachment sent, and
+Host attachment acknowledgement. A standalone HID probe or permission granted
+to another Client app does not satisfy this check. Record the JSON result with
+the candidate and Host package versions. A failed or unverified gate blocks the
+pressure/mapping test; do not label it a pen or Host regression until the
+missing prerequisite is resolved. The acknowledgement proves the protocol
+attachment, not pressure or application behavior; verify those separately in
+Flame. Do not bypass or change macOS privacy grants outside the normal operator
+approval flow.
+
 Validate:
 
 - proximity, hover, tip, pressure, tilt, distance, eraser, side buttons, tool

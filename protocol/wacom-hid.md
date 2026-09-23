@@ -118,6 +118,13 @@ not change the application-visible XInput device identity.
 
 ## Acceptance
 
+For each macOS raw-HID session, the preflight in
+`scripts/test/check-macos-wacom-preflight.py` must establish both negotiated
+Host feature bits, the running Client's Input Monitoring grant, exclusive USB
+ownership, a sent attachment, and the Host's successful attachment result
+before functional pen testing. The attachment result is the protocol gate;
+tablet pressure and mapping remain independent live checks.
+
 Compare physical-client and virtual-host nodes for VID/PID/version, interface
 count, axis ranges and resolution, pressure, tilt, distance, tool identity,
 pad controls, and touch geometry. Exercise feature/output reports, pen and

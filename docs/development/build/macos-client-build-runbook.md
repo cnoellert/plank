@@ -111,6 +111,15 @@ the operator must approve any new grant through System Settings. A signed
 development app remains unnotarized and is not a distributable release. Do not
 put signing-key passwords in scripts or environment variables.
 
+For raw Wacom qualification, connect with the exact staged Client app and run
+`python3 scripts/test/check-macos-wacom-preflight.py` while the session is live.
+It reports negotiated Host capability, this app's Input Monitoring state,
+physical device ownership, and the Host attachment acknowledgement as JSON.
+Stop the pen test at the first failed or unverified gate. A standalone HID
+probe's grant and a prior app identity's grant are not interchangeable with
+the staged app's grant. Retain the result alongside the exact Client/Host
+candidate versions; then test pressure and geometry in Flame.
+
 For a self-contained drag-to-Applications DMG, in the signing SSH session:
 
 ```bash

@@ -29,6 +29,7 @@ client="$source_root/apps/client"
 test "$(qmake -query QT_VERSION)" = 6.10.2
 test "$(rustc --version | awk '{print $2}')" = 1.89.0
 python3 "$source_root/tests/packaging/test-macos-client-target.py"
+python3 "$source_root/tests/packaging/test-macos-wacom-preflight.py"
 python3 "$source_root/tests/packaging/test-macos-fullscreen.py" "$source_root"
 python3 "$source_root/tests/packaging/test-macos-quit-lifecycle.py" "$source_root"
 python3 "$source_root/tests/packaging/test-macos-metal-overlay.py"
