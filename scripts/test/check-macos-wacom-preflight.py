@@ -44,6 +44,11 @@ def check_lines(lines):
                 session["attach_sent"] = False
                 session["host_ack"] = None
         elif "Mac Wacom attach sent:" in line:
+            # A renewed attach after focus release requires successful local
+            # discovery and exclusive ownership, even when the Client omits a
+            # repeated device=owned transition for the same physical tablet.
+            if session["device"] == "released":
+                session["device"] = "owned"
             session["attach_sent"] = True
             session["host_ack"] = None
         elif "Mac Wacom attached; exclusive raw HID forwarding active" in line:

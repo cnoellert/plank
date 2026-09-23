@@ -50,6 +50,12 @@ class WacomPreflightTests(unittest.TestCase):
         self.assertEqual(latest["reason"], "input_monitoring")
         released = MODULE.check_lines(READY + ["Mac Wacom ownership released"])
         self.assertEqual(released["reason"], "device_ownership")
+        reattached = MODULE.check_lines(READY + [
+            "Mac Wacom ownership released",
+            "Mac Wacom attach sent: 2 interfaces, generation 2",
+            "Mac Wacom attached; exclusive raw HID forwarding active",
+        ])
+        self.assertTrue(reattached["passed"])
 
     def test_old_client_without_marker_cannot_pass(self):
         self.assertEqual(MODULE.check_lines(["Mac Wacom attached; exclusive raw HID forwarding active"])
