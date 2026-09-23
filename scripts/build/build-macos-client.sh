@@ -68,7 +68,8 @@ mkdir -p "$build/tests/$suite"
     # These are bare test executables, not deployed app bundles. Give Qt's
     # OpenSSL loader the same pinned libraries the package puts in Frameworks.
     DYLD_LIBRARY_PATH="$PLANK_MAC_CLIENT_DEPS/install/lib" \
-        PLANK_REPO_ROOT="$source_root" QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software "./$suite"
+        PLANK_REPO_ROOT="$source_root" PLANK_SOURCE_ROOT="$source_root" \
+        QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software "./$suite"
 )
 done
 # Exercise the actual input worker with a queued drag, without a host or UI.
