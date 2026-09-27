@@ -1,9 +1,15 @@
 # Source-timestamp A/V baseline
 
-Candidate 1.1.025-audio-sync is observational. It keeps the 1.1.024 playback
-controller, output routing, buffering and video presentation unchanged. The
+Candidate 1.1.026-audio-sync restores video-clock publication for EGL renderers
+that consume the AVFrame. Pacer snapshots PTS before rendering instead of reading
+the reset source frame afterward. The existing correction controller can now
+receive its video reference on this path. Output routing, buffering, correction
+limits and video presentation are unchanged; no extra delay is introduced. The
 common-C audio callback now carries source microseconds instead of discarding
 the native transport's millisecond timestamp. No wire format changes.
+
+The earlier 1.1.025 diagnostic candidate did not yet fix this ownership bug;
+its EGL video reference remains invalid. Use 1.1.026 for live testing.
 
 The Client product log records one `PLANK A/V source timing` line per second,
 without an environment switch or recording the screen/audio. For a macOS capture
@@ -43,6 +49,6 @@ or independent-clock samples, and reports signed estimated offset, drift slope,
 queue depth, clock discontinuities and correction range. A short fitted slope is
 not an hour-long soak; duration and measurement limitations are printed explicitly.
 
-The next implementation replaces the current estimated correction only after the
-baseline localizes the error. The zero-returning inherited pending-audio query
+Only replace the current estimated correction if the minimal clock-publication
+fix and baseline identify a remaining error. The zero-returning inherited pending-audio query
 and inactive backlog controller must not be treated as transport-queue telemetry.

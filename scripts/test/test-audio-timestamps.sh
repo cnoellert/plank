@@ -17,7 +17,7 @@ if [[ $(uname -s) == Linux ]]; then libraries=(-lcrypto -lpthread -lm); fi
     -I"$client/moonlight-common-c/moonlight-common-c/src" \
     -I"$root/protocol/plank-transport/include" \
     "$client/moonlight-common-c/moonlight-common-c/tests/audio-timestamps.c" \
-    "$common_library" "${libraries[@]}" -o "$build/audio-timestamp-callback"
+    "$common_library" ${libraries[@]+"${libraries[@]}"} -o "$build/audio-timestamp-callback"
 "$build/audio-timestamp-callback"
 python3 "$root/tests/audio/test-source-audio-timing.py"
 echo 'audio_timestamp_gate=pass live_sync_acceptance=not-performed'

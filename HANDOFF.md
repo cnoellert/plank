@@ -1,6 +1,6 @@
 # PLANK handoff
 
-## In progress — audio-sync baseline
+## In progress — audio-sync video-clock repair
 
 The operator reports changing A/V offset with Ubuntu Client and macOS Host,
 both1.1.024, after PLANK Output adoption. Authorized diagnosis and a timestamp-
@@ -8,12 +8,22 @@ based correction on a new branch. Root, Client and Client common-C now use
 `audio-sync`, based on the completed mainline checkpoint below. The unrelated
 primary RK3576 checkout remains untouched. No installed session or routing changed.
 
-The first candidate is intentionally **measurement-only**, version1.1.025:
-native audio PTS now reaches the decoder/renderer, including bounded PLC timestamp
-extrapolation and reconnect reset. One source-timing log per second reports
-estimated audio/video alignment, real SDL queued input, resampler delay, device
-buffer estimate and source gaps. Playback correction/scheduling is unchanged.
-Do not call this a drift fix or an accepted live A/V result.
+Confirmed a Client renderer-ownership bug: EGL uses `av_frame_move_ref()` before
+Pacer reads PTS to publish the video clock. The reset PTS prevents publication;
+the observed Ubuntu hardware path uses EGL and had no periodic correction logs.
+Version1.1.026 snapshots PTS before rendering for clock publication, tracing and
+telemetry. It restores the existing correction reference, not a new controller,
+queue, buffer or delay. Live drift acceptance is still outstanding.
+
+The earlier1.1.025 diagnostic source is root
+`8a0d678628071e37fd2b7506279423fbb79dac34`, Client
+`53e4130b`, common-C `55758dc`. Native audio PTS now reaches decoding/rendering,
+including bounded PLC extrapolation and reconnect reset. One timing log per
+second reports estimated alignment, actual SDL queued input, resampler delay,
+device-buffer estimate and source gaps. Ubuntu hosted36285201892 passed.
+Unsigned Mac36285203473 compiled the app and passed existing tests, then failed
+the new test script on Bash3.2's empty-array/nounset behavior; fixed the script.
+Do not deploy the superseded diagnostic candidate: its EGL video clock is invalid.
 
 The Client's retained `LiGetPendingAudioDuration()` always returns zero; the old
 backlog controller therefore does not measure native queue pressure. macOS has a
@@ -29,11 +39,13 @@ synthetic steady clock. Observer ASan/UBSan passes outside the sandbox (LSan can
 run under its ptrace environment). Full Client builds and live baseline pending.
 The first default-GCC sanitizer invocation lacked its installed ASan runtime;
 retained GCC14 supplied the working sanitizer toolchain. No toolchain installed.
+New real-Pacer regression covers consuming/non-consuming renderers with unknown,
+zero and long-running PTS, plus exactly-once buffer release.
 
-Next: commit/push dependencies in order, build the Ubuntu diagnostic candidate and
-compile-check the shared macOS Client, collect a synchronized baseline, then replace
-the estimated correction with one tested timestamp-aware controller. No merge,
-release, end-user install, or live sync acceptance is authorized by this checkpoint.
+Next: commit/push the minimal repair, build Ubuntu1.1.026 and compile-check the
+shared Mac Client, then collect a synchronized live baseline. Only replace the
+controller if this measurement demonstrates a remaining problem. No merge,
+release, end-user install, or session interruption is authorized by this checkpoint.
 
 ## Current checkpoint — mainline 1.1.024 Wacom lifecycle builds
 

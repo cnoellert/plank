@@ -20,6 +20,10 @@ Keep PLANK Output, exact video profiles, native transport, and input unchanged.
 - SDL queued bytes describe unconsumed input; a device buffer is only an estimate
   of downstream output latency. Neither is a measured speaker presentation time.
 - Existing short tone/coherence checks do not establish sustained lip sync.
+- Confirmed renderer-ownership bug: EGL moves the AVFrame reference, resetting
+  its PTS before Pacer publishes the video clock. The reported hardware path
+  uses EGL. Snapshot PTS before rendering; preserve render-end timing and trace
+  identity. This restores the existing correction reference without adding delay.
 
 ## Sequence
 
@@ -29,9 +33,11 @@ Keep PLANK Output, exact video profiles, native transport, and input unchanged.
    loss before the first packet, timestamp discontinuities and reconnect reset.
    Add rate-limited diagnostics comparing common-clock audio/video timestamps and
    estimated output delay. Preserve playback behavior for the baseline candidate.
-3. Use that measurement to locate capture, transport or presentation delay. Replace
-   sample-count correction with one timestamp-aware controller, not another loop
-   on top. Define Linux's clock contract before changing its synchronization.
+3. Correct the confirmed lost video-clock publication and test both consuming and
+   non-consuming renderers. Measure this minimal fix before changing the playback
+   controller. If drift remains, use the measurement to locate capture, transport
+   or presentation delay and replace sample-count correction with one timestamp-
+   aware controller, not another loop on top. Define Linux's clock contract first.
 4. Test initial skew, signed drift, jitter, loss, long gaps, device changes,
    idle video, reconnect and shutdown; retain bounded queues/cancellation.
 5. Qualified builders produce branch-labelled candidates. A synchronized flash/
