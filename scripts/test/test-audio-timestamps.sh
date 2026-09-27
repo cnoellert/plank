@@ -32,7 +32,7 @@ mkdir -p "$build/relative-rate"
     cd "$build/relative-rate"
     if [[ $(uname -s) == Darwin ]]; then
         # Match the other SDK27/Qt tests, including Qt's ARM intrinsic include.
-        qmake "$client/tests/avsynccontroller/avsynccontroller.pro" CONFIG+=release \
+        qmake "$client/tests/avsynccontroller/avsynccontroller.pro" CONFIG+=release CONFIG-=app_bundle \
             "QMAKE_CXXFLAGS+=-include arm_acle.h" \
             "QMAKE_MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:?}" \
             QMAKE_APPLE_DEVICE_ARCHS=arm64
