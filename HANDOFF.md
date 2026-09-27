@@ -36,18 +36,42 @@ stale video and invalid latency values. See
 Validation: seven common-C tests pass, observer tests cover both offset signs,
 source jumps, unknown timestamps, independent epochs, SDL tick wrap and a two-hour
 synthetic steady clock. Observer ASan/UBSan passes outside the sandbox (LSan cannot
-run under its ptrace environment). Full Client builds and live baseline pending.
+run under its ptrace environment). Live baseline and drift acceptance are pending.
 The first default-GCC sanitizer invocation lacked its installed ASan runtime;
 retained GCC14 supplied the working sanitizer toolchain. No toolchain installed.
 New real-Pacer regression covers consuming/non-consuming renderers with unknown,
 zero and long-running PTS, plus exactly-once buffer release.
 
-Next: commit/push the minimal repair, build Ubuntu1.1.026 and compile-check the
-shared Mac Client, then collect a synchronized live baseline. Only replace the
-controller if this measurement demonstrates a remaining problem. No merge,
-release, end-user install, or session interruption is authorized by this checkpoint.
+Ubuntu26.04/Qt6.10.2 focused regression: all17 results pass. Replacing only Pacer
+with the original source fails exactly the two known-PTS consuming-renderer cases;
+restoring the candidate passes all17 again. Original frame-reference transfer is
+upstream Client `f5d5bc52`; clock publication was added in `2c6132c5`. This defect
+predates PLANK Output; its role in the reported live drift still requires testing.
 
-## Current checkpoint — mainline 1.1.024 Wacom lifecycle builds
+Candidate source is committed/pushed: root
+`98e19fb5f9325daf7e45260bf95766eb94009bf5`, Client
+`ccbb875e2473f90f1bfe8fed694e5a4edb4c81e4`, Client common-C
+`55758dc5160c7f60680345533e887f9aaa5b4dda`. Host and Kymux pins are unchanged
+from the mainline checkpoint below. Both exact-source hosted builds passed with
+dependency-cache reuse: [Ubuntu](https://github.com/instinctual/plank/actions/runs/36287687073)
+and [unsigned Mac compile/tests](https://github.com/instinctual/plank/actions/runs/36287688395).
+Both run the17-case Pacer suite and timestamp callback/observer/analyzer gates.
+No Host package, signed Mac installer, release, deployment or merge was made.
+
+Ubuntu DEB downloaded and checksum-verified in the canonical package catalog:
+`artifacts/packages/candidates/1.1.026-audio-sync/linux/plank-client_1.1.026-audio-sync_amd64.deb`.
+Size15595200; SHA-256
+`503de8c9d1e8178ea36a9e829d80bd3b8147c0098f3761b447f0cbde96a8544e`.
+Manifest and checksum sidecars retain exact source provenance and mark functional
+validation unrecorded. Do not mistake successful build gates for live sync acceptance.
+
+Next: operator installs the Ubuntu candidate and reconnects to the unchanged Host;
+collect a synchronized live baseline/soak. Only replace the controller if this
+measurement demonstrates a remaining problem. No running build or test remains.
+No merge, release, end-user install, or session interruption is authorized by this
+checkpoint. The primary RK3576 checkout remains untouched.
+
+## Previous checkpoint — mainline 1.1.024 Wacom lifecycle builds
 
 Mainline 1.1.024 source is committed and pushed: root
 `89afd664484f477777e3a4ce08b1838724f6fb25`, Client
