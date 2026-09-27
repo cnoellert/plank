@@ -1,19 +1,24 @@
 # PLANK handoff
 
-## In progress — audio-sync video-clock repair
+## Current checkpoint — accepted audio-sync repair integrated
 
 The operator reports changing A/V offset with Ubuntu Client and macOS Host,
-both1.1.024, after PLANK Output adoption. Authorized diagnosis and a timestamp-
-based correction on a new branch. Root, Client and Client common-C now use
-`audio-sync`, based on the completed mainline checkpoint below. The unrelated
-primary RK3576 checkout remains untouched. No installed session or routing changed.
+both1.1.024, after PLANK Output adoption. After testing candidate1.1.026, the
+operator reported improvement and authorized commit/push/merge and closing
+[issue18](https://github.com/instinctual/plank/issues/18). Root and Client now use
+`main`; common-C is integrated into its maintained `plank/client` branch (not
+the unrelated GitHub default `atomics`). The primary RK3576 checkout remains
+untouched. No installed session or routing was changed by the agent.
 
 Confirmed a Client renderer-ownership bug: EGL uses `av_frame_move_ref()` before
 Pacer reads PTS to publish the video clock. The reset PTS prevents publication;
 the observed Ubuntu hardware path uses EGL and had no periodic correction logs.
 Version1.1.026 snapshots PTS before rendering for clock publication, tracing and
 telemetry. It restores the existing correction reference, not a new controller,
-queue, buffer or delay. Live drift acceptance is still outstanding.
+queue, buffer or delay. Operator acceptance is recorded; a measured long-duration
+flash/click soak and cross-platform hardware qualification remain unperformed.
+macOS Metal does not consume/reset the frame PTS and does not exhibit this
+specific renderer-ownership defect based on code inspection.
 
 The earlier1.1.025 diagnostic source is root
 `8a0d678628071e37fd2b7506279423fbb79dac34`, Client
@@ -36,7 +41,7 @@ stale video and invalid latency values. See
 Validation: seven common-C tests pass, observer tests cover both offset signs,
 source jumps, unknown timestamps, independent epochs, SDL tick wrap and a two-hour
 synthetic steady clock. Observer ASan/UBSan passes outside the sandbox (LSan cannot
-run under its ptrace environment). Live baseline and drift acceptance are pending.
+run under its ptrace environment). No measured live drift baseline was collected.
 The first default-GCC sanitizer invocation lacked its installed ASan runtime;
 retained GCC14 supplied the working sanitizer toolchain. No toolchain installed.
 New real-Pacer regression covers consuming/non-consuming renderers with unknown,
@@ -56,7 +61,10 @@ from the mainline checkpoint below. Both exact-source hosted builds passed with
 dependency-cache reuse: [Ubuntu](https://github.com/instinctual/plank/actions/runs/36287687073)
 and [unsigned Mac compile/tests](https://github.com/instinctual/plank/actions/runs/36287688395).
 Both run the17-case Pacer suite and timestamp callback/observer/analyzer gates.
-No Host package, signed Mac installer, release, deployment or merge was made.
+The exact tested Client and common-C commits are now integrated into their
+maintained branches without source changes. Root integration includes notes only
+beyond the tested candidate source. No new Host package, signed Mac installer,
+mainline rebuild, release or deployment was requested in this merge step.
 
 Ubuntu DEB downloaded and checksum-verified in the canonical package catalog:
 `artifacts/packages/candidates/1.1.026-audio-sync/linux/plank-client_1.1.026-audio-sync_amd64.deb`.
@@ -65,11 +73,11 @@ Size15595200; SHA-256
 Manifest and checksum sidecars retain exact source provenance and mark functional
 validation unrecorded. Do not mistake successful build gates for live sync acceptance.
 
-Next: operator installs the Ubuntu candidate and reconnects to the unchanged Host;
-collect a synchronized live baseline/soak. Only replace the controller if this
-measurement demonstrates a remaining problem. No running build or test remains.
-No merge, release, end-user install, or session interruption is authorized by this
-checkpoint. The primary RK3576 checkout remains untouched.
+Next: no further controller rewrite is justified without evidence of remaining
+drift. Keep the measurement procedure for recurrence or longer-term qualification.
+The branch-labelled candidate remains in its original catalog; do not relabel it
+as a mainline package. No running build or test remains. Release publication,
+deployment, branch deletion and an additional build were not requested.
 
 ## Previous checkpoint — mainline 1.1.024 Wacom lifecycle builds
 

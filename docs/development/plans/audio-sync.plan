@@ -2,6 +2,11 @@
 
 Branch: audio-sync, based on mainline 1.1.024.
 
+Status: operator reports improvement with1.1.026 and accepts mainline integration
+and closure of issue18. The minimal video-clock repair and diagnostic plumbing
+are complete. A controller replacement is deferred unless measurements establish
+remaining drift. This is not a recorded long-duration acoustic/visual soak.
+
 ## Objective
 
 Diagnose reported changing audio/video offset from macOS Host to Ubuntu Client,
@@ -11,7 +16,8 @@ Keep PLANK Output, exact video profiles, native transport, and input unchanged.
 ## Evidence and boundaries
 
 - Native transport retains audio PTS in milliseconds and video PTS in 90 kHz
-  ticks. The Client drops audio PTS at its decoder submission boundary.
+  ticks. The Client previously dropped audio PTS at its decoder submission
+  boundary; the accepted change preserves it for measurement.
 - macOS source audio/video share the Host monotonic clock. Linux audio currently
   starts an independent sample-count epoch; its video epoch is also independent.
   Never interpret these Linux timestamps as absolute audio/video alignment.
@@ -49,4 +55,5 @@ Keep PLANK Output, exact video profiles, native transport, and input unchanged.
 No growing offset, extra video delay, unbounded audio queue, silent timestamp
 fallback, competing controllers or new user synchronization preference. Report
 estimated output timing separately from actual acoustic/visual measurements.
-No automatic deployment, merge, release, or interruption of an end-user session.
+The operator authorized integration after candidate testing. Deployment, release,
+and interruption of an end-user session still require their separate authority.
