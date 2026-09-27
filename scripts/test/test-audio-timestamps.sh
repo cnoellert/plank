@@ -30,9 +30,15 @@ fi
 mkdir -p "$build/relative-rate"
 (
     cd "$build/relative-rate"
-    qmake_command=qmake
-    if [[ $(uname -s) == Linux ]]; then qmake_command=qmake6; fi
-    "$qmake_command" "$client/tests/avsynccontroller/avsynccontroller.pro" CONFIG+=release
+    if [[ $(uname -s) == Darwin ]]; then
+        # Match the other SDK27/Qt tests, including Qt's ARM intrinsic include.
+        qmake "$client/tests/avsynccontroller/avsynccontroller.pro" CONFIG+=release \
+            "QMAKE_CXXFLAGS+=-include arm_acle.h" \
+            "QMAKE_MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:?}" \
+            QMAKE_APPLE_DEVICE_ARCHS=arm64
+    else
+        qmake6 "$client/tests/avsynccontroller/avsynccontroller.pro" CONFIG+=release
+    fi
     make -j2
     ./avsynccontroller
 )
