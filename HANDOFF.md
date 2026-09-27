@@ -1,6 +1,30 @@
 # PLANK handoff
 
-## Current checkpoint — remaining drift, audio-sync resumed
+## Current checkpoint — audio-sync rollback before starvation investigation
+
+The operator authorized committing, pushing and integrating the current027
+source into main before further work. Preserve it with the annotated tag
+`checkpoint/audio-sync-1.1.027` in the root and Client repositories. This is a
+rollback checkpoint, not a release or a declaration that the audio defect is
+fixed. Continue follow-up on `audio-playback-safety`; do not change the running
+soak, install an End-User package, or add video latency without agreement.
+
+Over two hours of the real027 session, estimated phase remains bounded instead
+of the026 growing lag, but the operator reports brief crackles and occasional
+video holds. A counter-only trace covering a reported crackle records no audio
+loss-concealment requests and brief empty SDL input queues. This supports a
+playback-timing investigation; it does not prove audible hardware starvation
+or exclude late delivery/source glitches. Local network counters are not
+end-to-end audio loss. Private evidence stays outside Git. The three-hour
+samplers are scheduled through16:16 Pacific; collect their final results.
+
+Next: validate actual output availability/timing and unnecessary queue draining
+before adding buffering. Preserve smooth resampling and common-clock A/V phase;
+do not hide drift by accepting an arbitrary offset. Keep Linux Host's independent
+clock policy unchanged. Any necessary reserve must be small, device-aware and
+qualified for both lip-sync and end-to-end latency in a real listening soak.
+
+## Candidate provenance — 1.1.027 audio-sync
 
 The operator reported remaining drift on1.1.026 and authorized this follow-up in
 the existing `audio-sync` branch. Root resumes from main46463aa, Client from
@@ -59,8 +83,9 @@ session, output routing or Host package was changed. Resume the soak assessment
 from private notes before making any acceptance statement.
 Periodic audible/visible checks remain necessary: stable log estimates are not
 acoustic/photonic sync acceptance. Private access/target details stay outside Git.
-No active session was interrupted or package installed by the agent. Do not merge/release
-or close the issue on the strength of synthetic tests alone.
+No active session was interrupted or package installed by the agent. The later
+operator instruction above authorizes checkpoint integration, not release or
+issue closure on the strength of synthetic tests alone.
 
 ## Previous checkpoint — accepted audio-sync repair integrated
 
