@@ -19,12 +19,50 @@ No Host, transport, capture, encoder, video latency, routing or permission chang
 Local observer/analyzer/sanitizer checks and five two-hour synthetic feedback
 cases pass. Actual qualified FFmpeg resampling on the Ubuntu builder passes
 two ten-minute simulated-device cases, both recovering350ms offsets to within
-10ms after settling. These are not live hardware sync acceptance. Hosted
-Ubuntu and Mac compile/tests, candidate collection and live soak remain pending.
-No active session was interrupted and no package installed. Do not merge/release
+10ms after settling. These are not live hardware sync acceptance.
+
+Root candidate source `ecac999e3738c4910b489f34503ed043e776a946`, Client
+`34c2adb89996c4e05ce4c6790e818b4d5ec66f2c` and common-C
+`55758dc5160c7f60680345533e887f9aaa5b4dda` are committed/pushed on `audio-sync`.
+Host/Kymux pins are unchanged from the mainline checkpoint below.
+[Ubuntu hosted36346538514](https://github.com/instinctual/plank/actions/runs/36346538514)
+passed production build/package gates, all17 Pacer results, both new controller
+suites, eight independent-rate results and timestamp observer/callback/analyzer
+checks. The checksum-verified package is collected in the canonical catalog:
+`artifacts/packages/candidates/1.1.027-audio-sync/linux/plank-client_1.1.027-audio-sync_amd64.deb`.
+Size15594588; SHA-256
+`a1b6d9287d0650ab5cae1ee4601a2fbbf115bf1dfbab4f78d481021b3dd6c568`.
+Manifest retains the exact Ubuntu source, not subsequent test-script commits.
+
+Unsigned Mac36346540912 and36346951265 compiled the Client and passed the new
+phase/resampler suites, but failed the added independent-rate test invocation:
+first missing the established ARM Qt include, then assuming a non-bundle
+executable. Test-only commits2c3ec51/e26d688 now match the other Mac fixtures'
+ARM/deployment/no-bundle flags. Replacement
+[Mac36347293130](https://github.com/instinctual/plank/actions/runs/36347293130)
+passed at root `e26d6889007be3dfaec2e2cea9ac1a5abedda9bd`, including the repaired
+fixture and all audio timing gates. No signed Mac installer was requested.
+
+Operator selected a different home hardware Client for a three-hour real-time
+moving-footage/audio soak. Read-only baseline on its installed026 independently
+shows estimated lag reaching356ms median over the last10minutes of a2h23m
+session, with the same-250ppm correction saturation. It uses HDMI output,
+unlike the earlier USB-output baseline. No output routing was changed.
+The operator manually installed027 and reconnected. Installed executable SHA-256
+`55c0b5d811b73bfc03a413b457328350b1e61681c921fbc43f5308ff8faf4a2a`
+matches the exact DEB payload. PipeWire/common-clock source-phase mode is active.
+A read-only live log sampler is recording minute summaries from the connection
+beginning2026-09-27 at13:15:54 Pacific, scheduled to finish at16:16. Its first
+three minutes show median estimated lag33ms, no source gaps and no audio queue/
+correction errors; this is preliminary, not the three-hour result. No active
+session, output routing or Host package was changed. Resume the soak assessment
+from private notes before making any acceptance statement.
+Periodic audible/visible checks remain necessary: stable log estimates are not
+acoustic/photonic sync acceptance. Private access/target details stay outside Git.
+No active session was interrupted or package installed by the agent. Do not merge/release
 or close the issue on the strength of synthetic tests alone.
 
-## Current checkpoint — accepted audio-sync repair integrated
+## Previous checkpoint — accepted audio-sync repair integrated
 
 The operator reports changing A/V offset with Ubuntu Client and macOS Host,
 both1.1.024, after PLANK Output adoption. After testing candidate1.1.026, the
