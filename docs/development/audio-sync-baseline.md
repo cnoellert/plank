@@ -1,13 +1,17 @@
 # Source-timestamp A/V baseline
 
-## Current follow-up: 1.1.028-audio-playback-safety
+## Current follow-up: 1.1.029-audio-playback-safety
 
-Candidate028 guards the existing phase correction using SDL output demand,
+Candidate029 guards the existing phase correction using SDL output demand,
 instead of a producer-side fixed queue cutoff. It does not add a playback
 buffer, change the zero-phase target or delay video. Positive catch-up stops
 when an output pull leaves less than one source block, then resumes after
 three consecutive pulls retain two blocks. Infeasible phase targets must not
 be chased by exhausting audio; this is a safety constraint, not sync acceptance.
+When reserve is low, a headroom-derived negative correction ceiling allows the
+same smooth resampler to recover it, even with a faster device clock. Merely
+stopping catch-up failed that extended test in028. This can retain a few more
+milliseconds of audio, so absolute A/V offset is an explicit acceptance gate.
 
 `PLANK audio output demand` records cumulative pulls, shortage requests and
 missing input bytes, the last request duration and residual input headroom,
@@ -21,7 +25,7 @@ output device, content and transport. Record crackles and sync direction with
 wall time. Require no growing drift AND acceptable absolute lip-sync; do not
 accept stable-but-offset audio or simulations alone. Correlate demand counter
 deltas with source timing, correction and separately observed transport loss.
-No live028 soak has yet been performed.
+No live029 soak has yet been performed.
 
 ## Previous follow-up: 1.1.027-audio-sync
 

@@ -83,7 +83,7 @@ ten-minute simulated output clocks driven by actual FFmpeg resampling. Repeat th
 existing Linux rate-fit tests and EGL consuming-frame regression. Hosted builds
 do not replace a multi-hour synchronized live flash/click test on either Client OS.
 
-## 1.1.028 output-demand qualification
+## 1.1.029 output-demand qualification
 
 The operator authorized integrating027 as a rollback checkpoint before this
 follow-up. Its real soak reports brief crackles despite bounded estimated phase.
@@ -101,6 +101,11 @@ requests, not measured speaker underruns. No new transport/statistical loss clai
 The existing phase controller stops acceleration if a pull leaves less than
 one source block or reports insufficient input. Resume only after three distinct
 consecutive pulls retain two blocks; stale/missing demand never permits catch-up.
+An extended test of028 found that simply stopping catch-up still permits
+starvation when the device clock is faster and the phase target is unreachable.
+029 also applies a negative, headroom-derived correction ceiling during recovery,
+using the same phase gain, bounded resampler and slew limit. It can retain a few
+milliseconds more audio; do not call this cost-free or claim exact sync from it.
 This constrains the existing rate correction, not another controller. The phase
 target, resampler, upper queue bound, video timing and Linux independent-epoch
 policy remain unchanged. Do not insert an arbitrary timing bias or claim that

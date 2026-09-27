@@ -1,13 +1,18 @@
 # PLANK handoff
 
-## Current work — 1.1.028 audio-playback-safety
+## Current work — 1.1.029 audio-playback-safety
 
 Root and Client now use `audio-playback-safety`, based on the checkpoint below.
-Candidate028 replaces the producer-side10ms starvation cutoff with an output-pull
+Candidate029 replaces the producer-side10ms starvation cutoff with an output-pull
 guard inside the existing phase controller. SDL demand and post-pull input
 headroom determine whether catch-up can accelerate; three consecutive healthy
 pulls are required to resume after low headroom. No new buffer, silence insertion,
 frame dropping, arbitrary A/V offset, video delay, Host or transport change.
+Low headroom also caps correction below zero using the existing gain and slew
+limit, allowing smooth reserve recovery if the device clock is faster. This may
+retain a few milliseconds more audio; absolute sync still needs qualification.
+The initial028 guard merely stopped catch-up and failed an extended faster-clock/
+unreachable-phase test. Do not distribute028 or call that case fixed by zero rate.
 Linux Host independent-clock rate correction remains unchanged.
 
 The SDL callback records counters only under SDL's existing stream lock; the
@@ -22,7 +27,7 @@ output chunks, jitter and guard/lifecycle arithmetic. ASan/UBSan passes. Existin
 phase/resampler models also pass. The prior constant-depth models could not
 detect starvation; the new finite-queue fixture covers that blind spot. An
 unreachable phase target is reported rather than starved into apparent alignment.
-Full hosted Client builds and candidate collection are next. Live028 listening,
+Full hosted Client builds and candidate collection are next. Live029 listening,
 absolute sync and long-duration drift qualification remain required; none has
 been performed. Do not install remotely on an End-User target without approval.
 
