@@ -1,5 +1,40 @@
 # PLANK handoff
 
+## In progress — audio-sync baseline
+
+The operator reports changing A/V offset with Ubuntu Client and macOS Host,
+both1.1.024, after PLANK Output adoption. Authorized diagnosis and a timestamp-
+based correction on a new branch. Root, Client and Client common-C now use
+`audio-sync`, based on the completed mainline checkpoint below. The unrelated
+primary RK3576 checkout remains untouched. No installed session or routing changed.
+
+The first candidate is intentionally **measurement-only**, version1.1.025:
+native audio PTS now reaches the decoder/renderer, including bounded PLC timestamp
+extrapolation and reconnect reset. One source-timing log per second reports
+estimated audio/video alignment, real SDL queued input, resampler delay, device
+buffer estimate and source gaps. Playback correction/scheduling is unchanged.
+Do not call this a drift fix or an accepted live A/V result.
+
+The Client's retained `LiGetPendingAudioDuration()` always returns zero; the old
+backlog controller therefore does not measure native queue pressure. macOS has a
+common audio/video Host clock, Linux still has independent epochs. Diagnostics
+explicitly reject absolute phase interpretation for Linux, unknown timestamps,
+stale video and invalid latency values. See
+[plan](docs/development/plans/audio-sync.plan) and
+[baseline procedure](docs/development/audio-sync-baseline.md).
+
+Validation: seven common-C tests pass, observer tests cover both offset signs,
+source jumps, unknown timestamps, independent epochs, SDL tick wrap and a two-hour
+synthetic steady clock. Observer ASan/UBSan passes outside the sandbox (LSan cannot
+run under its ptrace environment). Full Client builds and live baseline pending.
+The first default-GCC sanitizer invocation lacked its installed ASan runtime;
+retained GCC14 supplied the working sanitizer toolchain. No toolchain installed.
+
+Next: commit/push dependencies in order, build the Ubuntu diagnostic candidate and
+compile-check the shared macOS Client, collect a synchronized baseline, then replace
+the estimated correction with one tested timestamp-aware controller. No merge,
+release, end-user install, or live sync acceptance is authorized by this checkpoint.
+
 ## Current checkpoint — mainline 1.1.024 Wacom lifecycle builds
 
 Mainline 1.1.024 source is committed and pushed: root

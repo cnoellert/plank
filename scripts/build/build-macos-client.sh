@@ -118,6 +118,8 @@ cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -DNDEBUG \
     "$build/moonlight-common-c/libmoonlight-common-c.a" \
     -o "$build/tests/native-input-bounds"
 "$build/tests/native-input-bounds"
+bash "$source_root/scripts/test/test-audio-timestamps.sh" "$client" \
+    "$build/tests/audio-timestamps" "$build/moonlight-common-c/libmoonlight-common-c.a"
 plist="$build/app/plank-client.app/Contents/Info.plist"
 # Install the approved Client icon in the base bundle, before any development
 # or distribution signing. All packaging paths inherit this exact artwork.

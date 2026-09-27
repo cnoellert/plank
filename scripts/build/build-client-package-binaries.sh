@@ -1798,6 +1798,8 @@ cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -DNDEBUG \
   "$build_dir/moonlight-common-c/libmoonlight-common-c.a" \
   -lcrypto -lpthread -lm -o "$build_dir/tests/native-input-bounds"
 "$build_dir/tests/native-input-bounds"
+bash "$repo_dir/scripts/test/test-audio-timestamps.sh" "$source_dir" \
+  "$build_dir/tests/audio-timestamps" "$build_dir/moonlight-common-c/libmoonlight-common-c.a"
 rg -a -Fq 'Packed 4:4:4 requires composed VAAPI layers' \
   "$client_binary" || {
   echo "client binary is missing the exact VAAPI EGL identity frontend" >&2

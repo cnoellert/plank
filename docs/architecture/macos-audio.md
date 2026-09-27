@@ -79,9 +79,10 @@ retry queue or alternate transport. The caller supplies the packet's source
 presentation time after accounting for encoder priming. Audio wire PTS uses
 **milliseconds**, matching the current Linux sender; video uses **90-kHz ticks**,
 matching the existing Client assembler. The native transport preserves these
-values without converting units. The Client currently passes audio packets to
-Opus without consuming their PTS; preserving source time is not by itself proof
-of synchronized playback.
+values without converting units. The audio-sync candidate preserves PTS through
+the Client's decoder callback and records source-clock alignment at playback
+enqueue. It does not yet use those timestamps to change playback scheduling;
+preserving source time is not by itself proof of synchronized playback.
 
 The adapter requires an activated lease, ready endpoint and valid topology.
 Enqueue is ordered with revocation using the same narrow boundary as video.
