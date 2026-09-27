@@ -27,9 +27,39 @@ output chunks, jitter and guard/lifecycle arithmetic. ASan/UBSan passes. Existin
 phase/resampler models also pass. The prior constant-depth models could not
 detect starvation; the new finite-queue fixture covers that blind spot. An
 unreachable phase target is reported rather than starved into apparent alignment.
-Full hosted Client builds and candidate collection are next. Live029 listening,
-absolute sync and long-duration drift qualification remain required; none has
-been performed. Do not install remotely on an End-User target without approval.
+All six finite-queue cases pass with zero short reads after warmup; settled and
+final one-minute phase means differ by less than0.1ms in those models. This is
+not a physical output measurement. Live029 listening, absolute sync and
+long-duration drift qualification remain required; none has been performed.
+Do not install remotely on an End-User target without approval.
+
+Candidate source is committed/pushed: root
+`2a8e4b6b490b0756c586299e7704f62c4f1869a3`, Client
+`eecdab352caa8fcf2001daf2d359425153fc90d7`, common-C
+`55758dc5160c7f60680345533e887f9aaa5b4dda`, qmdnsengine
+`920c097ffa742e2968290f15d4dde6693aec02e5`. Host/Kymux remain at the
+mainline pins below. Exact-source hosted builds passed with cached dependencies:
+[Ubuntu36356543713](https://github.com/instinctual/plank/actions/runs/36356543713)
+and [unsigned Mac36356545044](https://github.com/instinctual/plank/actions/runs/36356545044).
+Both include17 Pacer results, eight independent-rate results, timestamp observer/
+callback/analyzer gates and the new phase/finite-queue suites. No signed Mac
+installer, Host rebuild, new merge or release was requested for this follow-up.
+
+Checksum-verified DEB collected at
+`artifacts/packages/candidates/1.1.029-audio-playback-safety/linux/plank-client_1.1.029-audio-playback-safety_amd64.deb`.
+Size15598592; SHA-256
+`0dec7f8828e73f2d1c4878870f5c2fc31542f1ce8a4bbf621995a4a35c8b5343`.
+Manifest retains build-source provenance and functional validation not-recorded.
+028 was superseded before deployment; its Ubuntu build was cancelled by the
+replacement, its Mac build passed, and no028 artifact was collected.
+
+Next: operator manually installs029 and reconnects on the same real Host/Client
+pair and output device for listening/flash-click soak. No Host update is needed.
+The earlier027 baseline ended at a confirmed manual reconnect after~2h21m;
+estimated median lag29.35ms remained bounded, but reported crackles prevent
+quality acceptance. The current027 samplers still run to their16:16 Pacific
+deadline, on the original log, not a future029 log. Collect or retire them before
+starting new-version monitoring; private access and paths remain outside Git.
 
 ## Rollback checkpoint — accepted integration of current027 source
 
