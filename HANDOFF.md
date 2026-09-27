@@ -1,5 +1,29 @@
 # PLANK handoff
 
+## Current checkpoint — remaining drift, audio-sync resumed
+
+The operator reported remaining drift on1.1.026 and authorized this follow-up in
+the existing `audio-sync` branch. Root resumes from main46463aa, Client from
+ccbb875e; primary RK3576 research is untouched. The saved three-hour Client
+baseline shows estimated audio lag rising from23ms to approximately350ms,
+SDL queue33–38ms, and correction pinned at-250ppm. These are enqueue/output
+estimates, not measured acoustic/photonic timing. Deployment details stay private.
+
+Candidate version1.1.027 replaces common-clock macOS Host sample-count fitting
+with one bounded source-phase controller. It uses the same observation as the
+diagnostic log, filters every block, and has stale-clock/discontinuity/queue
+guards. Linux Host independent-epoch rate fitting remains unchanged and mutually
+exclusive. The inactive zero-query backlog controller/drop checks are removed.
+No Host, transport, capture, encoder, video latency, routing or permission change.
+
+Local observer/analyzer/sanitizer checks and five two-hour synthetic feedback
+cases pass. Actual qualified FFmpeg resampling on the Ubuntu builder passes
+two ten-minute simulated-device cases, both recovering350ms offsets to within
+10ms after settling. These are not live hardware sync acceptance. Hosted
+Ubuntu and Mac compile/tests, candidate collection and live soak remain pending.
+No active session was interrupted and no package installed. Do not merge/release
+or close the issue on the strength of synthetic tests alone.
+
 ## Current checkpoint — accepted audio-sync repair integrated
 
 The operator reports changing A/V offset with Ubuntu Client and macOS Host,

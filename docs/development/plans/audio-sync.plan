@@ -2,10 +2,12 @@
 
 Branch: audio-sync, based on mainline 1.1.024.
 
-Status: operator reports improvement with1.1.026 and accepts mainline integration
-and closure of issue18. The minimal video-clock repair and diagnostic plumbing
-are complete. A controller replacement is deferred unless measurements establish
-remaining drift. This is not a recorded long-duration acoustic/visual soak.
+Status: resumed audio-sync after the operator reported remaining drift with1.1.026.
+Its saved three-hour common-clock session shows estimated lag growing from23ms
+to approximately350ms, output queue33–38ms, and relative-rate correction clamped
+at-250ppm. The operator authorized the timestamp-controller follow-up in this
+branch. The earlier video-clock repair remains integrated; issue18 closure is
+historical acceptance, not proof of long-session synchronization.
 
 ## Objective
 
@@ -57,3 +59,26 @@ fallback, competing controllers or new user synchronization preference. Report
 estimated output timing separately from actual acoustic/visual measurements.
 The operator authorized integration after candidate testing. Deployment, release,
 and interruption of an end-user session still require their separate authority.
+
+## 1.1.027 controller
+
+For common-clock macOS Hosts, use one phase controller fed by the same source
+timestamp/output-delay observation as telemetry. Negative lead speeds audio up;
+positive lead slows it. Filter every audio block (not subsampled video/device
+jitter); update bounded resampling at100ms intervals, with a5ms deadband and
+at most1% correction. No integral windup, new queue, video delay, or user setting.
+Unknown/stale timing, large source discontinuities and pauses cancel compensation.
+Output starvation/full-queue guards limit correction when phase is not physically
+recoverable by resampling. This estimates output time; it is not a hardware clock.
+
+Linux Hosts retain the existing relative-rate controller because their source
+epochs are independent. Policies are mutually exclusive, never added together;
+do not invent an absolute Linux phase. Remove the inactive backlog controller
+and SDL pending-audio drop checks: the retired query always returns zero. Native
+queue capacities, wire timestamps, capture, encoder and Host code stay unchanged.
+
+Validation includes signed phase/clock drift, jitter aliasing, invalid timestamps,
+output-pressure guards, tick wrap/reconnect and two-hour synthetic feedback, plus
+ten-minute simulated output clocks driven by actual FFmpeg resampling. Repeat the
+existing Linux rate-fit tests and EGL consuming-frame regression. Hosted builds
+do not replace a multi-hour synchronized live flash/click test on either Client OS.

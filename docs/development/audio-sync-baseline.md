@@ -1,5 +1,23 @@
 # Source-timestamp A/V baseline
 
+## Current follow-up: 1.1.027-audio-sync
+
+The1.1.026 long-session baseline established remaining drift. Candidate1.1.027
+replaces the relative sample-count correction for common-clock macOS Hosts with
+bounded source-phase correction. The same timing line now feeds control as well
+as diagnostics; `observation_only=0` identifies that policy. Positive correction
+ppm speeds consumption up and negative ppm slows it. Linux Host epochs remain
+independent and retain the existing relative-rate policy, not absolute sync.
+
+Compare1.1.027 against the saved1.1.026 baseline over at least one hour, ideally
+three. Record audio direction, initial offset and whether it grows; retain all
+timing, source-gap and queue values. Include idle-to-moving video and a normal
+reconnect without changing the output device or Host version mid-comparison.
+This build is not accepted on simulated results alone. The measurement caveats
+below still apply; no live soak has yet been recorded for1.1.027.
+
+## Previous baseline: 1.1.026
+
 Candidate 1.1.026-audio-sync restores video-clock publication for EGL renderers
 that consume the AVFrame. Pacer snapshots PTS before rendering instead of reading
 the reset source frame afterward. The existing correction controller can now
@@ -49,6 +67,6 @@ or independent-clock samples, and reports signed estimated offset, drift slope,
 queue depth, clock discontinuities and correction range. A short fitted slope is
 not an hour-long soak; duration and measurement limitations are printed explicitly.
 
-Only replace the current estimated correction if the minimal clock-publication
-fix and baseline identify a remaining error. The zero-returning inherited pending-audio query
-and inactive backlog controller must not be treated as transport-queue telemetry.
+The follow-up removes the inactive backlog controller and its SDL drop checks.
+The zero-returning inherited pending-audio query must not be treated as real
+transport-queue telemetry in older logs.

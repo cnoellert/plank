@@ -11,6 +11,31 @@ mkdir -p "$build"
     "$client/tests/avsynccontroller/test_audio_timestamps.cpp" \
     "$client/app/streaming/avsynccontroller.cpp" -o "$build/audio-timestamp-observer"
 "$build/audio-timestamp-observer"
+"${CXX:-c++}" -std=c++17 -O2 -Wall -Wextra -Werror -pthread \
+    -I"$client/app/streaming" \
+    "$client/tests/avsynccontroller/test_audio_phase.cpp" \
+    "$client/app/streaming/avsynccontroller.cpp" -o "$build/audio-phase-controller"
+"$build/audio-phase-controller"
+"${CXX:-c++}" -std=c++17 -O2 -Wall -Wextra -Werror -pthread \
+    -I"$client/app/streaming" $(pkg-config --cflags libswresample libavutil) \
+    "$client/tests/avsynccontroller/test_audio_phase_resampler.cpp" \
+    "$client/app/streaming/avsynccontroller.cpp" \
+    $(pkg-config --libs libswresample libavutil) -o "$build/audio-phase-resampler"
+if [[ $(uname -s) == Darwin ]]; then
+    DYLD_LIBRARY_PATH="$(pkg-config --variable=libdir libswresample)" "$build/audio-phase-resampler"
+else
+    "$build/audio-phase-resampler"
+fi
+# Keep the independent-epoch (Linux Host) rate policy covered too.
+mkdir -p "$build/relative-rate"
+(
+    cd "$build/relative-rate"
+    qmake_command=qmake
+    if [[ $(uname -s) == Linux ]]; then qmake_command=qmake6; fi
+    "$qmake_command" "$client/tests/avsynccontroller/avsynccontroller.pro" CONFIG+=release
+    make -j2
+    ./avsynccontroller
+)
 libraries=()
 if [[ $(uname -s) == Linux ]]; then libraries=(-lcrypto -lpthread -lm); fi
 "${CC:-cc}" -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter \
