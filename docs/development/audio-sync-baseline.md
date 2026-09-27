@@ -1,6 +1,29 @@
 # Source-timestamp A/V baseline
 
-## Current follow-up: 1.1.027-audio-sync
+## Current follow-up: 1.1.028-audio-playback-safety
+
+Candidate028 guards the existing phase correction using SDL output demand,
+instead of a producer-side fixed queue cutoff. It does not add a playback
+buffer, change the zero-phase target or delay video. Positive catch-up stops
+when an output pull leaves less than one source block, then resumes after
+three consecutive pulls retain two blocks. Infeasible phase targets must not
+be chased by exhausting audio; this is a safety constraint, not sync acceptance.
+
+`PLANK audio output demand` records cumulative pulls, shortage requests and
+missing input bytes, the last request duration and residual input headroom,
+observation age and catch-up-blocked state. These are SDL demand measurements,
+not physical output timestamps or acoustic-underrun counts. Conversion can
+conservatively overestimate requested input. The callback has no logging,
+allocation or added buffer; logging remains on the decoding worker.
+
+Repeat the real listening/flash-click soak against027 using the same Host,
+output device, content and transport. Record crackles and sync direction with
+wall time. Require no growing drift AND acceptable absolute lip-sync; do not
+accept stable-but-offset audio or simulations alone. Correlate demand counter
+deltas with source timing, correction and separately observed transport loss.
+No live028 soak has yet been performed.
+
+## Previous follow-up: 1.1.027-audio-sync
 
 The1.1.026 long-session baseline established remaining drift. Candidate1.1.027
 replaces the relative sample-count correction for common-clock macOS Hosts with
@@ -14,7 +37,11 @@ three. Record audio direction, initial offset and whether it grows; retain all
 timing, source-gap and queue values. Include idle-to-moving video and a normal
 reconnect without changing the output device or Host version mid-comparison.
 This build is not accepted on simulated results alone. The measurement caveats
-below still apply; no live soak has yet been recorded for1.1.027.
+below still apply. Over two hours of real027 playback, estimated phase remains
+bounded, unlike026, but the operator reports brief crackles and occasional
+video holds. One reported crackle coincides with no audio concealment requests
+and brief empty SDL input observations. That supports playback investigation,
+not proof of a hardware underrun or absence of all source/delivery glitches.
 
 ## Previous baseline: 1.1.026
 

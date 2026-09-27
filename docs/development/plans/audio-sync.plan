@@ -1,6 +1,6 @@
 # Timestamp-based playback synchronization
 
-Branch: audio-sync, based on mainline 1.1.024.
+Branch: audio-playback-safety, based on checkpoint/audio-sync-1.1.027.
 
 Status: resumed audio-sync after the operator reported remaining drift with1.1.026.
 Its saved three-hour common-clock session shows estimated lag growing from23ms
@@ -82,3 +82,34 @@ output-pressure guards, tick wrap/reconnect and two-hour synthetic feedback, plu
 ten-minute simulated output clocks driven by actual FFmpeg resampling. Repeat the
 existing Linux rate-fit tests and EGL consuming-frame regression. Hosted builds
 do not replace a multi-hour synchronized live flash/click test on either Client OS.
+
+## 1.1.028 output-demand qualification
+
+The operator authorized integrating027 as a rollback checkpoint before this
+follow-up. Its real soak reports brief crackles despite bounded estimated phase.
+Audio concealment was absent during one reported event; SDL input briefly empty
+is supporting evidence, not proof of an audible underrun. Preserve this distinction.
+
+Replace the fixed producer-side10ms starvation cutoff with a guard at SDL's
+actual output-demand boundary. A callback records requested input, shortage
+requests and remaining headroom under SDL's existing stream lock. It never
+allocates, logs, waits for another lock, supplies silence, drops or buffers audio.
+The decode worker snapshots it under the same lock; logging stays off the output
+thread. SDL may overestimate required input, so counters are named shortage
+requests, not measured speaker underruns. No new transport/statistical loss claim.
+
+The existing phase controller stops acceleration if a pull leaves less than
+one source block or reports insufficient input. Resume only after three distinct
+consecutive pulls retain two blocks; stale/missing demand never permits catch-up.
+This constrains the existing rate correction, not another controller. The phase
+target, resampler, upper queue bound, video timing and Linux independent-epoch
+policy remain unchanged. Do not insert an arbitrary timing bias or claim that
+guarding an infeasible phase error makes it synchronized.
+
+Qualification adds actual SDL/FFmpeg finite-queue tests with independent arrival
+and consumption clocks, output chunk sizes, jitter and signed clock drift.
+An infeasible phase case must protect playback without pretending to reach zero
+offset. Existing constant-depth models remain useful for rate/phase arithmetic,
+but cannot establish underrun safety. After build gates, require another real
+listening/flash-click soak: no crackles, no growing offset, acceptable absolute
+sync and unchanged video latency. No automatic end-user installation.
