@@ -671,15 +671,17 @@ fi
 echo "host_local_cursor_gate=pass"
 
 # Exact raw-HID and normalized pen-tablet backends must never coexist after a
-# raw group attaches. Flame otherwise applies Tablet Margins to the inactive
-# generic device while pressure arrives from the exact Wacom endpoint.
+# raw group attaches. A mouse-first session must not create a generic tablet
+# before the Wacom Relay attaches, since desktop apps may bind to that device.
 for required_tablet_ownership_token in \
   sync_tablet_backend \
   set_normalized_pen_enabled \
   has_endpoints \
-  'Exact raw HID tablet active; removed normalized pen fallback' \
+  'Exact raw HID tablet active; normalized pen fallback suppressed' \
   ExactRawTabletSuppressesNormalizedFallbackUntilDetach \
+  MouseInputDoesNotCreateTemporaryTablet \
   select_normalized_pen_backend \
+  'Created normalized pen tablet for explicit pen input' \
   'Normalized pen transport selected; released retained exact raw HID tablet endpoints' \
   NormalizedPenReleasesRetainedRawTabletEndpoints; do
   rg -Fq "$required_tablet_ownership_token" \
@@ -691,6 +693,10 @@ for required_tablet_ownership_token in \
     exit 1
   }
 done
+if rg -Fq 'set_pen_tablet_enabled(*this, true)' "$source_dir/src/platform/virtualhid_input.cpp"; then
+  echo 'host eagerly creates a temporary normalized tablet' >&2
+  exit 1
+fi
 echo "host_raw_hid_fallback_exclusion_gate=pass"
 
 # PLANK keeps every host runtime setting in one Sunshine config file.
