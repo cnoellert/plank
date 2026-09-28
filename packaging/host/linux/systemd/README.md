@@ -92,6 +92,13 @@ reboot; the helper refuses to replace its overlay while the display manager is a
 Package removal deletes only an overlay carrying PLANK's generated
 file marker; it does not alter the currently running X server.
 
+The Host package tags only Wacom input devices mirrored through PLANK's UHID
+path. Its Xorg input class disables pressure recalibration for that tag. This
+keeps a nonzero initial pressure report from suppressing pen tip clicks while
+leaving a physical tablet attached to the Host under its normal driver policy.
+Xorg reads the input class when the graphical session starts; installing the
+package does not change the setting in an already running session.
+
 The administrator setting describes the boot policy. A host with
 `startup_layout = physical` removes the headless overlay but may lease a
 bookmark-selected logical layout over connected native scanouts for one remote
