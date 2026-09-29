@@ -1,946 +1,163 @@
 # PLANK handoff
 
-## Current work — mainline 1.1.030 release
+Read `AGENTS.md` and the relevant build runbook before work. Machine-specific
+access and evidence belong in the external private notes, never in Git.
 
-The operator authorized merging `audio-playback-safety`, rebuilding all four
-packages from main and publishing a release. Client main now includes the
-audio guard plus release highlights at `0af6d9fc`; implementation remains
-`eecdab352caa8fcf2001daf2d359425153fc90d7`. Root integration and exact-source
-hosted release builds are next. Use signed/notarized macOS Host and Client PKGs,
-Rocky Host RPM and Ubuntu Client DEB; reuse verified dependency caches. Do not
-relabel candidate029 or deploy packages to test machines as part of this task.
+## Current state — 1.1.030 released
 
-Version1.1.030 supersedes candidate1.1.029-audio-playback-safety. Release notes
-are in `docs/releases/1.1.030.md`, covering changes since published1.0.143.
-Host and Client must be upgraded together across that protocol boundary.
-Release authorization is not a measured acoustic/photonic acceptance result:
-long-duration listening, absolute A/V sync and cross-platform hardware gates
-remain open. Linux Host independent-clock correction is unchanged.
+The operator authorized merging the audio-playback-safety fixes, building a
+release and retiring RK3576 research. Root and Client main are pushed. The
+primary checkout is now on `main`; the former integration worktree at
+`build/worktrees/macos-session-takeover` is detached at the release source.
+Do not infer a branch from that historical worktree name.
 
-The operator also retired the primary `rk3576-client` research checkout.
-It has no unique commits or product implementation. Remove its untracked plan
-and obsolete local routing notes, then return the primary checkout to main.
-Do not remove generic upstream Rockchip support or unrelated worktrees.
-Retain `checkpoint/audio-sync-1.1.027` in root and Client for rollback.
+Exact package source:
 
-## Previous candidate — 1.1.029 audio-playback-safety
+| Component | Commit |
+| --- | --- |
+| Root | `e515fe411d5185d3236a8b5c19a14b012375183e` |
+| Client | `0af6d9fc15197c11257b10e4eed40b0eba783886` |
+| Linux Host | `b8308a44c129599ef50b75c30051cee1bb55bf26` |
+| Kymux | `3f7a9d8618978287186e5d6ce0eaa067743cb06c` |
+| Client common-C | `55758dc5160c7f60680345533e887f9aaa5b4dda` |
+| Host header-only common-C | `3a97a58f215323753cfd1180af760ec7e3253538` |
+| qmdnsengine | `920c097ffa742e2968290f15d4dde6693aec02e5` |
 
-Root and Client now use `audio-playback-safety`, based on the checkpoint below.
-Candidate029 replaces the producer-side10ms starvation cutoff with an output-pull
-guard inside the existing phase controller. SDL demand and post-pull input
-headroom determine whether catch-up can accelerate; three consecutive healthy
-pulls are required to resume after low headroom. No new buffer, silence insertion,
-frame dropping, arbitrary A/V offset, video delay, Host or transport change.
-Low headroom also caps correction below zero using the existing gain and slew
-limit, allowing smooth reserve recovery if the device clock is faster. This may
-retain a few milliseconds more audio; absolute sync still needs qualification.
-The initial028 guard merely stopped catch-up and failed an extended faster-clock/
-unreachable-phase test. Do not distribute028 or call that case fixed by zero rate.
-Linux Host independent-clock rate correction remains unchanged.
+Other recursive pins remain in these exact submodule trees. Notes-only commits
+after the package source do not change the source of the release artifacts.
 
-The SDL callback records counters only under SDL's existing stream lock; the
-decoder snapshots them under the same lock and logs once per second off the
-output thread. `shortage_requests` is not a measured speaker-underrun counter:
-SDL can conservatively overestimate its input needs. Do not claim acoustic sync
-from the estimated phase or conclude that every empty input queue is a glitch.
+All four exact-source GitHub builds passed from main:
 
-Ubuntu-builder component tests pass: actual SDL finite queue plus qualified
-FFmpeg resampling, independent producer/device clocks, signed400ppm drift,
-output chunks, jitter and guard/lifecycle arithmetic. ASan/UBSan passes. Existing
-phase/resampler models also pass. The prior constant-depth models could not
-detect starvation; the new finite-queue fixture covers that blind spot. An
-unreachable phase target is reported rather than starved into apparent alignment.
-All six finite-queue cases pass with zero short reads after warmup; settled and
-final one-minute phase means differ by less than0.1ms in those models. This is
-not a physical output measurement. Live029 listening, absolute sync and
-long-duration drift qualification remain required; none has been performed.
-Do not install remotely on an End-User target without approval.
+- [Linux Host](https://github.com/instinctual/plank/actions/runs/36644830124).
+- [Linux Client](https://github.com/instinctual/plank/actions/runs/36644833766).
+- [Signed Mac Host](https://github.com/instinctual/plank/actions/runs/36644836963).
+- [Signed Mac Client](https://github.com/instinctual/plank/actions/runs/36644840048).
 
-Candidate source is committed/pushed: root
-`2a8e4b6b490b0756c586299e7704f62c4f1869a3`, Client
-`eecdab352caa8fcf2001daf2d359425153fc90d7`, common-C
-`55758dc5160c7f60680345533e887f9aaa5b4dda`, qmdnsengine
-`920c097ffa742e2968290f15d4dde6693aec02e5`. Host/Kymux remain at the
-mainline pins below. Exact-source hosted builds passed with cached dependencies:
-[Ubuntu36356543713](https://github.com/instinctual/plank/actions/runs/36356543713)
-and [unsigned Mac36356545044](https://github.com/instinctual/plank/actions/runs/36356545044).
-Both include17 Pacer results, eight independent-rate results, timestamp observer/
-callback/analyzer gates and the new phase/finite-queue suites. No signed Mac
-installer or Host rebuild was made at that candidate checkpoint; the new release
-request above supersedes its no-merge/no-release scope.
-
-Checksum-verified DEB collected at
-`artifacts/packages/candidates/1.1.029-audio-playback-safety/linux/plank-client_1.1.029-audio-playback-safety_amd64.deb`.
-Size15598592; SHA-256
-`0dec7f8828e73f2d1c4878870f5c2fc31542f1ce8a4bbf621995a4a35c8b5343`.
-Manifest retains build-source provenance and functional validation not-recorded.
-028 was superseded before deployment; its Ubuntu build was cancelled by the
-replacement, its Mac build passed, and no028 artifact was collected.
-
-Next: operator manually installs029 and reconnects on the same real Host/Client
-pair and output device for listening/flash-click soak. No Host update is needed.
-The earlier027 baseline ended at a confirmed manual reconnect after~2h21m;
-estimated median lag29.35ms remained bounded, but reported crackles prevent
-quality acceptance. The027 samplers were scheduled through16:16 Pacific on
-September27, on the original log, not a029 log. That deadline is past; their
-final results have not been assessed here. Private paths remain outside Git.
-
-## Rollback checkpoint — accepted integration of current027 source
-
-The operator authorized committing, pushing and integrating the current027
-source into main before further work. Completed and pushed: root main
-`179c3a7`, Client main `34c2adb89996c4e05ce4c6790e818b4d5ec66f2c`, with the
-annotated tag `checkpoint/audio-sync-1.1.027` in both repositories. This is a
-rollback checkpoint, not a release or a declaration that the audio defect is
-fixed. Continue follow-up on `audio-playback-safety`; do not change the running
-soak, install an End-User package, or add video latency without agreement.
-
-Over two hours of the real027 session, estimated phase remains bounded instead
-of the026 growing lag, but the operator reports brief crackles and occasional
-video holds. A counter-only trace covering a reported crackle records no audio
-loss-concealment requests and brief empty SDL input queues. This supports a
-playback-timing investigation; it does not prove audible hardware starvation
-or exclude late delivery/source glitches. Local network counters are not
-end-to-end audio loss. Private evidence stays outside Git. The three-hour
-samplers are scheduled through16:16 Pacific; collect their final results.
-
-Next: validate actual output availability/timing and unnecessary queue draining
-before adding buffering. Preserve smooth resampling and common-clock A/V phase;
-do not hide drift by accepting an arbitrary offset. Keep Linux Host's independent
-clock policy unchanged. Any necessary reserve must be small, device-aware and
-qualified for both lip-sync and end-to-end latency in a real listening soak.
-
-## Candidate provenance — 1.1.027 audio-sync
-
-The operator reported remaining drift on1.1.026 and authorized this follow-up in
-the existing `audio-sync` branch. Root resumes from main46463aa, Client from
-ccbb875e; primary RK3576 research is untouched. The saved three-hour Client
-baseline shows estimated audio lag rising from23ms to approximately350ms,
-SDL queue33–38ms, and correction pinned at-250ppm. These are enqueue/output
-estimates, not measured acoustic/photonic timing. Deployment details stay private.
-
-Candidate version1.1.027 replaces common-clock macOS Host sample-count fitting
-with one bounded source-phase controller. It uses the same observation as the
-diagnostic log, filters every block, and has stale-clock/discontinuity/queue
-guards. Linux Host independent-epoch rate fitting remains unchanged and mutually
-exclusive. The inactive zero-query backlog controller/drop checks are removed.
-No Host, transport, capture, encoder, video latency, routing or permission change.
-
-Local observer/analyzer/sanitizer checks and five two-hour synthetic feedback
-cases pass. Actual qualified FFmpeg resampling on the Ubuntu builder passes
-two ten-minute simulated-device cases, both recovering350ms offsets to within
-10ms after settling. These are not live hardware sync acceptance.
-
-Root candidate source `ecac999e3738c4910b489f34503ed043e776a946`, Client
-`34c2adb89996c4e05ce4c6790e818b4d5ec66f2c` and common-C
-`55758dc5160c7f60680345533e887f9aaa5b4dda` are committed/pushed on `audio-sync`.
-Host/Kymux pins are unchanged from the mainline checkpoint below.
-[Ubuntu hosted36346538514](https://github.com/instinctual/plank/actions/runs/36346538514)
-passed production build/package gates, all17 Pacer results, both new controller
-suites, eight independent-rate results and timestamp observer/callback/analyzer
-checks. The checksum-verified package is collected in the canonical catalog:
-`artifacts/packages/candidates/1.1.027-audio-sync/linux/plank-client_1.1.027-audio-sync_amd64.deb`.
-Size15594588; SHA-256
-`a1b6d9287d0650ab5cae1ee4601a2fbbf115bf1dfbab4f78d481021b3dd6c568`.
-Manifest retains the exact Ubuntu source, not subsequent test-script commits.
-
-Unsigned Mac36346540912 and36346951265 compiled the Client and passed the new
-phase/resampler suites, but failed the added independent-rate test invocation:
-first missing the established ARM Qt include, then assuming a non-bundle
-executable. Test-only commits2c3ec51/e26d688 now match the other Mac fixtures'
-ARM/deployment/no-bundle flags. Replacement
-[Mac36347293130](https://github.com/instinctual/plank/actions/runs/36347293130)
-passed at root `e26d6889007be3dfaec2e2cea9ac1a5abedda9bd`, including the repaired
-fixture and all audio timing gates. No signed Mac installer was requested.
-
-Operator selected a different home hardware Client for a three-hour real-time
-moving-footage/audio soak. Read-only baseline on its installed026 independently
-shows estimated lag reaching356ms median over the last10minutes of a2h23m
-session, with the same-250ppm correction saturation. It uses HDMI output,
-unlike the earlier USB-output baseline. No output routing was changed.
-The operator manually installed027 and reconnected. Installed executable SHA-256
-`55c0b5d811b73bfc03a413b457328350b1e61681c921fbc43f5308ff8faf4a2a`
-matches the exact DEB payload. PipeWire/common-clock source-phase mode is active.
-A read-only live log sampler is recording minute summaries from the connection
-beginning2026-09-27 at13:15:54 Pacific, scheduled to finish at16:16. Its first
-three minutes show median estimated lag33ms, no source gaps and no audio queue/
-correction errors; this is preliminary, not the three-hour result. No active
-session, output routing or Host package was changed. Resume the soak assessment
-from private notes before making any acceptance statement.
-Periodic audible/visible checks remain necessary: stable log estimates are not
-acoustic/photonic sync acceptance. Private access/target details stay outside Git.
-No active session was interrupted or package installed by the agent. The later
-operator instruction above authorizes checkpoint integration, not release or
-issue closure on the strength of synthetic tests alone.
-
-## Previous checkpoint — accepted audio-sync repair integrated
-
-The operator reports changing A/V offset with Ubuntu Client and macOS Host,
-both1.1.024, after PLANK Output adoption. After testing candidate1.1.026, the
-operator reported improvement and authorized commit/push/merge and closing
-[issue18](https://github.com/instinctual/plank/issues/18). Root and Client now use
-`main`; common-C is integrated into its maintained `plank/client` branch (not
-the unrelated GitHub default `atomics`). The primary RK3576 checkout remains
-untouched. No installed session or routing was changed by the agent.
-
-Confirmed a Client renderer-ownership bug: EGL uses `av_frame_move_ref()` before
-Pacer reads PTS to publish the video clock. The reset PTS prevents publication;
-the observed Ubuntu hardware path uses EGL and had no periodic correction logs.
-Version1.1.026 snapshots PTS before rendering for clock publication, tracing and
-telemetry. It restores the existing correction reference, not a new controller,
-queue, buffer or delay. Operator acceptance is recorded; a measured long-duration
-flash/click soak and cross-platform hardware qualification remain unperformed.
-macOS Metal does not consume/reset the frame PTS and does not exhibit this
-specific renderer-ownership defect based on code inspection.
-
-The earlier1.1.025 diagnostic source is root
-`8a0d678628071e37fd2b7506279423fbb79dac34`, Client
-`53e4130b`, common-C `55758dc`. Native audio PTS now reaches decoding/rendering,
-including bounded PLC extrapolation and reconnect reset. One timing log per
-second reports estimated alignment, actual SDL queued input, resampler delay,
-device-buffer estimate and source gaps. Ubuntu hosted36285201892 passed.
-Unsigned Mac36285203473 compiled the app and passed existing tests, then failed
-the new test script on Bash3.2's empty-array/nounset behavior; fixed the script.
-Do not deploy the superseded diagnostic candidate: its EGL video clock is invalid.
-
-The Client's retained `LiGetPendingAudioDuration()` always returns zero; the old
-backlog controller therefore does not measure native queue pressure. macOS has a
-common audio/video Host clock, Linux still has independent epochs. Diagnostics
-explicitly reject absolute phase interpretation for Linux, unknown timestamps,
-stale video and invalid latency values. See
-[plan](docs/development/plans/audio-sync.plan) and
-[baseline procedure](docs/development/audio-sync-baseline.md).
-
-Validation: seven common-C tests pass, observer tests cover both offset signs,
-source jumps, unknown timestamps, independent epochs, SDL tick wrap and a two-hour
-synthetic steady clock. Observer ASan/UBSan passes outside the sandbox (LSan cannot
-run under its ptrace environment). No measured live drift baseline was collected.
-The first default-GCC sanitizer invocation lacked its installed ASan runtime;
-retained GCC14 supplied the working sanitizer toolchain. No toolchain installed.
-New real-Pacer regression covers consuming/non-consuming renderers with unknown,
-zero and long-running PTS, plus exactly-once buffer release.
-
-Ubuntu26.04/Qt6.10.2 focused regression: all17 results pass. Replacing only Pacer
-with the original source fails exactly the two known-PTS consuming-renderer cases;
-restoring the candidate passes all17 again. Original frame-reference transfer is
-upstream Client `f5d5bc52`; clock publication was added in `2c6132c5`. This defect
-predates PLANK Output; its role in the reported live drift still requires testing.
-
-Candidate source is committed/pushed: root
-`98e19fb5f9325daf7e45260bf95766eb94009bf5`, Client
-`ccbb875e2473f90f1bfe8fed694e5a4edb4c81e4`, Client common-C
-`55758dc5160c7f60680345533e887f9aaa5b4dda`. Host and Kymux pins are unchanged
-from the mainline checkpoint below. Both exact-source hosted builds passed with
-dependency-cache reuse: [Ubuntu](https://github.com/instinctual/plank/actions/runs/36287687073)
-and [unsigned Mac compile/tests](https://github.com/instinctual/plank/actions/runs/36287688395).
-Both run the17-case Pacer suite and timestamp callback/observer/analyzer gates.
-The exact tested Client and common-C commits are now integrated into their
-maintained branches without source changes. Root integration includes notes only
-beyond the tested candidate source. No new Host package, signed Mac installer,
-mainline rebuild, release or deployment was requested in this merge step.
-
-Ubuntu DEB downloaded and checksum-verified in the canonical package catalog:
-`artifacts/packages/candidates/1.1.026-audio-sync/linux/plank-client_1.1.026-audio-sync_amd64.deb`.
-Size15595200; SHA-256
-`503de8c9d1e8178ea36a9e829d80bd3b8147c0098f3761b447f0cbde96a8544e`.
-Manifest and checksum sidecars retain exact source provenance and mark functional
-validation unrecorded. Do not mistake successful build gates for live sync acceptance.
-
-Next: no further controller rewrite is justified without evidence of remaining
-drift. Keep the measurement procedure for recurrence or longer-term qualification.
-The branch-labelled candidate remains in its original catalog; do not relabel it
-as a mainline package. No running build or test remains. Release publication,
-deployment, branch deletion and an additional build were not requested.
-
-## Previous checkpoint — mainline 1.1.024 Wacom lifecycle builds
-
-Mainline 1.1.024 source is committed and pushed: root
-`89afd664484f477777e3a4ce08b1838724f6fb25`, Client
-`183e9f2007474f0f0b8291bb75c9825694d6885c`, Linux Host
-`b8308a44c129599ef50b75c30051cee1bb55bf26`. Root and Client integration
-worktrees now use `main`. All hosted builds passed from that exact root:
-[all products](https://github.com/instinctual/plank/actions/runs/36208395069),
-[signed Mac Host](https://github.com/instinctual/plank/actions/runs/36208395082),
-[signed Mac Client](https://github.com/instinctual/plank/actions/runs/36208397065).
-Both Mac PKGs passed signing, notarization, stapling, Gatekeeper and signing
-cleanup. No package was installed and no GitHub Release was published.
-Host PR11 is merged; Client PR7 is closed as integrated by attributed cherry-pick.
-Both PRs have completion notes and explicit outstanding hardware gates.
-
-Resume checkpoint: the requested commit/push/merge/build/PR closure is complete.
-Later notes-only commits do not change the package source recorded above.
-No build, installation, release publication or background test is pending.
-Do not repeat completed builds or infer hardware acceptance on resume.
-A plain-language comparison against the last published release,1.0.143, is in
-[the1.1.024 changelog](docs/releases/1.1.024.md). It is documentation only;
-the existing packages are unchanged and no new GitHub Release was published.
-
-Review branch `review-wacom-lifecycle` starts at main
-`0c4d9df3a1e3257a30785bc9655a9882621c65dd`. The operator approved the review
-recommendation. Client PR7 is cherry-picked with original attribution, and Host
-PR11 is retained as the base of its follow-up. The operator subsequently requested
-commit, push, mainline integration, all-product builds and closure of both PRs.
-Installed systems and the unrelated primary RK3576 worktree remain untouched.
-
-Client PR7 `af659dbca03304897dc693dc323a419134de6147` and Linux Host PR11
-`da805d9a09c1a6493013fedef8183780b2126753` were reviewed together; see
-[findings and qualification boundaries](docs/development/reviews/wacom-focus-contact-pr-review.md).
-Implementation commits: Client
-`9961eba21910c5ae3695e24217e8f78694965c6e` (PR cherry-pick `696e4e7e`), Host
-`b8308a44c129599ef50b75c30051cee1bb55bf26`. The final Client gitlink above
-also includes the user-facing release notes. Other dependency pins are unchanged:
-Client common-C `060f6179f88343327b44d915007f1fb4cede71f1`, Host header-only
-common-C `3a97a58f215323753cfd1180af760ec7e3253538`, Kymux
-`3f7a9d8618978287186e5d6ce0eaa067743cb06c`. Full recursive provenance remains
-in the pinned submodule trees and the recorded build outputs.
-
-All four original packages are downloaded, collected and SHA-256-verified under
-`artifacts/packages/releases/1.1.024/`, with manifest and checksum sidecars:
+All four original packages are downloaded and independently SHA-256 verified
+under `artifacts/packages/releases/1.1.030/`, with manifest and sidecars.
+[PLANK 1.1.030](https://github.com/instinctual/plank/releases/tag/v1.1.030)
+was published on September 29 as the latest non-prerelease. Annotated tag
+`v1.1.030` points to the exact package-source commit above. GitHub asset digests
+match the local originals. Published checksums/manifest use downloadable
+basenames; the local catalog retains its platform directories. Never relabel
+the feature candidates. No release build or publication step remains pending.
+Both macOS products are distributed as signed/notarized PKGs, not Client DMGs.
+Production Linux RPMs use `BUILD_TESTS=OFF`; separate test builds must not
+replace the packaged binary. Exact dependency caches may be reused; application
+builds and package gates ran again. No test machine was upgraded or rebooted.
 
 | Package | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `linux/plank-host-1.1.024-1.el9.x86_64.rpm` | 8687171 | `1e997072cb0ff42f74d9c54d52e638527b9fbe3bdabcdf57f7a415990c77f75d` |
-| `linux/plank-client_1.1.024_amd64.deb` | 15595204 | `ddd142171d8b129a59b1ecf86705401d7830656e3d6e4b6b9f7ead23821aec25` |
-| `macos/plank-host_1.1.024_arm64.pkg` | 6993669 | `76cdb5ea6c24f2fae73e421b7f1a7852c41225fa6d89ac09626689e6477a3eca` |
-| `macos/plank-client_1.1.024_arm64.pkg` | 72864828 | `6f1ed010319a45fbca47d18a1e21beefb5b998883297a5ff2ee1f0ff6d2cfed3` |
-
-Catalog validation is package-only; functional acceptance is not recorded.
-The redundant generated Client DMG is not in the retained package catalog.
-
-Host cleanup now distinguishes failed reads from idle state, bounds EINTR
-retries, completes partial event writes including SYN_REPORT, and verifies
-contact state before logging success. Persistent failures report the specific
-operation/errno, without pretending that cleanup succeeded. Corrected the
-EVIOCGRAB comment. Cleanup remains synchronous under the existing tablet lock;
-there is no background retry, device recreation or proximity reset.
-The OS-contact helper and pure planner are isolated together so tests exercise
-the actual production functions, not extracted source. CI includes the new suite.
-
-Client focus policy has a small shared helper used by production and tests;
-the existing worker still owns physical attach/release, retry and reconnect.
-No new timer/thread, permission request, Linux focus behavior or protocol change.
-
-Validation: Host19 planner/I/O tests pass with ASan/UBSan and25 shuffled repeats;
-both changed Host production translation units compile with GCC14/Boost1.89 and
-warnings-as-errors. Ubuntu26.04/Qt6.10.2 runs the real Client Wacom suite:13 results
-pass, including25 repeats (11 test cases plus init/cleanup). Native-keyboard5,
-permission-timing11, CI shell syntax and whitespace gates pass. No hardware,
-installed app or service was exercised. The review's earlier fault tests remain
-evidence of the original defect, not tests of the repaired code.
-
-Hosted validation additionally passed the real Mac Wacom Qt suite (13 results),
-all production builds/package gates, and Linux Host input suites for 25 shuffled
-repetitions: 32 passes and three explicit UHID-dependent skips per repetition.
-The three required 150 Mbps loss matrices passed all five loss levels. RPM
-payload remains `BUILD_TESTS=OFF`; CI builds tests separately after packaging.
-Root CI-policy 62 tests, privacy and clipboard regressions passed. No gate was
-weakened and no failing build was retried. The runbook's manual input test filter
-now includes the new `RawHidContactIo` suite, matching CI.
-
-Next: qualify macOS15/27 focus recovery, Flame mid-stroke suspend/resume/pressure/
-margins and hybrid tablets using these exact packages.
-Touch-held suspension followed by pen-only resume remains a hardware question,
-not a confirmed regression. Mainline integration is operator-authorized before
-live qualification; do not claim hardware acceptance from component/build tests.
-Original signed setup packages below are unchanged.
-
-## Previous checkpoint — accepted macOS setup integrated into main
-
-The operator accepted Host1.1.023: setup now centers correctly and opens above
-Installer. Client1.1.021 setup styling was already accepted. The complete
-`macos-app-icons` work is fast-forward merged into root and Client `main`,
-without changing the tested product code. This includes the approved icons,
-uninstall follow-ups, installer-time permission setup and window layout fixes.
-
-Root integration includes `fe0e39e` (tested package source
-`9bd0e4899029390ca5a41594d3b592a2260b1018`); Client main/gitlink is
-`63055b9316b002c8839dd6778b5453e035524d6a`. Other dependency pins below remain
-unchanged. The retained integration worktree and its Client now use `main`.
-The unrelated primary RK3576 worktree is untouched.
-
-Source version remains1.1.023. Signed candidate provenance/checksums and passed
-test gates are recorded below; candidate files have not been renamed as mainline
-packages. No signed mainline rebuild, Release or deployment was requested in
-this merge step. Normal push CI is separate from the accepted signed candidates;
-the preceding automatic candidate run still has Linux Host in progress.
-Do not interpret UI acceptance as blanket hardware/uninstall qualification.
-
-## Previous candidate checkpoint — Host setup foreground follow-up
-
-The operator confirms1.1.022 centers correctly, but setup opens behind Installer.
-Source **1.1.023** on `macos-app-icons` explicitly orders the setup window forward
-when opened, after the normal show/activation request. It remains a normal-level
-window: refresh, consent callbacks and display changes never reassert foreground.
-The accepted centering and manual-drag policy are unchanged. Client runtime is
-unchanged; its gitlink advances for the Host-only changelog entry.
-
-Dedicated SDK27 tests pass for opening/reopening order, normal window level,
-no focus reclaim during refresh/activation/centering, and closed-window guards,
-alongside all centering and permission tests. ASan/UBSan and production
-warnings-as-errors compilation pass. The tests replace presentation calls and
-OS permission boundaries; no installed app, real prompt or display was changed.
-Portable permission11, installer25, layout, version and whitespace gates pass.
-
-Committed/pushed source: root `9bd0e4899029390ca5a41594d3b592a2260b1018`,
-Client release notes `63055b9316b002c8839dd6778b5453e035524d6a`; other pins below
-are unchanged. Signed Host run `36204051198` passed from that exact root,
-including exact dependency-cache restore, native tests, full build, signing,
-notarization, stapling, Gatekeeper, package gates and signing cleanup.
-Original package is downloaded/collected and independently checksum-verified:
-`artifacts/packages/candidates/1.1.023-macos-app-icons/macos/plank-host_1.1.023-macos-app-icons_arm64.pkg`
-(6,993,741 bytes; SHA256
-`cf4dba5b8050702a5ff9c80c80f9693fc578a1080c27b535132c7519f3570213`).
-Catalog functional acceptance remains unrecorded. Automatic `36204051482` has
-Ubuntu and unsigned Mac Client passed, Linux Host and unsigned Mac Host running.
-Privacy `36204051431` and clipboard `36204051453` passed.
-
-The operator subsequently confirmed this fix works and requested the mainline
-integration recorded above. Keep the exact signed candidate packages for
-provenance; do not relabel them after merging.
-
-## Previous checkpoint — signed1.1.022 Host setup centering
-
-The operator accepted Client1.1.021 setup, but Host setup still appeared at the
-upper left after installation. Read-only investigation found setup launched
-before the restarted worker restored the requested desktop mode. The initial
-screen size was not logged; the screenshot placement is consistent with the
-smaller interim desktop. No installed service, display or permission changed
-during diagnosis.
-
-Source version **1.1.022** on `macos-app-icons` responds to AppKit screen-change
-notifications, coalescing them on the main queue and reading fresh visible-screen
-geometry. A real mouse-initiated window move disables automatic placement.
-Programmatic/OS moves do not count as user intent. Pending updates respect both
-manual placement and closure; observers are removed on close/destruction. No
-polling, startup delay, fixed production resolution, permission or streaming
-change. Client code is unchanged; its submodule change is release notes only.
-
-Native SDK27 tests pass for initial1080p→5K restoration, coalescing, logical-point
-and negative-origin geometry, temporarily absent displays, drag discrimination,
-manual placement before a queued update, closure and existing permission states.
-ASan/UBSan and production warnings-as-errors compilation pass. Tests use synthetic
-screen inventory and hidden AppKit windows, not real display/input changes.
-Portable permission11, Host installer25, layout, version and whitespace gates pass.
-
-Source is committed/pushed: root `c63892a029fee32a7ea72f1259bbea9ba837ef65`,
-Client release notes `105a08c673a44551c4ff15b897f804f381f50e53`; other pins below
-are unchanged. Signed Host run `36202821923` passed from that exact root, with
-verified dependency-cache reuse, native layout/lifecycle tests, full build,
-signing, notarization, stapling, Gatekeeper and temporary-signing cleanup.
-Original package downloaded/collected and independently checksum-verified:
-`artifacts/packages/candidates/1.1.022-macos-app-icons/macos/plank-host_1.1.022-macos-app-icons_arm64.pkg`
-(6,993,684 bytes; SHA256
-`338eea77903c3848467eb3fb0e6531b1e58211bd2b0db08aaa90d35379c7eab0`).
-The catalog records its exact provenance and package-only validation.
-Automatic `36202822210` passed Ubuntu and both unsigned Macs; its Linux Host
-job was superseded/cancelled by the1.1.023 push. Privacy `36202822172` and clipboard
-`36202822238` passed. Prior1.1.021 automatic `36189240060` passed all four products.
-
-The operator subsequently confirmed centering works; the foreground follow-up
-above addresses its opening behind Installer. Keep Client1.1.021; no Client
-rebuild is necessary. No merge, Release or deployment performed.
-Cache cleanup was deferred when
-the operator redirected work back to this fix; no cache files were deleted.
-
-## Previous checkpoint — signed1.1.021 setup UI candidates
-
-Setup-layout changes are committed/pushed on `macos-app-icons`: root
-`3fd849c8950c35b464cebf333c916adf29122779`, Client
-`feb9f8fa5060633b9a9edcf754f44bc93ecef6ae`. Source version **1.1.021**;
-candidate version **1.1.021-macos-app-icons**. Other pins below are unchanged.
-Signed hosted Host run `36189240196` and Client run `36189243504` both passed
-from this exact root. Both restored verified dependency caches and completed
-fresh application builds/tests, signing, notarization, stapling, Gatekeeper
-and temporary-signing cleanup. Client native and Material permission-view tests
-both passed on the runner, along with its target/dependency/package gates.
-No installation, merge, tag or Release was performed; main is unchanged.
-
-Both original PKGs are downloaded and checksum-verified in the canonical catalog
-at `artifacts/packages/candidates/1.1.021-macos-app-icons/macos/`, with manifest,
-SHA256SUMS and per-package sidecars in the documented catalog layout:
-
-- `plank-host_1.1.021-macos-app-icons_arm64.pkg`: 6,991,431 bytes,
-  SHA256 `371fe495fb788463c7d8f2a796733d2950fa103fc6cc007a1334d9e5a6950255`.
-- `plank-client_1.1.021-macos-app-icons_arm64.pkg`: 72,864,636 bytes,
-  SHA256 `ebada98608c2f224adbd4fa44f3139bd8cebb47cc57bbe912efe55ea3e4efb7d`.
-
-The redundant generated Client DMG remains outside the catalog. Automatic run
-`36189240060` passed Ubuntu and both unsigned Macs; Linux Host is still running
-at this checkpoint. Privacy `36189240033` and clipboard `36189240153` passed.
-The signed1.1.020 packages below do not contain these UI changes.
-
-Host setup disables window cascading and geometrically centers its final frame
-in the usable desktop only on creation. Returning from Settings preserves user
-placement. Refresh/Close now align to the lower right. Installer-only Client
-setup selects native macOS Qt controls and matches the Host's typography and
-feature/status/action columns, without an inner modal card. Its existing
-Material Settings dialog shares the same content; the main Client's appearance
-is unchanged. Native imports are discoverable by the package deployment scanner.
-No permission grant/request timing, streaming or Linux behavior is changed.
-
-Dedicated SDK27 native Host layout/callback tests and ASan/UBSan pass, as does
-production setup compilation with warnings-as-errors. Actual Client model/QML
-tests pass for native installer setup and the dark Material review dialog,
-including long status wrapping, lower-right buttons, close, denied/unknown/
-granted states, stream guards and late callbacks. Offscreen previews inspected;
-native control decoration still needs installed visual acceptance. Portable
-permission/installer and layout/whitespace checks pass. These synthetic tests
-did not open real permission prompts, change an installed app or touch sessions.
-
-The operator confirmed the missing Client installer setup was because the Client
-was already open. The intentional running-client guard remains; in-app Review
-permissions is available without reinstalling. No remote diagnosis was needed.
-Next: operator tests both setup windows through the actual installer. Quit the
-Client first so its running-client guard does not defer setup. Do not reset
-existing permission grants. Preserve the unrelated primary RK3576 worktree.
-
-## Previous signed1.1.020 checkpoint
-
-Current work is `macos-app-icons`, based on main
-`9d2875297c96f54803723b4f69076e1c0d9f0232`, in the retained
-`build/worktrees/macos-session-takeover` worktree. The operator approved
-installer-time permission setup for both macOS products and requested signed
-candidate builds. Source is committed/pushed: root
-`e7b079ce3bba08099e6203abfbaaf9ea712c9b54`, Client
-`c78271eea6be627ecc905874e95b57e2a94bef78`. Other pins below are unchanged.
-Source version is **1.1.020**; candidate version is
-**1.1.020-macos-app-icons**. Signed hosted Host run `36185284218` and Client
-run `36185287605` both passed from that exact root. Both restored verified
-dependency caches and passed full application/package builds, native fixtures,
-notarization, stapling, Gatekeeper and temporary-signing cleanup. Client also
-passed its exact-target/dependency closure and offscreen launch/version gates.
-Both PKGs are downloaded and checksum-verified in the canonical catalog below.
-The redundant generated Client DMG stays outside the catalog. Automatic run
-`36185270001` passed all four products. Privacy `36185270052` and clipboard
-`36185270031` passed.
-No merge, deployment or Release was performed. The primary worktree's unrelated
-RK3576 work is untouched.
-
-Client PKG postinstall verifies the installed signed app and opens its new
-`--setup-permissions` view as the active console user, not root. It requests
-the existing applicable launch-time permissions without loading bookmarks,
-polling Hosts or creating a session. The CLI rejects combining setup with a
-stream action. Close exits this instance; no service/login item is added.
-Absent desktop, failed launch, an already-running Client or failed process
-inspection defers setup with instructions. Host keeps its existing signed-app
-handoff and now handles unavailable GUI domains/console lookup explicitly.
-Normal launch checks remain for new users/revoked access/new tablets. Optional
-camera-extension activation still has its explicit setup action. No TCC writes,
-silent grants, permission reset, capture-policy or Linux runtime changes.
-
-The misleading Host System Audio **Check in Settings** status row is removed.
-An empty tap cannot verify permission. Consent setup, a Settings shortcut and
-a message for genuine setup failure remain; no unsupported Allowed status.
-
-Validation: portable permission timing11, keyboard guards5, installer handoff
-fixtures (including running-client/lookup/domain/launch failures), Host installer25,
-build-path10, version and repository-layout gates pass. Dedicated SDK27 component
-tests pass for the real Client parser/model/QML view, denied/unknown/granted
-states, active-stream rejection, close and late callbacks; Host view callbacks
-also pass ASan/UBSan. Host production setup and Client main/parser/QML resources
-compile (the latter at target27 using the existing qmake project; not a full
-package build). All16 native configuration/PKG-content tests and31 native Host
-installer checks pass. These tests use synthetic OS boundaries/filesystems:
-no installed app, real privacy grant, hardware device or live session changed.
-Next gate: interactive installer approval testing of the signed1.1.020 candidates;
-do not reset an existing user's grants without explicit authorization.
-
-Permission-scope investigation: the dedicated Mac's existing installed Host
-has allowed ScreenCapture and Accessibility records in the machine-wide TCC
-database. Its signed, non-prompting `--check-permissions` command launched through
-LaunchServices confirms valid graphical context and screen/input readiness in
-the current desktop. The same binary launched directly over SSH reports an
-invalid graphical context; that is not evidence of denied desktop consent.
-After the operator switched to an existing standard account, the identical
-installed signed Host also reported valid graphical context and all three
-screen/input checks allowed there, without requesting any grants. These core
-approvals are effective in both tested accounts. The installed Host/Client
-predate this candidate, so this is baseline evidence, not 1.1.020 acceptance
-or proof for every future account/OS. No grants were reset or changed. Audio
-consent and Client cross-account behavior remain unverified; do not generalize
-the Host screen/input result to those separate permissions.
-
-## Signed 1.1.019 candidates
-
-The previous permission panels and uninstall follow-ups were committed/pushed
-and built through hosted signing. The packages below do not include the new
-installer setup follow-up. No merge, Release or installation was performed.
-Signed Host source is `e0d11026f23a2dbb243eafd6f48943edad9eddc0`;
-run `36177470498` passed all package/signing/notarization/stapling/Gatekeeper
-and cleanup gates. Its checksum-verified PKG is collected below.
-Client run `36177473821` compiled and passed tests but failed the payload-path
-gate before notarization: the uninstaller's inline Directory Services account
-lookup resembled a home-directory path. This was a script-literal false positive,
-not a private build path. Separating the account lookup resolves it without
-weakening the scanner. The early uninstall fixture and build-path suite now
-exercise that shipped script. Signed Client retry `36178693716` uses root
-`0a7e10397fc5e5c89aa4ce2a8a63814862e26f06`; Host code and all dependency pins
-are unchanged by that Client-only packaging correction. The retry passed full
-build/tests, payload path/target checks, offscreen launch/version, signing,
-notarization/stapling, Gatekeeper and signing cleanup. Its PKG is collected;
-the redundant generated DMG wrapper was not copied into the canonical catalog.
-Both signed jobs restored and verified exact dependency caches.
-Automatic four-product run `36177430110` passed Ubuntu and both unsigned Macs;
-its remaining Linux Host job was superseded/cancelled by the correction push.
-Replacement automatic run `36178693950` ultimately passed all four products,
-including Linux Host. This is the previous1.1.019 baseline, not1.1.020.
-Privacy `36177429921` and clipboard `36177430038` passed.
-Local CI policy/cache/signing fixtures62,
-permission timing9, keyboard guards5, build-path10, portable Host uninstall24,
-Client uninstall2 groups, version and whitespace gates pass. Native-only
-configuration tests correctly skip on the Linux orchestration machine; their
-dedicated-Mac results below and hosted reruns are separate.
-Client implementation is committed and pushed at
-`c684014752b511de489d6406e8bafb005bef5123`; other dependency pins are unchanged.
-The primary worktree's unrelated RK3576 changes must remain untouched.
-
-The operator accepted the installed Host setup layout but questioned System
-Audio's unverified indicator. The 1.1.020 source change above removes it while
-preserving the consent workflow. Installed Client visual acceptance and actual
-uninstall/purge tests remain outstanding.
-
-## Previous icon checkpoint
-
-The operator approved the
-second generated Host/Client icon pair. Both approved PNGs are retained
-unchanged in `branding/assets/plank-{host,client}-macos.png`: open landscape
-for Host, monitor-framed landscape for Client. The original artwork/PXD and
-Linux icons are unchanged. No media, authentication, input or protocol changes.
-
-Implementation checkpoint: root `d8f9372fe88464e4efb322b967c8a2dd44a87622`,
-Client `944cf2b0ff32a7ca5c318d38eaaa3ecc0317f2a0` (changelog only).
-Linux Host, common-C, qmdnsengine and Kymux pins remain as listed below.
-Checkpoint version is **1.1.018**. The Client base build now generates its ICNS
-before either development or distribution packaging; Host selects its own
-artwork. The native converter adds no new padding or circular mask. See
-`docs/user/branding.md` for sources and generation brief.
-
-Native SDK27 validation passed from a clean verified-bundle worktree: all9 icon
-tests (approved-source hashes, product selection, ten representations per icon,
-ICNS compile/extract roundtrip and controlled conversion failures), all17
-development-installer cases, all9 permission/package fixtures and all6
-Client-target cases. These compile and check real icon assets and isolated
-synthetic bundles, not the full applications. No GUI or installed app was
-started, and no active session, permission or service was changed.
-Portable build-path9, repository layout, release-version contract, shell syntax,
-privacy hooks and whitespace checks also pass. The source PNG/PXD and Linux
-runtime icon are unchanged. Client and root commits are now pushed on
-`macos-app-icons`; build source is root
-`399de64846319ef6f8104642f5c88a2e01861b66`. No merge, deployment or Release.
-The primary worktree's unrelated RK3576 work remains untouched.
-
-Signed hosted Host run `36116628031` passed, including notarization/stapling,
-Gatekeeper, package and temporary-signing cleanup gates. Its 1.1.018 candidate
-is collected and checksum-verified in the canonical package catalog. Client
-signed run `36116628204` also passed its build/tests, dependency/target checks,
-offscreen launch/version, signing, notarization/stapling, Gatekeeper and cleanup.
-Its PKG is collected with verified source/SHA-256; the redundant DMG wrapper is
-not copied into the local catalog. Both signed jobs restored exact dependency
-caches. Automatic all-product run
-`36116578450` passed all four products, including Linux Host. Privacy `36116578586`
-and clipboard `36116578547` passed. These gates do not prove installed icon
-acceptance.
-
-At the operator's request, closed resolved root issues12,15,16,17,19,20 with
-merged implementation/test references. Closed Client PR8 as already integrated:
-both original commits' stable patch IDs match the retained Client cherry-picks
-`fddac42b` and `b6bbcee4`, followed by `d990292e`. Root PR13 and Linux Host PR10
-were already merged/closed. Root issues14 (cold-boot connection) and18 (audio
-sync), Client PR7, Linux Host PR6, Kymux PR2 and build-deps PR3/4/5 remain open;
-this bookkeeping does not qualify or merge those separate changes.
-
-## 1.1.019: automatic camera uninstall
-
-The operator requested automatic camera removal through the existing Host
-uninstaller. Local changes on `macos-app-icons` invoke the signed installed Host
-in the active console user's GUI domain to submit a SystemExtensions deactivation
-request. The command reports completed/restart-required/failure exit statuses;
-there is no PLANK modal alert blocking its two-minute timeout. The script verifies
-that camera registration is gone before stopping services or removing drivers
-and the app. Missing desktop, cancellation, timeout, inspection failure or
-restart-required keeps the Host intact. A restart, when macOS requires one, is
-manual, followed by the same uninstall command. No direct OS extension deletion,
-SIP/TCC changes, reboot automation or new persistent helper.
-
-Portable uninstall fixtures (24 checks), permission timing8, camera-profile1 and
-package metadata checks pass. Dedicated SDK27/arm64 validation passed native
-uninstall fixtures30, camera setup/removal callbacks with ASan/UBSan, shared-memory
-and protocol tests, camera lifecycle, production camera/Host-main compilation
-with warnings-as-errors, permission/package9 and Host timing4. These are isolated
-fixtures, not a real uninstall: no installed app, service, extension, permission
-or active session was changed. Live signed-app deactivation/approval remains an
-installed test gate. The existing 1.1.018 packages do **not** contain this follow-up;
-it is included in the signed 1.1.019 Host candidate, not merged.
-
-## 1.1.019: Client uninstall
-
-The operator approved a lightweight Client uninstaller and optional data cleanup.
-The signed distribution Client will include `Contents/Resources/uninstall.sh`.
-Normal uninstall verifies the Client signature, requires all Client instances to
-be closed, and removes only the exact Client app and package receipt. `--purge`
-requires typed confirmation and also removes `client.conf` plus the invoking
-sudo user's preferences/bookmarks, Host trust store, caches, logs and saved
-window state. User cleanup drops root privileges, validates exact paths and
-rejects symlinks; no other home directories are enumerated. Host files, shared
-directories and TCC grants are untouched. There is no service/helper or reboot.
-
-Portable lifecycle guards pass. Native SDK27 tests passed isolated data removal,
-idempotency, leaf/parent symlink rejection and Host/other-user preservation.
-The actual Qt6.10.2 preferences/data/cache paths match the cleanup list; this
-read-only path test is now a Client build gate. The new fixture uses the same
-`arm_acle.h` include required by the other SDK27 Qt fixtures. All16 native
-configuration/installer tests pass, including the PKG roundtrip which verifies
-the embedded executable script. Signing occurs after embedding the script.
-No installed Client, actual user data or privacy permissions were changed.
-Both uninstall follow-ups are included in the signed1.1.019 candidates;
-installed uninstall acceptance remains.
-
-## 1.1.019: permission status UI
-
-The operator approved replacing the paragraph-heavy Host alerts with a status
-window and adding a smaller Client review panel. Local changes on the same branch
-give Host setup aligned feature/status/action rows, separate desktop permissions
-from optional devices, and put each guidance sentence on its own line. OS-verified
-permissions get checkmarks; missing required access has an explicit warning.
-Audio devices report loaded/not loaded; camera inspection distinguishes approval,
-removal, enabled and unknown states. Successful empty audio-tap startup is never
-presented as proven audio consent. Existing automatic camera-version reconciliation
-is retained, but first activation remains explicit. Close is bounded even if HAL
-is still waiting for consent; no background worker gains permission-request UI.
-
-The macOS Client's Configuration/Input Settings opens a compact permission panel
-for Accessibility, Microphone and supported USB Wacom Input Monitoring. Normal
-startup consent timing is unchanged; there is no additional all-ready popup.
-Settings return/manual Refresh updates the panel without continuous polling.
-Actions reject active sessions. Status is read-only; no checkbox can claim to grant
-OS permission. Linux UI/runtime and forwarding policies are unchanged.
-
-Native SDK27 Host view/production compilation and ASan/UBSan camera-status,
-activation/removal callbacks pass. Native Qt6.10.2 tests exercise the actual Client
-model and QML panel with simulated permission boundaries, including denied/unknown/
-granted states, missing tablets, active-stream rejection and destroyed-object
-callbacks. Changed Client main, backend, moc, raw-Wacom and QML resources compile
-through the real application qmake project. The Client panel was rendered offscreen;
-Host view geometry was checked with synthetic data. Actual Apple permission dialogs
-and installed visual acceptance remain untested. Existing uninstall/configuration
-fixtures pass; no installed app, service, permission, capture or session changed.
-
-All three follow-ups are included in the signed 1.1.019 candidates, not in1.1.018
-installers. They predate the installer permission handoff and audio-status cleanup.
-Do not relabel
-existing packages or claim a full application/package build from component tests.
-
-## Previous mainline integration
-
-The operator authorized commit, push and merge of the complete
-`session-indicator` work. Integration is a conflict-free fast-forward of
-root `3b200b5d44f276ec4c5e4f72966c5aa2ac0e0fe2` onto
-main, following the companion repositories in dependency order:
-
-- Client main: `9cb38c3a32f26279af50d1a3d2e6c76f3e5838fb`.
-- Linux Host main: `aabaf34c171a7620b7467883e6f4948a3f2659b0`.
-- Kymux unchanged: `3f7a9d8618978287186e5d6ce0eaa067743cb06c`.
-- Client common-C unchanged: `060f6179f88343327b44d915007f1fb4cede71f1`.
-- qmdnsengine unchanged: `920c097ffa742e2968290f15d4dde6693aec02e5`.
-
-The integration used `build/worktrees/macos-session-takeover` (now the icon branch).
-The primary worktree contains unrelated RK3576 work; leave it untouched.
-Feature branches are retained; branch deletion was not requested.
-Main's version is **1.1.017**. No signed 1.1.017 installer has been produced, deployed,
-tagged or published as a GitHub Release. Existing feature candidates retain
-their original names and provenance; rebuild from main rather than relabel them.
-
-## Integrated behavior
-
-- Advisory In Session covers local desktops and pending/live remote streams.
-  It does not prevent the same locally logged-in user connecting remotely.
-  Explicit takeover and different-user ownership protections are unchanged.
-- Linux and macOS `[security] publish_session_user` default false. Enabling it
-  publishes a sanitized desktop short name before authentication; locked desktops
-  retain it, while LoginWindow remains nameless. Discovery uses cached metadata/
-  atomic occupancy, without new account lookups, auth locks or teardown work.
-- Client `[authentication] remember_username` defaults false. It saves only
-  the last successful username per bookmark, never passwords/tokens; no automatic
-  submission or use of discovery names as login suggestions. Disabling policy
-  purges primary and backup settings; destination edits clear saved names.
-- Bookmark Physical displays is now Match Host. Saved values, layout behavior
-  and protocol are unchanged. Obsolete Mac toolbar notch-offset logic is removed;
-  centered placement, manual positioning, input and fullscreen behavior remain.
-- macOS Host reads `/etc/plank/host.conf`. UUID is identity-only
-  `/Library/Application Support/PLANK/identity.plist`; TLS material stays separate.
-  The installer converts the prior plist once, preserving custom policy and
-  identity, and retires it only after installing the replacement app. Runtime
-  has no plist fallback.
-- macOS Client uses a PKG installer and root-owned `/etc/plank/client.conf`.
-  It remains interactive, without service, helper or autostart. Linux paths
-  remain unchanged; the shared Client reference template is in
-  `packaging/client/config/plank-client.conf`.
-- macOS `[network] ping_timeout` defaults 10000 ms, accepts 200–120000, and
-  rejects invalid values. It sets QUIC inactivity tolerance, not input idle or
-  buffering. Keepalives, peer/recovery limits and the separate initial handshake
-  and Client Wait/Disconnect policy are documented. Linux runtime is unchanged;
-  only its stale timeout comments were corrected.
-- Issue19: omitted macOS `[general] host_name` now uses local OS
-  `gethostname()` at startup, matching Linux, with `PLANK` as the unusable-name
-  fallback. The installer retires only its exact old generated INI name block
-  and old plist placeholder. Edited/custom blocks, other settings, UUID and TLS
-  are preserved. There is no DNS lookup, watcher or per-poll hostname query.
-
-Permission timing: ordinary Mac Client GUI startup requests microphone and
-attached qualified USB Wacom consent before constructing the bookmark UI.
-Session entry checks grants only; CLI autoconnect does not prompt. Host
-interactive setup exercises system-audio consent using a private empty tap,
-without recording application audio or changing output routing. Screen/input
-and camera-extension requests stay in setup. New Host users who have not run
-setup can still encounter OS first-use audio consent during a session; OS
-revocation/local-network prompts remain OS-controlled. Do not reset TCC grants
-without approval or claim automatic system-wide consent.
-
-See [configuration](docs/user/macos-configuration.md),
-[permissions](docs/user/permissions.md),
-[remembered usernames](docs/user/remembered-usernames.md), and
-[the integration plan](docs/development/plans/session-indicator.plan).
-
-## Validation
-
-Latest implementation checkpoint:
-root `4642fe4716f15a54f96994e501b603cfc390850b`, Client `9cb38c3a`.
-Subsequent commits record validation/integration, without runtime changes.
-
-Passed on clean verified-source worktrees:
-
-- Native SDK27 hostname parser, including ASan/UBSan, changed OS names,
-  lookup failure, malformed/unterminated results, length bounds and custom names.
-- All16 native configuration/upgrade fixtures: generated-block retirement,
-  custom/edited name retention, exact preservation of other settings,
-  interrupted/retried installation, invalid identity and unsafe-file rejection.
-- Actual local OS hostname and desktop identity provisioning; no OS rename.
-- Mac authentication525, account-policy27, account-channel19, HTTP215, cached
-  discovery XML/control tests, graphical lifecycle457 and synthetic TLS chain/
-  authentication checks across the relevant implementation checkpoints.
-- Permission/package-metadata9 fixtures, including real synthetic PKG roundtrips.
-  Hosted 1.1.016 packaging also passed its root-only71 filesystem checks.
-- Portable Host-settings5, development-installer17 and CI62 tests.
-- Earlier Ubuntu Qt6.10.2 actual parser/persistence, username-policy25,
-  authentication-dialog12, hostchoices5 and toolbar23 checks; eight fullscreen
-  source/geometry guards. SDK27 Client startup/main/raw-Wacom/microphone objects,
-  synthetic consent lifecycle/denial, keyboard27 and Wacom11 cases.
-- Linux advisory occupancy/private-record, production stream owner with stub
-  workers, session policy, supervisor compilation and reconciled package guards.
-- Diff whitespace and commit privacy gates.
-
-The hostname follow-up changes no Client runtime or Linux code. Native tests
-never alter installed apps, permissions, real OS hostnames, accounts or active
-sessions. Synthetic tests are not installed or hardware acceptance.
-No remote test process remains running. Exact earlier validation checkpoints
-are preserved in this file's Git history.
-
-## Available candidates (not mainline rebuilds)
-
-Catalog: `artifacts/packages/candidates/`. Checksums and exact root/gitlink
-provenance live in each version's `manifest.json`, `SHA256SUMS` and sidecars.
-
-### 1.1.020-macos-app-icons
-
-Both signed/notarized macOS PKGs use root
-`e7b079ce3bba08099e6203abfbaaf9ea712c9b54`, Client
-`c78271eea6be627ecc905874e95b57e2a94bef78`; other pins unchanged.
-Host run `36185284218`, Client run `36185287605`: all signed build/package,
-notarization/stapling, Gatekeeper and signing-cleanup gates passed.
-
-- Host: `1.1.020-macos-app-icons/macos/plank-host_1.1.020-macos-app-icons_arm64.pkg`.
-  SHA-256 `dc373f5a6e00709c8446ac2b64d4db239eb916a74741ae7745f7acd46870f19c`
-  (6,991,415 bytes), SDK27/macOS27 minimum.
-- Client: `1.1.020-macos-app-icons/macos/plank-client_1.1.020-macos-app-icons_arm64.pkg`.
-  SHA-256 `a7e0a8088eb468f100afa862565d503e55c36f16806164d5dc9b67f6c3f27b5f`
-  (72,862,877 bytes), SDK27/macOS15 minimum.
-
-Both collected checksums and source provenance verify. No installation was
-performed. Test installer-launched setup in an active desktop with Client closed;
-macOS consent still requires the user's approval. Existing grants remain intact.
-These are candidates, not merged mainline builds or a published Release.
-
-### 1.1.019-macos-app-icons
-
-Signed/notarized Host from root `e0d11026f23a2dbb243eafd6f48943edad9eddc0`,
-Client pin `c684014752b511de489d6406e8bafb005bef5123`, other pins unchanged.
-Package: `1.1.019-macos-app-icons/macos/plank-host_1.1.019-macos-app-icons_arm64.pkg`.
-SHA-256: `366eb7cdd59e36dbb362c8753456a046cc9c93a850be335b6145fd8b60ddabc9`
-(6,990,659 bytes). SDK27, macOS27 minimum. No installation performed.
-Client from root `0a7e10397fc5e5c89aa4ce2a8a63814862e26f06`, with the same
-dependency pins and a Client-uninstaller-only packaging correction:
-`1.1.019-macos-app-icons/macos/plank-client_1.1.019-macos-app-icons_arm64.pkg`.
-SHA-256: `900cde876ee9e820451cf53bdb53dd4b081c99313996693db65e8489a0fa4c64`
-(72,861,320 bytes). SDK27, macOS15 minimum. Both collected checksums verify.
-No automatic installation or Release. The failed first Client attempt is not
-an available installer; the catalog contains only the successful retry.
-
-### 1.1.018-macos-app-icons
-
-Source root `399de64846319ef6f8104642f5c88a2e01861b66`, Client
-`944cf2b0ff32a7ca5c318d38eaaa3ecc0317f2a0`; other pins as above.
-Signed/notarized macOS Host and Client collected. Host:
-`1.1.018-macos-app-icons/macos/plank-host_1.1.018-macos-app-icons_arm64.pkg`.
-SHA-256: `a3a2d1ac902b5d695bc2b98ed1b7dfb8e28bb6fcb01c877bc63fad37a8c52770`
-(6,980,744 bytes).
-Client: `1.1.018-macos-app-icons/macos/plank-client_1.1.018-macos-app-icons_arm64.pkg`.
-SHA-256: `da3f4bba4da68bd9b414badc2f497787c4064c5c9eb0c3bd08548b55b526d7c0`
-(72,858,129 bytes). Host minimum27; Client minimum15, both built with SDK27.
-No installation or icon-cache reset. These are candidates, not a Release.
-
-### 1.1.016-session-indicator
-
-Signed/notarized **macOS Host only**, built from root
-`34b19f38f9ecb2443d9e7b5c1267201975c20462`, Client
-`86d1b3433f3e80ae3de874ef80cd066410dd4f28`, Linux Host/Kymux as above.
-
-Package:
-`1.1.016-session-indicator/macos/plank-host_1.1.016-session-indicator_arm64.pkg`
-
-SHA-256: `0ede82a1387796d6f991c05d59da0c35f7c73bd9315366a8050850fb26d338a1`
-(size 6,858,860 bytes). Signed hosted run `36111685826` passed native tests,
-notarization/stapling and Gatekeeper. Automatic run `36111686759` passed both
-Linux packages and both unsigned Mac builds; privacy `36111686784` and
-clipboard `36111686774` passed. Dependencies used qualified caches.
-This Host includes issue20/settings and permission setup, **not issue19's
-hostname correction**. No signed 1.1.016 Client installer was built.
-
-### 1.1.015-session-indicator
-
-All four collected products under `1.1.015-session-indicator/{linux,macos}/`.
-Root `812770480deca1b896f6f3b7e59df8129677a46e`, Client
-`4038bddc5c970a25a74371c0134c96f895fcbedc`, Linux Host/Kymux as above.
-All-product run `36104720921`, signed Host `36104720562` and signed Client
-`36104723022` passed. Exact hashes remain in the catalog.
-Client handoff is PKG-only: a redundant generated DMG wrapper was not collected.
-The build script still generates that wrapper; its removal remains a separate
-packaging cleanup. Failed earlier runs `36104286424`, `36104286273` and
-`36104288898` are superseded and must not be used.
-
-Neither candidate set was installed during this work. Do not infer fresh/upgrade
-or streaming acceptance from package/signature gates.
-
-## Next gates
-
-1. Check the remaining automatic Linux Host job in run36185270001. Complete
-   installed1.1.020 Host/Client installer-launched permission setup acceptance.
-   Verify the removed Host System Audio status row and retained Settings action.
-   Camera deactivation and Client uninstall/purge
-   require separate operator-supervised tests; component fixtures did not remove
-   installed apps or user data. No cache resets or app modifications are automatic.
-2. Test fresh/upgrade configuration on an authorized Mac: generated-name
-   retirement, custom policy retention, interrupted retry, UUID/TLS preservation.
-3. Verify installed local-to-remote access, login/logout, takeover, offline status,
-   optional username display and wait/timeout behavior.
-4. With an operator present, verify launch-time allow/deny consent, reconnection
-   without new prompts, attached-tablet startup and Host empty-tap audio consent.
-   Do not reset existing grants merely to manufacture a fresh test.
-5. Verify toolbar placement/drag and fullscreen transitions on a notched Mac.
-   Qualify the same Mac Client package on supported macOS15 and macOS27.
-6. Retain the earlier native-media gates: long-duration duplex/camera lip sync,
-   concurrent camera readers, output restoration and controlled stereo-channel
-   measurements. User-confirmed distinct physical microphone channels are
-   recorded in the [native-media plan](docs/development/plans/native-media-forwarding.plan).
-
-Private machine addresses, deployment notes and operational evidence remain
-outside Git; read the private notes' README before machine-specific work.
+| `linux/plank-host-1.1.030-1.el9.x86_64.rpm` | 8687281 | `a3db70a7898691891cb4ed0086f6224cdedaf6a00657c8a239f21fe2d0ab0731` |
+| `linux/plank-client_1.1.030_amd64.deb` | 15596188 | `1bdc7c34648d1839f2f89526b24fb2d6c2ef2e4f6a09f2929d73176501289a57` |
+| `macos/plank-host_1.1.030_arm64.pkg` | 6993611 | `a308a36eef6e4c024ab8f1e88d1f8eb5f7ccbc6d8134b307236d026be1052262` |
+| `macos/plank-client_1.1.030_arm64.pkg` | 72866823 | `f8a6117ec63c46d72b3942f5612bddbaf586bfb1712cef4c4a113e9221afa177` |
+
+The Linux Host passed three 150 Mbps/60 fps loss-matrix repetitions at 0, 0.5,
+1, 3 and 5% injected loss. Its input suite passed 32 tests with three UHID-dependent
+skips per iteration; skips are not hardware acceptance. Both Client builds passed
+the finite-queue audio suites, 17 Pacer and eight independent-rate results. Mac
+signing, notarization, stapling, Gatekeeper and signing cleanup all passed.
+
+[Privacy](https://github.com/instinctual/plank/actions/runs/36645041219) and
+[clipboard](https://github.com/instinctual/plank/actions/runs/36645044171)
+checks passed for the release source. Local repository-layout, release-version,
+62 CI policy and 20 privacy-guard tests passed. These are not hardware acceptance.
+
+The [release notes](docs/releases/1.1.030.md) compare against published 1.0.143.
+Upgrade Host and Client together: the RaptorQ 2 recovery format is incompatible
+with that old release. Latest audio changes themselves are Client-side only.
+
+## Audio implementation and qualification boundaries
+
+Client `ccbb875e` snapshots video PTS before EGL transfers the AVFrame reference,
+restoring the video-clock reference used by audio correction. The operator
+accepted the improvement in 1.1.026; remaining drift led to the later fixes.
+
+Client `34c2adb8` replaces common-clock macOS Host sample-count fitting with one
+source-phase controller. It uses smooth resampling, a zero phase target, bounded
+one-percent correction, filtering, slew limits and stale-clock/queue guards.
+Linux Host timestamps have independent epochs and retain their separate relative
+rate policy. Do not interpret Linux timestamps as absolute A/V phase.
+
+Client `eecdab35` replaces the fixed producer-side starvation cutoff with actual
+SDL output-demand feedback. A callback records requests and post-pull headroom
+under SDL's existing stream lock. The decoder snapshots counters under that lock
+and logs once per second away from the output thread. No callback allocation,
+logging, additional queue, silence insertion, audio-frame dropping or video delay.
+
+Catch-up stops at low headroom. Three distinct healthy pulls are required to
+resume; low headroom also constrains the same bounded resampler below zero to
+recover reserve when the device clock is faster. The initial 028 attempt merely
+stopped catch-up and failed an extended faster-device test; do not distribute it.
+The 029 recovery can retain a few milliseconds more audio. Do not promise zero
+latency cost or acoustically exact sync. `shortage_requests` is not a measured
+speaker-underrun counter: SDL can overestimate required input.
+
+Candidate 029 passed actual SDL/qualified FFmpeg finite-queue tests with
+independent arrival/output clocks, signed 400 ppm drift, differing output chunks,
+jitter, stale/wrap/format cases and an infeasible phase target. All six cases had
+zero post-warmup short reads; settled/final minute phase means differed by less
+than 0.1 ms in those models. ASan/UBSan, 17 Pacer results, eight independent-rate
+results and timestamp observer/callback/analyzer gates also passed. These are
+models/component tests, not a real speaker or lip-sync measurement.
+
+Earlier 027 real monitoring ended at a confirmed manual reconnect after about
+2 h 21 m. Estimated median lag remained bounded at 29.35 ms, but the operator
+reported brief crackles and occasional holds. One crackle trace had no audio
+concealment requests and briefly empty SDL input; this supports investigation,
+not proof of hardware starvation or exclusion of delivery/source glitches.
+The sampler deadline was September 27 at 16:16 Pacific and has passed. Do not
+describe those samplers as active or treat their old log as a new-version soak.
+Private final evidence has not been reassessed in this release task.
+
+Release authorization is not completion of long-duration listening or measured
+absolute A/V synchronization. Next functional gate is a real synchronized
+flash/click and listening soak on the operator-selected Host/Client/output path,
+then cross-platform checks. Do not claim acoustic sync from estimated phase.
+See [plan](docs/development/plans/audio-sync.plan) and
+[procedure](docs/development/audio-sync-baseline.md).
+
+## Rollback and retained artifacts
+
+Annotated `checkpoint/audio-sync-1.1.027` remains pushed in root and Client:
+root `179c3a719735b3065100e8c4ea7adfc3fe2f520d`, Client
+`34c2adb89996c4e05ce4c6790e818b4d5ec66f2c`. It is a rollback checkpoint, not proof
+that every audio issue was resolved.
+
+The original 029 DEB remains at
+`artifacts/packages/candidates/1.1.029-audio-playback-safety/linux/plank-client_1.1.029-audio-playback-safety_amd64.deb`:
+15,598,592 bytes, SHA-256
+`0dec7f8828e73f2d1c4878870f5c2fc31542f1ce8a4bbf621995a4a35c8b5343`.
+Its source is root `2a8e4b6b490b0756c586299e7704f62c4f1869a3` and Client
+`eecdab352caa8fcf2001daf2d359425153fc90d7`. Hosted Ubuntu 36356543713 and unsigned
+Mac 36356545044 passed. Catalog functional validation remains unrecorded.
+Earlier mainline 1.1.024 packages remain in their original release catalog.
+Detailed historical candidate evidence is retained in Git history and manifests.
+
+## Cleanup and other remaining gates
+
+The retired `rk3576-client` branch had no unique commits or product changes.
+Its local branch, untracked plan and obsolete local routing notes were removed;
+no remote RK branch existed. A temporary recovery copy of those notes is outside
+the checkout. Generic upstream Rockchip support and unrelated worktrees remain.
+
+The operator accepted the Mac setup centering/foreground behavior and matching
+Client styling. Wacom lifecycle PRs were integrated before live qualification;
+do not turn their component-test results into pressure/margins/hybrid acceptance.
+Reference [Wacom review](docs/development/reviews/wacom-focus-contact-pr-review.md).
+
+Remaining gates in [acceptance criteria](docs/development/acceptance-criteria.md)
+still apply, especially:
+
+- Real audio/video sync, duplex/camera lip sync, long sessions and output restore.
+- Real Wacom pressure, margins, hybrid devices, focus and held-contact recovery.
+- Fresh/upgrade Mac configuration, optional camera deactivation, Client uninstall
+  and purge, and new-user permission behavior. Do not reset grants without approval.
+- Login/logout, locked-session takeover, timeout handling and notched fullscreen;
+  test the Mac Client on both supported macOS 15 and 27.
+- Deferred Mac Wallpaper/Screen Saver pointer lag, Linux physical-display
+  provenance mismatch and clipboard immediate-paste stress qualification.
+
+Keep machine identities, credentials, private captures and operational evidence
+outside Git. Read the private notes README before any machine-specific work.

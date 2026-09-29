@@ -1,9 +1,10 @@
 # Timestamp-based playback synchronization
 
-Branch: audio-playback-safety, based on checkpoint/audio-sync-1.1.027.
+Integration: main, from audio-playback-safety and checkpoint/audio-sync-1.1.027.
 
-Status:029 output-demand recovery candidate built; real listening/sync acceptance
-pending. Prior context: resumed after remaining drift with1.1.026.
+Status:029 output-demand recovery is merged for release1.1.030 at the operator's
+request; real listening/sync qualification remains pending. Prior context:
+resumed after remaining drift with1.1.026.
 Its saved three-hour common-clock session shows estimated lag growing from23ms
 to approximately350ms, output queue33–38ms, and relative-rate correction clamped
 at-250ppm. The operator authorized the timestamp-controller follow-up in this
