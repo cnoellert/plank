@@ -1,6 +1,29 @@
 # PLANK handoff
 
-## Current work — 1.1.029 audio-playback-safety
+## Current work — mainline 1.1.030 release
+
+The operator authorized merging `audio-playback-safety`, rebuilding all four
+packages from main and publishing a release. Client main now includes the
+audio guard plus release highlights at `0af6d9fc`; implementation remains
+`eecdab352caa8fcf2001daf2d359425153fc90d7`. Root integration and exact-source
+hosted release builds are next. Use signed/notarized macOS Host and Client PKGs,
+Rocky Host RPM and Ubuntu Client DEB; reuse verified dependency caches. Do not
+relabel candidate029 or deploy packages to test machines as part of this task.
+
+Version1.1.030 supersedes candidate1.1.029-audio-playback-safety. Release notes
+are in `docs/releases/1.1.030.md`, covering changes since published1.0.143.
+Host and Client must be upgraded together across that protocol boundary.
+Release authorization is not a measured acoustic/photonic acceptance result:
+long-duration listening, absolute A/V sync and cross-platform hardware gates
+remain open. Linux Host independent-clock correction is unchanged.
+
+The operator also retired the primary `rk3576-client` research checkout.
+It has no unique commits or product implementation. Remove its untracked plan
+and obsolete local routing notes, then return the primary checkout to main.
+Do not remove generic upstream Rockchip support or unrelated worktrees.
+Retain `checkpoint/audio-sync-1.1.027` in root and Client for rollback.
+
+## Previous candidate — 1.1.029 audio-playback-safety
 
 Root and Client now use `audio-playback-safety`, based on the checkpoint below.
 Candidate029 replaces the producer-side10ms starvation cutoff with an output-pull
@@ -43,7 +66,8 @@ mainline pins below. Exact-source hosted builds passed with cached dependencies:
 and [unsigned Mac36356545044](https://github.com/instinctual/plank/actions/runs/36356545044).
 Both include17 Pacer results, eight independent-rate results, timestamp observer/
 callback/analyzer gates and the new phase/finite-queue suites. No signed Mac
-installer, Host rebuild, new merge or release was requested for this follow-up.
+installer or Host rebuild was made at that candidate checkpoint; the new release
+request above supersedes its no-merge/no-release scope.
 
 Checksum-verified DEB collected at
 `artifacts/packages/candidates/1.1.029-audio-playback-safety/linux/plank-client_1.1.029-audio-playback-safety_amd64.deb`.
@@ -57,9 +81,9 @@ Next: operator manually installs029 and reconnects on the same real Host/Client
 pair and output device for listening/flash-click soak. No Host update is needed.
 The earlier027 baseline ended at a confirmed manual reconnect after~2h21m;
 estimated median lag29.35ms remained bounded, but reported crackles prevent
-quality acceptance. The current027 samplers still run to their16:16 Pacific
-deadline, on the original log, not a future029 log. Collect or retire them before
-starting new-version monitoring; private access and paths remain outside Git.
+quality acceptance. The027 samplers were scheduled through16:16 Pacific on
+September27, on the original log, not a029 log. That deadline is past; their
+final results have not been assessed here. Private paths remain outside Git.
 
 ## Rollback checkpoint — accepted integration of current027 source
 
