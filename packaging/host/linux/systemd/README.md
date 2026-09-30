@@ -96,6 +96,8 @@ The Host package tags only Wacom input devices mirrored through PLANK's UHID
 path. Its Xorg input class disables pressure recalibration for that tag. This
 keeps a nonzero initial pressure report from suppressing pen tip clicks while
 leaving a physical tablet attached to the Host under its normal driver policy.
+The rule sets `ID_INPUT.tags` for Xorg's `MatchTag`; a udev `TAG` alone does
+not populate Xorg's input-class tags.
 Xorg reads the input class when the graphical session starts; installing the
 package does not change the setting in an already running session.
 
