@@ -197,8 +197,11 @@ the serial data task. These are application-payload bounds, not a claim about
 total RSS or Quinn's separately bounded stream/socket buffers.
 
 Send pressure returns the existing retryable `TIMEOUT` before making a copy.
-Incoming overflow terminates the connection with a size-limit error: reliable
-records are never silently evicted. Successful dequeue releases its byte
+Incoming pressure waits asynchronously for dequeue space, retaining at most
+one additional record. The 64-record / 8-MiB limits are unchanged and reliable
+records are never evicted. Other lanes and cancellation continue during this
+wait. If the consumer makes no space for two seconds, the connection terminates
+with an explicit size-limit/consumer-stall error. Successful dequeue releases its byte
 charge; a short output buffer leaves the record and charge intact. FIFO copy
 and removal share one lock, including concurrent C ABI readers. Video/audio
 datagrams, RaptorQ, Wacom input and the 512 KiB clipboard limit are unchanged.

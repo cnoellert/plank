@@ -48,6 +48,9 @@ const VIDEO_CODEC_H264: u32 = u32::from_be_bytes(*b"H264");
 const VIDEO_CODEC_HEVC: u32 = u32::from_be_bytes(*b"HEVC");
 const AUDIO_CODEC_OPUS: u32 = u32::from_be_bytes(*b"OPUS");
 const CONNECTION_CLOSE_DRAIN: Duration = Duration::from_secs(1);
+// Normal reliable bursts wait for the consumer, without growing or evicting
+// the bounded queue. A consumer that makes no space still fails explicitly.
+const DATA_RECEIVE_STALL_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[cfg(test)]
 #[path = "native_data_tests.rs"]
@@ -178,6 +181,7 @@ struct NativeShared {
     audio_send_notify: tokio::sync::Notify,
     input_send_notify: tokio::sync::Notify,
     data_send_notify: tokio::sync::Notify,
+    data_receive_space: tokio::sync::Notify,
     video_receive_changed: Condvar,
     audio_receive_changed: Condvar,
     input_receive_changed: Condvar,
@@ -214,6 +218,7 @@ impl NativeShared {
             audio_send_notify: tokio::sync::Notify::new(),
             input_send_notify: tokio::sync::Notify::new(),
             data_send_notify: tokio::sync::Notify::new(),
+            data_receive_space: tokio::sync::Notify::new(),
             video_receive_changed: Condvar::new(),
             audio_receive_changed: Condvar::new(),
             input_receive_changed: Condvar::new(),
@@ -288,6 +293,7 @@ impl NativeShared {
         self.audio_send_notify.notify_waiters();
         self.input_send_notify.notify_waiters();
         self.data_send_notify.notify_waiters();
+        self.data_receive_space.notify_waiters();
     }
 }
 
@@ -743,24 +749,51 @@ async fn send_data(
     }
 }
 
+/// One serial producer can retain at most one pending record while waiting.
+/// Only this lane waits: video, audio, input and shutdown remain schedulable.
+async fn enqueue_received_data(shared: &NativeShared, payload: Bytes) -> Result<bool> {
+    if !(1..=MAX_DATA_PACKET_SIZE).contains(&payload.len()) {
+        return Err(anyhow!("invalid native reliable data packet size"));
+    }
+    let enqueue = async {
+        loop {
+            // Register before examining the queue to avoid losing a dequeue
+            // between the capacity check and awaiting the notification.
+            let available = shared.data_receive_space.notified();
+            tokio::pin!(available);
+            available.as_mut().enable();
+            {
+                let mut queues = shared.queues.lock().unwrap();
+                if queues.data_receive.can_push(payload.len()) {
+                    let inserted = queues.data_receive.push_back(payload);
+                    debug_assert!(inserted);
+                    shared
+                        .stats
+                        .data_packets_received
+                        .fetch_add(1, Ordering::Relaxed);
+                    shared.data_receive_changed.notify_one();
+                    return Ok(true);
+                }
+            }
+            available.await;
+        }
+    };
+    match tokio::time::timeout(DATA_RECEIVE_STALL_TIMEOUT, shared.until_shutdown(enqueue)).await {
+        Ok(result) => result.map(|queued| queued.unwrap_or(false)),
+        Err(_) => Err(anyhow!(
+            "native reliable data receive queue size limit exceeded: consumer made no space for 2000ms"
+        )),
+    }
+}
+
 async fn receive_data(
     shared: Arc<NativeShared>,
     mut recv: kymux_types::ProtocolRecv<DataPacket>,
 ) -> Result<()> {
     while let Some(packet) = recv.recv().await? {
-        {
-            let mut queues = shared.queues.lock().unwrap();
-            if !queues.data_receive.push_back(packet.payload) {
-                return Err(anyhow!(
-                    "native reliable data receive queue size limit exceeded"
-                ));
-            }
+        if !enqueue_received_data(&shared, packet.payload).await? {
+            return Ok(());
         }
-        shared
-            .stats
-            .data_packets_received
-            .fetch_add(1, Ordering::Relaxed);
-        shared.data_receive_changed.notify_one();
     }
     Ok(())
 }
@@ -2031,6 +2064,7 @@ pub unsafe extern "C" fn plank_transport_native_data_receive(
                 let result = copy_bytes_out(packet, payload, payload_capacity, payload_size_out);
                 if result == PLANK_TRANSPORT_OK {
                     queues.data_receive.pop_front();
+                    endpoint.shared.data_receive_space.notify_one();
                 }
                 // Peeking, copying and removing share the queue lock. A short
                 // output buffer leaves both the packet and its byte charge intact.
