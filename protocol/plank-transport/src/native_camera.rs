@@ -737,6 +737,146 @@ mod tests {
         }
     }
 
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[ignore = "requires synthetic PCAM source/destination paths and local certificate variables"]
+    async fn encrypted_encoded_fixture_roundtrip() {
+        use super::super::cancellation_tests::{endpoint, wait_bound, wait_state};
+        use std::net::UdpSocket;
+        let path = std::env::var("PLANK_TEST_CAMERA_RECORDS").expect("generated PCAM fixture path");
+        let destination =
+            std::env::var("PLANK_TEST_CAMERA_PAYLOAD").expect("received payload path");
+        let file = std::fs::read(path).unwrap();
+        assert!(!file.is_empty() && file.len() <= 64 * 1024 * 1024);
+        let mut records = Vec::new();
+        let mut offset = 0;
+        while offset < file.len() {
+            assert!(file.len() - offset >= 4 && records.len() < 1024);
+            let size = u32::from_be_bytes(file[offset..offset + 4].try_into().unwrap()) as usize;
+            offset += 4;
+            assert!((HEADER_BYTES + 1..=HEADER_BYTES + MAX_FRAME_BYTES).contains(&size));
+            assert!(file.len() - offset >= size);
+            let bytes = Bytes::copy_from_slice(&file[offset..offset + size]);
+            let record = Record::decode(bytes.clone(), 2).unwrap();
+            assert_eq!(record.generation, 2);
+            assert_eq!(record.sequence, records.len() as u64);
+            if records.is_empty() {
+                assert_ne!(record.flags & KEY_FRAME, 0);
+            }
+            records.push(bytes);
+            offset += size;
+        }
+        assert_eq!(records.len(), 90);
+        let address = UdpSocket::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap();
+        let mut host = endpoint(address, true, true);
+        let mut client = endpoint(address, false, true);
+        unsafe {
+            assert_eq!(
+                plank_transport_native_endpoint_start(&mut *host),
+                PLANK_TRANSPORT_OK
+            );
+            wait_bound(address, &host).await;
+            assert_eq!(
+                plank_transport_native_endpoint_start(&mut *client),
+                PLANK_TRANSPORT_OK
+            );
+            wait_state(&client, EndpointState::PeerValidation).await;
+            assert_eq!(
+                plank_transport_native_endpoint_approve_peer_certificate(&mut *client),
+                PLANK_TRANSPORT_OK
+            );
+            wait_state(&host, EndpointState::SetupReady).await;
+            wait_state(&client, EndpointState::SetupReady).await;
+            assert_eq!(
+                plank_transport_native_endpoint_authorize_session(&mut *host),
+                PLANK_TRANSPORT_OK
+            );
+            assert_eq!(
+                plank_transport_native_endpoint_authorize_session(&mut *client),
+                PLANK_TRANSPORT_OK
+            );
+            wait_state(&host, EndpointState::Ready).await;
+            wait_state(&client, EndpointState::Ready).await;
+            assert_eq!(
+                plank_transport_native_camera_enable_version(&mut *host, 0, 2),
+                PLANK_TRANSPORT_OK
+            );
+            assert_eq!(
+                plank_transport_native_camera_enable_version(&mut *client, 0, 2),
+                PLANK_TRANSPORT_OK
+            );
+            tokio::time::timeout(Duration::from_secs(5), async {
+                while plank_transport_native_camera_state(&*host) != 2
+                    || plank_transport_native_camera_state(&*client) != 2
+                {
+                    assert_ne!(plank_transport_native_camera_state(&*host), 3);
+                    assert_ne!(plank_transport_native_camera_state(&*client), 3);
+                    tokio::time::sleep(Duration::from_millis(1)).await;
+                }
+            })
+            .await
+            .unwrap();
+            assert_eq!(
+                plank_transport_native_camera_activate(&mut *host, 2),
+                PLANK_TRANSPORT_OK
+            );
+            assert_eq!(
+                plank_transport_native_camera_activate(&mut *client, 2),
+                PLANK_TRANSPORT_OK
+            );
+            let mut received_payload = Vec::new();
+            for bytes in records {
+                assert_eq!(
+                    plank_transport_native_camera_send(&mut *client, bytes.as_ptr(), bytes.len()),
+                    PLANK_TRANSPORT_OK
+                );
+                tokio::time::timeout(Duration::from_secs(3), async {
+                    loop {
+                        let mut output = vec![0; bytes.len()];
+                        let mut size = 0;
+                        let result = plank_transport_native_camera_receive(
+                            &mut *host,
+                            output.as_mut_ptr(),
+                            output.len(),
+                            &mut size,
+                        );
+                        if result == PLANK_TRANSPORT_OK {
+                            assert_eq!(size, bytes.len());
+                            assert_eq!(output.as_slice(), bytes.as_ref());
+                            received_payload.extend_from_slice(&output[HEADER_BYTES..]);
+                            break;
+                        }
+                        assert_eq!(result, PLANK_TRANSPORT_TIMEOUT);
+                        tokio::time::sleep(Duration::from_millis(1)).await;
+                    }
+                })
+                .await
+                .unwrap();
+            }
+            std::fs::write(destination, received_payload).unwrap();
+            assert_eq!(host.shared.state(), EndpointState::Ready);
+            assert_eq!(client.shared.state(), EndpointState::Ready);
+            assert_eq!(
+                plank_transport_native_camera_activate(&mut *host, 0),
+                PLANK_TRANSPORT_OK
+            );
+            assert_eq!(
+                plank_transport_native_camera_activate(&mut *client, 0),
+                PLANK_TRANSPORT_OK
+            );
+            assert_eq!(
+                plank_transport_native_endpoint_stop(&mut *client),
+                PLANK_TRANSPORT_OK
+            );
+            assert_eq!(
+                plank_transport_native_endpoint_stop(&mut *host),
+                PLANK_TRANSPORT_OK
+            );
+        }
+    }
+
     #[test]
     fn encoded_queue_recovery_retains_provenance_and_rejects_native_packets() {
         let camera = Camera::default();

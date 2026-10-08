@@ -208,3 +208,12 @@ arrival-based presentation remains available. Camera IPC version2 separates
 arrival from presentation time: receipt age remains bounded to150ms even when
 presentation is scheduled up to100ms ahead. Decoder completion repeats both
 checks. Neither the PCAM camera schema nor native compressed payloads change.
+
+The optional generated-source transport test accepts a file of big-endian u32
+length-prefixed PCAM-v2 records through `--encoded-records` and writes received
+H.264 access units through `--received-payload`. These are test artifact arguments,
+not wire framing or product camera negotiation. The Mac source candidate generated
+90 records; the TLS fixture delivered each unchanged, and an independent decoder
+confirmed all 90 received frames as baseline H.264, 720p, BT.709 limited-range.
+This does not qualify a physical camera, Linux virtual device or camera-consuming
+application in a product session.

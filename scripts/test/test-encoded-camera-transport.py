@@ -15,7 +15,11 @@ import tempfile
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", type=Path, required=True)
+parser.add_argument("--encoded-records", type=Path)
+parser.add_argument("--received-payload", type=Path)
 args = parser.parse_args()
+if bool(args.encoded_records) != bool(args.received_payload):
+    parser.error("Pass both generated encoded records and received payload paths")
 root = Path(__file__).resolve().parents[2]
 report = {"passed": False, "physicalCameraUsed": False, "productSessionUsed": False, "tests": {}}
 args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -36,7 +40,13 @@ try:
         subprocess.run(["openssl", "x509", "-in", str(temp / "cert.pem"), "-outform", "DER", "-out", str(temp / "cert.der")], check=True)
         env = dict(os.environ, SC_NATIVE_TEST_CERTIFICATE=str(temp / "cert.pem"), SC_NATIVE_TEST_PRIVATE_KEY=str(temp / "key.pem"),
             SC_NATIVE_TEST_CERTIFICATE_SHA256=hashlib.sha256((temp / "cert.der").read_bytes()).hexdigest())
-        subprocess.run(cargo + ["native_ffi::camera_lane::tests::encrypted", "--", "--ignored", "--nocapture"], env=env, check=True, timeout=60)
+        for name in ("encrypted_camera_with_and_without_microphone", "encrypted_version_mismatch_disables_only_camera"):
+            subprocess.run(cargo + ["native_ffi::camera_lane::tests::" + name, "--", "--ignored", "--exact", "--nocapture"], env=env, check=True, timeout=60)
+        if args.encoded_records:
+            env["PLANK_TEST_CAMERA_RECORDS"] = str(args.encoded_records.resolve())
+            env["PLANK_TEST_CAMERA_PAYLOAD"] = str(args.received_payload.resolve())
+            subprocess.run(cargo + ["native_ffi::camera_lane::tests::encrypted_encoded_fixture_roundtrip", "--", "--ignored", "--exact", "--nocapture"], env=env, check=True, timeout=60)
+            report["tests"]["ninetyMacHardwareEncodedFramesPreservedThroughTLS"] = True
         report["tests"]["encryptedV1V2DirectSetupMicActivationAndShortBuffer"] = True
         report["tests"]["versionMismatchDisablesCameraAndPreservesDataLane"] = True
         report["passed"] = True
