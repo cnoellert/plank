@@ -16,8 +16,10 @@ candidate RPM and installed hardware qualification remain separate gates.
 The fork's Actions pause is resolved. The first Rocky run passed the 135 normal
 checks, then GCC 14 rejected optimized libstdc++ regex code during sanitizer
 compilation. The sanitizer fixture now uses `-O0` with all warnings still fatal;
-normal tests and production compilation retain `-O2`. Hosted qualification is
-being repeated before the full package build.
+normal tests and production compilation retain `-O2`. Both Rocky fixture variants
+then passed. Strict supervisor compilation diagnosed its pre-existing optional
+visibility initialization; it now uses an explicit conditional assignment with
+unchanged behavior. Hosted qualification is being repeated before packaging.
 See [the recovery contract](docs/development/investigations/linux-virtual-display-rollback.md).
 No installed workstation state is changed by this source candidate.
 
