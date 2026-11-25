@@ -10,7 +10,7 @@ on:
         description: Product to rebuild (affected products on push/PR)
         type: choice
         default: all
-        options: [all, linux-host, linux-native10-tests, linux-client, linux-client-vaapi-probe, macos-host, macos-client, macos-fullscreen-probe, dependency-tests]
+        options: [all, linux-host, linux-native10-tests, linux-display-tests, linux-client, linux-client-vaapi-probe, macos-host, macos-client, macos-fullscreen-probe, dependency-tests]
       dependency_scope:
         description: Dependency tests to run (product=dependency-tests only)
         type: choice
@@ -415,5 +415,40 @@ jobs:
         with:
           name: signed-${{ inputs.product }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PLANK_ARTIFACT_ROOT }}/
+          if-no-files-found: error
+          retention-days: 7
+
+  linux-display-tests:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.product == 'linux-display-tests' }}
+    needs: policy
+    runs-on: ubuntu-24.04
+    container: rockylinux/rockylinux:9.7@sha256:53f4c6dcb34e1403bd93207351f0af9a593610faeb7165cb8a037346765199b0
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install minimal display regression tools
+        run: |
+          repos=(--disablerepo='*'
+            --repofrompath=ci-baseos,https://dl.rockylinux.org/vault/rocky/9.7/BaseOS/x86_64/os/
+            --repofrompath=ci-appstream,https://dl.rockylinux.org/vault/rocky/9.7/AppStream/x86_64/os/
+            --repofrompath=ci-crb,https://dl.rockylinux.org/vault/rocky/9.7/CRB/x86_64/os/
+            --repofrompath=ci-extras,https://dl.rockylinux.org/vault/rocky/9.7/extras/x86_64/os/
+            --enablerepo=ci-baseos --enablerepo=ci-appstream --enablerepo=ci-crb --enablerepo=ci-extras)
+          dnf "${repos[@]}" install -y --setopt=install_weak_deps=False \
+            git tar gzip python3 gcc-toolset-14-gcc-c++ systemd-devel \
+            gcc-toolset-14-libasan-devel gcc-toolset-14-libubsan-devel epel-release
+          dnf "${repos[@]}" --enablerepo=epel install -y --setopt=install_weak_deps=False ripgrep
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 scripts/ci/context.py
+      - run: bash scripts/ci/display-transition-fast.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: display-tests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PLANK_ARTIFACT_ROOT }}/qualification/display-transition/
           if-no-files-found: error
           retention-days: 7

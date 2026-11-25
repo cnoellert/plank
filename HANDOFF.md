@@ -7,6 +7,15 @@ the focused plans and the artifact catalog.
 
 ## Current state
 
+This candidate branch adds verified Linux virtual-display rollback on top of
+root `6eb31c9e` / Host `8b02eac3`, the latest upstream pins at the source check.
+Normal and sanitized portable tests pass 130 checks. The rollback preserves the
+captured working layout after a failed modeset and refuses stale restoration
+when session/display identities change. Rocky supervisor compilation, a full
+candidate RPM and installed hardware qualification remain separate gates.
+See [the recovery contract](docs/development/investigations/linux-virtual-display-rollback.md).
+No installed workstation state is changed by this source candidate.
+
 Release 1.4.22 is staged at `4449300ed0d7fe383f0c25d03a925f83b3ccb8b2`.
 Both Linux installers have verified hashes in `artifacts/packages/releases/1.4.22/linux/`.
 The Linux package and unsigned Mac regression builds passed. The exact Mac

@@ -27,6 +27,12 @@ hardware probes without preparing full Host dependencies or making an RPM.
 Use `linux-host` when the change is ready for complete candidate qualification.
 The component job does not replace full package, transport or installed-session gates.
 
+For virtual-display rollback changes, `linux-display-tests` is a separate manual
+Rocky 9.7/GCC 14 component job. It runs normal/sanitized production-header tests,
+compiles the actual supervisor and runs display-preparation/package-policy gates.
+It never launches the supervisor or an X server and does not make an RPM. Use
+`linux-host` for full candidate qualification after these checks pass.
+
 Cache schema3 uses actual dependency recipes, patches, source content and
 compiler/SDK/library identities. Documentation commits, unrelated installed
 utilities and runner-image rollout dates are excluded. Download-only Rust/Cargo/

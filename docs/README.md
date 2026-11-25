@@ -36,6 +36,8 @@
   describes bounded application checks for the production camera and microphone.
   [Sender-window recovery](development/investigations/sender-window-recovery.md)
   records delayed-acknowledgment comparisons and remaining live-session gates.
+  [Linux display recovery](development/investigations/linux-virtual-display-rollback.md)
+  documents verified rollback after a failed live virtual-layout change.
   [Tangent panel forwarding](development/plans/tangent-panel-forwarding.plan)
   records the KnobX1/Element USB compatibility gate and integration boundaries.
 - [Security](security/): threat models and security-focused contracts.

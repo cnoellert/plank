@@ -345,6 +345,14 @@ rg -Fq 'plank::topology::virtual_mode_size(request.mode_2)' \
   "$repo_dir/apps/host/linux/src/session/host_supervisor.cpp"
 rg -Fq 'layout_arguments(),' \
   "$repo_dir/apps/host/linux/src/session/host_supervisor.cpp"
+rg -Fq 'display::transition(' \
+  "$repo_dir/apps/host/linux/src/session/host_supervisor.cpp"
+rg -Fq 'live_display_authority_matches(*authority, session, environment)' \
+  "$repo_dir/apps/host/linux/src/session/host_supervisor.cpp"
+rg -Fq 'previous virtual layout restored and verified' \
+  "$repo_dir/apps/host/linux/src/session/host_supervisor.cpp"
+rg -Fq 'host_virtual_display_rollback_gate=pass' \
+  "$repo_dir/scripts/build/build-host-package-binaries.sh"
 rg -Fq '"--fb", std::to_string(canvas_width) + "x" + std::to_string(canvas_height)' \
   "$repo_dir/apps/host/linux/src/session/host_supervisor.cpp"
 rg -Fq 'Virtual ${maximum_canvas_width} ${maximum_canvas_height}' \

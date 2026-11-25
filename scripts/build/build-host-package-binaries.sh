@@ -472,6 +472,12 @@ echo "host_auth_group_absence_gate=pass"
 # This includes the production PAM header and must use the Host's C++23 mode.
 mkdir -p "$build_dir/plank-security-tests"
 /opt/rh/gcc-toolset-14/root/usr/bin/g++ \
+  -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror \
+  -I"$source_dir/src" "$repo_dir/tests/display/virtual-display-transition.cpp" \
+  -o "$build_dir/plank-security-tests/virtual-display-transition"
+"$build_dir/plank-security-tests/virtual-display-transition"
+echo "host_virtual_display_rollback_gate=pass"
+/opt/rh/gcc-toolset-14/root/usr/bin/g++ \
   -std=c++20 -Wall -Wextra -Wpedantic -Werror \
   -I"$source_dir/src" "$repo_dir/tests/video/nvenc-idr-recovery.cpp" \
   -o "$build_dir/plank-security-tests/nvenc-idr-recovery"
