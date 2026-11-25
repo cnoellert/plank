@@ -9,10 +9,13 @@ the focused plans and the artifact catalog.
 
 This candidate branch adds verified Linux virtual-display rollback on top of
 root `6eb31c9e` / Host `8b02eac3`, the latest upstream pins at the source check.
-Normal and sanitized portable tests pass 130 checks. The rollback preserves the
+Normal and sanitized portable tests pass 135 checks. The rollback preserves the
 captured working layout after a failed modeset and refuses stale restoration
 when session/display identities change. Rocky supervisor compilation, a full
 candidate RPM and installed hardware qualification remain separate gates.
+The fork's hosted workflow was refused before job creation: GitHub has paused
+fork workflows due to Actions usage. Re-enabling that service is required
+before claiming a Linux supervisor compile or a candidate package result.
 See [the recovery contract](docs/development/investigations/linux-virtual-display-rollback.md).
 No installed workstation state is changed by this source candidate.
 

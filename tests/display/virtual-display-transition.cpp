@@ -141,7 +141,11 @@ namespace {
     unknown = dual; unknown.outputs[2].x = 0;
     check(!display::usable(unknown), "overlapping layout refused");
     unknown = single; unknown.width = 8192;
-    check(!display::usable(unknown), "uncovered framebuffer refused");
+    check(display::usable(unknown), "configured framebuffer larger than active mode is preserved");
+    check(!display::matches_request(unknown, "single", "1920x1080", "", -1),
+          "requested framebuffer must still match exactly");
+    unknown.width = 8193;
+    check(!display::usable(unknown), "framebuffer beyond qualified virtual canvas refused");
   }
 
   void transaction_tests() {
@@ -162,6 +166,12 @@ namespace {
       rig.during_apply = [](auto &r) { r.state = blank(r.original); };
       check(rig.run() == result::restored && rig.state == rig.original,
             "both dual-primary orders recover their saved layout");
+    }
+    {
+      rig_t rig; rig.original.width = 8192; rig.original.height = 2160; rig.state = rig.original;
+      rig.apply_ok = false;
+      check(rig.run() == result::restored && rig.state == rig.original,
+            "rollback preserves larger preexisting virtual framebuffer exactly");
     }
     {
       rig_t rig; rig.apply_ok = false;

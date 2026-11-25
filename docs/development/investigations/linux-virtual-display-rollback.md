@@ -15,6 +15,9 @@ command runner. A restorable snapshot has the qualified DP-0/DP-2 geometry,
 mode, refresh rate, primary output, framebuffer, EDIDs and `non-desktop`
 properties. Unknown active outputs, rotation, unsupported modes, incomplete
 identity data and unrecognized geometry refuse the change before mutation.
+An existing virtual framebuffer larger than its active modes is preserved
+exactly, within the configured 8192 by 2160 ceiling. Verification of a newly
+requested layout still requires its exact requested framebuffer dimensions.
 
 The requested command runs once. Its exit status and a fresh topology read
 must both agree with the request. On failure, including a command that leaves
