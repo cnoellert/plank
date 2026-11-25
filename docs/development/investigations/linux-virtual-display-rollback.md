@@ -54,7 +54,14 @@ fixtures, compiles the actual supervisor and session context, and runs adjacent
 display-preparation/package-policy checks. It never starts the supervisor or
 an X server and produces no installer.
 
-Local component tests are not installed hardware acceptance. A complete
-candidate RPM, payload verification and a separately authorized disconnected
-installation are still required before installed qualification. Do not replay
+Rocky component run [45543630010](https://github.com/cnoellert/plank/actions/runs/45543630010)
+passed both 135-check variants and strict production compilation. Full Host run
+[45543876250](https://github.com/cnoellert/plank/actions/runs/45543876250)
+built root `3816cf0dbb5b17f29f00ee701b29bfc20cc16120` with Host
+`509a3f654dcfae747c77f4f3b59324b4ce6a5586` and passed its input, transport and
+RPM gates. The independently verified candidate RPM has SHA-256
+`babbab7d4358b75dff7be0495ff8b54a0f0dea04e262481c8e5c18750fd57e0f`.
+
+These results are not installed hardware acceptance. A separately authorized
+disconnected installation is still required before installed qualification. Do not replay
 a destructive modeset failure on an active workstation to validate this patch.

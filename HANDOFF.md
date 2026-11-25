@@ -9,17 +9,31 @@ the focused plans and the artifact catalog.
 
 This candidate branch adds verified Linux virtual-display rollback on top of
 root `6eb31c9e` / Host `8b02eac3`, the latest upstream pins at the source check.
-Normal and sanitized portable tests pass 135 checks. The rollback preserves the
+Normal and sanitized tests pass 135 checks. The rollback preserves the
 captured working layout after a failed modeset and refuses stale restoration
-when session/display identities change. Rocky supervisor compilation, a full
-candidate RPM and installed hardware qualification remain separate gates.
-The fork's Actions pause is resolved. The first Rocky run passed the 135 normal
-checks, then GCC 14 rejected optimized libstdc++ regex code during sanitizer
-compilation. The sanitizer fixture now uses `-O0` with all warnings still fatal;
-normal tests and production compilation retain `-O2`. Both Rocky fixture variants
-then passed. Strict supervisor compilation diagnosed its pre-existing optional
-visibility initialization; it now uses an explicit conditional assignment with
-unchanged behavior. Hosted qualification is being repeated before packaging.
+when session/display identities change. Rocky component run
+[45543630010](https://github.com/cnoellert/plank/actions/runs/45543630010) passed
+both fixtures, strict production supervisor compilation, display preparation and
+package source policy. Full Linux Host run
+[45543876250](https://github.com/cnoellert/plank/actions/runs/45543876250) passed
+the normal input/transport/package gates and produced the candidate RPM.
+Package source is root `3816cf0dbb5b17f29f00ee701b29bfc20cc16120`, Host
+`509a3f654dcfae747c77f4f3b59324b4ce6a5586`, Client
+`33e322dabca4ad6d37775ff7f8c54be303234c18`, and Kymux
+`4ee4654d6f15ae30e39056f97b51761fe15322fe`. This handoff update is documentation
+after that build; it does not relabel the package source.
+
+Candidate `1.4.22-codex-linux-display-rollback-af3d477b` has RPM SHA-256
+`babbab7d4358b75dff7be0495ff8b54a0f0dea04e262481c8e5c18750fd57e0f`.
+Independent download checks matched the workflow ZIP digest, original manifest,
+all source pins, RPM/sidecar hashes, ELF architecture, rollback markers and
+packaged source files (allowing only RPM's recorded interpreter normalization).
+No installation or hardware acceptance is claimed.
+
+The fork's Actions pause is resolved. Initial compiler diagnostics are retained
+in the earlier runs. The sanitizer fixture uses `-O0` with all warnings fatal;
+normal tests and production compilation retain `-O2`. Optional visibility
+initialization uses an equivalent explicit conditional assignment.
 See [the recovery contract](docs/development/investigations/linux-virtual-display-rollback.md).
 No installed workstation state is changed by this source candidate.
 
