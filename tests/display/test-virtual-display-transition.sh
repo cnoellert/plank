@@ -5,7 +5,10 @@ test_build=$(mktemp -d)
 trap 'rm -rf -- "$test_build"' EXIT
 flags=(-O2)
 if [[ ${PLANK_DISPLAY_SANITIZERS:-0} = 1 ]]; then
-  flags=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
+  # GCC 14's optimized libstdc++ regex instantiation emits maybe-uninitialized
+  # diagnostics under ASan. Keep all warnings fatal and instrument at -O0;
+  # the ordinary fixture and production supervisor still compile at -O2.
+  flags=(-O0 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
 fi
 "${CXX:-c++}" -std=c++20 "${flags[@]}" -Wall -Wextra -Wpedantic -Werror \
   -I"$repo_dir/apps/host/linux/src" \

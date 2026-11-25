@@ -13,9 +13,11 @@ Normal and sanitized portable tests pass 135 checks. The rollback preserves the
 captured working layout after a failed modeset and refuses stale restoration
 when session/display identities change. Rocky supervisor compilation, a full
 candidate RPM and installed hardware qualification remain separate gates.
-The fork's hosted workflow was refused before job creation: GitHub has paused
-fork workflows due to Actions usage. Re-enabling that service is required
-before claiming a Linux supervisor compile or a candidate package result.
+The fork's Actions pause is resolved. The first Rocky run passed the 135 normal
+checks, then GCC 14 rejected optimized libstdc++ regex code during sanitizer
+compilation. The sanitizer fixture now uses `-O0` with all warnings still fatal;
+normal tests and production compilation retain `-O2`. Hosted qualification is
+being repeated before the full package build.
 See [the recovery contract](docs/development/investigations/linux-virtual-display-rollback.md).
 No installed workstation state is changed by this source candidate.
 
